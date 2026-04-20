@@ -1,8 +1,9 @@
 import { Link } from "wouter";
 import { Button } from "@/components/shared/Button";
-import { Map, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import logoImg from "@assets/elis_bianco_1776683206010.jpg";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -33,13 +34,12 @@ export function Header() {
     >
       <div className="container mx-auto px-4 md:px-8">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform">
-              <Map className="w-5 h-5" />
-            </div>
-            <span className={cn("text-2xl font-serif font-bold tracking-wider", isScrolled ? "text-primary" : "text-white")}>
-              Elis Travel
-            </span>
+          <Link href="/" className="flex items-center gap-3 group">
+            <img
+              src={logoImg}
+              alt="Elis Travel"
+              className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
+            />
           </Link>
 
           {/* Desktop Nav */}
