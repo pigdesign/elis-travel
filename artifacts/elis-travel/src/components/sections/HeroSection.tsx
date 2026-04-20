@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/shared/Button";
 import { Play } from "lucide-react";
+import heroBg from "@assets/Gemini_Generated_Image_3chg7z3chg7z3chg_1776677826049.png";
 
 export function HeroSection() {
   return (
@@ -9,8 +10,8 @@ export function HeroSection() {
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-black/40 z-10" />
         <img
-          src="/images/hero-bg.png"
-          alt="Ha Long Bay Vietnam"
+          src={heroBg}
+          alt="Elis Travel Hero"
           className="w-full h-full object-cover"
         />
       </div>
