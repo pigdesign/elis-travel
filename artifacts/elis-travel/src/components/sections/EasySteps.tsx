@@ -4,20 +4,20 @@ import { MapPin, CalendarCheck, PlaneTakeoff } from "lucide-react";
 const STEPS = [
   {
     icon: MapPin,
-    title: "Choose Destination",
-    desc: "Select from our wide range of carefully curated destinations around the globe.",
+    title: "Scegli la destinazione",
+    desc: "Scegli tra la nostra ampia selezione di destinazioni curate con attenzione in tutto il mondo.",
     color: "bg-blue-100 text-blue-600"
   },
   {
     icon: CalendarCheck,
-    title: "Book a Tour",
-    desc: "Pick the perfect itinerary and easily book your spot with our secure platform.",
+    title: "Prenota un tour",
+    desc: "Scegli l'itinerario perfetto e prenota facilmente il tuo posto con la nostra piattaforma sicura.",
     color: "bg-primary/20 text-primary"
   },
   {
     icon: PlaneTakeoff,
-    title: "Enjoy Trip",
-    desc: "Pack your bags, let us handle the logistics, and enjoy a trip of a lifetime.",
+    title: "Goditi il viaggio",
+    desc: "Prepara le valigie, lascia a noi la logistica e goditi un viaggio indimenticabile.",
     color: "bg-accent/20 text-accent"
   }
 ];
@@ -32,8 +32,8 @@ export function EasySteps() {
           viewport={{ once: true }}
           className="text-center max-w-2xl mx-auto mb-20"
         >
-          <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">How It Works</span>
-          <h2 className="text-4xl md:text-5xl font-bold font-serif mb-6 text-foreground">3 Easy Steps to Book Your Next Trip</h2>
+          <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Come funziona</span>
+          <h2 className="text-4xl md:text-5xl font-bold font-serif mb-6 text-foreground">3 semplici passi per prenotare il tuo prossimo viaggio</h2>
         </motion.div>
 
         <div className="relative">

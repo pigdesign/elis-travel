@@ -42,10 +42,10 @@ export function PopularDestinations() {
           viewport={{ once: true }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
-          <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Top Destinations</span>
-          <h2 className="text-4xl md:text-5xl font-bold font-serif mb-6 text-foreground">Explore Popular Destinations</h2>
+          <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Mete top</span>
+          <h2 className="text-4xl md:text-5xl font-bold font-serif mb-6 text-foreground">Esplora le destinazioni più amate</h2>
           <p className="text-muted-foreground text-lg">
-            Discover our hand-picked selections of the most beautiful places around the globe.
+            Scopri la nostra selezione curata dei luoghi più belli del mondo.
           </p>
         </motion.div>
 

@@ -24,7 +24,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             <span className="inline-block py-1 px-3 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-sm font-semibold tracking-widest uppercase mb-6 text-accent">
-              Explore The World
+              Esplora il mondo
             </span>
           </motion.div>
 
@@ -43,7 +43,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
             className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto leading-relaxed font-light"
           >
-            Discover the breathtaking beauty of Ha Long Bay, vibrant culture, and unforgettable landscapes. Your next great adventure begins here with our curated local guides.
+            Scopri la straordinaria bellezza della baia di Ha Long, la cultura vibrante e i paesaggi indimenticabili. La tua prossima grande avventura inizia qui con le nostre guide locali selezionate.
           </motion.p>
 
           <motion.div
@@ -53,11 +53,11 @@ export function HeroSection() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Button size="lg" className="h-14 px-8 text-base w-full sm:w-auto bg-primary hover:bg-primary/90 text-white">
-              Discover Tours
+              Scopri i tour
             </Button>
             <Button size="lg" variant="outline" className="h-14 px-8 text-base w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm">
               <Play className="w-5 h-5 mr-2" />
-              Watch Video
+              Guarda il video
             </Button>
           </motion.div>
         </div>

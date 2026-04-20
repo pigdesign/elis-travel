@@ -19,8 +19,8 @@ export function SearchBar() {
               <MapPin className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Location</p>
-              <p className="font-bold text-foreground">Where are you going?</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Località</p>
+              <p className="font-bold text-foreground">Dove vuoi andare?</p>
             </div>
           </div>
 
@@ -31,8 +31,8 @@ export function SearchBar() {
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Check in - out</p>
-              <p className="font-bold text-foreground">Add dates</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Check-in / Check-out</p>
+              <p className="font-bold text-foreground">Aggiungi le date</p>
             </div>
           </div>
 
@@ -43,15 +43,15 @@ export function SearchBar() {
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Guests</p>
-              <p className="font-bold text-foreground">2 Guests, 1 Room</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Ospiti</p>
+              <p className="font-bold text-foreground">2 ospiti, 1 camera</p>
             </div>
           </div>
 
           <div className="md:ml-auto mt-2 md:mt-0">
             <Button size="lg" className="w-full md:w-auto h-16 px-8 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg shadow-lg shadow-accent/30">
               <Search className="w-6 h-6 mr-2" />
-              Search
+              Cerca
             </Button>
           </div>
 

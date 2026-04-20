@@ -14,7 +14,7 @@ export function Footer() {
               <img src={logoImg} alt="Elis Travel" className="h-16 w-auto object-contain" />
             </Link>
             <p className="text-white/70 leading-relaxed text-sm">
-              We curate the most beautiful and adventurous travel experiences in Italy and around the world. Your dream vacation starts here.
+              Curiamo le esperienze di viaggio più belle e avventurose in Italia e nel mondo. La vacanza dei tuoi sogni inizia qui.
             </p>
             <div className="flex gap-4">
               {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
@@ -27,9 +27,9 @@ export function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Quick Links</h4>
+            <h4 className="text-lg font-bold mb-6 font-serif">Link rapidi</h4>
             <ul className="space-y-3">
-              {['About Us', 'Destinations', 'Tours', 'Blog', 'Contact Us'].map((link) => (
+              {['Chi siamo', 'Destinazioni', 'Tour', 'Blog', 'Contattaci'].map((link) => (
                 <li key={link}>
                   <a href="#" className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
@@ -42,7 +42,7 @@ export function Footer() {
 
           {/* Top Destinations */}
           <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Top Destinations</h4>
+            <h4 className="text-lg font-bold mb-6 font-serif">Mete top</h4>
             <ul className="space-y-3">
               {['Vietnam', 'Italy', 'Greece', 'Japan', 'Switzerland'].map((link) => (
                 <li key={link}>
@@ -57,11 +57,11 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Contact Info</h4>
+            <h4 className="text-lg font-bold mb-6 font-serif">Contatti</h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-white/70 text-sm">
                 <MapPin className="w-5 h-5 text-accent shrink-0" />
-                <span>Via Roma 123, 00100 Rome, Italy</span>
+                <span>Via Roma 123, 00100 Roma, Italia</span>
               </li>
               <li className="flex items-center gap-3 text-white/70 text-sm">
                 <Phone className="w-5 h-5 text-accent shrink-0" />
@@ -77,7 +77,7 @@ export function Footer() {
               <div className="flex gap-2">
                 <input 
                   type="email" 
-                  placeholder="Your email" 
+                  placeholder="La tua email" 
                   className="bg-white/10 border border-white/20 rounded-full px-4 py-2 text-sm outline-none focus:border-accent w-full"
                 />
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground px-4">
@@ -89,7 +89,7 @@ export function Footer() {
         </div>
 
         <div className="pt-8 border-t border-white/10 text-center text-white/50 text-sm">
-          <p>&copy; {new Date().getFullYear()} Elis Travel. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Elis Travel. Tutti i diritti riservati.</p>
         </div>
       </div>
     </footer>

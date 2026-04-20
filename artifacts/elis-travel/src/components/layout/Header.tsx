@@ -20,10 +20,10 @@ export function Header() {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Destinations", href: "#destinations" },
-    { name: "Tours", href: "#tours" },
-    { name: "About Us", href: "#about" },
-    { name: "Contact", href: "#contact" },
+    { name: "Destinazioni", href: "#destinations" },
+    { name: "Tour", href: "#tours" },
+    { name: "Chi siamo", href: "#about" },
+    { name: "Contatti", href: "#contact" },
   ];
 
   return (
@@ -65,7 +65,7 @@ export function Header() {
           <div className="hidden md:block">
             <Link href="/admin">
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 border-none">
-                Book Now
+                Prenota ora
               </Button>
             </Link>
           </div>
@@ -98,7 +98,7 @@ export function Header() {
             </a>
           ))}
           <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
-            <Button className="w-full bg-accent text-accent-foreground mt-4">Book Now</Button>
+            <Button className="w-full bg-accent text-accent-foreground mt-4">Prenota ora</Button>
           </Link>
         </div>
       )}

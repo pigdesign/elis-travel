@@ -15,16 +15,16 @@ export function FeatureSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Our Values</span>
+            <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">I nostri valori</span>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-serif mb-6 text-foreground leading-tight">
-              We Recommend Beautiful Destinations Every Month
+              Consigliamo destinazioni bellissime ogni mese
             </h2>
             <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-              With over 20 years of experience, we curate the most breathtaking travel experiences. We believe that travel should be stress-free, immersive, and transformative.
+              Con oltre 20 anni di esperienza, curiamo le esperienze di viaggio più spettacolari. Crediamo che il viaggio debba essere senza stress, coinvolgente e trasformativo.
             </p>
 
             <ul className="space-y-4 mb-10">
-              {['Expert Local Guides', 'Handpicked Accommodations', '24/7 Premium Support'].map((feature, i) => (
+              {['Guide locali esperte', 'Strutture selezionate', 'Assistenza premium 24/7'].map((feature, i) => (
                 <li key={i} className="flex items-center gap-3">
                   <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-accent">
                     <CheckCircle2 className="w-4 h-4" />
@@ -37,20 +37,20 @@ export function FeatureSection() {
             <div className="grid grid-cols-3 gap-6 mb-10 pt-8 border-t border-border">
               <div>
                 <div className="text-4xl font-bold text-primary mb-1">20+</div>
-                <div className="text-sm text-muted-foreground font-medium">Years Exp</div>
+                <div className="text-sm text-muted-foreground font-medium">Anni di esperienza</div>
               </div>
               <div>
                 <div className="text-4xl font-bold text-primary mb-1">50K</div>
-                <div className="text-sm text-muted-foreground font-medium">Happy Clients</div>
+                <div className="text-sm text-muted-foreground font-medium">Clienti soddisfatti</div>
               </div>
               <div>
                 <div className="text-4xl font-bold text-primary mb-1">150+</div>
-                <div className="text-sm text-muted-foreground font-medium">Destinations</div>
+                <div className="text-sm text-muted-foreground font-medium">Destinazioni</div>
               </div>
             </div>
 
             <Button size="lg" className="h-14 px-8 text-base bg-primary hover:bg-primary/90 text-white">
-              Discover More
+              Scopri di più
             </Button>
           </motion.div>
 

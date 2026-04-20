@@ -6,27 +6,27 @@ import coastalImg from "../../assets/coastal-hero.png";
 const SERVICES = [
   {
     icon: Sailboat,
-    title: "Exclusive Trip",
-    desc: "We pay attention to every quality in the service we provide to you.",
-    stepLabel: "Step",
+    title: "Viaggio esclusivo",
+    desc: "Prestiamo attenzione a ogni dettaglio del servizio che ti offriamo.",
+    stepLabel: "Fase",
     stepNum: "01",
     iconColor: "#00B4D8",
     stepColor: "#00B4D8",
   },
   {
     icon: Calendar,
-    title: "Easy Booking",
-    desc: "Booking process and full support service assistance from us.",
-    stepLabel: "Step",
+    title: "Prenotazione facile",
+    desc: "Ti seguiamo con un processo di prenotazione semplice e assistenza completa.",
+    stepLabel: "Fase",
     stepNum: "02",
     iconColor: "#F97316",
     stepColor: "#F97316",
   },
   {
     icon: UserCheck,
-    title: "Professional Guide",
-    desc: "While on vacation will be guided by our professional guide.",
-    stepLabel: "Step",
+    title: "Guida professionale",
+    desc: "Durante la vacanza sarai accompagnato dalla nostra guida professionale.",
+    stepLabel: "Fase",
     stepNum: "03",
     iconColor: "#FB923C",
     stepColor: "#FB923C",
@@ -82,10 +82,10 @@ export function BestServices() {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-serif mb-6">
-                We offer Best <span className="text-accent">Services</span>
+                Offriamo i migliori <span className="text-accent">servizi</span>
               </h2>
               <p className="text-white/80 text-lg max-w-xl mb-8">
-                Experience comprehensive travel solutions designed to give you peace of mind. We take care of everything so you can focus on exploring the world.
+                Vivi soluzioni di viaggio complete pensate per darti serenità. Pensiamo a tutto noi, così puoi concentrarti solo sull'esplorare il mondo.
               </p>
             </motion.div>
             

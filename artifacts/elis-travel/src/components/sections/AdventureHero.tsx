@@ -21,12 +21,12 @@ export function AdventureHero() {
           transition={{ duration: 0.8 }}
           className="max-w-3xl mx-auto bg-black/20 backdrop-blur-md p-8 md:p-16 rounded-[3rem] border border-white/20"
         >
-          <h2 className="text-5xl md:text-7xl font-bold font-serif mb-6 text-accent">Adventure It's Time to Travel</h2>
+          <h2 className="text-5xl md:text-7xl font-bold font-serif mb-6 text-accent">Avventura: è il momento di viaggiare</h2>
           <p className="text-lg md:text-xl text-white/90 mb-10 leading-relaxed font-light">
-            Don't wait for the perfect moment. Create it. Pack your bags, leave your worries behind, and let us guide you to the world's most magnificent wonders.
+            Non aspettare il momento perfetto. Crealo. Prepara le valigie, lascia i pensieri a casa e lascia che ti guidiamo verso le meraviglie più spettacolari del mondo.
           </p>
           <Button size="lg" className="h-16 px-10 text-lg bg-accent hover:bg-accent/90 text-accent-foreground rounded-full shadow-xl shadow-accent/20">
-            Book Your Adventure
+            Prenota la tua avventura
           </Button>
         </motion.div>
       </div>

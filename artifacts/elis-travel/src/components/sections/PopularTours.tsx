@@ -4,27 +4,27 @@ import { TourCard } from "@/components/shared/TourCard";
 const TOURS = [
   {
     id: 1,
-    title: "Luxury Maldives Resort & Spa",
+    title: "Resort & Spa di lusso alle Maldive",
     location: "Maldives",
-    duration: "7 Days, 6 Nights",
+    duration: "7 giorni, 6 notti",
     price: "$2,400",
     rating: 4.9,
     image: "/images/tour-1.png"
   },
   {
     id: 2,
-    title: "Rome and Colosseum Adventure",
+    title: "Avventura a Roma e al Colosseo",
     location: "Rome, Italy",
-    duration: "5 Days, 4 Nights",
+    duration: "5 giorni, 4 notti",
     price: "$1,250",
     rating: 4.8,
     image: "/images/tour-2.png"
   },
   {
     id: 3,
-    title: "Bali Tropical Island Escape",
+    title: "Fuga tropicale a Bali",
     location: "Bali, Indonesia",
-    duration: "8 Days, 7 Nights",
+    duration: "8 giorni, 7 notti",
     price: "$1,800",
     rating: 4.9,
     image: "/images/tour-3.png"
@@ -42,8 +42,8 @@ export function PopularTours() {
             viewport={{ once: true }}
             className="max-w-2xl"
           >
-            <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Our Featured Tours</span>
-            <h2 className="text-4xl md:text-5xl font-bold font-serif text-foreground">Explore Popular Tours</h2>
+            <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Tour in evidenza</span>
+            <h2 className="text-4xl md:text-5xl font-bold font-serif text-foreground">Esplora i tour più popolari</h2>
           </motion.div>
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
@@ -52,7 +52,7 @@ export function PopularTours() {
             className="mt-6 md:mt-0"
           >
             <p className="text-muted-foreground max-w-md text-right">
-              Carefully crafted itineraries for the perfect getaway. Whether you seek relaxation or adventure, we have the perfect tour for you.
+              Itinerari curati con attenzione per la fuga perfetta. Che tu cerchi relax o avventura, abbiamo il tour ideale per te.
             </p>
           </motion.div>
         </div>
