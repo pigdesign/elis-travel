@@ -82,68 +82,77 @@ export function BestServices() {
             </motion.div>
             
             {/* 3 Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-8 items-stretch">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-10 items-stretch">
               {SERVICES.map((service, index) => (
+                /* Outer wrapper: handles motion + provides overflow:visible context for the badge */
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1, duration: 0.5 }}
-                  className="relative bg-white overflow-hidden flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300"
-                  style={{
-                    borderRadius: "28px",
-                    boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
-                    minHeight: "260px",
-                    padding: "36px 20px 48px",
-                  }}
+                  className="relative"
+                  style={{ paddingBottom: "14px", paddingLeft: "14px" }}
                 >
-                  {/* Icon — linear, no circle background */}
-                  <div className="mb-5 mt-2">
-                    <service.icon
-                      className="w-10 h-10"
-                      strokeWidth={1.5}
-                      style={{ color: service.iconColor }}
-                    />
+                  {/* Card — asymmetric border-radius: top-left & bottom-right prominent */}
+                  <div
+                    className="relative bg-white flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300"
+                    style={{
+                      borderTopLeftRadius: "46px",
+                      borderTopRightRadius: "18px",
+                      borderBottomRightRadius: "46px",
+                      borderBottomLeftRadius: "18px",
+                      boxShadow: "0 6px 28px rgba(0,0,0,0.09)",
+                      minHeight: "260px",
+                      padding: "38px 22px 52px",
+                    }}
+                  >
+                    {/* Icon — linear, no circle background */}
+                    <div className="mb-5 mt-2">
+                      <service.icon
+                        className="w-10 h-10"
+                        strokeWidth={1.5}
+                        style={{ color: service.iconColor }}
+                      />
+                    </div>
+
+                    {/* Title */}
+                    <h3
+                      className="text-base font-semibold mb-3 leading-snug"
+                      style={{ color: "#1B5E5E" }}
+                    >
+                      {service.title}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-sm text-gray-400 leading-relaxed flex-1">
+                      {service.desc}
+                    </p>
                   </div>
 
-                  {/* Title */}
-                  <h3
-                    className="text-base font-semibold mb-3 leading-snug"
-                    style={{ color: "#1B5E5E" }}
-                  >
-                    {service.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-sm text-gray-400 leading-relaxed flex-1">
-                    {service.desc}
-                  </p>
-
-                  {/* Diagonal Step Corner — bottom-left triangle */}
+                  {/* Step badge — bleeds outside the card at bottom-left */}
                   <div
-                    className="absolute bottom-0 left-0"
+                    className="absolute flex flex-col items-start justify-end"
                     style={{
-                      width: "88px",
-                      height: "88px",
-                      clipPath: "polygon(0 22%, 0 100%, 100% 100%)",
+                      bottom: "0px",
+                      left: "0px",
+                      width: "64px",
+                      height: "64px",
                       backgroundColor: service.stepColor,
+                      borderRadius: "14px 28px 14px 14px",
+                      padding: "8px 10px",
+                      zIndex: 10,
                     }}
-                  />
-                  {/* Step text — positioned above the clip shape */}
-                  <div
-                    className="absolute bottom-2 left-2 flex flex-col items-start leading-none"
-                    style={{ pointerEvents: "none" }}
                   >
                     <span
-                      className="font-semibold text-white"
-                      style={{ fontSize: "9px", letterSpacing: "0.04em" }}
+                      className="text-white font-semibold block"
+                      style={{ fontSize: "8px", letterSpacing: "0.06em", lineHeight: 1 }}
                     >
                       {service.stepLabel}
                     </span>
                     <span
-                      className="font-black text-white"
-                      style={{ fontSize: "22px", lineHeight: 1 }}
+                      className="text-white font-black block"
+                      style={{ fontSize: "22px", lineHeight: 1.1 }}
                     >
                       {service.stepNum}
                     </span>

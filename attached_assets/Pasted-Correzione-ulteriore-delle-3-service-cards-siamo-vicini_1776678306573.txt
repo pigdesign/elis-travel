@@ -1,0 +1,57 @@
+Correzione ulteriore delle 3 service cards: siamo vicini, ma mancano ancora 2 dettagli fondamentali per essere fedeli alla reference.
+
+DA CORREGGERE:
+
+1) FORMA CARD
+La card deve avere una silhouette ancora più morbida e caratteristica.
+In particolare:
+- aumenta sensibilmente il raggio nell’angolo in alto a sinistra
+- aumenta sensibilmente il raggio nell’angolo in basso a destra
+- la card non deve sembrare un semplice rounded rectangle uniforme
+- deve ricordare di più la forma organica della reference
+- gli angoli non devono avere tutti la stessa percezione visiva: alto sinistro e basso destro devono risultare più protagonisti
+
+Obiettivo:
+la card deve apparire più “morbida / premium / reference-like”, con una sagoma meno standard.
+
+2) STEP TAG / ANGOLO COLORATO
+Lo Step non deve stare completamente dentro la card come ora.
+Deve uscire leggermente fuori dal bordo, come nella reference.
+
+Correzioni precise:
+- il blocco colorato diagonale in basso a sinistra deve “sbordare” dal perimetro della card
+- deve sembrare un elemento applicato / integrato ma con uscita visiva esterna
+- il numero 01 / 02 / 03 e la scritta Step devono stare dentro questo elemento
+- il tag non deve sembrare un footer interno
+- deve essere più vicino alla reference: piccolo angolo/punta colorata che esce dalla card e rompe il bordo in modo elegante
+
+3) COMPORTAMENTO VISIVO DELLO STEP
+- il triangolo/angolo colorato deve estendersi verso l’esterno dal lato sinistro e dal lato inferiore
+- il badge deve quindi superare leggermente il bounding box della card
+- usa overflow visibile se necessario
+- se serve, rendi la card position: relative e lo step position: absolute
+- il tag Step deve stare appoggiato all’angolo in basso a sinistra ma con parziale uscita esterna
+
+4) PROPORZIONI
+- mantieni la card verticale
+- non allargarla
+- non aumentare troppo il contenuto centrale
+- lascia aria tra descrizione e blocco step
+
+5) FEDELTÀ ALLA REFERENCE
+Questa modifica serve a copiare meglio due dettagli chiave della reference:
+- silhouette più tonda e meno standard
+- step colorato che sborda fuori dalla card
+
+Indicazioni tecniche consigliate:
+- card con border-radius più alto, ma calibrato per enfatizzare soprattutto top-left e bottom-right
+- step badge in absolute positioning
+- overflow visibile sul wrapper appropriato
+- evita qualsiasi soluzione “pill footer”
+- evita qualsiasi contenitore interno che chiuda lo step dentro la card
+
+Acceptance criteria aggiornati:
+- l’angolo in alto a sinistra appare più tondeggiante e marcato
+- l’angolo in basso a destra appare più tondeggiante e marcato
+- il blocco Step esce chiaramente dal perimetro della card
+- il risultato è visivamente molto più vicino alla reference originale
