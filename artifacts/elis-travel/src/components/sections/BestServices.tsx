@@ -60,7 +60,7 @@ export function BestServices() {
         <img
           src={travelerImg}
           alt="Traveler"
-          className="w-full h-full object-cover object-center"
+          className="w-full h-full object-contain object-bottom"
         />
       </motion.div>
 
