@@ -35,7 +35,7 @@ const SERVICES = [
 
 export function BestServices() {
   return (
-    <section className="relative py-20 mt-20 bg-primary text-white overflow-hidden">
+    <section className="relative py-20 mt-20 text-white overflow-hidden" style={{ backgroundColor: "#3ca8a7" }}>
       {/* Top Curve */}
       <div className="absolute top-0 left-0 w-full overflow-hidden leading-none z-10 -translate-y-full rotate-180">
         <svg
@@ -43,7 +43,8 @@ export function BestServices() {
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 1200 120"
           preserveAspectRatio="none"
-          className="relative block w-full h-[60px] md:h-[120px] text-primary fill-current"
+          className="relative block w-full h-[60px] md:h-[120px] fill-current"
+          style={{ color: "#3ca8a7" }}
         >
           <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.85,121.32,192.5,108.5,236.4,99.5,279.7,80.4,321.39,56.44Z"></path>
         </svg>
