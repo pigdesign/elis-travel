@@ -1,0 +1,115 @@
+Devi modificare esclusivamente le 3 service cards della sezione “We offer Best Services” di Elis Travel, prendendo come riferimento visivo la prima immagine allegata.
+
+Obiettivo:
+le card finali devono risultare il più possibile uguali alla reference, non reinterpretate. La versione attuale è troppo semplificata e cartoon-like. Va corretta per replicare fedelmente struttura, proporzioni e dettagli della reference.
+
+Istruzioni precise:
+
+1. Struttura generale delle card
+- Mantieni 3 card affiancate.
+- Ogni card deve essere più alta che larga, con aspetto verticale elegante.
+- Sfondo card: bianco puro.
+- Bordi: nessun bordo visibile.
+- Ombra: molto leggera o assente, pulita.
+- Angoli: molto arrotondati, circa 28px–34px.
+- Le card devono sembrare morbide e premium, non box standard.
+
+2. Forma visiva
+- La forma deve richiamare la reference: card bianche molto arrotondate, non semplici rettangoli standard.
+- Evita l’effetto “template moderno generico”.
+- La silhouette deve essere vicina alla reference, con angoli ampi e morbidi.
+- Non usare badge, capsule o footer separati che alterano il design.
+
+3. Contenuto interno
+Ogni card deve contenere, in questo ordine:
+- icona lineare in alto
+- titolo
+- breve descrizione
+- elemento grafico “Step 01 / Step 02 / Step 03” integrato nell’angolo in basso a sinistra
+
+4. Icone
+- Le icone devono essere lineari, leggere, pulite, senza sfondo circolare.
+- Non usare il cerchio colorato dietro l’icona come nella versione attuale.
+- Colori icone:
+  - card 1: azzurro chiaro
+  - card 2: giallo/arancio
+  - card 3: verde lime
+- Le icone devono stare nella parte alta centrale della card, con molto respiro.
+
+5. Titoli
+- Titolo centrato.
+- Font sans-serif pulito.
+- Peso semibold o bold.
+- Dimensione simile alla reference.
+- Colore principale del testo: teal scuro / petrolio.
+- Non usare un colore troppo acceso sul titolo se nella reference non lo è.
+- Titoli:
+  - Exclusive Trip
+  - Easy Booking
+  - Professional Guide
+
+6. Descrizioni
+- Testo centrato.
+- Corpo piccolo/medio.
+- Colore grigio medio.
+- Altezza linea ariosa.
+- Deve occupare 2–3 righe con buona leggibilità.
+- Non stringere troppo il testo.
+- Le descrizioni devono restare ben distanziate dal titolo e dall’area step.
+
+7. Angolo step in basso a sinistra
+Questo è il dettaglio più importante da replicare bene.
+
+- Inserisci un elemento grafico colorato diagonale nell’angolo in basso a sinistra della card.
+- Non deve essere un semplice rettangolo o una pill.
+- Deve ricordare la fascia diagonale della reference.
+- Dentro questo angolo inserisci:
+  - la scritta piccola “Step”
+  - sotto o accanto il numero grande a due cifre: 01 / 02 / 03
+- Colori angolo:
+  - step 01: azzurro
+  - step 02: giallo/arancio
+  - step 03: verde lime
+- Il tag step deve sembrare parte della card, non un bottone separato.
+
+8. Spaziature
+- Aumenta il padding interno delle card per ottenere un look più arioso.
+- Spazio sopra l’icona abbondante.
+- Spazio coerente tra icona, titolo e descrizione.
+- Mantieni il blocco centrale ben bilanciato verticalmente.
+- Le tre card devono avere identica altezza e larghezza.
+
+9. Layout tra le card
+- Gap orizzontale uniforme, simile alla reference.
+- Allineamento perfetto in altezza.
+- Le card non devono risultare troppo larghe.
+- Devono avere un look compatto ma alto, come nella reference.
+
+10. Cosa eliminare dalla versione attuale
+- Rimuovi i cerchi colorati dietro le icone.
+- Rimuovi il footer capsule “Step 01” attuale.
+- Rimuovi l’effetto troppo illustrato/cartoon.
+- Rimuovi qualsiasi personalizzazione non presente nella reference.
+- Non reinterpretare i colori o la forma: devi avvicinarti il più possibile alla reference.
+
+11. Obiettivo finale
+La nuova versione deve trasmettere immediatamente questa sensazione:
+- stessa struttura visiva della reference
+- stessa eleganza
+- stesso linguaggio grafico
+- stessi dettagli chiave
+- stessa proporzione verticale delle card
+
+12. Vincoli
+- Non modificare il resto della sezione se non è necessario.
+- Concentrati solo sulle 3 card service.
+- Se serve, riscrivi il markup HTML/CSS delle card da zero.
+- Il risultato deve essere pixel-closer possibile alla reference.
+
+Acceptance criteria:
+- Le card risultano immediatamente riconoscibili come uguali alla reference.
+- È presente l’angolo colorato diagonale con Step + numero.
+- Le icone non hanno sfondo circolare.
+- La forma è morbida e premium.
+- Le proporzioni sono verticali e non tozze.
+- Le tre card hanno coerenza perfetta tra loro.

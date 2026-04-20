@@ -7,30 +7,30 @@ const SERVICES = [
   {
     icon: Sailboat,
     title: "Exclusive Trip",
-    desc: "Seamless flight booking experience with best rates.",
-    step: "Step 01",
-    color: "text-teal-600",
-    bgColor: "bg-teal-600",
-    bgLight: "bg-teal-100",
+    desc: "We pay attention to every quality in the service we provide to you.",
+    stepLabel: "Step",
+    stepNum: "01",
+    iconColor: "#38bdf8",
+    stepColor: "#38bdf8",
   },
   {
     icon: Calendar,
     title: "Easy Booking",
-    desc: "Luxury and comfortable stays at prime locations.",
-    step: "Step 02",
-    color: "text-amber-500",
-    bgColor: "bg-amber-500",
-    bgLight: "bg-amber-100",
+    desc: "Booking process and full support service assistance from us.",
+    stepLabel: "Step",
+    stepNum: "02",
+    iconColor: "#f59e0b",
+    stepColor: "#f59e0b",
   },
   {
     icon: UserCheck,
     title: "Professional Guide",
-    desc: "Curated packages tailored to your preferences.",
-    step: "Step 03",
-    color: "text-lime-600",
-    bgColor: "bg-lime-600",
-    bgLight: "bg-lime-100",
-  }
+    desc: "While on vacation will be guided by our professional guide.",
+    stepLabel: "Step",
+    stepNum: "03",
+    iconColor: "#84cc16",
+    stepColor: "#84cc16",
+  },
 ];
 
 export function BestServices() {
@@ -82,7 +82,7 @@ export function BestServices() {
             </motion.div>
             
             {/* 3 Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-8 items-stretch">
               {SERVICES.map((service, index) => (
                 <motion.div
                   key={index}
@@ -90,17 +90,63 @@ export function BestServices() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1, duration: 0.5 }}
-                  className="relative bg-white rounded-[1.5rem] p-6 pb-12 text-center shadow-lg hover:-translate-y-2 transition-transform duration-300 overflow-hidden group"
+                  className="relative bg-white overflow-hidden flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300"
+                  style={{
+                    borderRadius: "28px",
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+                    minHeight: "260px",
+                    padding: "36px 20px 48px",
+                  }}
                 >
-                  <div className={`w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-4 ${service.bgLight} ${service.color}`}>
-                    <service.icon className="w-7 h-7" />
+                  {/* Icon — linear, no circle background */}
+                  <div className="mb-5 mt-2">
+                    <service.icon
+                      className="w-10 h-10"
+                      strokeWidth={1.5}
+                      style={{ color: service.iconColor }}
+                    />
                   </div>
-                  <h3 className={`text-lg font-bold mb-2 ${service.color}`}>{service.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{service.desc}</p>
-                  
-                  {/* Step Badge */}
-                  <div className={`absolute bottom-0 left-0 px-4 py-1.5 rounded-tr-[1rem] ${service.bgColor} text-white text-xs font-bold`}>
-                    {service.step}
+
+                  {/* Title */}
+                  <h3
+                    className="text-base font-semibold mb-3 leading-snug"
+                    style={{ color: "#1B5E5E" }}
+                  >
+                    {service.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-sm text-gray-400 leading-relaxed flex-1">
+                    {service.desc}
+                  </p>
+
+                  {/* Diagonal Step Corner — bottom-left triangle */}
+                  <div
+                    className="absolute bottom-0 left-0"
+                    style={{
+                      width: "88px",
+                      height: "88px",
+                      clipPath: "polygon(0 22%, 0 100%, 100% 100%)",
+                      backgroundColor: service.stepColor,
+                    }}
+                  />
+                  {/* Step text — positioned above the clip shape */}
+                  <div
+                    className="absolute bottom-2 left-2 flex flex-col items-start leading-none"
+                    style={{ pointerEvents: "none" }}
+                  >
+                    <span
+                      className="font-semibold text-white"
+                      style={{ fontSize: "9px", letterSpacing: "0.04em" }}
+                    >
+                      {service.stepLabel}
+                    </span>
+                    <span
+                      className="font-black text-white"
+                      style={{ fontSize: "22px", lineHeight: 1 }}
+                    >
+                      {service.stepNum}
+                    </span>
                   </div>
                 </motion.div>
               ))}
