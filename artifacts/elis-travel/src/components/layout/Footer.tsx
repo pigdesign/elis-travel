@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Map, Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { Button } from "../shared/Button";
+import logoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.png";
 
 export function Footer() {
   return (
@@ -9,11 +10,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Col */}
           <div className="space-y-6">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-accent-foreground">
-                <Map className="w-5 h-5" />
-              </div>
-              <span className="text-2xl font-serif font-bold text-white">Elis Travel</span>
+            <Link href="/" className="flex items-center">
+              <img src={logoImg} alt="Elis Travel" className="h-16 w-auto object-contain" />
             </Link>
             <p className="text-white/70 leading-relaxed text-sm">
               We curate the most beautiful and adventurous travel experiences in Italy and around the world. Your dream vacation starts here.
