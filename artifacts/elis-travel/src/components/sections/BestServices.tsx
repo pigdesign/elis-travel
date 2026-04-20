@@ -60,7 +60,7 @@ export function BestServices() {
         <img
           src={travelerImg}
           alt="Traveler"
-          className="w-full h-full object-contain object-bottom"
+          className="h-full object-contain object-bottom flex flex-col text-right w-[671px]"
         />
       </motion.div>
 
@@ -69,7 +69,7 @@ export function BestServices() {
         <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
       </div>
 
-      <div className="relative z-20 mx-auto px-4 md:px-8 py-20 max-w-7xl">
+      <div className="relative z-20 mx-auto pt-[150px] pb-[150px] pl-[30px] pr-[30px] max-w-7xl rotate-[360deg]">
         <div className="flex flex-col lg:flex-row">
           {/* Spacer for image column on desktop */}
           <div className="hidden lg:block lg:w-[42%] flex-shrink-0" />
@@ -105,15 +105,47 @@ export function BestServices() {
                   {/* Card — asymmetric border-radius: top-left & bottom-right prominent */}
                   <div
                     className="relative bg-white flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300"
-                    style={{
-                      borderTopLeftRadius: "46px",
-                      borderTopRightRadius: "18px",
-                      borderBottomRightRadius: "46px",
-                      borderBottomLeftRadius: "18px",
-                      boxShadow: "0 6px 28px rgba(0,0,0,0.09)",
-                      minHeight: "260px",
-                      padding: "38px 22px 52px",
-                    }}
+                    style={(() => {
+                      const baseStyle: React.CSSProperties = {
+                        borderTopLeftRadius: "46px",
+                        borderTopRightRadius: "18px",
+                        borderBottomRightRadius: "46px",
+                        borderBottomLeftRadius: "18px",
+                        boxShadow: "0 6px 28px rgba(0,0,0,0.09)",
+                        minHeight: "260px",
+                        padding: "38px 22px 52px",
+                      };
+
+                      if (index === 0) {
+                        return {
+                          ...baseStyle,
+                          position: "absolute",
+                          transform: "rotate(360deg)",
+                          minHeight: "unset",
+                          height: "225px",
+                        };
+                      }
+
+                      if (index === 1) {
+                        return {
+                          ...baseStyle,
+                          boxSizing: "content-box",
+                        };
+                      }
+
+                      if (index === 2) {
+                        return {
+                          ...baseStyle,
+                          boxSizing: "content-box",
+                          width: "auto",
+                          minHeight: "unset",
+                          height: "190px",
+                          padding: "20px",
+                        };
+                      }
+
+                      return baseStyle;
+                    })()}
                   >
                     {/* Icon — linear, no circle background */}
                     <div className="mb-5 mt-2">
