@@ -54,3 +54,15 @@ id = "4BOkAi6tgAzTsd9-53-bI"
 uri = "file://artifacts/elis-travel/public/images/tour-3.png"
 type = "image"
 title = "Bali island tropical view"
+
+[[generated]]
+id = "N-z4Fxnw41eCI5el0FMqd"
+uri = "file://artifacts/elis-travel/src/assets/traveler-landmarks.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hoNl3KQNFrYd0bgUHIVH0"
+uri = "file://artifacts/elis-travel/src/assets/coastal-hero.png"
+type = "image"
+title = "generated_image"
