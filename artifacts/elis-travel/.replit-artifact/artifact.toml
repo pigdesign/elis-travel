@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Elis Travel"
+version = "1.0.0"
+id = "artifacts/elis-travel"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22740
+
+[services.development]
+run = "pnpm --filter @workspace/elis-travel run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/elis-travel", "run", "build" ]
+publicDir = "artifacts/elis-travel/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22740"
+BASE_PATH = "/"

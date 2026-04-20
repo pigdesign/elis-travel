@@ -1,0 +1,39 @@
+Agisci come Senior Frontend Developer. Il tuo obiettivo in questa fase è costruire l'interfaccia utente (UI) pubblica per l'agenzia Elis Travel replicando in modo pixel-perfect il design che ti allego in screenshot, e predisporre le fondamenta (routing e layout vuoti) per la futura area di amministrazione.
+
+1.⁠ ⁠STACK TECNICO:
+
+•⁠  ⁠Next.js (App Router) con TypeScript.
+•⁠  ⁠Tailwind CSS per tutto lo styling.
+•⁠  ⁠Lucide React (o simili) per le icone.
+•⁠  ⁠Framer Motion (opzionale) se serve per replicare animazioni leggere visibili nel design.
+2.⁠ ⁠OBIETTIVO FRONTEND PUBBLICO (Replicare lo Screenshot): Devi creare la Homepage basandoti sullo screenshot allegato. Usa dati mockati (hardcoded nei componenti) per ora. Fai attenzione a questi dettagli visivi:
+
+•⁠  ⁠Palette Colori: Usa il Teal/Verde scuro come colore primario e il Giallo/Verde acido per CTA, bottoni e badge (come si vede nel design).
+•⁠  ⁠Tipografia: Usa un font sans-serif pulito e moderno (es. Inter o Poppins) per UI e body, e un font script/corsivo (es. Playball, Great Vibes o simile da Google Fonts) per i titoli grandi come 'Vietnam' o 'Adventure'.
+•⁠  ⁠Forme e Layout: Riproduci i bottoni a pillola arrotondati, le card con bordi smussati (border-radius alto), i badge circolari e le sezioni con sfondi sagomati/curvi (usa SVG per le forme curve se necessario).
+•⁠  ⁠Sezioni da implementare (con dati mockati):
+  - Header trasparente su Hero section.
+  - Hero Section (Immagine full-width, grande titolo corsivo, bottoni pillola).
+  - Search Bar flottante (solo UI, nessuna logica).
+  - Popular Destination (Griglia card).
+  - Feature/Value Proposition (Testo + Immagine affiancata).
+  - Sezione 'We Offer Best Services' (Sfondo curvo teal, card bianche).
+  - Explore Popular Tours (Griglia 3 card).
+  - Sezione '3 Easy Steps' / 'Why Choose Us'.
+  - Testimonial (Card UI).
+  - Sezione Adventure Hero.
+  - Footer completo.
+3.⁠ ⁠OBIETTIVO FONDAMENTA AMMINISTRAZIONE (Solo Layout): Non devi sviluppare logiche di database o auth in questa fase. Devi solo preparare l'architettura delle cartelle in Next.js App Router per separare il sito pubblico dall'admin.
+
+•⁠  ⁠Crea un Route Group (public) per tutte le pagine del sito web (es. la Home sopra descritta).
+•⁠  ⁠Crea un Route Group (admin) protetto visivamente (per ora basta un layout separato).
+•⁠  ⁠Crea un layout base per l'admin ( app/(admin)/layout.tsx ) con una Sidebar di navigazione minimale (es. voci: Dashboard, Offerte, Richieste, Esci) e un Header semplice.
+•⁠  ⁠Crea le pagine vuote per:
+  - app/(admin)/admin/dashboard/page.tsx
+  - app/(admin)/admin/offers/page.tsx
+  - app/(admin)/admin/leads/page.tsx
+REGOLE:
+
+•⁠  ⁠Focus estremo sulla qualità visiva, sul responsive (Mobile-first) e sull'aderenza al design allegato.
+•⁠  ⁠Usa componenti riutilizzabili (es. un componente Button , un componente TourCard ).
+•⁠  ⁠Niente chiamate API reali, niente logica complessi: l'output di questo task deve essere un frontend bellissimo e navigabile con dati alla struttura di routing pronta per gli sviluppi step 1 completata."

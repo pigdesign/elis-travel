@@ -1,0 +1,56 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "tB5eefyrZtfxagnGYfONV"
+uri = "file://artifacts/elis-travel/public/images/hero-bg.png"
+type = "image"
+title = "Vietnam Ha Long Bay landscape"
+
+[[generated]]
+id = "WsE-GJ3KLvzBfSeZXJGpm"
+uri = "file://artifacts/elis-travel/public/images/dest-italy.png"
+type = "image"
+title = "Cinque Terre Italy coastal village"
+
+[[generated]]
+id = "IElgxIMwg5H9a4zhmyWGq"
+uri = "file://artifacts/elis-travel/public/images/dest-greece.png"
+type = "image"
+title = "Santorini Italy coastal village"
+
+[[generated]]
+id = "RfOw8jl_7b06VKzbKEht6"
+uri = "file://artifacts/elis-travel/public/images/dest-japan.png"
+type = "image"
+title = "Kyoto Japan street at sunset"
+
+[[generated]]
+id = "T6HoZ-ESLGYReT7tnj1qW"
+uri = "file://artifacts/elis-travel/public/images/dest-swiss.png"
+type = "image"
+title = "Swiss Alps mountain landscape"
+
+[[generated]]
+id = "v6DLo3v48EBT9ojTjMFXY"
+uri = "file://artifacts/elis-travel/public/images/adventure-bg.png"
+type = "image"
+title = "Adventure section mountain landscape"
+
+[[generated]]
+id = "mRgZ8xNu0Y2ON4GUxydcl"
+uri = "file://artifacts/elis-travel/public/images/tour-1.png"
+type = "image"
+title = "Tropical beach resort scene"
+
+[[generated]]
+id = "StifMMLAu4VU_S0giPb6p"
+uri = "file://artifacts/elis-travel/public/images/tour-2.png"
+type = "image"
+title = "Paris Colosseum city view"
+
+[[generated]]
+id = "4BOkAi6tgAzTsd9-53-bI"
+uri = "file://artifacts/elis-travel/public/images/tour-3.png"
+type = "image"
+title = "Bali island tropical view"
