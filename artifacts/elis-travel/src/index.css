@@ -162,11 +162,28 @@
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 0.95;
+    display: inline-block;
+    position: relative;
+    padding-bottom: 0.45rem;
   }
   .brand-title-accent {
     color: hsl(var(--accent));
   }
   .brand-title-primary {
     color: hsl(var(--primary));
+  }
+  .brand-title::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 4.5rem;
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, hsl(var(--accent)), hsl(var(--primary)));
+  }
+  .brand-title-sm::after {
+    width: 3rem;
+    height: 0.28rem;
   }
 }
