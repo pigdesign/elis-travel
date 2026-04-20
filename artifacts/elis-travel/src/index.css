@@ -165,6 +165,10 @@
     display: inline-block;
     position: relative;
     padding-bottom: 0.45rem;
+    background: linear-gradient(90deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 55%, hsl(var(--secondary)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .brand-title-accent {
     color: hsl(var(--accent));
