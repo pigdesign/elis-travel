@@ -1,7 +1,5 @@
 import { motion } from "framer-motion";
 import { MapPin, CalendarCheck, PlaneTakeoff } from "lucide-react";
-import summerHero from "@assets/image_1776684583552.png";
-
 const STEPS = [
   {
     icon: MapPin,
@@ -34,14 +32,16 @@ export function EasySteps() {
             viewport={{ once: true }}
             className="lg:self-start"
           >
+            <span className="text-accent font-bold tracking-wider uppercase text-sm mb-4 block">Come funziona</span>
             <h2 className="brand-title brand-title-primary text-4xl md:text-5xl mb-8 leading-tight">
               3 semplici passi per
               <br />
               prenotare il tuo prossimo viaggio
             </h2>
             <div className="rounded-[1.8rem] overflow-hidden shadow-2xl bg-white max-w-[260px]">
-              <div className="relative h-[230px]">
-                <img src={summerHero} alt="Viaggio estivo" className="w-full h-full object-cover object-center" />
+              <div className="relative h-[230px] bg-[radial-gradient(circle_at_30%_25%,rgba(9,168,195,0.18),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(249,115,22,0.12))]">
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(255,255,255,0.15)_100%)]" />
+                <div className="absolute left-4 right-4 bottom-4 top-4 rounded-[1.25rem] border border-white/60 backdrop-blur-sm bg-white/20" />
               </div>
               <div className="bg-accent text-accent-foreground p-5">
                 <p className="text-xs font-semibold uppercase tracking-wider">Offerta speciale</p>
@@ -49,7 +49,7 @@ export function EasySteps() {
                   <span className="text-6xl font-black leading-none">48</span>
                   <div className="pb-2">
                     <span className="text-xl font-black">%</span>
-                    <p className="text-xs font-semibold">OFF</p>
+                    <p className="text-xs font-semibold">di sconto</p>
                   </div>
                 </div>
               </div>
@@ -88,9 +88,16 @@ export function EasySteps() {
             className="hidden lg:block relative"
           >
             <div className="absolute inset-0 -left-6 -top-6 rounded-full bg-primary/10 blur-3xl" />
-            <img src={summerHero} alt="Viaggiatrice estiva" className="relative z-10 w-full h-auto object-contain drop-shadow-2xl" />
-            <div className="absolute right-4 top-8 text-accent font-script text-7xl -rotate-90 origin-right">
-              Summer!
+            <div className="relative z-10 h-[560px] rounded-[3rem] bg-gradient-to-br from-primary/10 via-white to-accent/10 flex items-center justify-center overflow-hidden shadow-2xl">
+              <div className="absolute inset-10 rounded-[2.5rem] border-4 border-dashed border-primary/15" />
+              <div className="w-56 h-56 rounded-full bg-accent/20 blur-3xl absolute top-16 right-16" />
+              <div className="w-40 h-40 rounded-full bg-primary/20 blur-3xl absolute bottom-20 left-10" />
+              <div className="relative z-10 text-center px-8">
+                <p className="text-accent font-bold uppercase tracking-[0.35em] text-sm mb-3">For Summer</p>
+                <div className="w-56 h-72 rounded-[2.5rem] bg-white/80 backdrop-blur-md shadow-[0_24px_60px_rgba(9,168,195,0.15)] flex items-center justify-center">
+                  <span className="brand-title brand-title-accent text-7xl -rotate-90">Summer</span>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
