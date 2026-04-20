@@ -38,7 +38,10 @@ export function Header() {
             <img
               src={logoImg}
               alt="Elis Travel"
-              className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
+              className={cn(
+                "w-auto object-contain group-hover:scale-105 transition-transform",
+                isScrolled ? "h-[52px] brightness-0 saturate-100 invert-[44%] sepia-[92%] saturate-[1730%] hue-rotate-[5deg] brightness-[102%] contrast-[98%]" : "h-[39px]"
+              )}
             />
           </Link>
 
