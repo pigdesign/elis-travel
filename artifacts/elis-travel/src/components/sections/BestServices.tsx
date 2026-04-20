@@ -10,8 +10,8 @@ const SERVICES = [
     desc: "We pay attention to every quality in the service we provide to you.",
     stepLabel: "Step",
     stepNum: "01",
-    iconColor: "#38bdf8",
-    stepColor: "#38bdf8",
+    iconColor: "#00B4D8",
+    stepColor: "#00B4D8",
   },
   {
     icon: Calendar,
@@ -19,8 +19,8 @@ const SERVICES = [
     desc: "Booking process and full support service assistance from us.",
     stepLabel: "Step",
     stepNum: "02",
-    iconColor: "#f59e0b",
-    stepColor: "#f59e0b",
+    iconColor: "#F97316",
+    stepColor: "#F97316",
   },
   {
     icon: UserCheck,
@@ -28,8 +28,8 @@ const SERVICES = [
     desc: "While on vacation will be guided by our professional guide.",
     stepLabel: "Step",
     stepNum: "03",
-    iconColor: "#84cc16",
-    stepColor: "#84cc16",
+    iconColor: "#FB923C",
+    stepColor: "#FB923C",
   },
 ];
 
@@ -118,8 +118,7 @@ export function BestServices() {
 
                     {/* Title */}
                     <h3
-                      className="text-base font-semibold mb-3 leading-snug"
-                      style={{ color: "#1B5E5E" }}
+                      className="text-base font-semibold mb-3 leading-snug text-primary"
                     >
                       {service.title}
                     </h3>
