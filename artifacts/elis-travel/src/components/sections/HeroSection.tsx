@@ -16,11 +16,12 @@ export function HeroSection() {
         />
       </div>
       <div className="container relative z-20 mx-auto px-4 md:px-8 mt-20">
-        <div className="max-w-4xl mx-auto text-center text-white">
+        <div className="max-w-4xl mx-0 text-center text-white">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
+            className="text-left"
           >
             <span className="inline-block py-1 px-3 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-sm font-semibold tracking-widest uppercase mb-6 text-accent">
               Esplora il mondo
@@ -31,7 +32,7 @@ export function HeroSection() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-            className="text-white drop-shadow-2xl font-black text-left mb-[30px] text-[130px]"
+            className="text-white drop-shadow-2xl font-black text-left mb-[30px] text-[130px] md:text-[130px] lg:text-[130px] leading-[126px]"
           >Scopri il tuo
           prossimo viaggio</motion.h1>
 
@@ -39,7 +40,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-            className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto leading-relaxed font-light"
+            className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-0 leading-relaxed font-light text-left"
           >
             Scopri la straordinaria bellezza della baia di Ha Long, la cultura vibrante e i paesaggi indimenticabili. La tua prossima grande avventura inizia qui con le nostre guide locali selezionate.
           </motion.p>
@@ -48,7 +49,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 border-0 border-solid border-black bg-transparent absolute"
           >
             <Button size="lg" className="h-14 px-8 text-base w-full sm:w-auto bg-primary hover:bg-primary/90 text-white">
               Scopri i tour
