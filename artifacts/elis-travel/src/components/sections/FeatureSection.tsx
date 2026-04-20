@@ -40,7 +40,7 @@ export function FeatureSection() {
                 <div className="text-sm text-muted-foreground font-medium">Anni di esperienza</div>
               </div>
               <div>
-                <div className="text-4xl font-bold text-primary mb-1">56k</div>
+                <div className="text-4xl font-bold text-primary mb-1">30k</div>
                 <div className="text-sm text-muted-foreground font-medium">Clienti soddisfatti</div>
               </div>
               <div>
