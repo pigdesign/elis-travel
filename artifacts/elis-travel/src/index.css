@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Playball&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Playball&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -99,7 +99,7 @@
   --sidebar-ring: 193 95% 35%;
 
   --app-font-sans: 'Poppins', sans-serif;
-  --app-font-serif: 'Montserrat', sans-serif;
+  --app-font-serif: 'Playball', cursive;
   --app-font-mono: monospace;
   --radius: 1.5rem; 
 
