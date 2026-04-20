@@ -47,3 +47,8 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Ignora file di sistema e cache locali
+.pnpm-store
+._*
+.DS_Store
