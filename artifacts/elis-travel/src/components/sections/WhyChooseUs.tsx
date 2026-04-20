@@ -29,7 +29,7 @@ export function WhyChooseUs() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-4xl md:text-5xl font-bold font-serif mb-6 text-foreground">Perché scegliere Elis Travel?</h2>
+              <h2 className="brand-title brand-title-primary text-4xl md:text-5xl mb-6">Perché scegliere Elis Travel?</h2>
               <p className="text-foreground/80 text-lg mb-8">
                 Andiamo oltre i pacchetti standard. Creiamo esperienze che rispecchiano i tuoi sogni, con un team che cura ogni dettaglio del viaggio.
               </p>
@@ -53,7 +53,7 @@ export function WhyChooseUs() {
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
                 <PhoneCall className="w-10 h-10" />
               </div>
-              <h3 className="text-2xl font-bold mb-4">Hai bisogno di aiuto per prenotare?</h3>
+              <h3 className="brand-title brand-title-accent text-2xl mb-4">Hai bisogno di aiuto per prenotare?</h3>
               <p className="text-muted-foreground mb-6">Chiama i nostri esperti di viaggio in qualsiasi momento. Siamo qui per aiutarti a organizzare tutto.</p>
               <div className="text-3xl font-bold text-primary mb-8 tracking-wide">+39 06 1234 5678</div>
               <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30">

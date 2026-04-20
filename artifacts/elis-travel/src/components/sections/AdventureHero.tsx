@@ -21,7 +21,7 @@ export function AdventureHero() {
           transition={{ duration: 0.8 }}
           className="max-w-3xl mx-auto bg-black/20 backdrop-blur-md p-8 md:p-16 rounded-[3rem] border border-white/20"
         >
-          <h2 className="text-5xl md:text-7xl font-bold font-serif mb-6 text-accent">Avventura: è il momento di viaggiare</h2>
+          <h2 className="brand-title brand-title-accent text-5xl md:text-7xl mb-6">Avventura: è il momento di viaggiare</h2>
           <p className="text-lg md:text-xl text-white/90 mb-10 leading-relaxed font-light">
             Non aspettare il momento perfetto. Crealo. Prepara le valigie, lascia i pensieri a casa e lascia che ti guidiamo verso le meraviglie più spettacolari del mondo.
           </p>

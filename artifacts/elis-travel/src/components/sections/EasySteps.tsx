@@ -35,7 +35,7 @@ export function EasySteps() {
             className="lg:self-start"
           >
             <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Come funziona</span>
-            <h2 className="brand-title text-4xl md:text-5xl mb-8 text-foreground leading-tight">
+            <h2 className="brand-title brand-title-primary text-4xl md:text-5xl mb-8 leading-tight">
               3 semplici passi per prenotare il tuo prossimo viaggio
             </h2>
             <div className="rounded-[2rem] overflow-hidden shadow-2xl bg-white">
@@ -69,7 +69,7 @@ export function EasySteps() {
                   {String(index + 1).padStart(2, "0")}
                 </div>
                 <div className="flex-1">
-                  <h3 className="brand-title text-lg text-foreground mb-1">{step.title}</h3>
+                  <h3 className="brand-title brand-title-accent text-lg mb-1">{step.title}</h3>
                   <p className="text-sm text-muted-foreground">{step.desc}</p>
                 </div>
                 <div className="w-16 h-16 rounded-full border-4 border-accent/80 flex items-center justify-center text-accent shrink-0">
