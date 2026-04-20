@@ -3,7 +3,7 @@ import { Button } from "@/components/shared/Button";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import logoImg from "@assets/elis_bianco_1776683206010.jpg";
+import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.png";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
