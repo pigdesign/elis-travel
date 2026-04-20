@@ -4,6 +4,7 @@ import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.png";
+import stickyLogoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.png";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -36,11 +37,11 @@ export function Header() {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <img
-              src={logoImg}
+              src={isScrolled ? stickyLogoImg : logoImg}
               alt="Elis Travel"
               className={cn(
                 "w-auto object-contain group-hover:scale-105 transition-transform",
-                isScrolled ? "h-[68px] brightness-0 saturate-100 invert-[44%] sepia-[92%] saturate-[1730%] hue-rotate-[5deg] brightness-[102%] contrast-[98%]" : "h-[52px]"
+                isScrolled ? "h-[52px]" : "h-[52px]"
               )}
             />
           </Link>
