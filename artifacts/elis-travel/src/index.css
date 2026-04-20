@@ -151,8 +151,22 @@
   }
   h1, h2, h3, h4, h5, h6, .font-serif {
     font-family: var(--app-font-serif);
+    font-style: normal;
+    letter-spacing: -0.03em;
   }
   .font-script {
     font-family: var(--app-font-sans);
+  }
+  .brand-title {
+    font-family: var(--app-font-sans);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+  }
+  .brand-title-accent {
+    color: hsl(var(--accent));
+  }
+  .brand-title-primary {
+    color: hsl(var(--primary));
   }
 }
