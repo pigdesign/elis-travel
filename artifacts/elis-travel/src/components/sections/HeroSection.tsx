@@ -31,7 +31,7 @@ export function HeroSection() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-            className="md:text-9xl lg:text-[12rem] text-white drop-shadow-2xl font-black text-left mb-[30px] text-[130px]"
+            className="text-white drop-shadow-2xl font-black text-left mb-[30px] text-[130px]"
           >Scopri il tuo
           prossimo viaggio</motion.h1>
 
