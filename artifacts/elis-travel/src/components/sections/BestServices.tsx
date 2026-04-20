@@ -35,7 +35,7 @@ const SERVICES = [
 
 export function BestServices() {
   return (
-    <section className="relative py-20 mt-20 text-white overflow-hidden" style={{ backgroundColor: "#3ca8a7" }}>
+    <section className="relative mt-20 text-white overflow-hidden" style={{ backgroundColor: "#3ca8a7" }}>
       {/* Top Curve */}
       <div className="absolute top-0 left-0 w-full overflow-hidden leading-none z-10 -translate-y-full rotate-180">
         <svg
@@ -50,25 +50,32 @@ export function BestServices() {
         </svg>
       </div>
 
-      <div className="container relative z-20 mx-auto px-4 md:px-8">
-        <div className="flex flex-col lg:flex-row items-center gap-12">
-          
-          {/* LEFT: Traveler Image */}
-          <motion.div 
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="lg:w-[45%] flex-shrink-0 w-full"
-          >
-            <img 
-              src={travelerImg} 
-              alt="Traveler" 
-              className="w-full max-w-[480px] mx-auto object-contain rounded-2xl mix-blend-luminosity hover:mix-blend-normal transition-all duration-500" 
-            />
-          </motion.div>
-          
+      {/* Full-height traveler image — absolute on the left */}
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true }}
+        className="hidden lg:block absolute inset-y-0 left-0 w-[42%] z-10"
+      >
+        <img
+          src={travelerImg}
+          alt="Traveler"
+          className="w-full h-full object-cover object-center"
+        />
+      </motion.div>
+
+      {/* Mobile image (normal flow) */}
+      <div className="lg:hidden w-full h-72 overflow-hidden">
+        <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
+      </div>
+
+      <div className="relative z-20 mx-auto px-4 md:px-8 py-20 max-w-7xl">
+        <div className="flex flex-col lg:flex-row">
+          {/* Spacer for image column on desktop */}
+          <div className="hidden lg:block lg:w-[42%] flex-shrink-0" />
+
           {/* RIGHT: Content */}
-          <div className="lg:w-[55%]">
+          <div className="lg:w-[58%] lg:pl-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
