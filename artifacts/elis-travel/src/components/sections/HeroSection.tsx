@@ -8,7 +8,7 @@ export function HeroSection() {
     <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden pb-32">
       {/* Background */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-black/40 z-10" />
+        <div className="absolute inset-0 bg-black/22 z-10" />
         <img
           src={heroBg}
           alt="Elis Travel Hero"
