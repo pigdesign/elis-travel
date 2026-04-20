@@ -15,7 +15,6 @@ export function HeroSection() {
           className="w-full h-full object-cover"
         />
       </div>
-
       <div className="container relative z-20 mx-auto px-4 md:px-8 mt-20">
         <div className="max-w-4xl mx-auto text-center text-white">
           <motion.div
@@ -32,10 +31,9 @@ export function HeroSection() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-            className="text-7xl md:text-9xl lg:text-[12rem] leading-none mb-6 text-white drop-shadow-2xl font-black"
-          >
-            Vietnam
-          </motion.h1>
+            className="md:text-9xl lg:text-[12rem] text-white drop-shadow-2xl font-black text-[119px] text-left mb-[30px]"
+          >Scopri il tuo
+          prossimo viaggio</motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -62,7 +60,6 @@ export function HeroSection() {
           </motion.div>
         </div>
       </div>
-
       {/* Bottom Curve */}
       <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-20">
         <svg
