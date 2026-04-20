@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Sailboat, Calendar, UserCheck } from "lucide-react";
-import travelerImg from "../../assets/traveler-landmarks.png";
+import travelerImg from "@assets/Gemini_Generated_Image_5c6ka05c6ka05c6k_1776682365578.png";
 import coastalImg from "../../assets/coastal-hero.png";
 
 const SERVICES = [
