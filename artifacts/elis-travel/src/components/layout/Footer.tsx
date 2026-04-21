@@ -61,7 +61,7 @@ export function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-white/70 text-sm">
                 <MapPin className="w-5 h-5 text-accent shrink-0" />
-                <span>Via Roma 123, 00100 Roma, Italia</span>
+                <span>via Cavour 59c, 17051 Andora (SV)</span>
               </li>
               <li className="flex items-center gap-3 text-white/70 text-sm">
                 <Phone className="w-5 h-5 text-accent shrink-0" />
