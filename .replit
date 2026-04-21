@@ -66,4 +66,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-GITHUB_PUSH_TOKEN = "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"
