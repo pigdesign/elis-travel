@@ -55,3 +55,6 @@ Thumbs.db
 
 # Ignora cartella locale
 local-file/
+
+# Ignora file di ambiente locale
+.env.local
