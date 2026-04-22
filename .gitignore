@@ -52,3 +52,9 @@ Thumbs.db
 .pnpm-store
 ._*
 .DS_Store
+
+# Ignora cartella locale
+local-file/
+
+# Ignora file di ambiente locale
+.env.local
