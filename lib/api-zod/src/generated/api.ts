@@ -47,6 +47,147 @@ export const GetAuthMeResponse = zod.object({
 });
 
 /**
+ * @summary Lista clienti locali con stato collegamento RMS
+ */
+export const ListCustomersQueryParams = zod.object({
+  q: zod.coerce.string().optional().describe("Ricerca per nome o email"),
+});
+
+export const ListCustomersResponseItem = zod.object({
+  id: zod.string().uuid(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+  rmsLinked: zod.boolean(),
+  rmsExternalId: zod.string().nullish(),
+  rmsLastSyncAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
+
+/**
+ * @summary Crea nuovo cliente locale
+ */
+export const CreateCustomerBody = zod.object({
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+});
+
+/**
+ * @summary Cerca clienti nel CRM RivieraTransferRMS
+ */
+export const SearchRmsCustomersQueryParams = zod.object({
+  q: zod.coerce.string().describe("Testo di ricerca (min 2 caratteri)"),
+});
+
+export const SearchRmsCustomersResponseItem = zod.object({
+  id: zod.string(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+});
+export const SearchRmsCustomersResponse = zod.array(
+  SearchRmsCustomersResponseItem,
+);
+
+/**
+ * @summary Dettaglio cliente con link RMS e timeline sync
+ */
+export const GetCustomerParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetCustomerResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    firstName: zod.string(),
+    lastName: zod.string(),
+    email: zod.string().email(),
+    phone: zod.string().nullish(),
+    rmsLinked: zod.boolean(),
+    rmsExternalId: zod.string().nullish(),
+    rmsLastSyncAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      syncEvents: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          eventType: zod.string().describe("pull_from_rms | push_to_rms"),
+          status: zod.string().describe("success | failed | conflict"),
+          occurredAt: zod.coerce.date(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  );
+
+/**
+ * @summary Aggiorna cliente (avvia sync RMS in background se collegato)
+ */
+export const UpdateCustomerParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateCustomerBody = zod.object({
+  firstName: zod.string().optional(),
+  lastName: zod.string().optional(),
+  email: zod.string().email().optional(),
+  phone: zod.string().nullish(),
+});
+
+export const UpdateCustomerResponse = zod.object({
+  id: zod.string().uuid(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+  rmsLinked: zod.boolean(),
+  rmsExternalId: zod.string().nullish(),
+  rmsLastSyncAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Collega cliente locale a un profilo RMS
+ */
+export const LinkCustomerToRmsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const LinkCustomerToRmsBody = zod.object({
+  rmsExternalId: zod.string(),
+});
+
+export const LinkCustomerToRmsResponse = zod.object({
+  id: zod.string().uuid(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+  rmsLinked: zod.boolean(),
+  rmsExternalId: zod.string().nullish(),
+  rmsLastSyncAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Avvia sincronizzazione del cliente verso RMS (fire-and-forget)
+ */
+export const SyncCustomerToRmsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+/**
  * @summary Statistiche dashboard admin
  */
 export const GetDashboardStatsResponse = zod.object({

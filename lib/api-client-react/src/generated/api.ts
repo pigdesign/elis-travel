@@ -20,6 +20,11 @@ import type {
   AdminUser,
   Booking,
   BookingInput,
+  CustomerCreate,
+  CustomerDetail,
+  CustomerRmsLinkInput,
+  CustomerSummary,
+  CustomerUpdate,
   DashboardStats,
   ErrorResponse,
   ExcursionDetail,
@@ -30,6 +35,7 @@ import type {
   LeadNote,
   LeadNoteInput,
   LeadStatusUpdate,
+  ListCustomersParams,
   LoginRequest,
   OfferDetail,
   OfferInput,
@@ -40,6 +46,8 @@ import type {
   PublicLeadInput,
   PublicLeadResponse,
   PublicOfferDetail,
+  RmsSearchResult,
+  SearchRmsCustomersParams,
   UploadUrlRequest,
   UploadUrlResponse,
   Vehicle,
@@ -361,6 +369,631 @@ export function useGetAuthMe<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Lista clienti locali con stato collegamento RMS
+ */
+export const getListCustomersUrl = (params?: ListCustomersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/customers?${stringifiedParams}`
+    : `/api/admin/customers`;
+};
+
+export const listCustomers = async (
+  params?: ListCustomersParams,
+  options?: RequestInit,
+): Promise<CustomerSummary[]> => {
+  return customFetch<CustomerSummary[]>(getListCustomersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCustomersQueryKey = (params?: ListCustomersParams) => {
+  return [`/api/admin/customers`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCustomersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCustomers>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListCustomersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCustomers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCustomersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCustomers>>> = ({
+    signal,
+  }) => listCustomers(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCustomers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCustomersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCustomers>>
+>;
+export type ListCustomersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista clienti locali con stato collegamento RMS
+ */
+
+export function useListCustomers<
+  TData = Awaited<ReturnType<typeof listCustomers>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListCustomersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCustomers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCustomersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Crea nuovo cliente locale
+ */
+export const getCreateCustomerUrl = () => {
+  return `/api/admin/customers`;
+};
+
+export const createCustomer = async (
+  customerCreate: CustomerCreate,
+  options?: RequestInit,
+): Promise<CustomerSummary> => {
+  return customFetch<CustomerSummary>(getCreateCustomerUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(customerCreate),
+  });
+};
+
+export const getCreateCustomerMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCustomer>>,
+    TError,
+    { data: BodyType<CustomerCreate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCustomer>>,
+  TError,
+  { data: BodyType<CustomerCreate> },
+  TContext
+> => {
+  const mutationKey = ["createCustomer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCustomer>>,
+    { data: BodyType<CustomerCreate> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCustomer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCustomerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCustomer>>
+>;
+export type CreateCustomerMutationBody = BodyType<CustomerCreate>;
+export type CreateCustomerMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Crea nuovo cliente locale
+ */
+export const useCreateCustomer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCustomer>>,
+    TError,
+    { data: BodyType<CustomerCreate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCustomer>>,
+  TError,
+  { data: BodyType<CustomerCreate> },
+  TContext
+> => {
+  return useMutation(getCreateCustomerMutationOptions(options));
+};
+
+/**
+ * @summary Cerca clienti nel CRM RivieraTransferRMS
+ */
+export const getSearchRmsCustomersUrl = (params: SearchRmsCustomersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/customers/rms/search?${stringifiedParams}`
+    : `/api/admin/customers/rms/search`;
+};
+
+export const searchRmsCustomers = async (
+  params: SearchRmsCustomersParams,
+  options?: RequestInit,
+): Promise<RmsSearchResult[]> => {
+  return customFetch<RmsSearchResult[]>(getSearchRmsCustomersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSearchRmsCustomersQueryKey = (
+  params?: SearchRmsCustomersParams,
+) => {
+  return [
+    `/api/admin/customers/rms/search`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getSearchRmsCustomersQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchRmsCustomers>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: SearchRmsCustomersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchRmsCustomers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSearchRmsCustomersQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof searchRmsCustomers>>
+  > = ({ signal }) => searchRmsCustomers(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchRmsCustomers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchRmsCustomersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchRmsCustomers>>
+>;
+export type SearchRmsCustomersQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Cerca clienti nel CRM RivieraTransferRMS
+ */
+
+export function useSearchRmsCustomers<
+  TData = Awaited<ReturnType<typeof searchRmsCustomers>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: SearchRmsCustomersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchRmsCustomers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchRmsCustomersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Dettaglio cliente con link RMS e timeline sync
+ */
+export const getGetCustomerUrl = (id: string) => {
+  return `/api/admin/customers/${id}`;
+};
+
+export const getCustomer = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CustomerDetail> => {
+  return customFetch<CustomerDetail>(getGetCustomerUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCustomerQueryKey = (id: string) => {
+  return [`/api/admin/customers/${id}`] as const;
+};
+
+export const getGetCustomerQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCustomer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCustomer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCustomerQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomer>>> = ({
+    signal,
+  }) => getCustomer(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCustomer>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCustomerQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCustomer>>
+>;
+export type GetCustomerQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Dettaglio cliente con link RMS e timeline sync
+ */
+
+export function useGetCustomer<
+  TData = Awaited<ReturnType<typeof getCustomer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCustomer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCustomerQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Aggiorna cliente (avvia sync RMS in background se collegato)
+ */
+export const getUpdateCustomerUrl = (id: string) => {
+  return `/api/admin/customers/${id}`;
+};
+
+export const updateCustomer = async (
+  id: string,
+  customerUpdate: CustomerUpdate,
+  options?: RequestInit,
+): Promise<CustomerSummary> => {
+  return customFetch<CustomerSummary>(getUpdateCustomerUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(customerUpdate),
+  });
+};
+
+export const getUpdateCustomerMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCustomer>>,
+    TError,
+    { id: string; data: BodyType<CustomerUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCustomer>>,
+  TError,
+  { id: string; data: BodyType<CustomerUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateCustomer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCustomer>>,
+    { id: string; data: BodyType<CustomerUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCustomer(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCustomerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCustomer>>
+>;
+export type UpdateCustomerMutationBody = BodyType<CustomerUpdate>;
+export type UpdateCustomerMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Aggiorna cliente (avvia sync RMS in background se collegato)
+ */
+export const useUpdateCustomer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCustomer>>,
+    TError,
+    { id: string; data: BodyType<CustomerUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCustomer>>,
+  TError,
+  { id: string; data: BodyType<CustomerUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateCustomerMutationOptions(options));
+};
+
+/**
+ * @summary Collega cliente locale a un profilo RMS
+ */
+export const getLinkCustomerToRmsUrl = (id: string) => {
+  return `/api/admin/customers/${id}/link`;
+};
+
+export const linkCustomerToRms = async (
+  id: string,
+  customerRmsLinkInput: CustomerRmsLinkInput,
+  options?: RequestInit,
+): Promise<CustomerSummary> => {
+  return customFetch<CustomerSummary>(getLinkCustomerToRmsUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(customerRmsLinkInput),
+  });
+};
+
+export const getLinkCustomerToRmsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof linkCustomerToRms>>,
+    TError,
+    { id: string; data: BodyType<CustomerRmsLinkInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof linkCustomerToRms>>,
+  TError,
+  { id: string; data: BodyType<CustomerRmsLinkInput> },
+  TContext
+> => {
+  const mutationKey = ["linkCustomerToRms"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof linkCustomerToRms>>,
+    { id: string; data: BodyType<CustomerRmsLinkInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return linkCustomerToRms(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LinkCustomerToRmsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof linkCustomerToRms>>
+>;
+export type LinkCustomerToRmsMutationBody = BodyType<CustomerRmsLinkInput>;
+export type LinkCustomerToRmsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Collega cliente locale a un profilo RMS
+ */
+export const useLinkCustomerToRms = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof linkCustomerToRms>>,
+    TError,
+    { id: string; data: BodyType<CustomerRmsLinkInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof linkCustomerToRms>>,
+  TError,
+  { id: string; data: BodyType<CustomerRmsLinkInput> },
+  TContext
+> => {
+  return useMutation(getLinkCustomerToRmsMutationOptions(options));
+};
+
+/**
+ * @summary Avvia sincronizzazione del cliente verso RMS (fire-and-forget)
+ */
+export const getSyncCustomerToRmsUrl = (id: string) => {
+  return `/api/admin/customers/${id}/sync`;
+};
+
+export const syncCustomerToRms = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getSyncCustomerToRmsUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSyncCustomerToRmsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncCustomerToRms>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncCustomerToRms>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["syncCustomerToRms"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncCustomerToRms>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return syncCustomerToRms(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncCustomerToRmsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncCustomerToRms>>
+>;
+
+export type SyncCustomerToRmsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Avvia sincronizzazione del cliente verso RMS (fire-and-forget)
+ */
+export const useSyncCustomerToRms = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncCustomerToRms>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncCustomerToRms>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getSyncCustomerToRmsMutationOptions(options));
+};
 
 /**
  * @summary Statistiche dashboard admin

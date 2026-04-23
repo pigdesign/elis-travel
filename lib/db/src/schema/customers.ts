@@ -19,6 +19,7 @@ export const customerExternalLinksTable = pgTable("customer_external_links", {
     .references(() => customersTable.id, { onDelete: "cascade" }),
   externalSystem: text("external_system").notNull(),
   externalId: text("external_id").notNull(),
+  lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
