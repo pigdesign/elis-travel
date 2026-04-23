@@ -4,6 +4,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog } from "@workspace/api-client-react";
 import { MapPin, Send, Loader2, Mountain, CalendarDays, ArrowRight } from "lucide-react";
+import { useSeo, buildSlugUrl } from "@/lib/seo";
 
 function formatDate(value?: string | null) {
   if (!value) return null;
@@ -15,6 +16,12 @@ function formatDate(value?: string | null) {
 export function ExcursionsPage() {
   const { data, isLoading } = useListPublicCatalog();
   const excursions = data?.excursions ?? [];
+  useSeo({
+    title: "Gite ed escursioni",
+    description:
+      "Gite ed escursioni organizzate da Elis Travel: esperienze in giornata e weekend in compagnia. Trova quella che fa per te.",
+    canonicalPath: "/gite",
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +60,7 @@ export function ExcursionsPage() {
                       <Mountain className="w-6 h-6" />
                     </div>
                     <Link
-                      href={`/gite/${encodeURIComponent(ex.id)}`}
+                      href={buildSlugUrl("gite", ex.id, ex.name)}
                       className="block group"
                       data-testid={`link-excursion-detail-${ex.id}`}
                     >
@@ -74,7 +81,7 @@ export function ExcursionsPage() {
                       </div>
                     )}
                     <div className="mt-auto pt-4 space-y-2">
-                      <Link href={`/gite/${encodeURIComponent(ex.id)}`}>
+                      <Link href={buildSlugUrl("gite", ex.id, ex.name)}>
                         <Button
                           variant="outline"
                           className="w-full inline-flex items-center justify-center gap-2"

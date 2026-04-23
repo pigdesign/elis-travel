@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { useSeo } from "@/lib/seo";
 import { HeroSection } from "@/components/sections/HeroSection";
 import { SearchBar } from "@/components/sections/SearchBar";
 import { PopularDestinations } from "@/components/sections/PopularDestinations";
@@ -12,6 +13,12 @@ import { Testimonials } from "@/components/sections/Testimonials";
 import { AdventureHero } from "@/components/sections/AdventureHero";
 
 export function HomePage() {
+  useSeo({
+    title: "Elis Travel — Agenzia viaggi, offerte e gite organizzate",
+    description:
+      "Elis Travel: agenzia viaggi con offerte, pacchetti vacanza e gite organizzate. Scopri le proposte e richiedi informazioni.",
+    canonicalPath: "/",
+  });
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background w-full overflow-x-hidden">
       <Header />

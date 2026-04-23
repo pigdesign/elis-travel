@@ -5,6 +5,82 @@ import { eq, and, ne, desc } from "drizzle-orm";
 
 const router = Router();
 
+function slugify(input: string): string {
+  return input
+    .toString()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function getSiteOrigin(req: import("express").Request): string {
+  const envOrigin = process.env.PUBLIC_SITE_URL;
+  if (envOrigin) return envOrigin.replace(/\/$/, "");
+  const forwardedHost = (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
+  const forwardedProto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  return `${forwardedProto}://${forwardedHost}`;
+}
+
+router.get("/sitemap.xml", async (req, res) => {
+  try {
+    const origin = getSiteOrigin(req);
+    const offers = await db
+      .select({ id: offersTable.id, name: offersTable.name, updatedAt: offersTable.updatedAt })
+      .from(offersTable)
+      .where(eq(offersTable.status, "published"));
+    const excursions = await db
+      .select({ id: excursionsTable.id, name: excursionsTable.name, updatedAt: excursionsTable.updatedAt })
+      .from(excursionsTable)
+      .where(eq(excursionsTable.status, "confirmed"));
+
+    const staticUrls = [
+      { loc: "/", priority: "1.0", changefreq: "daily" },
+      { loc: "/offerte", priority: "0.9", changefreq: "daily" },
+      { loc: "/gite", priority: "0.9", changefreq: "daily" },
+      { loc: "/contatti", priority: "0.5", changefreq: "monthly" },
+    ];
+
+    const xmlEscape = (s: string) =>
+      s.replace(/[<>&'"]/g, (c) =>
+        c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c === "'" ? "&apos;" : "&quot;",
+      );
+
+    const urls: string[] = [];
+    for (const u of staticUrls) {
+      urls.push(
+        `  <url><loc>${xmlEscape(origin + u.loc)}</loc><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`,
+      );
+    }
+    for (const o of offers) {
+      const slug = slugify(o.name);
+      const path = slug ? `/offerte/${slug}-${o.id}` : `/offerte/${o.id}`;
+      const lastmod = o.updatedAt ? new Date(o.updatedAt).toISOString() : undefined;
+      urls.push(
+        `  <url><loc>${xmlEscape(origin + path)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}<changefreq>weekly</changefreq><priority>0.8</priority></url>`,
+      );
+    }
+    for (const e of excursions) {
+      const slug = slugify(e.name);
+      const path = slug ? `/gite/${slug}-${e.id}` : `/gite/${e.id}`;
+      const lastmod = e.updatedAt ? new Date(e.updatedAt).toISOString() : undefined;
+      urls.push(
+        `  <url><loc>${xmlEscape(origin + path)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}<changefreq>weekly</changefreq><priority>0.8</priority></url>`,
+      );
+    }
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=600");
+    res.send(xml);
+  } catch (err) {
+    console.error("Sitemap generation failed:", err);
+    res.status(500).type("text/plain").send("Sitemap unavailable");
+  }
+});
+
 router.get("/catalog/products", async (_req, res) => {
   try {
     const offers = await db
