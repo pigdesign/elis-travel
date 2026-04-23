@@ -1,0 +1,236 @@
+# REPLIT AGENT INSTRUCTIONS: ElisTravel Management System
+
+**CONTESTO PER L'AGENTE:**
+Sei incaricato di sviluppare "ElisTravel", un gestionale web leggero e autonomo per un tour operator. Il cliente ha già validato un mockup visivo (UI) specifico, che definisce esattamente come devono funzionare le schermate. Il tuo compito è costruire il sistema reale (Database, API, Frontend React) rispettando rigorosamente le regole architetturali e i requisiti di business descritti in questo documento.
+
+Non deviare mai da questi principi. Non inventare modelli dati semplificati se contraddicono queste istruzioni.
+
+***
+
+## 1. PRINCIPI ARCHITETTURALI INTOCABILI
+
+1. **Monorepo**: Frontend (React/Vite), Backend (Node.js/Express) e Contratti (Zod/Types) devono condividere lo stesso repository.
+2. **Indipendenza del Dominio**: ElisTravel ha il *proprio* database (PostgreSQL gestito con Drizzle ORM). Non dipende e non accede mai direttamente al database del CRM esterno (RivieraTransferRMS).
+3. **Separazione Offerte vs Gite**: Le "Offerte" (lead generation) e le "Gite" (eventi transazionali con posti e conto economico) **NON** devono condividere la stessa tabella. Sono due entità e domini radicalmente separati.
+4. **No Logica nel Frontend**: Il calcolo dei margini, le validazioni e la logica di business avvengono nel Backend. Il frontend è "stupido" e si limita a mostrare i dati tipizzati.
+
+***
+
+## 2. MODELLO DI DOMINIO E REQUISITI BUSINESS
+
+### 2.1. MODULO GITE (Excursions) - Il Core Business
+
+Le gite sono eventi di gruppo a data fissa (es. "Pullman per le Cinque Terre"). Il sistema non è un semplice e-commerce, ma un sistema di "group buying" con un **conto economico operativo**.
+
+**Requisiti dati** **`excursions`**
+Ogni gita deve poter contenere anche:
+
+- luogo
+- data
+- stato operativo
+- mezzo attuale
+- capienza attuale
+- soglia minima
+- numero aderenti
+- numero acconti pagati
+- numero saldi pagati
+- costo fisso mezzo
+- costi variabili per voce
+- ricavi stimati
+- margine netto
+- soglia di switch mezzo
+- costo aggiuntivo del cambio mezzo
+- note operative
+
+**Regole Operative e Tabelle (`excursions`,** **`excursion_vehicles`,** **`excursion_bookings`):**
+
+- **Regola della Soglia Minima**: La gita parte *solo* se si raggiunge il "numero minimo di adesioni".
+- **Gestione Veicolo (Switch)**: Il veicolo assegnato (es. "Pullman 50 posti") determina la capienza massima e il *Costo Fisso*. L'admin deve poter fare uno "switch" manuale a un veicolo più grande se le richieste eccedono, ricalcolando costi fissi e soglie.
+- **Conto Economico e Margine**: Il backend deve fornire al frontend i dati per calcolare/mostrare:
+  - *Ricavi*: (Prezzo Cliente \* Numero Paganti/Iscritti)
+  - *Costi Fissi*: (Costo del Veicolo)
+  - *Costi Variabili Totali*: (Costo Pasto + Costo Ingressi + Extra) \* Numero Iscritti
+  - *Margine Netto*: (Ricavi - Costi Fissi - Costi Variabili)
+- **Flusso Prenotazione Condizionata**:
+  1. *Pre-adesione*: Sotto la soglia minima, il cliente lascia una richiesta ma non paga.
+  2. *Conferma*: Raggiunta la soglia, lo stato cambia e si aprono i pagamenti.
+  3. *Pagamento*: Gestione separata tra "Acconto" (parziale) e "Saldo" (totale).
+
+### 2.2. MODULO OFFERTE (Offers)
+
+Pacchetti viaggio generici (es. "Fuga alle Maldive 7 Notti").
+
+- **Tabella** **`offers`**: Serve solo come catalogo / vetrina.
+- **Scopo**: Generare Leads. Non ci sono pagamenti diretti, né inventario posti, né date fisse rigide. Solo un "Prezzo di partenza" e una "Durata".
+
+**Requisiti dati** **`offers`**
+Ogni offerta deve poter contenere anche:
+
+- tour operator / fornitore
+- validità offerta
+- formula base
+- destinazione
+- partenza / aeroporto o città origine
+- durata
+- periodo / disponibilità
+- prezzo pubblico
+- testo pubblicitario
+- servizi inclusi
+- servizi esclusi
+- highlights
+- note tariffarie
+- note interne staff
+- link pubblico
+- contatore leads generati
+- data ultimo interesse
+- fonte principale
+
+### 2.3. MODULO LEADS (Mini-CRM)
+
+Tutte le richieste dal sito finiscono qui, creando una "Inbox" per lo staff.
+
+- **Tabelle** **`leads`,** **`lead_notes`**:
+- **Relazioni**: Un lead può essere "Generico", collegato a un'Offerta, o collegato a una Gita.
+- **Funzioni Admin**: L'operatore deve poter cambiare lo stato (Nuova, Contattato, Preventivo Inviato, Vinto, Perso) e aggiungere note testuali interne.
+
+### 2.4. MODULO CLIENTI E SINCRONIZZAZIONE RMS (RIVIERATRANSFER)
+
+Questo è il punto architetturale più delicato. ElisTravel e RivieraTransferRMS comunicano via API, **MAI** tramite accesso diretto ai rispettivi database. La sincronizzazione non è una bidirezionale "naive" (ingenua), ma segue regole strette.
+
+**Regole d'Oro per l'Agente:**
+
+1. **Tabella Locale Indipendente**: ElisTravel DEVE avere una propria tabella `customers` locale (con campi base: nome, cognome, email, telefono). ElisTravel non si blocca se RMS va offline.
+2. **Tabella di Mapping (External Links)**: Crea una tabella `customer_external_links` che mappa l'`id` locale del cliente con l'`id` esterno di RMS.
+3. **DTO Condiviso e Ridotto**: Non sincronizzare MAI l'intera tabella clienti di RMS (che contiene dati CRM che a ElisTravel non servono). Sincronizza solo un DTO anagrafico ridotto.
+4. **Integrazione Event-Driven (Il Motore)**:
+   - *Lettura*: ElisTravel interroga le API di RMS per cercare clienti esistenti da associare a Leads o Gite.
+   - *Scrittura*: Se ElisTravel crea o modifica un cliente, lo fa localmente e invia un evento via API a RMS tramite un modulo `integrations` isolato (Anti-Corruption Layer).
+5. **Idempotenza e Anti-Loop**: Ogni evento di sync DEVE essere tracciato in una tabella `customer_sync_events`. Ogni payload deve avere `event_id`, `source_system` (ElisTravel o RMS) e `occurred_at`. Questo impedisce che i due sistemi si "pinghino" aggiornamenti all'infinito (loop di sincronizzazione).
+6. **Job di Riconciliazione (Fallback)**: Oltre alle chiamate API in tempo reale, prevedi (a livello di design) un cron-job schedulato notturno che funge da rete di sicurezza per allineare eventuali delta persi durante il giorno.
+
+***
+
+## 3. LINEE GUIDA UX/UI E MOCKUP VALIDATO (VINCOLANTI)
+
+### 3.1. IL RISULTATO VISIVO FINALE È VINCOLANTE
+
+Il cliente ha approvato un risultato visivo molto più preciso di un semplice mockup generico. L'agente deve implementare il frontend in modo da arrivare il più possibile alla seguente struttura finale, usando Tailwind CSS e componenti moderni (es. shadcn/ui). Non limitarti a creare semplici tabelle CRUD. Le viste devono riflettere la logica operativa reale.
+
+Struttura base richiesta:
+
+- Sidebar laterale chiara e persistente (Overview, Gite di Gruppo, Offerte & Pacchetti, Richieste CRM).
+- Vista elenco Gite con righe espandibili.
+- Vista dettaglio singola Gita.
+- Vista elenco Offerte.
+- Vista dettaglio singola Offerta.
+- Vista Leads / CRM coerente.
+
+***
+
+### 3.2. VISTA GITE DI GRUPPO (ELENCO E RIGHE ESPANDIBILI)
+
+La vista principale "Gite di Gruppo" non è una semplice lista eventi.
+Ogni riga deve mostrare almeno: Nome gita/evento, Luogo, Data, Stato operativo, Piano adesioni (Barra progressiva di riempimento bicolore con indicazione della soglia minima), Margine stimato, Ricavi stimati, Contatori sintetici di acconti e saldi.
+
+**Espansione della riga gita:**
+Quando l'utente admin espande una gita, devono comparire 3 blocchi distinti:
+
+- **A. Conto Economico**: Prezzo cliente, costo bus fisso, costi variabili totali, totale costi (in rosso), incasso previsto (in verde), margine netto (in verde grassetto).
+- **B. Stato Adesioni**: Numero aderenti, stato soglia minima (es. "Mancanti al min: OK"), numero clienti con acconto pagato, numero clienti con saldo pagato (con percentuali visive).
+- **C. Logistica Mezzo**: Mezzo attuale, capienza attuale, eventuale alert visivo (giallo/arancio) di cambio mezzo ("Se si raggiungono X adesioni, si passa al Pullman Y. Impatto sui costi: +€Z").
+- *Azioni*: "Modifica", "Vedi Dettaglio Completo".
+
+***
+
+### 3.3. VISTA DETTAGLIO SINGOLA GITA (OBBLIGATORIA)
+
+Questa pagina non è opzionale. Deve mostrare un cruscotto operativo completo per il singolo evento.
+
+- **Header**: Nome gita, stato (badge), luogo, data, azioni admin ("Esporta Foglio Viaggio", "Gestisci Evento").
+- **Area Centrale (Lista Partecipanti)**: Numero posti occupati / capienza totale con barra di avanzamento e indicatore soglia minima raggiunta. Tabella partecipanti: Nominativo (con avatar), Posti/quantità, Stato pagamento (es. badge verde "SALDO"), Data prenotazione.
+- **Sidebar Destra**:
+  - *Conto Economico completo*: Prezzo di vendita, costi variabili distinti per voce (Pasto, Ingressi, Extra), costi fissi (Pullman), totale costi, incasso attuale, margine netto.
+  - *Logistica Trasporti*: Mezzo incaricato, piano di scalabilità.
+
+***
+
+### 3.4. VISTA OFFERTE E PACCHETTI (ELENCO)
+
+Una lista chiara di proposte commerciali, non una tabella tecnica.
+Ogni riga deve mostrare almeno: Nome offerta, Destinazione, Tour operator / fornitore, Stato (badge colorati: Pubblicata, Bozza, Archiviata), Validità/periodo, Performance (es. "12 LEADS GEN."), Prezzo base, Durata (notti/giorni), bottone "Dettagli Offerta".
+
+***
+
+### 3.5. VISTA DETTAGLIO SINGOLA OFFERTA (OBBLIGATORIA)
+
+Deve separare in modo evidente (con appositi label/pillole) due aree informative:
+
+**A. Contenuto del Pacchetto (VISIBILE AI CLIENTI)**
+Ciò che il cliente finale compra o vede:
+
+- Prezzo pubblico (es. "A partire da € 1850 / persona").
+- Struttura del viaggio (Volo/Partenza, Destinazione, Durata, Data/Periodo).
+- Servizi inclusi (icone) ed eventuali extra/esclusioni (box giallo evidenziato).
+- Testo pubblicitario e Punti di forza (Highlights con check).
+- Variazioni e note tariffarie.
+
+**B. Gestione Interna (SOLO STAFF)**
+Dati operativi interni:
+
+- Dati commerciali (Fornitore/TO, Validità offerta, Formula base).
+- Performance Leads (Richieste generate, Ultimo interesse, Fonte principale).
+- Note condivise staff (Box giallo visibile solo agli admin).
+- Azioni (Duplica, Modifica, Ottieni Link Pubblico).
+
+*(Rif. 3.6: Questa distinzione tra dati pubblici e interni è un requisito chiave e non deve mai essere mischiata nella UI o nel DB).*
+
+***
+
+### 3.7. VISTA LEADS / CRM
+
+Deve funzionare come inbox operativa. Ogni lead espandibile deve mostrare:
+
+- Nome cliente (con Avatar), email, telefono.
+- Dettagli richiesta (Ricevuta "X ore fa", Canale origine, Ultimo contatto, Profilo cliente).
+- Prodotto richiesto (Gita, Offerta o Generico) con link diretto al prodotto.
+- Operatività interna: Assegnazione all'operatore, note multiple visibili in box gialli, badge di stato colorato (Nuova, Contattato, Preventivo Inviato, Vinto/Confermato).
+
+### 3.8. REQUISITO DI FEDELTÀ UI
+
+L'obiettivo è riprodurre il più fedelmente possibile il comportamento e la gerarchia informativa del mockup validato. Se qualche parte richiede interpretazione, **l'agente deve scegliere la soluzione più vicina al flusso operativo reale descritto qui, non la più semplice da implementare**.
+
+\*\*\*---
+
+## 5. DIRETTIVE TECNICHE AVANZATE E INTEGRAZIONE RMS
+
+Oltre ai requisiti di dominio, devi applicare rigorosamente i seguenti pattern architetturali per garantire scalabilità, resilienza e separazione netta tra ElisTravel e il CRM esterno (RivieraTransferRMS):
+
+### 5.1. Struttura del Monorepo (pnpm workspaces)
+
+Il progetto DEVE essere strutturato come un vero monorepo utilizzando `pnpm workspaces`.
+
+- Crea tre pacchetti principali: `apps/frontend` (React/Vite), `apps/backend` (Express) e `packages/shared` (Drizzle schemas, Zod schemas, TypeScript interfaces).
+- Il pacchetto `shared` è la "Single Source of Truth" per i contratti dati. Sia il frontend che il backend devono importare i tipi e le validazioni ESCLUSIVAMENTE da `shared`. Non duplicare mai gli schemi.
+
+### 5.2. Regole di Integrazione e Anti-Corruption Layer (ACL)
+
+Il modulo di sincronizzazione con RivieraTransferRMS deve comportarsi come un Anti-Corruption Layer isolato.
+
+- **Identificativi Forti**: La tabella locale `customers` di ElisTravel DEVE usare UUID (v4) come Primary Key (`id`), NON seriali numerici. Questo evita collisioni logiche con gli ID numerici di RMS.
+- **Risoluzione dei Conflitti**: Implementa il pattern "Last Write Wins". Ogni operazione di sync (sia in push che in pull) deve confrontare il campo `updated_at`. Il payload più recente sovrascrive quello più vecchio.
+- **Resilienza (Gestione Errori di Rete)**: Se RMS è irraggiungibile o restituisce errore durante una chiamata API (es. 503, Timeout), l'operazione in ElisTravel NON deve fallire. L'evento deve essere salvato nella tabella `customer_sync_events` con stato `failed` o `pending_retry`.
+- **Job di Riconciliazione**: Predisponi (a livello di codice/struttura) un cron-job o un worker asincrono che elabora periodicamente gli eventi `failed` in `customer_sync_events` per ritentare la sincronizzazione.
+
+### 5.3. Modello Dati Gite: Audit Trail e Timeout
+
+- **Storico Cambi Mezzo**: Se un admin effettua uno "Switch Veicolo" per una gita (es. per aumentare la capienza), il sistema non deve limitarsi ad aggiornare la riga. DEVE registrare l'azione in una tabella di log/audit (es. `excursion_vehicle_history`) tracciando l'operatore, la data, il vecchio mezzo e il nuovo mezzo. Questo è cruciale per le analisi del conto economico.
+- **Seat Holds (Posti Bloccati)**: Nel flusso di prenotazione, le pre-adesioni o gli acconti in attesa di pagamento devono avere un meccanismo di scadenza (Timeout). Se il pagamento non viene confermato entro X tempo, il "posto occupato" deve essere liberato automaticamente per non falsare la capienza reale della gita.
+
+***
+
+## 6. ANTI-PATTERN (Non fare mai queste cose)
+
+- ❌ Usare RivieraTransferRMS come database primario.
+- ❌ Fondere Gite e Offerte nella tabella generica "Products".
+- ❌ Mettere il calcolo del margine (Sottrazione Costi/Ricavi) dentro un componente React; il calcolo deve arrivare dal Backend o da una funzione Utility condivisa rigorosamente testata.
+- ❌ Lasciare logiche di connessione a Stripe o RMS sparse per i controller; usa file di servizio isolati in un pattern Anti-Corruption Layer.
