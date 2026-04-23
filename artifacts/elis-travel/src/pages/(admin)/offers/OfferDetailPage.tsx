@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
@@ -12,11 +13,12 @@ import {
   Building2,
   FileText,
   Star,
+  Pencil,
 } from "lucide-react";
-import { useGetOffer, useDuplicateOffer } from "@workspace/api-client-react";
+import { useGetOffer, useDuplicateOffer, getListOffersQueryKey } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListOffersQueryKey } from "@workspace/api-client-react";
+import { OfferFormModal } from "./OfferFormModal";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   draft: { label: "Bozza", className: "bg-gray-100 text-gray-700", icon: AlertCircle },
@@ -96,6 +98,7 @@ function ServicesList({ raw, included }: { raw: string | null | undefined; inclu
 export function OfferDetailPage({ offerId }: { offerId: string }) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { data: offer, isLoading, error } = useGetOffer(offerId);
   const { mutate: duplicate, isPending: isDuplicating } = useDuplicateOffer({
     mutation: {
@@ -313,6 +316,14 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
                 Azioni
               </div>
 
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                Modifica offerta
+              </button>
+
               {offer.publicLink && (
                 <a
                   href={offer.publicLink}
@@ -337,6 +348,14 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
           </div>
         </div>
       </div>
+
+      {offer && (
+        <OfferFormModal
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          offer={offer}
+        />
+      )}
     </div>
   );
 }
