@@ -2,7 +2,10 @@ import { Link } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 import { useGetPublicOffer } from "@workspace/api-client-react";
+import { useSeo, extractIdFromSlug, buildSlugUrl, truncate } from "@/lib/seo";
 import {
   MapPin,
   Send,
@@ -20,7 +23,7 @@ import {
 } from "lucide-react";
 
 interface OfferDetailPageProps {
-  offerId: string;
+  offerIdOrSlug: string;
 }
 
 function formatDate(value?: string | null) {
@@ -47,8 +50,43 @@ function MultilineText({ text }: { text: string }) {
   );
 }
 
-export function OfferDetailPage({ offerId }: OfferDetailPageProps) {
+export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
+  const offerId = extractIdFromSlug(offerIdOrSlug);
   const { data: offer, isLoading, isError } = useGetPublicOffer(offerId);
+  const [, setLocation] = useLocation();
+
+  const seoTitle = offer?.name
+    ? `${offer.name}${offer.destination ? ` — ${offer.destination}` : ""}`
+    : isError
+      ? "Offerta non trovata"
+      : "Offerta viaggio";
+  const seoDescription = offer
+    ? truncate(
+        offer.advertisingText ||
+          offer.highlights ||
+          [offer.name, offer.destination, offer.period]
+            .filter(Boolean)
+            .join(" — ") ||
+          "Scopri questa offerta viaggio di Elis Travel.",
+      )
+    : "Dettagli offerta viaggio Elis Travel.";
+
+  useSeo({
+    title: seoTitle,
+    description: seoDescription,
+    type: "product",
+    canonicalPath: offer ? buildSlugUrl("offerte", offer.id, offer.name) : undefined,
+    noindex: !offer,
+  });
+
+  useEffect(() => {
+    if (!offer) return;
+    const expected = buildSlugUrl("offerte", offer.id, offer.name);
+    const current = `/offerte/${offerIdOrSlug}`;
+    if (current !== expected) {
+      setLocation(expected, { replace: true });
+    }
+  }, [offer, offerIdOrSlug, setLocation]);
 
   const validFromLabel = formatDate(offer?.validFrom);
   const validToLabel = formatDate(offer?.validTo);

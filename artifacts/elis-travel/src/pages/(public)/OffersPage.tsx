@@ -4,10 +4,17 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog } from "@workspace/api-client-react";
 import { MapPin, Send, Loader2, Ticket, ArrowRight } from "lucide-react";
+import { useSeo, buildSlugUrl } from "@/lib/seo";
 
 export function OffersPage() {
   const { data, isLoading } = useListPublicCatalog();
   const offers = data?.offers ?? [];
+  useSeo({
+    title: "Offerte viaggio",
+    description:
+      "Esplora le offerte viaggio di Elis Travel: pacchetti vacanza, voli e soggiorni in Italia e nel mondo. Richiedi informazioni in un click.",
+    canonicalPath: "/offerte",
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,7 +51,7 @@ export function OffersPage() {
                     <Ticket className="w-6 h-6" />
                   </div>
                   <Link
-                    href={`/offerte/${encodeURIComponent(offer.id)}`}
+                    href={buildSlugUrl("offerte", offer.id, offer.name)}
                     className="block group"
                     data-testid={`link-offer-detail-${offer.id}`}
                   >
@@ -59,7 +66,7 @@ export function OffersPage() {
                     </div>
                   )}
                   <div className="mt-auto pt-4 space-y-2">
-                    <Link href={`/offerte/${encodeURIComponent(offer.id)}`}>
+                    <Link href={buildSlugUrl("offerte", offer.id, offer.name)}>
                       <Button
                         variant="outline"
                         className="w-full inline-flex items-center justify-center gap-2"

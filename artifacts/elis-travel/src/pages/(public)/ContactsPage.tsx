@@ -10,6 +10,7 @@ import {
   useSubmitContactRequest,
   useListPublicCatalog,
 } from "@workspace/api-client-react";
+import { useSeo } from "@/lib/seo";
 import {
   Mail,
   Phone,
@@ -37,6 +38,12 @@ const contactSchema = z.object({
 type ContactFormValues = z.infer<typeof contactSchema>;
 
 export function ContactsPage() {
+  useSeo({
+    title: "Contatti",
+    description:
+      "Contatta Elis Travel per informazioni su offerte, gite e viaggi su misura. Compila il form: ti rispondiamo al più presto.",
+    canonicalPath: "/contatti",
+  });
   const {
     register,
     handleSubmit,

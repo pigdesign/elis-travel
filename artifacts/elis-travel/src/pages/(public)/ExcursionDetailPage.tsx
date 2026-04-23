@@ -2,7 +2,10 @@ import { Link } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 import { useGetPublicExcursion } from "@workspace/api-client-react";
+import { useSeo, extractIdFromSlug, buildSlugUrl, truncate } from "@/lib/seo";
 import {
   MapPin,
   Send,
@@ -15,7 +18,7 @@ import {
 } from "lucide-react";
 
 interface ExcursionDetailPageProps {
-  excursionId: string;
+  excursionIdOrSlug: string;
 }
 
 function formatDate(value?: string | null) {
@@ -41,8 +44,51 @@ function formatPrice(value?: string | null) {
   }).format(n);
 }
 
-export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
+export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPageProps) {
+  const excursionId = extractIdFromSlug(excursionIdOrSlug);
   const { data: excursion, isLoading, isError } = useGetPublicExcursion(excursionId);
+  const [, setLocation] = useLocation();
+
+  const dateForSeo = (() => {
+    if (!excursion?.date) return null;
+    const d = new Date(excursion.date);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+  })();
+  const seoTitle = excursion?.name
+    ? `${excursion.name}${excursion.location ? ` — ${excursion.location}` : ""}`
+    : isError
+      ? "Gita non trovata"
+      : "Gita organizzata";
+  const seoDescription = excursion
+    ? truncate(
+        [
+          excursion.name,
+          excursion.location ? `a ${excursion.location}` : null,
+          dateForSeo ? `il ${dateForSeo}` : null,
+          "— gita organizzata da Elis Travel. Richiedi info e prenota il tuo posto.",
+        ]
+          .filter(Boolean)
+          .join(" "),
+      )
+    : "Dettagli gita organizzata Elis Travel.";
+
+  useSeo({
+    title: seoTitle,
+    description: seoDescription,
+    type: "product",
+    canonicalPath: excursion ? buildSlugUrl("gite", excursion.id, excursion.name) : undefined,
+    noindex: !excursion,
+  });
+
+  useEffect(() => {
+    if (!excursion) return;
+    const expected = buildSlugUrl("gite", excursion.id, excursion.name);
+    const current = `/gite/${excursionIdOrSlug}`;
+    if (current !== expected) {
+      setLocation(expected, { replace: true });
+    }
+  }, [excursion, excursionIdOrSlug, setLocation]);
 
   const dateLabel = formatDate(excursion?.date);
   const priceLabel = formatPrice(excursion?.pricePerPerson);

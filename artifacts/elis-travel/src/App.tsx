@@ -27,12 +27,12 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/offerte" component={PublicOffersPage} />
-      <Route path="/offerte/:id">
-        {(params) => <PublicOfferDetailPage offerId={params.id} />}
+      <Route path="/offerte/:slug">
+        {(params) => <PublicOfferDetailPage offerIdOrSlug={params.slug} />}
       </Route>
       <Route path="/gite" component={PublicExcursionsPage} />
-      <Route path="/gite/:id">
-        {(params) => <PublicExcursionDetailPage excursionId={params.id} />}
+      <Route path="/gite/:slug">
+        {(params) => <PublicExcursionDetailPage excursionIdOrSlug={params.slug} />}
       </Route>
       <Route path="/contatti" component={ContactsPage} />
 
