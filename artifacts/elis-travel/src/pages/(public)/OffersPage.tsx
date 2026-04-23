@@ -44,12 +44,29 @@ export function OffersPage() {
               {offers.map((offer) => (
                 <article
                   key={offer.id}
-                  className="bg-white border border-border rounded-2xl p-6 shadow-sm flex flex-col"
+                  className="bg-white border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden"
                   data-testid={`card-offer-${offer.id}`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-accent/15 text-accent flex items-center justify-center mb-4">
-                    <Ticket className="w-6 h-6" />
-                  </div>
+                  <Link
+                    href={buildSlugUrl("offerte", offer.id, offer.name)}
+                    className="block aspect-[16/10] bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden relative"
+                    data-testid={`link-offer-cover-${offer.id}`}
+                  >
+                    {offer.coverImageUrl ? (
+                      <img
+                        src={offer.coverImageUrl}
+                        alt={offer.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        data-testid={`img-offer-${offer.id}`}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-accent/50">
+                        <Ticket className="w-12 h-12" />
+                      </div>
+                    )}
+                  </Link>
+                  <div className="p-6 flex flex-col flex-1">
                   <Link
                     href={buildSlugUrl("offerte", offer.id, offer.name)}
                     className="block group"
@@ -85,6 +102,7 @@ export function OffersPage() {
                         Richiedi informazioni
                       </Button>
                     </Link>
+                  </div>
                   </div>
                 </article>
               ))}

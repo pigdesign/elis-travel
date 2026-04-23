@@ -50,6 +50,7 @@ export interface ExcursionSummary {
   switchVehicleId?: string | null;
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
+  coverImageUrl?: string | null;
   ricaviStimati: number;
   costiVariabili: number;
   costiTotali: number;
@@ -98,6 +99,7 @@ export interface ExcursionInput {
   switchVehicleId?: string | null;
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
+  coverImageUrl?: string | null;
 }
 
 export interface VehicleUpdateInput {
@@ -131,6 +133,7 @@ export interface OfferSummary {
   lastInterestAt?: string | null;
   mainSource?: string | null;
   publicLink?: string | null;
+  coverImageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -167,6 +170,7 @@ export interface OfferInput {
   internalNotes?: string | null;
   publicLink?: string | null;
   mainSource?: string | null;
+  coverImageUrl?: string | null;
 }
 
 export interface Lead {
@@ -276,6 +280,7 @@ export type PublicCatalogOffersItem = {
   id: string;
   name: string;
   destination?: string | null;
+  coverImageUrl?: string | null;
 };
 
 export type PublicCatalogExcursionsItem = {
@@ -283,6 +288,7 @@ export type PublicCatalogExcursionsItem = {
   name: string;
   location?: string | null;
   date?: string | null;
+  coverImageUrl?: string | null;
 };
 
 export interface PublicCatalog {
@@ -308,6 +314,7 @@ export interface PublicOfferDetail {
   servicesExcluded?: string | null;
   highlights?: string | null;
   publicLink?: string | null;
+  coverImageUrl?: string | null;
 }
 
 export interface PublicExcursionDetail {
@@ -319,6 +326,19 @@ export interface PublicExcursionDetail {
   currentCapacity?: number | null;
   minThreshold?: number | null;
   adherentsCount?: number | null;
+  coverImageUrl?: string | null;
+}
+
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata: UploadUrlRequest;
 }
 
 export interface PublicLeadResponse {

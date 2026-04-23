@@ -24,4 +24,5 @@ export interface PublicOfferDetail {
   servicesExcluded?: string | null;
   highlights?: string | null;
   publicLink?: string | null;
+  coverImageUrl?: string | null;
 }

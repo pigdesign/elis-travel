@@ -23,4 +23,5 @@ export interface ExcursionInput {
   switchVehicleId?: string | null;
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
+  coverImageUrl?: string | null;
 }

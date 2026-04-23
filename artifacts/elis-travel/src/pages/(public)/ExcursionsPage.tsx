@@ -53,12 +53,29 @@ export function ExcursionsPage() {
                 return (
                   <article
                     key={ex.id}
-                    className="bg-white border border-border rounded-2xl p-6 shadow-sm flex flex-col"
+                    className="bg-white border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden"
                     data-testid={`card-excursion-${ex.id}`}
                   >
-                    <div className="w-12 h-12 rounded-full bg-accent/15 text-accent flex items-center justify-center mb-4">
-                      <Mountain className="w-6 h-6" />
-                    </div>
+                    <Link
+                      href={buildSlugUrl("gite", ex.id, ex.name)}
+                      className="block aspect-[16/10] bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden relative"
+                      data-testid={`link-excursion-cover-${ex.id}`}
+                    >
+                      {ex.coverImageUrl ? (
+                        <img
+                          src={ex.coverImageUrl}
+                          alt={ex.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          data-testid={`img-excursion-${ex.id}`}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-accent/50">
+                          <Mountain className="w-12 h-12" />
+                        </div>
+                      )}
+                    </Link>
+                    <div className="p-6 flex flex-col flex-1">
                     <Link
                       href={buildSlugUrl("gite", ex.id, ex.name)}
                       className="block group"
@@ -100,6 +117,7 @@ export function ExcursionsPage() {
                           Richiedi informazioni
                         </Button>
                       </Link>
+                    </div>
                     </div>
                   </article>
                 );

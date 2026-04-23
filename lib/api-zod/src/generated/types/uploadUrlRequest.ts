@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PublicCatalogOffersItem = {
-  id: string;
+export interface UploadUrlRequest {
   name: string;
-  destination?: string | null;
-  coverImageUrl?: string | null;
-};
+  size: number;
+  contentType: string;
+}

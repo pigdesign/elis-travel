@@ -27,4 +27,5 @@ export interface OfferInput {
   internalNotes?: string | null;
   publicLink?: string | null;
   mainSource?: string | null;
+  coverImageUrl?: string | null;
 }

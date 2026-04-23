@@ -11,8 +11,15 @@ import {
   Clock,
   CreditCard,
 } from "lucide-react";
-import { useGetExcursion } from "@workspace/api-client-react";
+import {
+  useGetExcursion,
+  useUpdateExcursion,
+  getGetExcursionQueryKey,
+  getListExcursionsQueryKey,
+} from "@workspace/api-client-react";
 import type { Booking } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: "Bozza", className: "bg-gray-100 text-gray-700" },
@@ -103,6 +110,15 @@ interface ExcursionDetailPageProps {
 
 export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const { data: exc, isLoading, error } = useGetExcursion(excursionId);
+  const queryClient = useQueryClient();
+  const { mutateAsync: updateExcursion } = useUpdateExcursion({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getGetExcursionQueryKey(excursionId) });
+        void queryClient.invalidateQueries({ queryKey: getListExcursionsQueryKey() });
+      },
+    },
+  });
 
   if (isLoading) {
     return (
@@ -160,6 +176,19 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
+          <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+              Immagine di copertina
+            </h2>
+            <CoverImageUploader
+              value={exc.coverImageUrl}
+              onChange={async (url) => {
+                await updateExcursion({ id: excursionId, data: { coverImageUrl: url } });
+              }}
+              testIdPrefix="excursion-cover"
+            />
+          </div>
+
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-1.5">
               <Users className="w-4 h-4" /> Stato Adesioni
