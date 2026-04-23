@@ -28,6 +28,26 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## Customers CRM & RivieraTransferRMS ACL
+
+- **DB Tables**: `customersTable`, `customerExternalLinksTable` (con `lastSyncAt`), `customerSyncEventsTable` — in `lib/db/src/schema/customers.ts`
+- **Backend routes**: `artifacts/api-server/src/routes/admin/customers.ts`
+  - `GET /api/admin/customers` — lista con ricerca (?q=) + stato RMS
+  - `POST /api/admin/customers` — crea cliente
+  - `GET /api/admin/customers/rms/search` — ricerca su RivieraTransferRMS
+  - `GET /api/admin/customers/:id` — dettaglio + syncEvents
+  - `PATCH /api/admin/customers/:id` — aggiorna + fire-and-forget sync se collegato
+  - `POST /api/admin/customers/:id/link` — collega a profilo RMS
+  - `POST /api/admin/customers/:id/sync` — sync manuale (fire-and-forget)
+- **ACL service**: `artifacts/api-server/src/services/riviera-integration.service.ts`
+  - Headers: `X-Api-Key: RIVIERA_API_KEY`, `X-Base-URL: RIVIERA_RMS_BASE_URL`
+  - `searchCustomers(q)` → GET search on RMS
+  - `syncCustomerToRms(customer, lastUpdatedAt)` → POST/PUT on RMS
+- **Frontend**: `artifacts/elis-travel/src/pages/(admin)/customers/CustomersPage.tsx`
+  - Route: `/admin/customers`
+  - Sidebar voce "Clienti" (UserRound icon)
+  - Ricerca locale, crea cliente (modal), panel dettaglio con collegamento RMS e timeline sync
+
 ## Admin Auth System
 
 - **Login**: POST /api/auth/login (email + password, bcryptjs)

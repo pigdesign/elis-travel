@@ -341,7 +341,74 @@ export interface UploadUrlResponse {
   metadata: UploadUrlRequest;
 }
 
+export interface CustomerSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+  rmsLinked: boolean;
+  rmsExternalId?: string | null;
+  rmsLastSyncAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerSyncEvent {
+  id: string;
+  /** pull_from_rms | push_to_rms */
+  eventType: string;
+  /** success | failed | conflict */
+  status: string;
+  occurredAt: string;
+  createdAt: string;
+}
+
+export type CustomerDetail = CustomerSummary & {
+  syncEvents: CustomerSyncEvent[];
+};
+
+export interface CustomerCreate {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+}
+
+export interface CustomerUpdate {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string | null;
+}
+
+export interface CustomerRmsLinkInput {
+  rmsExternalId: string;
+}
+
+export interface RmsSearchResult {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+}
+
 export interface PublicLeadResponse {
   id: string;
   message: string;
 }
+
+export type ListCustomersParams = {
+  /**
+   * Ricerca per nome o email
+   */
+  q?: string;
+};
+
+export type SearchRmsCustomersParams = {
+  /**
+   * Testo di ricerca (min 2 caratteri)
+   */
+  q: string;
+};

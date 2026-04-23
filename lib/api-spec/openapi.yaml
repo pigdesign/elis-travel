@@ -22,6 +22,8 @@ tags:
     description: Endpoint pubblici (senza autenticazione)
   - name: dashboard
     description: Dashboard amministrativa
+  - name: customers
+    description: Anagrafica clienti e integrazione RivieraTransferRMS
 paths:
   /healthz:
     get:
@@ -85,6 +87,200 @@ paths:
                 $ref: "#/components/schemas/AdminUser"
         "401":
           description: Non autenticato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: Lista clienti locali con stato collegamento RMS
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Ricerca per nome o email
+      responses:
+        "200":
+          description: Lista clienti
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerSummary"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Crea nuovo cliente locale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerCreate"
+      responses:
+        "201":
+          description: Cliente creato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSummary"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/customers/rms/search:
+    get:
+      operationId: searchRmsCustomers
+      tags: [customers]
+      summary: Cerca clienti nel CRM RivieraTransferRMS
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Testo di ricerca (min 2 caratteri)
+      responses:
+        "200":
+          description: Risultati ricerca RMS
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RmsSearchResult"
+        "400":
+          description: Query troppo corta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Errore comunicazione con RMS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Dettaglio cliente con link RMS e timeline sync
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dettaglio cliente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDetail"
+        "404":
+          description: Cliente non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Aggiorna cliente (avvia sync RMS in background se collegato)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Cliente aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSummary"
+        "404":
+          description: Cliente non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/customers/{id}/link:
+    post:
+      operationId: linkCustomerToRms
+      tags: [customers]
+      summary: Collega cliente locale a un profilo RMS
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerRmsLinkInput"
+      responses:
+        "200":
+          description: Cliente collegato a RMS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSummary"
+        "404":
+          description: Cliente non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/customers/{id}/sync:
+    post:
+      operationId: syncCustomerToRms
+      tags: [customers]
+      summary: Avvia sincronizzazione del cliente verso RMS (fire-and-forget)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: Sincronizzazione avviata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Cliente non ancora collegato a RMS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Cliente non trovato
           content:
             application/json:
               schema:
@@ -1429,6 +1625,137 @@ components:
         metadata:
           $ref: "#/components/schemas/UploadUrlRequest"
       required: [uploadURL, objectPath, metadata]
+    CustomerSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        rmsLinked:
+          type: boolean
+        rmsExternalId:
+          type: string
+          nullable: true
+        rmsLastSyncAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - firstName
+        - lastName
+        - email
+        - rmsLinked
+        - createdAt
+        - updatedAt
+    CustomerDetail:
+      allOf:
+        - $ref: "#/components/schemas/CustomerSummary"
+        - type: object
+          properties:
+            syncEvents:
+              type: array
+              items:
+                $ref: "#/components/schemas/CustomerSyncEvent"
+          required:
+            - syncEvents
+    CustomerCreate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+      required:
+        - firstName
+        - lastName
+        - email
+    CustomerUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+    CustomerRmsLinkInput:
+      type: object
+      properties:
+        rmsExternalId:
+          type: string
+      required:
+        - rmsExternalId
+    RmsSearchResult:
+      type: object
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+      required:
+        - id
+        - firstName
+        - lastName
+        - email
+    CustomerSyncEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          description: "pull_from_rms | push_to_rms"
+        status:
+          type: string
+          description: "success | failed | conflict"
+        occurredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventType
+        - status
+        - occurredAt
+        - createdAt
     PublicLeadResponse:
       type: object
       properties:
