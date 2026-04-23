@@ -22,6 +22,7 @@ export interface OfferSummary {
   lastInterestAt?: Date | null;
   mainSource?: string | null;
   publicLink?: string | null;
+  coverImageUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

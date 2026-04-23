@@ -568,6 +568,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /storage/uploads/request-url:
+    post:
+      summary: Richiedi URL upload presigned
+      operationId: requestUploadUrl
+      tags: [Storage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: URL upload generato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Richiesta non valida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -667,6 +692,9 @@ components:
           type: string
           nullable: true
         operationalNotes:
+          type: string
+          nullable: true
+        coverImageUrl:
           type: string
           nullable: true
         ricaviStimati:
@@ -801,6 +829,9 @@ components:
         operationalNotes:
           type: string
           nullable: true
+        coverImageUrl:
+          type: string
+          nullable: true
     VehicleUpdateInput:
       type: object
       properties:
@@ -884,6 +915,9 @@ components:
           type: string
           nullable: true
         publicLink:
+          type: string
+          nullable: true
+        coverImageUrl:
           type: string
           nullable: true
         createdAt:
@@ -989,6 +1023,9 @@ components:
           type: string
           nullable: true
         mainSource:
+          type: string
+          nullable: true
+        coverImageUrl:
           type: string
           nullable: true
 
@@ -1258,6 +1295,9 @@ components:
               destination:
                 type: string
                 nullable: true
+              coverImageUrl:
+                type: string
+                nullable: true
             required: [id, name]
         excursions:
           type: array
@@ -1273,6 +1313,9 @@ components:
                 type: string
                 nullable: true
               date:
+                type: string
+                nullable: true
+              coverImageUrl:
                 type: string
                 nullable: true
             required: [id, name]
@@ -1332,6 +1375,9 @@ components:
         publicLink:
           type: string
           nullable: true
+        coverImageUrl:
+          type: string
+          nullable: true
       required: [id, name]
     PublicExcursionDetail:
       type: object
@@ -1359,7 +1405,30 @@ components:
         adherentsCount:
           type: integer
           nullable: true
+        coverImageUrl:
+          type: string
+          nullable: true
       required: [id, name]
+    UploadUrlRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required: [name, size, contentType]
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
+      required: [uploadURL, objectPath, metadata]
     PublicLeadResponse:
       type: object
       properties:

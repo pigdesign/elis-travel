@@ -65,6 +65,7 @@ export const excursionsTable = pgTable("excursions", {
     scale: 2,
   }),
   operationalNotes: text("operational_notes"),
+  coverImageUrl: text("cover_image_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

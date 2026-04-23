@@ -11,7 +11,7 @@ const MUTABLE_FIELDS = [
   "durationDays", "durationNights", "period", "publicPrice",
   "advertisingText", "servicesIncluded", "servicesExcluded",
   "highlights", "pricingNotes", "internalNotes", "publicLink",
-  "mainSource",
+  "mainSource", "coverImageUrl",
 ] as const;
 
 function pickMutable(body: Record<string, unknown>) {
@@ -62,6 +62,7 @@ router.post("/offers", async (req, res) => {
         internalNotes: (body.internalNotes as string) ?? null,
         publicLink: (body.publicLink as string) ?? null,
         mainSource: (body.mainSource as string) ?? null,
+        coverImageUrl: (body.coverImageUrl as string) ?? null,
         leadsCount: 0,
       })
       .returning();

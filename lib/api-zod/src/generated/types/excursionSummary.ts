@@ -27,6 +27,7 @@ export interface ExcursionSummary {
   switchVehicleId?: string | null;
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
+  coverImageUrl?: string | null;
   ricaviStimati: number;
   costiVariabili: number;
   costiTotali: number;

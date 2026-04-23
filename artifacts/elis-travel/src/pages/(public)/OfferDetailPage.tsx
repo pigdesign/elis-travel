@@ -130,8 +130,21 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
         </section>
       ) : (
         <>
-          <section className="relative pt-40 pb-16 bg-gradient-to-br from-primary to-primary/80 text-white">
-            <div className="container mx-auto px-4 md:px-8 max-w-5xl">
+          <section className="relative pt-40 pb-16 bg-gradient-to-br from-primary to-primary/80 text-white overflow-hidden">
+            {offer.coverImageUrl && (
+              <>
+                <div className="absolute inset-0">
+                  <img
+                    src={offer.coverImageUrl}
+                    alt={offer.name}
+                    className="w-full h-full object-cover"
+                    data-testid="img-offer-cover"
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/85 to-primary/70" />
+              </>
+            )}
+            <div className="relative container mx-auto px-4 md:px-8 max-w-5xl">
               <Link
                 href="/offerte"
                 className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-6"

@@ -23,6 +23,7 @@ export const offersTable = pgTable("offers", {
   pricingNotes: text("pricing_notes"),
   internalNotes: text("internal_notes"),
   publicLink: text("public_link"),
+  coverImageUrl: text("cover_image_url"),
   leadsCount: integer("leads_count").notNull().default(0),
   lastInterestAt: timestamp("last_interest_at"),
   mainSource: text("main_source"),

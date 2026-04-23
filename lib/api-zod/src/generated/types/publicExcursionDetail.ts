@@ -15,4 +15,5 @@ export interface PublicExcursionDetail {
   currentCapacity?: number | null;
   minThreshold?: number | null;
   adherentsCount?: number | null;
+  coverImageUrl?: string | null;
 }

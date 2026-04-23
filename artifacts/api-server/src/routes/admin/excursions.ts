@@ -70,6 +70,7 @@ router.post("/excursions", async (req, res) => {
         switchVehicleId: body.switchVehicleId ?? null,
         switchVehicleAdditionalCost: body.switchVehicleAdditionalCost ?? null,
         operationalNotes: body.operationalNotes ?? null,
+        coverImageUrl: body.coverImageUrl ?? null,
       })
       .returning();
 
@@ -124,7 +125,7 @@ router.patch("/excursions/:id", async (req, res) => {
       "depositsCount", "balancesCount", "vehicleFixedCost",
       "mealCostPerPerson", "entranceCostPerPerson", "extraCostPerPerson",
       "pricePerPerson", "switchThreshold", "switchVehicleId",
-      "switchVehicleAdditionalCost", "operationalNotes",
+      "switchVehicleAdditionalCost", "operationalNotes", "coverImageUrl",
     ] as const;
     for (const field of mutableFields) {
       if (field in body) {

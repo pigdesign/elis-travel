@@ -11,4 +11,5 @@ export type PublicCatalogExcursionsItem = {
   name: string;
   location?: string | null;
   date?: string | null;
+  coverImageUrl?: string | null;
 };

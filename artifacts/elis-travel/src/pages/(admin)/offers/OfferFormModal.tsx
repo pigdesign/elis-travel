@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 import {
   useCreateOffer,
   useUpdateOffer,
@@ -35,6 +36,7 @@ type OfferFormData = {
   pricingNotes: string;
   mainSource: string;
   internalNotes: string;
+  coverImageUrl: string;
 };
 
 const emptyForm: OfferFormData = {
@@ -58,6 +60,7 @@ const emptyForm: OfferFormData = {
   pricingNotes: "",
   mainSource: "",
   internalNotes: "",
+  coverImageUrl: "",
 };
 
 function offerToForm(offer: OfferSummary | OfferDetail): OfferFormData {
@@ -83,6 +86,7 @@ function offerToForm(offer: OfferSummary | OfferDetail): OfferFormData {
     pricingNotes: detail.pricingNotes ?? "",
     mainSource: offer.mainSource ?? "",
     internalNotes: detail.internalNotes ?? "",
+    coverImageUrl: offer.coverImageUrl ?? "",
   };
 }
 
@@ -108,6 +112,7 @@ function formToPayload(form: OfferFormData) {
     pricingNotes: form.pricingNotes.trim() || null,
     mainSource: form.mainSource.trim() || null,
     internalNotes: form.internalNotes.trim() || null,
+    coverImageUrl: form.coverImageUrl.trim() || null,
   };
 }
 
@@ -358,6 +363,16 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
 
           <div className={sectionCls}>
             <h3 className="text-sm font-bold text-foreground">Contenuto Pubblico</h3>
+
+            <Field label="Immagine di copertina">
+              <CoverImageUploader
+                value={form.coverImageUrl || null}
+                onChange={(url) =>
+                  setForm((prev) => ({ ...prev, coverImageUrl: url ?? "" }))
+                }
+                testIdPrefix="offer-form-cover"
+              />
+            </Field>
 
             <Field label="Testo Pubblicitario">
               <textarea

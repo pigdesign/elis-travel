@@ -35,5 +35,7 @@ export * from "./publicExcursionDetail";
 export * from "./publicLeadInput";
 export * from "./publicLeadResponse";
 export * from "./publicOfferDetail";
+export * from "./uploadUrlRequest";
+export * from "./uploadUrlResponse";
 export * from "./vehicle";
 export * from "./vehicleUpdateInput";

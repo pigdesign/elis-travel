@@ -15,10 +15,17 @@ import {
   Star,
   Pencil,
 } from "lucide-react";
-import { useGetOffer, useDuplicateOffer, getListOffersQueryKey } from "@workspace/api-client-react";
+import {
+  useGetOffer,
+  useDuplicateOffer,
+  useUpdateOffer,
+  getListOffersQueryKey,
+  getGetOfferQueryKey,
+} from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { OfferFormModal } from "./OfferFormModal";
+import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   draft: { label: "Bozza", className: "bg-gray-100 text-gray-700", icon: AlertCircle },
@@ -100,6 +107,14 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
   const queryClient = useQueryClient();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { data: offer, isLoading, error } = useGetOffer(offerId);
+  const { mutateAsync: updateOffer } = useUpdateOffer({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getGetOfferQueryKey(offerId) });
+        void queryClient.invalidateQueries({ queryKey: getListOffersQueryKey() });
+      },
+    },
+  });
   const { mutate: duplicate, isPending: isDuplicating } = useDuplicateOffer({
     mutation: {
       onSuccess: () => {
@@ -167,6 +182,16 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-6">
+            <Section title="Immagine di copertina">
+              <CoverImageUploader
+                value={offer.coverImageUrl}
+                onChange={async (url) => {
+                  await updateOffer({ id: offerId, data: { coverImageUrl: url } });
+                }}
+                testIdPrefix="offer-cover"
+              />
+            </Section>
+
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">

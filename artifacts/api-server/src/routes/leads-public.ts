@@ -84,13 +84,13 @@ router.get("/sitemap.xml", async (req, res) => {
 router.get("/catalog/products", async (_req, res) => {
   try {
     const offers = await db
-      .select({ id: offersTable.id, name: offersTable.name, destination: offersTable.destination })
+      .select({ id: offersTable.id, name: offersTable.name, destination: offersTable.destination, coverImageUrl: offersTable.coverImageUrl })
       .from(offersTable)
       .where(eq(offersTable.status, "published"))
       .orderBy(desc(offersTable.createdAt));
 
     const excursions = await db
-      .select({ id: excursionsTable.id, name: excursionsTable.name, location: excursionsTable.location, date: excursionsTable.date })
+      .select({ id: excursionsTable.id, name: excursionsTable.name, location: excursionsTable.location, date: excursionsTable.date, coverImageUrl: excursionsTable.coverImageUrl })
       .from(excursionsTable)
       .where(eq(excursionsTable.status, "confirmed"))
       .orderBy(desc(excursionsTable.date));
@@ -124,6 +124,7 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
         servicesExcluded: offersTable.servicesExcluded,
         highlights: offersTable.highlights,
         publicLink: offersTable.publicLink,
+        coverImageUrl: offersTable.coverImageUrl,
         status: offersTable.status,
       })
       .from(offersTable)
@@ -156,6 +157,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         currentCapacity: excursionsTable.currentCapacity,
         minThreshold: excursionsTable.minThreshold,
         adherentsCount: excursionsTable.adherentsCount,
+        coverImageUrl: excursionsTable.coverImageUrl,
         status: excursionsTable.status,
       })
       .from(excursionsTable)

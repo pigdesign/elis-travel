@@ -112,6 +112,7 @@ export const ListExcursionsResponseItem = zod.object({
   switchVehicleId: zod.string().nullish(),
   switchVehicleAdditionalCost: zod.string().nullish(),
   operationalNotes: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
   ricaviStimati: zod.number(),
   costiVariabili: zod.number(),
   costiTotali: zod.number(),
@@ -141,6 +142,7 @@ export const CreateExcursionBody = zod.object({
   switchVehicleId: zod.string().nullish(),
   switchVehicleAdditionalCost: zod.string().nullish(),
   operationalNotes: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
 });
 
 /**
@@ -172,6 +174,7 @@ export const GetExcursionResponse = zod
     switchVehicleId: zod.string().nullish(),
     switchVehicleAdditionalCost: zod.string().nullish(),
     operationalNotes: zod.string().nullish(),
+    coverImageUrl: zod.string().nullish(),
     ricaviStimati: zod.number(),
     costiVariabili: zod.number(),
     costiTotali: zod.number(),
@@ -221,6 +224,7 @@ export const UpdateExcursionBody = zod.object({
   switchVehicleId: zod.string().nullish(),
   switchVehicleAdditionalCost: zod.string().nullish(),
   operationalNotes: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
 });
 
 export const UpdateExcursionResponse = zod.object({
@@ -244,6 +248,7 @@ export const UpdateExcursionResponse = zod.object({
   switchVehicleId: zod.string().nullish(),
   switchVehicleAdditionalCost: zod.string().nullish(),
   operationalNotes: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
   ricaviStimati: zod.number(),
   costiVariabili: zod.number(),
   costiTotali: zod.number(),
@@ -299,6 +304,7 @@ export const UpdateExcursionVehicleResponse = zod.object({
   switchVehicleId: zod.string().nullish(),
   switchVehicleAdditionalCost: zod.string().nullish(),
   operationalNotes: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
   ricaviStimati: zod.number(),
   costiVariabili: zod.number(),
   costiTotali: zod.number(),
@@ -340,6 +346,7 @@ export const ListOffersResponseItem = zod.object({
   lastInterestAt: zod.coerce.date().nullish(),
   mainSource: zod.string().nullish(),
   publicLink: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -369,6 +376,7 @@ export const CreateOfferBody = zod.object({
   internalNotes: zod.string().nullish(),
   publicLink: zod.string().nullish(),
   mainSource: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
 });
 
 /**
@@ -395,6 +403,7 @@ export const GetOfferResponse = zod
     lastInterestAt: zod.coerce.date().nullish(),
     mainSource: zod.string().nullish(),
     publicLink: zod.string().nullish(),
+    coverImageUrl: zod.string().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   })
@@ -439,6 +448,7 @@ export const UpdateOfferBody = zod.object({
   internalNotes: zod.string().nullish(),
   publicLink: zod.string().nullish(),
   mainSource: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
 });
 
 export const UpdateOfferResponse = zod.object({
@@ -457,6 +467,7 @@ export const UpdateOfferResponse = zod.object({
   lastInterestAt: zod.coerce.date().nullish(),
   mainSource: zod.string().nullish(),
   publicLink: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -590,6 +601,7 @@ export const ListPublicCatalogResponse = zod.object({
       id: zod.string().uuid(),
       name: zod.string(),
       destination: zod.string().nullish(),
+      coverImageUrl: zod.string().nullish(),
     }),
   ),
   excursions: zod.array(
@@ -598,6 +610,7 @@ export const ListPublicCatalogResponse = zod.object({
       name: zod.string(),
       location: zod.string().nullish(),
       date: zod.string().nullish(),
+      coverImageUrl: zod.string().nullish(),
     }),
   ),
 });
@@ -627,6 +640,7 @@ export const GetPublicOfferResponse = zod.object({
   servicesExcluded: zod.string().nullish(),
   highlights: zod.string().nullish(),
   publicLink: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
 });
 
 /**
@@ -645,4 +659,24 @@ export const GetPublicExcursionResponse = zod.object({
   currentCapacity: zod.number().nullish(),
   minThreshold: zod.number().nullish(),
   adherentsCount: zod.number().nullish(),
+  coverImageUrl: zod.string().nullish(),
+});
+
+/**
+ * @summary Richiedi URL upload presigned
+ */
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+  metadata: zod.object({
+    name: zod.string(),
+    size: zod.number(),
+    contentType: zod.string(),
+  }),
 });
