@@ -168,3 +168,54 @@ export interface OfferInput {
   publicLink?: string | null;
   mainSource?: string | null;
 }
+
+export interface Lead {
+  id: string;
+  customerName: string;
+  email: string;
+  phone?: string | null;
+  customerId?: string | null;
+  offerId?: string | null;
+  excursionId?: string | null;
+  /** generic | offer | excursion */
+  type: string;
+  /** new | contacted | quote_sent | won | lost */
+  status: string;
+  channel?: string | null;
+  assignedTo?: string | null;
+  lastContactAt?: string | null;
+  receivedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  offerName?: string | null;
+  excursionName?: string | null;
+}
+
+export interface LeadNote {
+  id: string;
+  leadId: string;
+  text: string;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LeadStatusUpdateStatus =
+  (typeof LeadStatusUpdateStatus)[keyof typeof LeadStatusUpdateStatus];
+
+export const LeadStatusUpdateStatus = {
+  new: "new",
+  contacted: "contacted",
+  quote_sent: "quote_sent",
+  won: "won",
+  lost: "lost",
+} as const;
+
+export interface LeadStatusUpdate {
+  status: LeadStatusUpdateStatus;
+}
+
+export interface LeadNoteInput {
+  text: string;
+  authorName?: string;
+}

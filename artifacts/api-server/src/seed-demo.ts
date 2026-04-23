@@ -4,6 +4,8 @@ import {
   excursionVehiclesTable,
   excursionBookingsTable,
   offersTable,
+  leadsTable,
+  leadNotesTable,
 } from "@workspace/db/schema";
 
 async function seedDemo() {
@@ -284,6 +286,149 @@ async function seedDemo() {
     ]);
 
     console.log("✓ Created 5 demo offers");
+  }
+
+  const existingLeads = await db.select().from(leadsTable).limit(1);
+  if (existingLeads.length > 0) {
+    console.log("✓ Lead demo data already exists, skipping leads.");
+  } else {
+    const existingOffers = await db.select({ id: offersTable.id, name: offersTable.name }).from(offersTable).limit(3);
+    const existingExcursionsForLeads = await db.select({ id: excursionsTable.id, name: excursionsTable.name }).from(excursionsTable).limit(2);
+
+    const now = new Date();
+    const hoursAgo = (h: number) => new Date(now.getTime() - h * 60 * 60 * 1000);
+    const daysAgo = (d: number) => new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+
+    const leadsData = [
+      {
+        customerName: "Marco Bianchi",
+        email: "marco.bianchi@email.it",
+        phone: "+39 333 1234567",
+        type: "offer" as const,
+        offerId: existingOffers[0]?.id ?? null,
+        status: "new" as const,
+        channel: "website",
+        assignedTo: null,
+        receivedAt: hoursAgo(2),
+      },
+      {
+        customerName: "Lucia Ferretti",
+        email: "lucia.ferretti@gmail.com",
+        phone: "+39 348 9876543",
+        type: "offer" as const,
+        offerId: existingOffers[1]?.id ?? null,
+        status: "new" as const,
+        channel: "instagram",
+        assignedTo: null,
+        receivedAt: hoursAgo(5),
+      },
+      {
+        customerName: "Giovanni Russo",
+        email: "g.russo@libero.it",
+        phone: "+39 320 5551234",
+        type: "excursion" as const,
+        excursionId: existingExcursionsForLeads[0]?.id ?? null,
+        status: "contacted" as const,
+        channel: "telefono",
+        assignedTo: "Sara",
+        lastContactAt: daysAgo(1),
+        receivedAt: daysAgo(3),
+      },
+      {
+        customerName: "Antonella Moretti",
+        email: "antonella.moretti@email.it",
+        phone: null,
+        type: "generic" as const,
+        status: "quote_sent" as const,
+        channel: "email",
+        assignedTo: "Marco",
+        lastContactAt: daysAgo(2),
+        receivedAt: daysAgo(7),
+      },
+      {
+        customerName: "Roberto De Luca",
+        email: "roberto.deluca@outlook.com",
+        phone: "+39 366 7778899",
+        type: "offer" as const,
+        offerId: existingOffers[2]?.id ?? null,
+        status: "won" as const,
+        channel: "website",
+        assignedTo: "Sara",
+        lastContactAt: daysAgo(5),
+        receivedAt: daysAgo(14),
+      },
+      {
+        customerName: "Carla Esposito",
+        email: "carla.esposito@gmail.com",
+        phone: "+39 347 4445566",
+        type: "excursion" as const,
+        excursionId: existingExcursionsForLeads[1]?.id ?? null,
+        status: "lost" as const,
+        channel: "facebook",
+        assignedTo: "Marco",
+        lastContactAt: daysAgo(8),
+        receivedAt: daysAgo(20),
+      },
+      {
+        customerName: "Stefano Marchetti",
+        email: "s.marchetti@email.com",
+        phone: "+39 388 2223344",
+        type: "generic" as const,
+        status: "new" as const,
+        channel: "whatsapp",
+        assignedTo: null,
+        receivedAt: hoursAgo(12),
+      },
+      {
+        customerName: "Federica Conti",
+        email: "federica.conti@tin.it",
+        phone: "+39 392 6667788",
+        type: "offer" as const,
+        offerId: existingOffers[0]?.id ?? null,
+        status: "contacted" as const,
+        channel: "website",
+        assignedTo: "Sara",
+        lastContactAt: daysAgo(4),
+        receivedAt: daysAgo(6),
+      },
+    ];
+
+    const insertedLeads = await db.insert(leadsTable).values(leadsData).returning();
+    console.log(`✓ Created ${insertedLeads.length} demo leads`);
+
+    const lead1 = insertedLeads.find((l) => l.customerName === "Giovanni Russo");
+    const lead2 = insertedLeads.find((l) => l.customerName === "Antonella Moretti");
+    const lead3 = insertedLeads.find((l) => l.customerName === "Roberto De Luca");
+    const lead4 = insertedLeads.find((l) => l.customerName === "Federica Conti");
+
+    const notesData = [];
+    if (lead1) {
+      notesData.push(
+        { leadId: lead1.id, text: "Contattata telefonicamente il 20/04. Interessata alla data di giugno, chiede conferma posti.", authorName: "Sara" },
+        { leadId: lead1.id, text: "Richiamato il 21/04: vuole preventivo per 2 persone.", authorName: "Sara" },
+      );
+    }
+    if (lead2) {
+      notesData.push(
+        { leadId: lead2.id, text: "Preventivo inviato via email il 18/04. In attesa di risposta.", authorName: "Marco" },
+      );
+    }
+    if (lead3) {
+      notesData.push(
+        { leadId: lead3.id, text: "Prenotazione confermata. Caparra ricevuta il 10/04.", authorName: "Sara" },
+        { leadId: lead3.id, text: "Saldo da ricevere entro 30 giorni dalla partenza.", authorName: "Marco" },
+      );
+    }
+    if (lead4) {
+      notesData.push(
+        { leadId: lead4.id, text: "Prima email inviata il 17/04. Nessuna risposta. Ricontattare la prossima settimana.", authorName: "Sara" },
+      );
+    }
+
+    if (notesData.length > 0) {
+      await db.insert(leadNotesTable).values(notesData);
+      console.log(`✓ Created ${notesData.length} demo lead notes`);
+    }
   }
 
   process.exit(0);

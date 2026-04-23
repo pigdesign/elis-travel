@@ -3,10 +3,13 @@ import { Map, LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain } from "
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
+import { useListLeads } from "@workspace/api-client-react";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, navigate] = useLocation();
   const { state, logout } = useAuth();
+  const { data: leads = [] } = useListLeads();
+  const newLeadsCount = leads.filter((l) => l.status === "new").length;
 
   useEffect(() => {
     if (state.status === "unauthenticated") {
@@ -70,7 +73,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <item.icon className="w-5 h-5" />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {item.matchPath === "/admin/leads" && newLeadsCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    {newLeadsCount}
+                  </span>
+                )}
               </button>
             );
           })}
