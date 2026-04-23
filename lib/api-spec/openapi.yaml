@@ -14,6 +14,8 @@ tags:
     description: Autenticazione admin
   - name: excursions
     description: Gite di gruppo
+  - name: offers
+    description: Offerte e pacchetti viaggio
 paths:
   /healthz:
     get:
@@ -225,6 +227,141 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vehicle"
+  /admin/offers:
+    get:
+      operationId: listOffers
+      tags: [offers]
+      summary: Lista offerte
+      responses:
+        "200":
+          description: Lista offerte
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OfferSummary"
+    post:
+      operationId: createOffer
+      tags: [offers]
+      summary: Crea nuova offerta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferInput"
+      responses:
+        "201":
+          description: Offerta creata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferSummary"
+  /admin/offers/{id}:
+    get:
+      operationId: getOffer
+      tags: [offers]
+      summary: Dettaglio offerta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dettaglio offerta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferDetail"
+        "404":
+          description: Offerta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateOffer
+      tags: [offers]
+      summary: Aggiorna offerta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferInput"
+      responses:
+        "200":
+          description: Offerta aggiornata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferSummary"
+        "404":
+          description: Offerta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteOffer
+      tags: [offers]
+      summary: Elimina offerta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Offerta eliminata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "404":
+          description: Offerta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/offers/{id}/duplicate:
+    post:
+      operationId: duplicateOffer
+      tags: [offers]
+      summary: Duplica offerta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "201":
+          description: Offerta duplicata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferSummary"
+        "404":
+          description: Offerta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -496,3 +633,155 @@ components:
         - fixedCost
         - createdAt
         - updatedAt
+    OfferSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        destination:
+          type: string
+        tourOperator:
+          type: string
+          nullable: true
+        status:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+          nullable: true
+        validTo:
+          type: string
+          format: date-time
+          nullable: true
+        durationDays:
+          type: integer
+          nullable: true
+        durationNights:
+          type: integer
+          nullable: true
+        period:
+          type: string
+          nullable: true
+        publicPrice:
+          type: string
+          nullable: true
+        leadsCount:
+          type: integer
+        lastInterestAt:
+          type: string
+          format: date-time
+          nullable: true
+        mainSource:
+          type: string
+          nullable: true
+        publicLink:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - destination
+        - status
+        - leadsCount
+        - createdAt
+        - updatedAt
+    OfferDetail:
+      allOf:
+        - $ref: "#/components/schemas/OfferSummary"
+        - type: object
+          properties:
+            baseFormula:
+              type: string
+              nullable: true
+            departureCity:
+              type: string
+              nullable: true
+            advertisingText:
+              type: string
+              nullable: true
+            servicesIncluded:
+              type: string
+              nullable: true
+            servicesExcluded:
+              type: string
+              nullable: true
+            highlights:
+              type: string
+              nullable: true
+            pricingNotes:
+              type: string
+              nullable: true
+            internalNotes:
+              type: string
+              nullable: true
+    OfferInput:
+      type: object
+      properties:
+        name:
+          type: string
+        destination:
+          type: string
+        tourOperator:
+          type: string
+          nullable: true
+        status:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+          nullable: true
+        validTo:
+          type: string
+          format: date-time
+          nullable: true
+        baseFormula:
+          type: string
+          nullable: true
+        departureCity:
+          type: string
+          nullable: true
+        durationDays:
+          type: integer
+          nullable: true
+        durationNights:
+          type: integer
+          nullable: true
+        period:
+          type: string
+          nullable: true
+        publicPrice:
+          type: string
+          nullable: true
+        advertisingText:
+          type: string
+          nullable: true
+        servicesIncluded:
+          type: string
+          nullable: true
+        servicesExcluded:
+          type: string
+          nullable: true
+        highlights:
+          type: string
+          nullable: true
+        pricingNotes:
+          type: string
+          nullable: true
+        internalNotes:
+          type: string
+          nullable: true
+        publicLink:
+          type: string
+          nullable: true
+        mainSource:
+          type: string
+          nullable: true

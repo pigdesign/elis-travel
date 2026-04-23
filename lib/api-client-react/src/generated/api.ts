@@ -26,6 +26,9 @@ import type {
   ExcursionSummary,
   HealthStatus,
   LoginRequest,
+  OfferDetail,
+  OfferInput,
+  OfferSummary,
   OkResponse,
   Vehicle,
   VehicleUpdateInput,
@@ -930,3 +933,504 @@ export function useListVehicles<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Lista offerte
+ */
+export const getListOffersUrl = () => {
+  return `/api/admin/offers`;
+};
+
+export const listOffers = async (
+  options?: RequestInit,
+): Promise<OfferSummary[]> => {
+  return customFetch<OfferSummary[]>(getListOffersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListOffersQueryKey = () => {
+  return [`/api/admin/offers`] as const;
+};
+
+export const getListOffersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOffers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listOffers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListOffersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listOffers>>> = ({
+    signal,
+  }) => listOffers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOffers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOffersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOffers>>
+>;
+export type ListOffersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista offerte
+ */
+
+export function useListOffers<
+  TData = Awaited<ReturnType<typeof listOffers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listOffers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOffersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Crea nuova offerta
+ */
+export const getCreateOfferUrl = () => {
+  return `/api/admin/offers`;
+};
+
+export const createOffer = async (
+  offerInput: OfferInput,
+  options?: RequestInit,
+): Promise<OfferSummary> => {
+  return customFetch<OfferSummary>(getCreateOfferUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(offerInput),
+  });
+};
+
+export const getCreateOfferMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOffer>>,
+    TError,
+    { data: BodyType<OfferInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOffer>>,
+  TError,
+  { data: BodyType<OfferInput> },
+  TContext
+> => {
+  const mutationKey = ["createOffer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOffer>>,
+    { data: BodyType<OfferInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createOffer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOfferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOffer>>
+>;
+export type CreateOfferMutationBody = BodyType<OfferInput>;
+export type CreateOfferMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Crea nuova offerta
+ */
+export const useCreateOffer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOffer>>,
+    TError,
+    { data: BodyType<OfferInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOffer>>,
+  TError,
+  { data: BodyType<OfferInput> },
+  TContext
+> => {
+  return useMutation(getCreateOfferMutationOptions(options));
+};
+
+/**
+ * @summary Dettaglio offerta
+ */
+export const getGetOfferUrl = (id: string) => {
+  return `/api/admin/offers/${id}`;
+};
+
+export const getOffer = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OfferDetail> => {
+  return customFetch<OfferDetail>(getGetOfferUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOfferQueryKey = (id: string) => {
+  return [`/api/admin/offers/${id}`] as const;
+};
+
+export const getGetOfferQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOffer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOffer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOfferQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOffer>>> = ({
+    signal,
+  }) => getOffer(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getOffer>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetOfferQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOffer>>
+>;
+export type GetOfferQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Dettaglio offerta
+ */
+
+export function useGetOffer<
+  TData = Awaited<ReturnType<typeof getOffer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOffer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOfferQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Aggiorna offerta
+ */
+export const getUpdateOfferUrl = (id: string) => {
+  return `/api/admin/offers/${id}`;
+};
+
+export const updateOffer = async (
+  id: string,
+  offerInput: OfferInput,
+  options?: RequestInit,
+): Promise<OfferSummary> => {
+  return customFetch<OfferSummary>(getUpdateOfferUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(offerInput),
+  });
+};
+
+export const getUpdateOfferMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOffer>>,
+    TError,
+    { id: string; data: BodyType<OfferInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOffer>>,
+  TError,
+  { id: string; data: BodyType<OfferInput> },
+  TContext
+> => {
+  const mutationKey = ["updateOffer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOffer>>,
+    { id: string; data: BodyType<OfferInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateOffer(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOfferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOffer>>
+>;
+export type UpdateOfferMutationBody = BodyType<OfferInput>;
+export type UpdateOfferMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Aggiorna offerta
+ */
+export const useUpdateOffer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOffer>>,
+    TError,
+    { id: string; data: BodyType<OfferInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOffer>>,
+  TError,
+  { id: string; data: BodyType<OfferInput> },
+  TContext
+> => {
+  return useMutation(getUpdateOfferMutationOptions(options));
+};
+
+/**
+ * @summary Elimina offerta
+ */
+export const getDeleteOfferUrl = (id: string) => {
+  return `/api/admin/offers/${id}`;
+};
+
+export const deleteOffer = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteOfferUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteOfferMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOffer>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteOffer>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteOffer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteOffer>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteOffer(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteOfferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteOffer>>
+>;
+
+export type DeleteOfferMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Elimina offerta
+ */
+export const useDeleteOffer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOffer>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteOffer>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteOfferMutationOptions(options));
+};
+
+/**
+ * @summary Duplica offerta
+ */
+export const getDuplicateOfferUrl = (id: string) => {
+  return `/api/admin/offers/${id}/duplicate`;
+};
+
+export const duplicateOffer = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OfferSummary> => {
+  return customFetch<OfferSummary>(getDuplicateOfferUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDuplicateOfferMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof duplicateOffer>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof duplicateOffer>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["duplicateOffer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof duplicateOffer>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return duplicateOffer(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DuplicateOfferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof duplicateOffer>>
+>;
+
+export type DuplicateOfferMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Duplica offerta
+ */
+export const useDuplicateOffer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof duplicateOffer>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof duplicateOffer>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDuplicateOfferMutationOptions(options));
+};
