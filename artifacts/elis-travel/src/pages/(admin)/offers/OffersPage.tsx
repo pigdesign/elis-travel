@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Plus, MapPin, Users, Clock, Star, ExternalLink, ArrowRight } from "lucide-react";
 import { useListOffers } from "@workspace/api-client-react";
 import type { OfferSummary } from "@workspace/api-client-react";
 import { Button } from "@/components/shared/Button";
 import { cn } from "@/lib/utils";
+import { OfferFormModal } from "./OfferFormModal";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: "Bozza", className: "bg-gray-100 text-gray-600" },
@@ -131,6 +133,7 @@ function OfferCard({ offer, onOpen }: { offer: OfferSummary; onOpen: () => void 
 
 export function OffersPage() {
   const [, navigate] = useLocation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { data: offers, isLoading, error } = useListOffers();
 
   const published = offers?.filter((o) => o.status === "published") ?? [];
@@ -153,7 +156,10 @@ export function OffersPage() {
             )}
           </p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90 text-white rounded-full">
+        <Button
+          className="bg-primary hover:bg-primary/90 text-white rounded-full"
+          onClick={() => setIsModalOpen(true)}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Nuova Offerta
         </Button>
@@ -232,6 +238,11 @@ export function OffersPage() {
           )}
         </div>
       )}
+
+      <OfferFormModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }
