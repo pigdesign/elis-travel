@@ -195,27 +195,41 @@ router.post("/customers/rms/import", async (req, res) => {
       phone?: string | null;
     };
 
-    if (!rmsExternalId?.trim() || !firstName?.trim() || !lastName?.trim() || !email?.trim()) {
-      res.status(400).json({ error: "rmsExternalId, firstName, lastName ed email sono obbligatori." });
+    if (!rmsExternalId?.trim() || !firstName?.trim()) {
+      res.status(400).json({ error: "rmsExternalId e firstName sono obbligatori." });
       return;
     }
+    const resolvedEmail = email?.trim() || `rms-${rmsExternalId.trim()}@noemail.local`;
 
     const existingByEmail = await db
       .select({ id: customersTable.id })
       .from(customersTable)
-      .where(ilike(customersTable.email, email.trim()))
+      .where(ilike(customersTable.email, resolvedEmail))
+      .limit(1);
+
+    const existingByRmsId = await db
+      .select({ customerId: customerExternalLinksTable.customerId })
+      .from(customerExternalLinksTable)
+      .where(
+        and(
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
+          eq(customerExternalLinksTable.externalId, rmsExternalId.trim()),
+        ),
+      )
       .limit(1);
 
     let customerId: string;
-    if (existingByEmail.length > 0) {
+    if (existingByRmsId.length > 0) {
+      customerId = existingByRmsId[0].customerId!;
+    } else if (existingByEmail.length > 0) {
       customerId = existingByEmail[0].id;
     } else {
       const [newCustomer] = await db
         .insert(customersTable)
         .values({
           firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim().toLowerCase(),
+          lastName: (lastName ?? "").trim(),
+          email: resolvedEmail.toLowerCase(),
           phone: phone?.trim() || null,
         })
         .returning({ id: customersTable.id });
