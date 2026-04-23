@@ -4,9 +4,19 @@ import { adminUsersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
 async function seedAdmin() {
-  const email = process.env.ADMIN_EMAIL ?? "admin@elistravel.it";
-  const password = process.env.ADMIN_PASSWORD ?? "admin123";
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME ?? "Amministratore";
+
+  if (!email || !password) {
+    console.error(
+      "❌ ADMIN_EMAIL e ADMIN_PASSWORD devono essere impostati come variabili d'ambiente."
+    );
+    console.error(
+      "   Esempio: ADMIN_EMAIL=admin@tuosito.it ADMIN_PASSWORD=<password-sicura> pnpm seed:admin"
+    );
+    process.exit(1);
+  }
 
   const [existing] = await db
     .select()
@@ -15,7 +25,7 @@ async function seedAdmin() {
     .limit(1);
 
   if (existing) {
-    console.log(`✓ Admin user already exists: ${email}`);
+    console.log(`✓ Utente admin già esistente: ${email}`);
     process.exit(0);
   }
 
@@ -28,9 +38,7 @@ async function seedAdmin() {
     role: "admin",
   });
 
-  console.log(`✓ Admin user created: ${email}`);
-  console.log(`  Password: ${password}`);
-  console.log("  ⚠️  Cambia la password dopo il primo accesso!");
+  console.log(`✓ Utente admin creato: ${email}`);
   process.exit(0);
 }
 
