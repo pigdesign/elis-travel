@@ -2,19 +2,24 @@ import { Link } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useGetPublicExcursion } from "@workspace/api-client-react";
+import {
+  useGetPublicExcursion,
+  useCreatePublicExcursionBooking,
+  getGetPublicExcursionQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSeo, extractIdFromSlug, buildSlugUrl, truncate } from "@/lib/seo";
 import {
   MapPin,
-  Send,
   Loader2,
   ArrowLeft,
   CalendarDays,
   Users,
   CheckCircle2,
   AlertCircle,
+  Ticket,
 } from "lucide-react";
 
 interface ExcursionDetailPageProps {
@@ -253,17 +258,11 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                     )}
                   </div>
 
-                  <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-                    <h2 className="text-xl font-serif font-bold text-foreground mb-3 flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      Richiedi info per partecipare
-                    </h2>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      Vuoi prenotare un posto o ricevere il programma dettagliato? Compila il
-                      form e il nostro team ti ricontatterà al più presto con tutte le
-                      informazioni utili (programma, orari, punto di ritrovo).
-                    </p>
-                  </div>
+                  <BookingCard
+                    excursionId={excursion.id}
+                    seatsAvailable={seatsInfo?.available ?? true}
+                    priceLabel={priceLabel}
+                  />
                 </div>
 
                 <aside className="lg:col-span-1">
@@ -287,15 +286,14 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                       </div>
                     )}
 
-                    <Link href={`/contatti?excursionId=${encodeURIComponent(excursion.id)}`}>
-                      <Button
-                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2"
-                        data-testid="button-request-info"
-                      >
-                        <Send className="w-4 h-4" />
-                        Richiedi informazioni
-                      </Button>
-                    </Link>
+                    <a
+                      href="#prenota"
+                      className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-md bg-accent text-accent-foreground hover:bg-accent/90 font-medium text-sm"
+                      data-testid="button-scroll-to-booking"
+                    >
+                      <Ticket className="w-4 h-4" />
+                      Prenota un posto
+                    </a>
                   </div>
                 </aside>
               </div>
@@ -305,6 +303,293 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
       )}
 
       <Footer />
+    </div>
+  );
+}
+
+interface BookingCardProps {
+  excursionId: string;
+  seatsAvailable: boolean;
+  priceLabel: string | null;
+}
+
+function BookingCard({ excursionId, seatsAvailable, priceLabel }: BookingCardProps) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [seats, setSeats] = useState(1);
+  const [paymentType, setPaymentType] = useState<"deposit" | "full">("deposit");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<{
+    seats: number;
+    paymentStatus: string;
+    message: string;
+  } | null>(null);
+
+  const { mutateAsync, isPending } = useCreatePublicExcursionBooking({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({
+          queryKey: getGetPublicExcursionQueryKey(excursionId),
+        });
+      },
+    },
+  });
+
+  if (!seatsAvailable) {
+    return (
+      <div
+        id="prenota"
+        className="bg-red-50 border border-red-200 rounded-2xl p-6 md:p-8"
+        data-testid="card-booking-soldout"
+      >
+        <h2 className="text-xl font-serif font-bold text-red-800 mb-2 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          Posti esauriti
+        </h2>
+        <p className="text-red-700 text-sm leading-relaxed">
+          Tutti i posti per questa gita sono già stati prenotati. Contattaci per essere
+          inserito nella lista d'attesa.
+        </p>
+      </div>
+    );
+  }
+
+  if (confirmation) {
+    return (
+      <div
+        id="prenota"
+        className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 md:p-8"
+        data-testid="card-booking-success"
+      >
+        <h2 className="text-xl font-serif font-bold text-emerald-800 mb-3 flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5" />
+          Prenotazione registrata
+        </h2>
+        <p className="text-emerald-900 text-sm mb-3">{confirmation.message}</p>
+        <ul className="text-sm text-emerald-900 space-y-1 mb-4">
+          <li>
+            <strong>Posti prenotati:</strong> {confirmation.seats}
+          </li>
+          <li>
+            <strong>Modalità di pagamento:</strong>{" "}
+            {confirmation.paymentStatus === "paid" ? "Importo completo" : "Acconto"}
+          </li>
+        </ul>
+        <button
+          type="button"
+          onClick={() => {
+            setConfirmation(null);
+            setName("");
+            setEmail("");
+            setPhone("");
+            setSeats(1);
+            setPaymentType("deposit");
+          }}
+          className="text-sm text-emerald-800 underline hover:text-emerald-900"
+          data-testid="button-new-booking"
+        >
+          Effettua una nuova prenotazione
+        </button>
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    if (!name.trim() || !email.trim()) {
+      setErrorMsg("Nome ed email sono obbligatori.");
+      return;
+    }
+    try {
+      const res = await mutateAsync({
+        id: excursionId,
+        data: {
+          customerName: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          seats,
+          paymentType,
+        },
+      });
+      setConfirmation({
+        seats: res.seats,
+        paymentStatus: res.paymentStatus,
+        message: res.message,
+      });
+    } catch (err: unknown) {
+      const e = err as { data?: { error?: string }; message?: string };
+      setErrorMsg(
+        e?.data?.error ?? e?.message ?? "Impossibile completare la prenotazione. Riprova.",
+      );
+    }
+  };
+
+  return (
+    <div
+      id="prenota"
+      className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm"
+      data-testid="card-booking-form"
+    >
+      <h2 className="text-xl font-serif font-bold text-foreground mb-1 flex items-center gap-2">
+        <Ticket className="w-5 h-5 text-accent" />
+        Prenota un posto
+      </h2>
+      <p className="text-muted-foreground text-sm mb-5">
+        Compila il form per riservare il tuo posto. Scegli se versare un acconto o pagare
+        l'intero importo.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="bk-name" className="block text-xs font-medium text-foreground mb-1">
+              Nome e cognome *
+            </label>
+            <input
+              id="bk-name"
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              data-testid="input-booking-name"
+            />
+          </div>
+          <div>
+            <label htmlFor="bk-email" className="block text-xs font-medium text-foreground mb-1">
+              Email *
+            </label>
+            <input
+              id="bk-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              data-testid="input-booking-email"
+            />
+          </div>
+          <div>
+            <label htmlFor="bk-phone" className="block text-xs font-medium text-foreground mb-1">
+              Telefono
+            </label>
+            <input
+              id="bk-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              data-testid="input-booking-phone"
+            />
+          </div>
+          <div>
+            <label htmlFor="bk-seats" className="block text-xs font-medium text-foreground mb-1">
+              Numero posti *
+            </label>
+            <input
+              id="bk-seats"
+              type="number"
+              min={1}
+              max={10}
+              required
+              value={seats}
+              onChange={(e) => setSeats(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              data-testid="input-booking-seats"
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="block text-xs font-medium text-foreground mb-2">
+            Modalità di pagamento *
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label
+              className={
+                "flex items-start gap-2 p-3 border rounded-md cursor-pointer transition-colors " +
+                (paymentType === "deposit"
+                  ? "border-accent bg-accent/5"
+                  : "border-border hover:bg-muted/30")
+              }
+              data-testid="radio-payment-deposit"
+            >
+              <input
+                type="radio"
+                name="paymentType"
+                value="deposit"
+                checked={paymentType === "deposit"}
+                onChange={() => setPaymentType("deposit")}
+                className="mt-1"
+              />
+              <div>
+                <div className="font-medium text-sm text-foreground">Acconto</div>
+                <div className="text-xs text-muted-foreground">
+                  Versa un acconto e salda alla partenza
+                </div>
+              </div>
+            </label>
+            <label
+              className={
+                "flex items-start gap-2 p-3 border rounded-md cursor-pointer transition-colors " +
+                (paymentType === "full"
+                  ? "border-accent bg-accent/5"
+                  : "border-border hover:bg-muted/30")
+              }
+              data-testid="radio-payment-full"
+            >
+              <input
+                type="radio"
+                name="paymentType"
+                value="full"
+                checked={paymentType === "full"}
+                onChange={() => setPaymentType("full")}
+                className="mt-1"
+              />
+              <div>
+                <div className="font-medium text-sm text-foreground">Importo completo</div>
+                <div className="text-xs text-muted-foreground">
+                  {priceLabel ? `Paghi subito ${priceLabel} a persona` : "Paghi subito l'intera quota"}
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {errorMsg && (
+          <div
+            className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700"
+            data-testid="text-booking-error"
+          >
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2"
+          data-testid="button-submit-booking"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Invio in corso…
+            </>
+          ) : (
+            <>
+              <Ticket className="w-4 h-4" />
+              Prenota ora
+            </>
+          )}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          Il pagamento avverrà offline: ti contatteremo per perfezionarlo.
+        </p>
+      </form>
     </div>
   );
 }

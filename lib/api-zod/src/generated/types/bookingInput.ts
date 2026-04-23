@@ -9,6 +9,8 @@
 export interface BookingInput {
   customerName: string;
   customerId?: string;
+  email?: string | null;
+  phone?: string | null;
   seats?: number;
   paymentStatus?: string;
 }

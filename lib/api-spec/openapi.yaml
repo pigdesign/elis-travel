@@ -432,6 +432,110 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
+  /admin/excursions/{id}/bookings/{bookingId}:
+    patch:
+      operationId: updateExcursionBookingPayment
+      tags: [excursions]
+      summary: Aggiorna stato pagamento prenotazione
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingPaymentStatusUpdate"
+      responses:
+        "200":
+          description: Prenotazione aggiornata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteExcursionBooking
+      tags: [excursions]
+      summary: Elimina prenotazione
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Prenotazione eliminata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /excursions/{id}/book:
+    post:
+      operationId: createPublicExcursionBooking
+      tags: [public]
+      summary: Prenota un posto su una gita (pubblico, senza autenticazione)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicBookingInput"
+      responses:
+        "201":
+          description: Prenotazione registrata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBookingResponse"
+        "400":
+          description: Dati non validi o posti esauriti
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/excursions/{id}/vehicle:
     patch:
       operationId: updateExcursionVehicle
@@ -980,6 +1084,12 @@ components:
           nullable: true
         customerName:
           type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
         seats:
           type: integer
         paymentStatus:
@@ -1009,12 +1119,60 @@ components:
           type: string
         customerId:
           type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
         seats:
           type: integer
         paymentStatus:
           type: string
       required:
         - customerName
+    BookingPaymentStatusUpdate:
+      type: object
+      properties:
+        paymentStatus:
+          type: string
+          enum: [pending, deposit, paid]
+      required:
+        - paymentStatus
+    PublicBookingInput:
+      type: object
+      properties:
+        customerName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        seats:
+          type: integer
+          minimum: 1
+          maximum: 10
+        paymentType:
+          type: string
+          enum: [deposit, full]
+      required:
+        - customerName
+        - email
+        - seats
+        - paymentType
+    PublicBookingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        seats:
+          type: integer
+        paymentStatus:
+          type: string
+        message:
+          type: string
+      required: [id, seats, paymentStatus, message]
     ExcursionInput:
       type: object
       properties:

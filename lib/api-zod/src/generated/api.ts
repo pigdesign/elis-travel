@@ -358,6 +358,8 @@ export const GetExcursionResponse = zod
           excursionId: zod.string().uuid(),
           customerId: zod.string().nullish(),
           customerName: zod.string(),
+          email: zod.string().nullish(),
+          phone: zod.string().nullish(),
           seats: zod.number(),
           paymentStatus: zod.string(),
           bookedAt: zod.coerce.date(),
@@ -435,8 +437,65 @@ export const AddExcursionBookingParams = zod.object({
 export const AddExcursionBookingBody = zod.object({
   customerName: zod.string(),
   customerId: zod.string().optional(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
   seats: zod.number().optional(),
   paymentStatus: zod.string().optional(),
+});
+
+/**
+ * @summary Aggiorna stato pagamento prenotazione
+ */
+export const UpdateExcursionBookingPaymentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const UpdateExcursionBookingPaymentBody = zod.object({
+  paymentStatus: zod.enum(["pending", "deposit", "paid"]),
+});
+
+export const UpdateExcursionBookingPaymentResponse = zod.object({
+  id: zod.string().uuid(),
+  excursionId: zod.string().uuid(),
+  customerId: zod.string().nullish(),
+  customerName: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  seats: zod.number(),
+  paymentStatus: zod.string(),
+  bookedAt: zod.coerce.date(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Elimina prenotazione
+ */
+export const DeleteExcursionBookingParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const DeleteExcursionBookingResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Prenota un posto su una gita (pubblico, senza autenticazione)
+ */
+export const CreatePublicExcursionBookingParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const createPublicExcursionBookingBodySeatsMax = 10;
+
+export const CreatePublicExcursionBookingBody = zod.object({
+  customerName: zod.string(),
+  email: zod.string(),
+  phone: zod.string().optional(),
+  seats: zod.number().min(1).max(createPublicExcursionBookingBodySeatsMax),
+  paymentType: zod.enum(["deposit", "full"]),
 });
 
 /**

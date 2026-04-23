@@ -11,6 +11,8 @@ export interface Booking {
   excursionId: string;
   customerId?: string | null;
   customerName: string;
+  email?: string | null;
+  phone?: string | null;
   seats: number;
   paymentStatus: string;
   bookedAt: Date;
