@@ -79,10 +79,14 @@ export function ContactsPage() {
           resetForm();
         },
         onError: (err: unknown) => {
-          const apiErr = err as { error?: string } | undefined;
+          let serverMessage: string | undefined;
+          if (err && typeof err === "object") {
+            const e = err as { name?: string; data?: { error?: string }; error?: string };
+            serverMessage = e.data?.error ?? e.error;
+          }
           setError("root", {
             type: "server",
-            message: apiErr?.error ?? "Si è verificato un errore. Riprova più tardi.",
+            message: serverMessage ?? "Si è verificato un errore. Riprova più tardi.",
           });
         },
       }

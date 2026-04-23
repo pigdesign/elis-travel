@@ -57,6 +57,19 @@ router.post("/leads", async (req, res) => {
       return;
     }
 
+    if (customerName.length > 200 || email.length > 200) {
+      res.status(400).json({ error: "Nome o email troppo lunghi." });
+      return;
+    }
+    if (phone && phone.length > 40) {
+      res.status(400).json({ error: "Numero di telefono troppo lungo." });
+      return;
+    }
+    if (message && message.length > 2000) {
+      res.status(400).json({ error: "Messaggio troppo lungo (max 2000 caratteri)." });
+      return;
+    }
+
     let parsedOfferId: string | null = offerId ?? null;
     let parsedExcursionId: string | null = excursionId ?? null;
     if (productRef && typeof productRef === "string" && productRef.includes(":")) {
