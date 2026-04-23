@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Plus, MapPin, Users, Clock, Star, ExternalLink, ArrowRight } from "lucide-react";
+import { Plus, MapPin, Users, Clock, Star, ExternalLink, ArrowRight, Calendar } from "lucide-react";
 import { useListOffers } from "@workspace/api-client-react";
 import type { OfferSummary } from "@workspace/api-client-react";
 import { Button } from "@/components/shared/Button";
@@ -87,9 +87,10 @@ function OfferCard({ offer, onOpen }: { offer: OfferSummary; onOpen: () => void 
           </div>
         )}
 
-        {!offer.period && offer.validFrom && (
-          <div className="text-xs">
-            {formatDate(offer.validFrom)} → {formatDate(offer.validTo)}
+        {offer.validFrom && (
+          <div className="flex items-center gap-1 text-xs">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{formatDate(offer.validFrom)} – {formatDate(offer.validTo)}</span>
           </div>
         )}
       </div>
