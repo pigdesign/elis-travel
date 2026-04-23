@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useLocation } from "wouter";
+import { useState, useRef, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import {
   ChevronDown,
   ChevronRight,
@@ -77,13 +77,20 @@ const FILTER_TABS: { key: "all" | StatusKey; label: string }[] = [
   { key: "lost", label: "Perse" },
 ];
 
-function LeadRow({ lead }: { lead: Lead }) {
-  const [expanded, setExpanded] = useState(false);
+function LeadRow({ lead, defaultExpanded = false }: { lead: Lead; defaultExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (defaultExpanded && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [defaultExpanded]);
 
   const { data: notes = [] } = useListLeadNotes(lead.id, {
     query: {
@@ -129,7 +136,7 @@ function LeadRow({ lead }: { lead: Lead }) {
     .toUpperCase();
 
   return (
-    <div className="border-b border-border last:border-0">
+    <div ref={rowRef} className="border-b border-border last:border-0">
       <button
         className="w-full text-left px-4 md:px-6 py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded((e) => !e)}
@@ -354,6 +361,8 @@ function LeadRow({ lead }: { lead: Lead }) {
 export function LeadsPage() {
   const [activeFilter, setActiveFilter] = useState<"all" | StatusKey>("all");
   const { data: leads = [], isLoading } = useListLeads();
+  const search = useSearch();
+  const focusedLeadId = new URLSearchParams(search).get("lead");
 
   const newCount = leads.filter((l) => l.status === "new").length;
 
@@ -427,7 +436,11 @@ export function LeadsPage() {
         ) : (
           <div className="divide-y divide-border">
             {filtered.map((lead) => (
-              <LeadRow key={lead.id} lead={lead} />
+              <LeadRow
+                key={lead.id}
+                lead={lead}
+                defaultExpanded={lead.id === focusedLeadId}
+              />
             ))}
           </div>
         )}
