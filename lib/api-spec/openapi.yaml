@@ -18,6 +18,8 @@ tags:
     description: Offerte e pacchetti viaggio
   - name: leads
     description: Richieste clienti (Mini-CRM)
+  - name: public
+    description: Endpoint pubblici (senza autenticazione)
 paths:
   /healthz:
     get:
@@ -462,6 +464,30 @@ paths:
                 $ref: "#/components/schemas/LeadNote"
         "404":
           description: Lead non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /leads:
+    post:
+      operationId: submitContactRequest
+      tags: [public]
+      summary: Invia richiesta di contatto pubblica
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicLeadInput"
+      responses:
+        "201":
+          description: Richiesta ricevuta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicLeadResponse"
+        "400":
+          description: Validazione fallita
           content:
             application/json:
               schema:
@@ -999,3 +1025,39 @@ components:
           type: string
       required:
         - text
+    PublicLeadInput:
+      type: object
+      properties:
+        customerName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        offerId:
+          type: string
+          format: uuid
+          nullable: true
+        excursionId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - customerName
+        - email
+    PublicLeadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        message:
+          type: string
+      required:
+        - id
+        - message
