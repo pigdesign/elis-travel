@@ -127,17 +127,28 @@ function PageLevelRmsSearch({ onImported }: { onImported: () => void }) {
         <div className="space-y-2">
           {(results as RmsSearchResult[]).map((r) => {
             const isImporting = importing && importingVars?.data?.rmsExternalId === r.id;
+            const hasEmail = Boolean(r.email);
             return (
               <div key={r.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-white">
-                <div>
+                <div className="min-w-0">
                   <div className="font-medium text-sm">{r.firstName} {r.lastName}</div>
-                  <div className="text-xs text-muted-foreground">{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
-                  <div className="text-xs text-muted-foreground font-mono">ID RMS: {r.id}</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                    {hasEmail ? (
+                      <span>{r.email}</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                        <AlertCircle className="w-3 h-3" />senza email
+                      </span>
+                    )}
+                    {r.phone && <span>· {r.phone}</span>}
+                  </div>
+                  <div className="text-xs text-muted-foreground font-mono mt-0.5">ID RMS: {r.id}</div>
                 </div>
                 <Button
                   onClick={() => handleImport(r)}
                   disabled={importing}
                   className="text-xs bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 h-auto ml-3 flex-shrink-0"
+                  title={!hasEmail ? "Verrà assegnata un'email placeholder modificabile" : undefined}
                 >
                   {isImporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Download className="w-3 h-3 mr-1" />Importa</>}
                 </Button>
@@ -430,12 +441,23 @@ function CustomerDetailPanel({
             )}
             {(rmsResults as RmsSearchResult[]).length > 0 && (
               <div className="space-y-2">
-                {(rmsResults as RmsSearchResult[]).map((r) => (
+                {(rmsResults as RmsSearchResult[]).map((r) => {
+                  const hasEmail = Boolean(r.email);
+                  return (
                   <div key={r.id} className="p-3 border border-border rounded-lg bg-white space-y-2">
                     <div>
                       <div className="font-medium text-sm">{r.firstName} {r.lastName}</div>
-                      <div className="text-xs text-muted-foreground">{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
-                      <div className="text-xs text-muted-foreground font-mono">ID RMS: {r.id}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                        {hasEmail ? (
+                          <span>{r.email}</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                            <AlertCircle className="w-3 h-3" />senza email
+                          </span>
+                        )}
+                        {r.phone && <span>· {r.phone}</span>}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono mt-0.5">ID RMS: {r.id}</div>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -452,7 +474,7 @@ function CustomerDetailPanel({
                         onClick={() => handleImportFromRms(r)}
                         disabled={linking || importing}
                         className="text-xs bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 h-auto"
-                        title="Importa come nuovo cliente locale (deduplicazione per email)"
+                        title={!hasEmail ? "Verrà assegnata un'email placeholder modificabile" : "Importa come nuovo cliente locale (deduplicazione per email)"}
                       >
                         {importing ? <Loader2 className="w-3 h-3 animate-spin" /> : <>
                           <ExternalLink className="w-3 h-3 mr-1" />Importa come nuovo
@@ -460,7 +482,8 @@ function CustomerDetailPanel({
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

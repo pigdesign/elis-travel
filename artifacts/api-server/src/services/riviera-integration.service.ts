@@ -7,12 +7,37 @@ export interface RmsCustomer {
   externalRef?: string | null;
 }
 
+export interface RmsCustomerRaw {
+  rmsId: number | string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  mobile?: string;
+  [key: string]: unknown;
+}
+
 export interface RmsSearchResult {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string | null;
+}
+
+function mapRmsCustomer(raw: RmsCustomerRaw): RmsSearchResult {
+  const firstName = (raw.firstName ?? "").trim();
+  const lastName = (raw.lastName ?? "").trim();
+  const companyName = (raw.companyName ?? "").trim();
+  const hasName = firstName || lastName;
+  return {
+    id: String(raw.rmsId),
+    firstName: firstName || (companyName || "?"),
+    lastName: lastName || (hasName ? "" : ""),
+    email: (raw.email ?? "").trim(),
+    phone: (raw.mobile ?? raw.phone ?? "").trim() || null,
+  };
 }
 
 export interface RmsSyncPayload {
@@ -63,8 +88,8 @@ export class RivieraIntegrationService {
         const text = await resp.text().catch(() => "");
         return { success: false, error: `RMS ha risposto con errore ${resp.status}: ${text.slice(0, 200)}` };
       }
-      const data = (await resp.json()) as RmsSearchResult[];
-      return { success: true, data };
+      const data = (await resp.json()) as RmsCustomerRaw[];
+      return { success: true, data: data.map(mapRmsCustomer) };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return { success: false, error: `Impossibile raggiungere RMS: ${msg}` };
