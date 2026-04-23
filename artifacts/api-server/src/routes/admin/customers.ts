@@ -5,6 +5,8 @@ import {
   customerExternalLinksTable,
   customerSyncEventsTable,
   EXTERNAL_SYSTEMS,
+  SYNC_EVENT_TYPES,
+  SYNC_EVENT_STATUSES,
   type SyncEventType,
   type SyncEventStatus,
 } from "@workspace/db/schema";
@@ -22,6 +24,12 @@ function syncEvent(
   status: SyncEventStatus,
   payload: object,
 ) {
+  if (!SYNC_EVENT_TYPES.includes(eventType)) {
+    throw new Error(`Invalid eventType: ${eventType}. Must be one of: ${SYNC_EVENT_TYPES.join(", ")}`);
+  }
+  if (!SYNC_EVENT_STATUSES.includes(status)) {
+    throw new Error(`Invalid status: ${status}. Must be one of: ${SYNC_EVENT_STATUSES.join(", ")}`);
+  }
   return db.insert(customerSyncEventsTable).values({
     eventId: randomUUID(),
     customerId,
