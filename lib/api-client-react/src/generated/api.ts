@@ -36,8 +36,10 @@ import type {
   OfferSummary,
   OkResponse,
   PublicCatalog,
+  PublicExcursionDetail,
   PublicLeadInput,
   PublicLeadResponse,
+  PublicOfferDetail,
   Vehicle,
   VehicleUpdateInput,
 } from "./api.schemas";
@@ -1997,6 +1999,180 @@ export function useListPublicCatalog<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListPublicCatalogQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Dettaglio pubblico di un'offerta pubblicata
+ */
+export const getGetPublicOfferUrl = (id: string) => {
+  return `/api/catalog/products/offers/${id}`;
+};
+
+export const getPublicOffer = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PublicOfferDetail> => {
+  return customFetch<PublicOfferDetail>(getGetPublicOfferUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicOfferQueryKey = (id: string) => {
+  return [`/api/catalog/products/offers/${id}`] as const;
+};
+
+export const getGetPublicOfferQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicOffer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicOffer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicOfferQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicOffer>>> = ({
+    signal,
+  }) => getPublicOffer(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicOffer>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicOfferQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicOffer>>
+>;
+export type GetPublicOfferQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Dettaglio pubblico di un'offerta pubblicata
+ */
+
+export function useGetPublicOffer<
+  TData = Awaited<ReturnType<typeof getPublicOffer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicOffer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicOfferQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Dettaglio pubblico di una gita attiva
+ */
+export const getGetPublicExcursionUrl = (id: string) => {
+  return `/api/catalog/products/excursions/${id}`;
+};
+
+export const getPublicExcursion = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PublicExcursionDetail> => {
+  return customFetch<PublicExcursionDetail>(getGetPublicExcursionUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicExcursionQueryKey = (id: string) => {
+  return [`/api/catalog/products/excursions/${id}`] as const;
+};
+
+export const getGetPublicExcursionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicExcursion>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicExcursion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicExcursionQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicExcursion>>
+  > = ({ signal }) => getPublicExcursion(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicExcursion>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicExcursionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicExcursion>>
+>;
+export type GetPublicExcursionQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Dettaglio pubblico di una gita attiva
+ */
+
+export function useGetPublicExcursion<
+  TData = Awaited<ReturnType<typeof getPublicExcursion>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicExcursion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicExcursionQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

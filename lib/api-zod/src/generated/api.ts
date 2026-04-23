@@ -601,3 +601,48 @@ export const ListPublicCatalogResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Dettaglio pubblico di un'offerta pubblicata
+ */
+export const GetPublicOfferParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPublicOfferResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  destination: zod.string().nullish(),
+  tourOperator: zod.string().nullish(),
+  validFrom: zod.coerce.date().nullish(),
+  validTo: zod.coerce.date().nullish(),
+  baseFormula: zod.string().nullish(),
+  departureCity: zod.string().nullish(),
+  durationDays: zod.number().nullish(),
+  durationNights: zod.number().nullish(),
+  period: zod.string().nullish(),
+  publicPrice: zod.string().nullish(),
+  advertisingText: zod.string().nullish(),
+  servicesIncluded: zod.string().nullish(),
+  servicesExcluded: zod.string().nullish(),
+  highlights: zod.string().nullish(),
+  publicLink: zod.string().nullish(),
+});
+
+/**
+ * @summary Dettaglio pubblico di una gita attiva
+ */
+export const GetPublicExcursionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPublicExcursionResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  location: zod.string().nullish(),
+  date: zod.string().nullish(),
+  pricePerPerson: zod.string().nullish(),
+  currentCapacity: zod.number().nullish(),
+  minThreshold: zod.number().nullish(),
+  adherentsCount: zod.number().nullish(),
+});

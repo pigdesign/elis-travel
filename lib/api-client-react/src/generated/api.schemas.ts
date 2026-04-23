@@ -290,6 +290,37 @@ export interface PublicCatalog {
   excursions: PublicCatalogExcursionsItem[];
 }
 
+export interface PublicOfferDetail {
+  id: string;
+  name: string;
+  destination?: string | null;
+  tourOperator?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  baseFormula?: string | null;
+  departureCity?: string | null;
+  durationDays?: number | null;
+  durationNights?: number | null;
+  period?: string | null;
+  publicPrice?: string | null;
+  advertisingText?: string | null;
+  servicesIncluded?: string | null;
+  servicesExcluded?: string | null;
+  highlights?: string | null;
+  publicLink?: string | null;
+}
+
+export interface PublicExcursionDetail {
+  id: string;
+  name: string;
+  location?: string | null;
+  date?: string | null;
+  pricePerPerson?: string | null;
+  currentCapacity?: number | null;
+  minThreshold?: number | null;
+  adherentsCount?: number | null;
+}
+
 export interface PublicLeadResponse {
   id: string;
   message: string;
