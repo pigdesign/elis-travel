@@ -117,9 +117,24 @@ router.patch("/excursions/:id", async (req, res) => {
     const { id } = req.params;
     const body = req.body as Partial<typeof excursionsTable.$inferInsert>;
 
+    const allowed: Partial<typeof excursionsTable.$inferInsert> = {};
+    const mutableFields = [
+      "name", "location", "date", "status", "vehicleId",
+      "currentCapacity", "minThreshold", "adherentsCount",
+      "depositsCount", "balancesCount", "vehicleFixedCost",
+      "mealCostPerPerson", "entranceCostPerPerson", "extraCostPerPerson",
+      "pricePerPerson", "switchThreshold", "switchVehicleId",
+      "switchVehicleAdditionalCost", "operationalNotes",
+    ] as const;
+    for (const field of mutableFields) {
+      if (field in body) {
+        (allowed as Record<string, unknown>)[field] = body[field as keyof typeof body];
+      }
+    }
+
     const [updated] = await db
       .update(excursionsTable)
-      .set({ ...body, updatedAt: new Date() })
+      .set({ ...allowed, updatedAt: new Date() })
       .where(eq(excursionsTable.id, id))
       .returning();
 
@@ -171,11 +186,11 @@ router.post("/excursions/:id/bookings", async (req, res) => {
     const newAdherents = excursion.adherentsCount + seats;
     const newDeposits =
       body.paymentStatus === "deposit"
-        ? excursion.depositsCount + 1
+        ? excursion.depositsCount + seats
         : excursion.depositsCount;
     const newBalances =
       body.paymentStatus === "paid"
-        ? excursion.balancesCount + 1
+        ? excursion.balancesCount + seats
         : excursion.balancesCount;
 
     await db
