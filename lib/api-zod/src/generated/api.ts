@@ -47,25 +47,39 @@ export const GetAuthMeResponse = zod.object({
 });
 
 /**
- * @summary Lista clienti locali con stato collegamento RMS
+ * @summary Lista clienti locali con stato collegamento RMS (paginata)
  */
+export const listCustomersQueryPageDefault = 1;
+
 export const ListCustomersQueryParams = zod.object({
   q: zod.coerce.string().optional().describe("Ricerca per nome o email"),
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(listCustomersQueryPageDefault)
+    .describe("Pagina (default 1)"),
 });
 
-export const ListCustomersResponseItem = zod.object({
-  id: zod.string().uuid(),
-  firstName: zod.string(),
-  lastName: zod.string(),
-  email: zod.string().email(),
-  phone: zod.string().nullish(),
-  rmsLinked: zod.boolean(),
-  rmsExternalId: zod.string().nullish(),
-  rmsLastSyncAt: zod.coerce.date().nullish(),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
+export const ListCustomersResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      firstName: zod.string(),
+      lastName: zod.string(),
+      email: zod.string().email(),
+      phone: zod.string().nullish(),
+      rmsLinked: zod.boolean(),
+      rmsExternalId: zod.string().nullish(),
+      rmsLastSyncAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
 });
-export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
 
 /**
  * @summary Crea nuovo cliente locale

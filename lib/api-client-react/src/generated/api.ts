@@ -22,6 +22,7 @@ import type {
   BookingInput,
   CustomerCreate,
   CustomerDetail,
+  CustomerListPage,
   CustomerRmsImportInput,
   CustomerRmsLinkInput,
   CustomerSummary,
@@ -372,7 +373,7 @@ export function useGetAuthMe<
 }
 
 /**
- * @summary Lista clienti locali con stato collegamento RMS
+ * @summary Lista clienti locali con stato collegamento RMS (paginata)
  */
 export const getListCustomersUrl = (params?: ListCustomersParams) => {
   const normalizedParams = new URLSearchParams();
@@ -393,8 +394,8 @@ export const getListCustomersUrl = (params?: ListCustomersParams) => {
 export const listCustomers = async (
   params?: ListCustomersParams,
   options?: RequestInit,
-): Promise<CustomerSummary[]> => {
-  return customFetch<CustomerSummary[]>(getListCustomersUrl(params), {
+): Promise<CustomerListPage> => {
+  return customFetch<CustomerListPage>(getListCustomersUrl(params), {
     ...options,
     method: "GET",
   });
@@ -439,7 +440,7 @@ export type ListCustomersQueryResult = NonNullable<
 export type ListCustomersQueryError = ErrorType<unknown>;
 
 /**
- * @summary Lista clienti locali con stato collegamento RMS
+ * @summary Lista clienti locali con stato collegamento RMS (paginata)
  */
 
 export function useListCustomers<

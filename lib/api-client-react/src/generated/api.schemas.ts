@@ -354,6 +354,14 @@ export interface CustomerSummary {
   updatedAt: string;
 }
 
+export interface CustomerListPage {
+  items: CustomerSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface CustomerSyncEvent {
   id: string;
   /** pull_from_rms | push_to_rms */
@@ -413,6 +421,11 @@ export type ListCustomersParams = {
    * Ricerca per nome o email
    */
   q?: string;
+  /**
+   * Pagina (default 1)
+   * @minimum 1
+   */
+  page?: number;
 };
 
 export type SearchRmsCustomersParams = {
