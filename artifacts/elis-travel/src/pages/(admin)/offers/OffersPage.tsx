@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Plus, MapPin, Users, Clock, Star, ExternalLink, ArrowRight, Calendar } from "lucide-react";
+import { Plus, MapPin, Users, Clock, Star, ExternalLink, ArrowRight, Calendar, ImageOff } from "lucide-react";
 import { useListOffers } from "@workspace/api-client-react";
 import type { OfferSummary } from "@workspace/api-client-react";
 import { Button } from "@/components/shared/Button";
@@ -27,14 +27,33 @@ function formatPrice(p: string | null | undefined) {
 function OfferCard({ offer, onOpen }: { offer: OfferSummary; onOpen: () => void }) {
   const statusCfg = STATUS_CONFIG[offer.status] ?? STATUS_CONFIG["draft"];
   const isArchived = offer.status === "archived";
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div
       className={cn(
-        "bg-white rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow p-6",
+        "bg-white rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden",
         isArchived && "opacity-60"
       )}
     >
+      <div className="relative h-36 w-full bg-muted flex items-center justify-center overflow-hidden">
+        {offer.coverImageUrl && !imgError ? (
+          <img
+            src={offer.coverImageUrl}
+            alt={offer.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
+            <ImageOff className="w-8 h-8" />
+            <span className="text-xs">Nessuna foto</span>
+          </div>
+        )}
+      </div>
+
+      <div className="p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -127,6 +146,7 @@ function OfferCard({ offer, onOpen }: { offer: OfferSummary; onOpen: () => void 
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );

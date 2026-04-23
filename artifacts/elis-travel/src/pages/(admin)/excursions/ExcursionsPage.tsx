@@ -10,6 +10,7 @@ import {
   Bus,
   TrendingUp,
   AlertCircle,
+  ImageOff,
 } from "lucide-react";
 import { useListExcursions } from "@workspace/api-client-react";
 import type { ExcursionSummary } from "@workspace/api-client-react";
@@ -62,6 +63,7 @@ function AdherentsBar({ adherents, threshold, capacity }: { adherents: number; t
 
 function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
   const [expanded, setExpanded] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const statusCfg = STATUS_CONFIG[exc.status] ?? STATUS_CONFIG["draft"];
   const vehicleCost = parseFloat(exc.vehicleFixedCost ?? "0");
   const mealCost = parseFloat(exc.mealCostPerPerson ?? "0");
@@ -82,7 +84,20 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
         onClick={() => setExpanded((v) => !v)}
       >
         <td className="py-3 pl-4 pr-2">
-          <div className="flex items-start gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0">
+              {exc.coverImageUrl && !imgError ? (
+                <img
+                  src={exc.coverImageUrl}
+                  alt={exc.name}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <ImageOff className="w-4 h-4 text-muted-foreground/40" />
+              )}
+            </div>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-foreground text-sm truncate">{exc.name}</div>
               <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
