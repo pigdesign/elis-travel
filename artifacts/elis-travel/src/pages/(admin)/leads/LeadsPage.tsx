@@ -231,11 +231,11 @@ function LeadRow({ lead }: { lead: Lead }) {
                 )}
               </div>
 
-              {(lead.offerId || lead.excursionId) && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Prodotto richiesto
-                  </h3>
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Prodotto richiesto
+                </h3>
+                {lead.offerId || lead.excursionId ? (
                   <button
                     onClick={() => {
                       if (lead.offerId) navigate(`~/admin/offers/${lead.offerId}`);
@@ -251,8 +251,13 @@ function LeadRow({ lead }: { lead: Lead }) {
                     {lead.offerId ? lead.offerName : lead.excursionName}
                     <ExternalLink className="w-3 h-3 ml-1 text-muted-foreground" />
                   </button>
-                </div>
-              )}
+                ) : (
+                  <span className="inline-flex items-center gap-2 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-muted-foreground">
+                    <Globe className="w-4 h-4" />
+                    Richiesta generica
+                  </span>
+                )}
+              </div>
 
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
