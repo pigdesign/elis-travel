@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:admin": "tsx src/seed-admin.ts",
     "migrate:sessions": "tsx src/migrate-sessions.ts",
+    "migrate:last-sync-at": "tsx src/migrate-last-sync-at.ts",
     "seed:demo": "tsx src/seed-demo.ts"
   },
   "dependencies": {

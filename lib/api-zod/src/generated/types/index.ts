@@ -11,6 +11,7 @@ export * from "./booking";
 export * from "./bookingInput";
 export * from "./customerCreate";
 export * from "./customerDetail";
+export * from "./customerRmsImportInput";
 export * from "./customerRmsLinkInput";
 export * from "./customerSummary";
 export * from "./customerSyncEvent";

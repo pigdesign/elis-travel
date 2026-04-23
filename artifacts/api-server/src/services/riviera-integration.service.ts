@@ -16,6 +16,7 @@ export interface RmsSearchResult {
 }
 
 export interface RmsSyncPayload {
+  externalRef: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -77,7 +78,11 @@ export class RivieraIntegrationService {
     if (!this.isConfigured()) {
       return { success: false, error: "RivieraTransferRMS non configurato (variabili d'ambiente mancanti)." };
     }
+    if (!customer.externalRef) {
+      return { success: false, error: "externalRef mancante: il cliente non ha un ID RMS valido per la sincronizzazione." };
+    }
     const payload: RmsSyncPayload = {
+      externalRef: customer.externalRef,
       firstName: customer.firstName,
       lastName: customer.lastName,
       email: customer.email,

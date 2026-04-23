@@ -78,6 +78,19 @@ export const CreateCustomerBody = zod.object({
 });
 
 /**
+ * @summary Importa un cliente da RMS come profilo locale (crea + collega automaticamente)
+ */
+export const ImportCustomerFromRmsBody = zod.object({
+  rmsExternalId: zod
+    .string()
+    .describe("ID esterno del cliente nel sistema RMS"),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+});
+
+/**
  * @summary Cerca clienti nel CRM RivieraTransferRMS
  */
 export const SearchRmsCustomersQueryParams = zod.object({

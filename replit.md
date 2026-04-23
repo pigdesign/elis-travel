@@ -47,6 +47,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - Route: `/admin/customers`
   - Sidebar voce "Clienti" (UserRound icon)
   - Ricerca locale, crea cliente (modal), panel dettaglio con collegamento RMS e timeline sync
+  - Dalla ricerca RMS: "Collega" (collega cliente locale esistente) o "Importa come nuovo" (crea + collega)
+- **Migration**: `pnpm --filter @workspace/api-server run migrate:last-sync-at` — aggiunge `last_sync_at` a `customer_external_links` (IF NOT EXISTS)
 
 ## Admin Auth System
 

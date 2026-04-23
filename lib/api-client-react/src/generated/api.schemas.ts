@@ -386,6 +386,15 @@ export interface CustomerRmsLinkInput {
   rmsExternalId: string;
 }
 
+export interface CustomerRmsImportInput {
+  /** ID esterno del cliente nel sistema RMS */
+  rmsExternalId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+}
+
 export interface RmsSearchResult {
   id: string;
   firstName: string;
