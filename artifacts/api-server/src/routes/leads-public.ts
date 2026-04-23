@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { leadsTable, leadNotesTable, offersTable, excursionsTable, excursionBookingsTable, customersTable } from "@workspace/db/schema";
 import { eq, and, ne, desc, sql, or } from "drizzle-orm";
+import { dispatchExcursionBookingEmails } from "../services/excursion-booking-emails";
 
 const router = Router();
 
@@ -406,7 +407,19 @@ router.post("/excursions/:id/book", async (req, res) => {
         })
         .returning();
 
-      return { kind: "ok" as const, booking };
+      const [excursionDetails] = await tx
+        .select({
+          id: excursionsTable.id,
+          name: excursionsTable.name,
+          location: excursionsTable.location,
+          date: excursionsTable.date,
+          pricePerPerson: excursionsTable.pricePerPerson,
+        })
+        .from(excursionsTable)
+        .where(eq(excursionsTable.id, id))
+        .limit(1);
+
+      return { kind: "ok" as const, booking, excursion: excursionDetails };
     });
 
     if (result.kind === "notfound") {
@@ -425,6 +438,24 @@ router.post("/excursions/:id/book", async (req, res) => {
             : `Sono rimasti solo ${result.remaining} posti disponibili.`,
       });
       return;
+    }
+
+    if (result.excursion) {
+      dispatchExcursionBookingEmails({
+        bookingId: result.booking.id,
+        customerName: customerName.trim(),
+        customerEmail: normalizedEmail,
+        customerPhone: phone?.trim() || null,
+        seats: seatsNum,
+        paymentType: paymentType as "deposit" | "full",
+        excursion: {
+          id: result.excursion.id,
+          name: result.excursion.name,
+          location: result.excursion.location,
+          date: result.excursion.date,
+          pricePerPerson: result.excursion.pricePerPerson,
+        },
+      });
     }
 
     res.status(201).json({

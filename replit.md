@@ -61,6 +61,19 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **SESSION_SECRET**: Replit Secret (required at startup)
 - **Admin credentials**: admin@elistravel.it / admin123 (change after first login)
 
+## Email notifications (excursion bookings)
+
+- **Service**: `artifacts/api-server/src/services/email.service.ts`
+  - Provider configurabile via env: `RESEND_API_KEY` (Resend via fetch) oppure `SMTP_HOST` + `SMTP_PORT` + `SMTP_USER` + `SMTP_PASSWORD` (+ opzionale `SMTP_SECURE`)
+  - Mittente: `EMAIL_FROM` (default `Elis Travel <info@elis-travel.it>`)
+  - Se nessun provider è configurato l'invio viene saltato con warning nei log
+- **Booking emails**: `artifacts/api-server/src/services/excursion-booking-emails.ts`
+  - Inviate fire-and-forget dopo `POST /api/excursions/:id/book` (non blocca la risposta HTTP)
+  - Cliente: conferma in italiano con titolo/data/posti/pagamento/istruzioni/contatti agenzia
+  - Admin: notifica a `ADMIN_NOTIFICATION_EMAILS` (lista CSV, default `info@elis-travel.it`)
+  - Istruzioni di pagamento opzionali: `PAYMENT_INSTRUCTIONS`, `PAYMENT_INSTRUCTIONS_DEPOSIT`, `PAYMENT_INSTRUCTIONS_FULL`
+  - Contatti agenzia: `AGENCY_NAME`, `AGENCY_CONTACT_EMAIL`, `AGENCY_CONTACT_PHONE`, `PUBLIC_SITE_URL`
+
 ## DB Schema (lib/db/src/schema/)
 
 - `auth.ts` — admin_users table (UUID PK, email, password_hash, name, role)

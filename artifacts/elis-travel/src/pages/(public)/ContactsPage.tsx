@@ -201,7 +201,7 @@ export function ContactsPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-foreground">Email</div>
-                    <div className="text-muted-foreground text-sm">ciao@elistravel.it</div>
+                    <div className="text-muted-foreground text-sm">info@elis-travel.it</div>
                   </div>
                 </div>
               </div>
