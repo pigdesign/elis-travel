@@ -20,6 +20,8 @@ tags:
     description: Richieste clienti (Mini-CRM)
   - name: public
     description: Endpoint pubblici (senza autenticazione)
+  - name: dashboard
+    description: Dashboard amministrativa
 paths:
   /healthz:
     get:
@@ -87,6 +89,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Statistiche dashboard admin
+      responses:
+        "200":
+          description: Statistiche aggregate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
   /admin/excursions:
     get:
       operationId: listExcursions
@@ -1028,6 +1042,118 @@ components:
           enum: [new, contacted, quote_sent, won, lost]
       required:
         - status
+    DashboardLeadsByStatus:
+      type: object
+      properties:
+        new:
+          type: integer
+        contacted:
+          type: integer
+        quote_sent:
+          type: integer
+        won:
+          type: integer
+        lost:
+          type: integer
+      required:
+        - new
+        - contacted
+        - quote_sent
+        - won
+        - lost
+    DashboardUpcomingExcursion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        location:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+        currentCapacity:
+          type: integer
+        minThreshold:
+          type: integer
+        adherentsCount:
+          type: integer
+      required:
+        - id
+        - name
+        - location
+        - date
+        - status
+        - currentCapacity
+        - minThreshold
+        - adherentsCount
+    DashboardRecentLead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        email:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        offerId:
+          type: string
+          format: uuid
+          nullable: true
+        excursionId:
+          type: string
+          format: uuid
+          nullable: true
+        offerName:
+          type: string
+          nullable: true
+        excursionName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - customerName
+        - email
+        - type
+        - status
+        - receivedAt
+    DashboardStats:
+      type: object
+      properties:
+        leadsTotal:
+          type: integer
+        leadsByStatus:
+          $ref: "#/components/schemas/DashboardLeadsByStatus"
+        offersPublished:
+          type: integer
+        upcomingExcursionsCount:
+          type: integer
+        upcomingExcursions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardUpcomingExcursion"
+        recentLeads:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardRecentLead"
+      required:
+        - leadsTotal
+        - leadsByStatus
+        - offersPublished
+        - upcomingExcursionsCount
+        - upcomingExcursions
+        - recentLeads
     LeadNoteInput:
       type: object
       properties:

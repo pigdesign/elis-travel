@@ -47,6 +47,48 @@ export const GetAuthMeResponse = zod.object({
 });
 
 /**
+ * @summary Statistiche dashboard admin
+ */
+export const GetDashboardStatsResponse = zod.object({
+  leadsTotal: zod.number(),
+  leadsByStatus: zod.object({
+    new: zod.number(),
+    contacted: zod.number(),
+    quote_sent: zod.number(),
+    won: zod.number(),
+    lost: zod.number(),
+  }),
+  offersPublished: zod.number(),
+  upcomingExcursionsCount: zod.number(),
+  upcomingExcursions: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      name: zod.string(),
+      location: zod.string(),
+      date: zod.string(),
+      status: zod.string(),
+      currentCapacity: zod.number(),
+      minThreshold: zod.number(),
+      adherentsCount: zod.number(),
+    }),
+  ),
+  recentLeads: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      customerName: zod.string(),
+      email: zod.string(),
+      type: zod.string(),
+      status: zod.string(),
+      receivedAt: zod.coerce.date(),
+      offerId: zod.string().uuid().nullish(),
+      excursionId: zod.string().uuid().nullish(),
+      offerName: zod.string().nullish(),
+      excursionName: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
  * @summary Lista gite
  */
 export const ListExcursionsResponseItem = zod.object({

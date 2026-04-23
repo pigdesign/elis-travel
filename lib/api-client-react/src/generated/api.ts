@@ -20,6 +20,7 @@ import type {
   AdminUser,
   Booking,
   BookingInput,
+  DashboardStats,
   ErrorResponse,
   ExcursionDetail,
   ExcursionInput,
@@ -349,6 +350,81 @@ export function useGetAuthMe<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAuthMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Statistiche dashboard admin
+ */
+export const getGetDashboardStatsUrl = () => {
+  return `/api/admin/dashboard/stats`;
+};
+
+export const getDashboardStats = async (
+  options?: RequestInit,
+): Promise<DashboardStats> => {
+  return customFetch<DashboardStats>(getGetDashboardStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDashboardStatsQueryKey = () => {
+  return [`/api/admin/dashboard/stats`] as const;
+};
+
+export const getGetDashboardStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetDashboardStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardStats>>
+  > = ({ signal }) => getDashboardStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardStats>>
+>;
+export type GetDashboardStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Statistiche dashboard admin
+ */
+
+export function useGetDashboardStats<
+  TData = Awaited<ReturnType<typeof getDashboardStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

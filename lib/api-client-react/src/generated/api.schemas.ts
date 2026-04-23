@@ -215,6 +215,47 @@ export interface LeadStatusUpdate {
   status: LeadStatusUpdateStatus;
 }
 
+export interface DashboardLeadsByStatus {
+  new: number;
+  contacted: number;
+  quote_sent: number;
+  won: number;
+  lost: number;
+}
+
+export interface DashboardUpcomingExcursion {
+  id: string;
+  name: string;
+  location: string;
+  date: string;
+  status: string;
+  currentCapacity: number;
+  minThreshold: number;
+  adherentsCount: number;
+}
+
+export interface DashboardRecentLead {
+  id: string;
+  customerName: string;
+  email: string;
+  type: string;
+  status: string;
+  receivedAt: string;
+  offerId?: string | null;
+  excursionId?: string | null;
+  offerName?: string | null;
+  excursionName?: string | null;
+}
+
+export interface DashboardStats {
+  leadsTotal: number;
+  leadsByStatus: DashboardLeadsByStatus;
+  offersPublished: number;
+  upcomingExcursionsCount: number;
+  upcomingExcursions: DashboardUpcomingExcursion[];
+  recentLeads: DashboardRecentLead[];
+}
+
 export interface LeadNoteInput {
   text: string;
   authorName?: string;
