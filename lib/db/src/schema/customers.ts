@@ -2,6 +2,15 @@ import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export const SYNC_EVENT_TYPES = ["pull_from_rms", "push_to_rms"] as const;
+export type SyncEventType = (typeof SYNC_EVENT_TYPES)[number];
+
+export const SYNC_EVENT_STATUSES = ["success", "failed", "conflict"] as const;
+export type SyncEventStatus = (typeof SYNC_EVENT_STATUSES)[number];
+
+export const EXTERNAL_SYSTEMS = ["riviera_rms"] as const;
+export type ExternalSystem = (typeof EXTERNAL_SYSTEMS)[number];
+
 export const customersTable = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
   firstName: text("first_name").notNull(),

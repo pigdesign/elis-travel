@@ -31,6 +31,8 @@ import {
   Mail,
   Phone,
   ExternalLink,
+  ChevronLeft,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/shared/Button";
@@ -64,6 +66,87 @@ function RmsBadge({ linked, lastSyncAt }: { linked: boolean; lastSyncAt?: string
       <Link2 className="w-3 h-3" />
       RMS
     </span>
+  );
+}
+
+function PageLevelRmsSearch({ onImported }: { onImported: () => void }) {
+  const [q, setQ] = useState("");
+  const debQ = useDebounce(q, 500);
+  const params = { q: debQ };
+
+  const { data: results = [], isFetching, error } = useSearchRmsCustomers(
+    params,
+    { query: { queryKey: getSearchRmsCustomersQueryKey(params), enabled: debQ.length >= 2 } },
+  );
+
+  const qc = useQueryClient();
+  const { mutate: importFromRms, isPending: importing, variables: importingVars } = useImportCustomerFromRms({
+    mutation: {
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: getListCustomersQueryKey() });
+        onImported();
+      },
+    },
+  });
+
+  const handleImport = (r: RmsSearchResult) => {
+    importFromRms({ data: { rmsExternalId: r.id, firstName: r.firstName, lastName: r.lastName, email: r.email, phone: r.phone ?? null } });
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Cerca un cliente su RivieraTransferRMS e importalo direttamente nell'anagrafica locale con collegamento automatico.
+      </p>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Cerca su RMS per nome o email (min 2 caratteri)…"
+          className="w-full pl-9 pr-10 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        {isFetching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+        {q && !isFetching && (
+          <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      {error && (
+        <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          Impossibile contattare RMS. Riprova più tardi.
+        </div>
+      )}
+      {debQ.length >= 2 && !isFetching && (results as RmsSearchResult[]).length === 0 && !error && (
+        <p className="text-sm text-muted-foreground italic">Nessun risultato su RMS per "{debQ}".</p>
+      )}
+      {(results as RmsSearchResult[]).length > 0 && (
+        <div className="space-y-2">
+          {(results as RmsSearchResult[]).map((r) => {
+            const isImporting = importing && importingVars?.data?.rmsExternalId === r.id;
+            return (
+              <div key={r.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-white">
+                <div>
+                  <div className="font-medium text-sm">{r.firstName} {r.lastName}</div>
+                  <div className="text-xs text-muted-foreground">{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
+                  <div className="text-xs text-muted-foreground font-mono">ID RMS: {r.id}</div>
+                </div>
+                <Button
+                  onClick={() => handleImport(r)}
+                  disabled={importing}
+                  className="text-xs bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 h-auto ml-3 flex-shrink-0"
+                >
+                  {isImporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Download className="w-3 h-3 mr-1" />Importa</>}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -312,7 +395,7 @@ function CustomerDetailPanel({
             <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />
             <div>
               <div className="font-medium text-blue-900">Collegato a RMS</div>
-              <div className="text-blue-700 text-xs">ID esterno: {c.rmsExternalId}</div>
+              <div className="text-blue-700 text-xs font-mono">ID esterno: {c.rmsExternalId}</div>
               {c.rmsLastSyncAt && (
                 <div className="text-blue-600 text-xs">Ultima sync: {formatDateTime(c.rmsLastSyncAt)}</div>
               )}
@@ -321,7 +404,7 @@ function CustomerDetailPanel({
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Questo cliente non è ancora collegato a RivieraTransferRMS. Cerca il profilo corrispondente e collegalo.
+              Cliente non collegato a RMS. Cerca il profilo corrispondente e collegalo, oppure importalo come nuovo cliente locale.
             </p>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -342,17 +425,17 @@ function CustomerDetailPanel({
                 Impossibile contattare RMS. Riprova più tardi.
               </div>
             )}
-            {debouncedRmsQ.length >= 2 && !rmsSearching && rmsResults.length === 0 && !rmsError && (
+            {debouncedRmsQ.length >= 2 && !rmsSearching && (rmsResults as RmsSearchResult[]).length === 0 && !rmsError && (
               <p className="text-sm text-muted-foreground italic">Nessun risultato su RMS per "{debouncedRmsQ}".</p>
             )}
-            {rmsResults.length > 0 && (
+            {(rmsResults as RmsSearchResult[]).length > 0 && (
               <div className="space-y-2">
                 {(rmsResults as RmsSearchResult[]).map((r) => (
                   <div key={r.id} className="p-3 border border-border rounded-lg bg-white space-y-2">
                     <div>
                       <div className="font-medium text-sm">{r.firstName} {r.lastName}</div>
                       <div className="text-xs text-muted-foreground">{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
-                      <div className="text-xs text-muted-foreground">ID RMS: {r.id}</div>
+                      <div className="text-xs text-muted-foreground font-mono">ID RMS: {r.id}</div>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -369,7 +452,7 @@ function CustomerDetailPanel({
                         onClick={() => handleImportFromRms(r)}
                         disabled={linking || importing}
                         className="text-xs bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 h-auto"
-                        title="Importa questo profilo RMS come nuovo cliente locale (deduplicazione per email)"
+                        title="Importa come nuovo cliente locale (deduplicazione per email)"
                       >
                         {importing ? <Loader2 className="w-3 h-3 animate-spin" /> : <>
                           <ExternalLink className="w-3 h-3 mr-1" />Importa come nuovo
@@ -488,23 +571,36 @@ function NewCustomerModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+type Tab = "customers" | "rms-import";
+
 export function CustomersPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("customers");
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQ = useDebounce(searchQuery, 350);
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
 
-  const queryParams = debouncedQ ? { q: debouncedQ } : {};
-  const { data: customers = [], isLoading } = useListCustomers(queryParams);
+  const queryParams = { ...(debouncedQ ? { q: debouncedQ } : {}), page };
+  const { data, isLoading } = useListCustomers(queryParams);
+
+  const customers: CustomerSummary[] = (data as { items?: CustomerSummary[] })?.items ?? [];
+  const totalPages: number = (data as { totalPages?: number })?.totalPages ?? 1;
+  const total: number = (data as { total?: number })?.total ?? 0;
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId((prev) => (prev === id ? null : id));
   }, []);
 
+  const handleSearchChange = (v: string) => {
+    setSearchQuery(v);
+    setPage(1);
+  };
+
   return (
     <div className="flex gap-6 h-full">
       <div className={cn("flex-1 min-w-0 space-y-5 transition-all", selectedId ? "lg:max-w-[55%]" : "")}>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
               <Users className="w-7 h-7 text-primary" />
@@ -514,77 +610,138 @@ export function CustomersPage() {
               Anagrafica clienti locale con integrazione RivieraTransferRMS.
             </p>
           </div>
-          <Button
-            onClick={() => setShowNewModal(true)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-2"
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowNewModal(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Nuovo cliente
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab("customers")}
+            className={cn(
+              "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+              activeTab === "customers" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
           >
-            <Plus className="w-4 h-4" />
-            Nuovo cliente
-          </Button>
+            <Users className="w-4 h-4 inline mr-1.5" />
+            Lista clienti {total > 0 && <span className="text-xs text-muted-foreground ml-1">({total})</span>}
+          </button>
+          <button
+            onClick={() => setActiveTab("rms-import")}
+            className={cn(
+              "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+              activeTab === "rms-import" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Download className="w-4 h-4 inline mr-1.5" />
+            Importa da RMS
+          </button>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cerca per nome o email…"
-            className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        {activeTab === "customers" && (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Cerca per nome o email…"
+                className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
+              />
+              {searchQuery && (
+                <button onClick={() => handleSearchChange("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-        <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden">
-          {isLoading ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-primary" />
-              Caricamento clienti…
+            <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden">
+              {isLoading ? (
+                <div className="p-12 text-center text-muted-foreground">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-primary" />
+                  Caricamento clienti…
+                </div>
+              ) : customers.length === 0 ? (
+                <div className="p-12 text-center text-muted-foreground">
+                  {debouncedQ ? `Nessun cliente trovato per "${debouncedQ}".` : "Nessun cliente ancora. Creane uno!"}
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {customers.map((c) => {
+                    const isSelected = selectedId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => handleSelect(c.id)}
+                        className={cn(
+                          "w-full text-left px-5 py-4 flex items-center gap-4 transition-colors hover:bg-muted/30",
+                          isSelected && "bg-primary/5 border-l-2 border-primary"
+                        )}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
+                          {c.firstName[0]}{c.lastName[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-foreground">{c.firstName} {c.lastName}</span>
+                            <RmsBadge linked={c.rmsLinked} lastSyncAt={c.rmsLastSyncAt} />
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-3">
+                            <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>
+                            {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</span>
+                          <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", isSelected && "rotate-90")} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          ) : (customers as CustomerSummary[]).length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              {debouncedQ ? `Nessun cliente trovato per "${debouncedQ}".` : "Nessun cliente ancora. Creane uno!"}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || isLoading}
+                  className="text-xs px-3 py-1.5 h-auto bg-white border border-border text-foreground hover:bg-muted/30"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Pagina {page} di {totalPages}
+                </span>
+                <Button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || isLoading}
+                  className="text-xs px-3 py-1.5 h-auto bg-white border border-border text-foreground hover:bg-muted/30"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "rms-import" && (
+          <div className="bg-white border border-border rounded-2xl shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Download className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Importa da RivieraTransferRMS</h2>
             </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {(customers as CustomerSummary[]).map((c) => {
-                const isSelected = selectedId === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => handleSelect(c.id)}
-                    className={cn(
-                      "w-full text-left px-5 py-4 flex items-center gap-4 transition-colors hover:bg-muted/30",
-                      isSelected && "bg-primary/5 border-l-2 border-primary"
-                    )}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
-                      {c.firstName[0]}{c.lastName[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground">{c.firstName} {c.lastName}</span>
-                        <RmsBadge linked={c.rmsLinked} lastSyncAt={c.rmsLastSyncAt} />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-3">
-                        <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>
-                        {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</span>
-                      <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", isSelected && "rotate-90")} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            <PageLevelRmsSearch onImported={() => setActiveTab("customers")} />
+          </div>
+        )}
       </div>
 
       {selectedId && (

@@ -11,4 +11,9 @@ export type ListCustomersParams = {
    * Ricerca per nome o email
    */
   q?: string;
+  /**
+   * Pagina (default 1)
+   * @minimum 1
+   */
+  page?: number;
 };

@@ -95,7 +95,7 @@ paths:
     get:
       operationId: listCustomers
       tags: [customers]
-      summary: Lista clienti locali con stato collegamento RMS
+      summary: Lista clienti locali con stato collegamento RMS (paginata)
       parameters:
         - name: q
           in: query
@@ -103,15 +103,21 @@ paths:
           schema:
             type: string
           description: Ricerca per nome o email
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Pagina (default 1)
       responses:
         "200":
-          description: Lista clienti
+          description: Lista clienti paginata
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CustomerSummary"
+                $ref: "#/components/schemas/CustomerListPage"
     post:
       operationId: createCustomer
       tags: [customers]
@@ -1649,6 +1655,27 @@ components:
         metadata:
           $ref: "#/components/schemas/UploadUrlRequest"
       required: [uploadURL, objectPath, metadata]
+    CustomerListPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSummary"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - items
+        - total
+        - page
+        - pageSize
+        - totalPages
     CustomerSummary:
       type: object
       properties:

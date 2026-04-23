@@ -4,38 +4,86 @@ import {
   customersTable,
   customerExternalLinksTable,
   customerSyncEventsTable,
+  EXTERNAL_SYSTEMS,
+  type SyncEventType,
+  type SyncEventStatus,
 } from "@workspace/db/schema";
-import { eq, or, ilike, desc, and } from "drizzle-orm";
+import { eq, or, ilike, desc, and, count } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { rivieraService } from "../../services/riviera-integration.service";
+
+const RMS_SYSTEM = EXTERNAL_SYSTEMS[0];
+const PAGE_SIZE = 20;
+
+function syncEvent(
+  customerId: string,
+  sourceSystem: string,
+  eventType: SyncEventType,
+  status: SyncEventStatus,
+  payload: object,
+) {
+  return db.insert(customerSyncEventsTable).values({
+    eventId: randomUUID(),
+    customerId,
+    sourceSystem,
+    eventType,
+    status,
+    payload: JSON.stringify(payload),
+    occurredAt: new Date(),
+  });
+}
 
 const router = Router();
 
 router.get("/customers", async (req, res) => {
   try {
     const q = (req.query.q as string | undefined)?.trim();
+    const page = Math.max(1, parseInt((req.query.page as string) ?? "1", 10) || 1);
+    const offset = (page - 1) * PAGE_SIZE;
 
-    const base = db
-      .select({
-        id: customersTable.id,
-        firstName: customersTable.firstName,
-        lastName: customersTable.lastName,
-        email: customersTable.email,
-        phone: customersTable.phone,
-        createdAt: customersTable.createdAt,
-        updatedAt: customersTable.updatedAt,
-      })
-      .from(customersTable);
+    const whereClause = q
+      ? or(
+          ilike(customersTable.firstName, `%${q}%`),
+          ilike(customersTable.lastName, `%${q}%`),
+          ilike(customersTable.email, `%${q}%`),
+        )
+      : undefined;
 
-    const customers = q
-      ? await base.where(
-          or(
-            ilike(customersTable.firstName, `%${q}%`),
-            ilike(customersTable.lastName, `%${q}%`),
-            ilike(customersTable.email, `%${q}%`),
-          ),
-        ).orderBy(desc(customersTable.createdAt))
-      : await base.orderBy(desc(customersTable.createdAt));
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(customersTable)
+      .where(whereClause);
+
+    const customers = whereClause
+      ? await db
+          .select({
+            id: customersTable.id,
+            firstName: customersTable.firstName,
+            lastName: customersTable.lastName,
+            email: customersTable.email,
+            phone: customersTable.phone,
+            createdAt: customersTable.createdAt,
+            updatedAt: customersTable.updatedAt,
+          })
+          .from(customersTable)
+          .where(whereClause)
+          .orderBy(desc(customersTable.createdAt))
+          .limit(PAGE_SIZE)
+          .offset(offset)
+      : await db
+          .select({
+            id: customersTable.id,
+            firstName: customersTable.firstName,
+            lastName: customersTable.lastName,
+            email: customersTable.email,
+            phone: customersTable.phone,
+            createdAt: customersTable.createdAt,
+            updatedAt: customersTable.updatedAt,
+          })
+          .from(customersTable)
+          .orderBy(desc(customersTable.createdAt))
+          .limit(PAGE_SIZE)
+          .offset(offset);
 
     const links = await db
       .select({
@@ -44,11 +92,11 @@ router.get("/customers", async (req, res) => {
         lastSyncAt: customerExternalLinksTable.lastSyncAt,
       })
       .from(customerExternalLinksTable)
-      .where(eq(customerExternalLinksTable.externalSystem, "riviera_rms"));
+      .where(eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM));
 
     const linkMap = new Map(links.map((l) => [l.customerId, l]));
 
-    const result = customers.map((c) => {
+    const items = customers.map((c) => {
       const link = linkMap.get(c.id);
       return {
         ...c,
@@ -58,7 +106,13 @@ router.get("/customers", async (req, res) => {
       };
     });
 
-    res.json(result);
+    res.json({
+      items,
+      total: Number(total),
+      page,
+      pageSize: PAGE_SIZE,
+      totalPages: Math.ceil(Number(total) / PAGE_SIZE),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -123,6 +177,96 @@ router.get("/customers/rms/search", async (req, res) => {
   }
 });
 
+router.post("/customers/rms/import", async (req, res) => {
+  try {
+    const { rmsExternalId, firstName, lastName, email, phone } = req.body as {
+      rmsExternalId?: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string | null;
+    };
+
+    if (!rmsExternalId?.trim() || !firstName?.trim() || !lastName?.trim() || !email?.trim()) {
+      res.status(400).json({ error: "rmsExternalId, firstName, lastName ed email sono obbligatori." });
+      return;
+    }
+
+    const existingByEmail = await db
+      .select({ id: customersTable.id })
+      .from(customersTable)
+      .where(ilike(customersTable.email, email.trim()))
+      .limit(1);
+
+    let customerId: string;
+    if (existingByEmail.length > 0) {
+      customerId = existingByEmail[0].id;
+    } else {
+      const [newCustomer] = await db
+        .insert(customersTable)
+        .values({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone?.trim() || null,
+        })
+        .returning({ id: customersTable.id });
+      customerId = newCustomer.id;
+    }
+
+    const [existingLink] = await db
+      .select()
+      .from(customerExternalLinksTable)
+      .where(
+        and(
+          eq(customerExternalLinksTable.customerId, customerId),
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
+        ),
+      )
+      .limit(1);
+
+    if (!existingLink) {
+      await db.insert(customerExternalLinksTable).values({
+        customerId,
+        externalSystem: RMS_SYSTEM,
+        externalId: rmsExternalId.trim(),
+      });
+
+      await syncEvent(customerId, "riviera_rms", "pull_from_rms", "success", {
+        rmsExternalId: rmsExternalId.trim(),
+        source: "import",
+      });
+    }
+
+    const [finalCustomer] = await db
+      .select()
+      .from(customersTable)
+      .where(eq(customersTable.id, customerId))
+      .limit(1);
+
+    const [finalLink] = await db
+      .select()
+      .from(customerExternalLinksTable)
+      .where(
+        and(
+          eq(customerExternalLinksTable.customerId, customerId),
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
+        ),
+      )
+      .limit(1);
+
+    res.status(201).json({
+      ...finalCustomer,
+      rmsLinked: true,
+      rmsExternalId: finalLink?.externalId ?? null,
+      rmsLastSyncAt: finalLink?.lastSyncAt ?? null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 router.get("/customers/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -143,12 +287,12 @@ router.get("/customers/:id", async (req, res) => {
       .where(
         and(
           eq(customerExternalLinksTable.customerId, id),
-          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
         ),
       )
       .limit(1);
 
-    const syncEvents = await db
+    const events = await db
       .select()
       .from(customerSyncEventsTable)
       .where(eq(customerSyncEventsTable.customerId, id))
@@ -160,7 +304,7 @@ router.get("/customers/:id", async (req, res) => {
       rmsLinked: Boolean(link),
       rmsExternalId: link?.externalId ?? null,
       rmsLastSyncAt: link?.lastSyncAt ?? null,
-      syncEvents: syncEvents.map((e) => ({
+      syncEvents: events.map((e) => ({
         id: e.id,
         eventType: e.eventType,
         status: e.status,
@@ -220,7 +364,7 @@ router.patch("/customers/:id", async (req, res) => {
       .where(
         and(
           eq(customerExternalLinksTable.customerId, id),
-          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
         ),
       )
       .limit(1);
@@ -239,21 +383,13 @@ router.patch("/customers/:id", async (req, res) => {
           updated.updatedAt,
         );
 
-        await db.insert(customerSyncEventsTable).values({
-          eventId: randomUUID(),
-          customerId: updated.id,
-          sourceSystem: "elis_travel",
-          eventType: "push_to_rms",
-          status: syncResult.success ? "success" : "failed",
-          payload: JSON.stringify({
-            firstName: updated.firstName,
-            lastName: updated.lastName,
-            email: updated.email,
-            phone: updated.phone,
-            lastUpdatedAt: updated.updatedAt.toISOString(),
-            error: syncResult.success ? undefined : syncResult.error,
-          }),
-          occurredAt: new Date(),
+        await syncEvent(updated.id, "elis_travel", "push_to_rms", syncResult.success ? "success" : "failed", {
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          email: updated.email,
+          phone: updated.phone,
+          lastUpdatedAt: updated.updatedAt.toISOString(),
+          error: syncResult.success ? undefined : syncResult.error,
         });
 
         if (syncResult.success) {
@@ -270,101 +406,6 @@ router.patch("/customers/:id", async (req, res) => {
       rmsLinked: Boolean(link),
       rmsExternalId: link?.externalId ?? null,
       rmsLastSyncAt: link?.lastSyncAt ?? null,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Errore interno del server." });
-  }
-});
-
-router.post("/customers/rms/import", async (req, res) => {
-  try {
-    const { rmsExternalId, firstName, lastName, email, phone } = req.body as {
-      rmsExternalId?: string;
-      firstName?: string;
-      lastName?: string;
-      email?: string;
-      phone?: string | null;
-    };
-
-    if (!rmsExternalId?.trim() || !firstName?.trim() || !lastName?.trim() || !email?.trim()) {
-      res.status(400).json({ error: "rmsExternalId, firstName, lastName ed email sono obbligatori." });
-      return;
-    }
-
-    const existingByEmail = await db
-      .select({ id: customersTable.id })
-      .from(customersTable)
-      .where(ilike(customersTable.email, email.trim()))
-      .limit(1);
-
-    let customerId: string;
-    if (existingByEmail.length > 0) {
-      customerId = existingByEmail[0].id;
-    } else {
-      const [newCustomer] = await db
-        .insert(customersTable)
-        .values({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone?.trim() || null,
-        })
-        .returning({ id: customersTable.id });
-      customerId = newCustomer.id;
-    }
-
-    const [existingLink] = await db
-      .select()
-      .from(customerExternalLinksTable)
-      .where(
-        and(
-          eq(customerExternalLinksTable.customerId, customerId),
-          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
-        ),
-      )
-      .limit(1);
-
-    if (!existingLink) {
-      await db.insert(customerExternalLinksTable).values({
-        customerId,
-        externalSystem: "riviera_rms",
-        externalId: rmsExternalId.trim(),
-      });
-
-      await db.insert(customerSyncEventsTable).values({
-        eventId: randomUUID(),
-        customerId,
-        sourceSystem: "riviera_rms",
-        eventType: "pull_from_rms",
-        status: "success",
-        payload: JSON.stringify({ rmsExternalId: rmsExternalId.trim(), source: "import" }),
-        occurredAt: new Date(),
-      });
-    }
-
-    const [finalCustomer] = await db
-      .select()
-      .from(customersTable)
-      .where(eq(customersTable.id, customerId))
-      .limit(1);
-
-    const [finalLink] = await db
-      .select()
-      .from(customerExternalLinksTable)
-      .where(
-        and(
-          eq(customerExternalLinksTable.customerId, customerId),
-          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
-        ),
-      )
-      .limit(1);
-
-    res.status(201).json({
-      ...finalCustomer,
-      rmsLinked: true,
-      rmsExternalId: finalLink?.externalId ?? null,
-      rmsLastSyncAt: finalLink?.lastSyncAt ?? null,
     });
   } catch (err) {
     console.error(err);
@@ -399,7 +440,7 @@ router.post("/customers/:id/link", async (req, res) => {
       .where(
         and(
           eq(customerExternalLinksTable.customerId, id),
-          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
         ),
       )
       .limit(1);
@@ -416,21 +457,13 @@ router.post("/customers/:id/link", async (req, res) => {
         .insert(customerExternalLinksTable)
         .values({
           customerId: id,
-          externalSystem: "riviera_rms",
+          externalSystem: RMS_SYSTEM,
           externalId: rmsExternalId.trim(),
         })
         .returning();
     }
 
-    await db.insert(customerSyncEventsTable).values({
-      eventId: randomUUID(),
-      customerId: id,
-      sourceSystem: "elis_travel",
-      eventType: "pull_from_rms",
-      status: "success",
-      payload: JSON.stringify({ rmsExternalId: rmsExternalId.trim() }),
-      occurredAt: new Date(),
-    });
+    await syncEvent(id, "elis_travel", "pull_from_rms", "success", { rmsExternalId: rmsExternalId.trim() });
 
     res.json({ ...customer, rmsLinked: true, rmsExternalId: link.externalId, rmsLastSyncAt: link.lastSyncAt });
   } catch (err) {
@@ -460,7 +493,7 @@ router.post("/customers/:id/sync", async (req, res) => {
       .where(
         and(
           eq(customerExternalLinksTable.customerId, id),
-          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
         ),
       )
       .limit(1);
@@ -485,21 +518,13 @@ router.post("/customers/:id/sync", async (req, res) => {
         customer.updatedAt,
       );
 
-      await db.insert(customerSyncEventsTable).values({
-        eventId: randomUUID(),
-        customerId: id,
-        sourceSystem: "elis_travel",
-        eventType: "push_to_rms",
-        status: syncResult.success ? "success" : "failed",
-        payload: JSON.stringify({
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          email: customer.email,
-          phone: customer.phone,
-          lastUpdatedAt: customer.updatedAt.toISOString(),
-          error: syncResult.success ? undefined : syncResult.error,
-        }),
-        occurredAt: new Date(),
+      await syncEvent(id, "elis_travel", "push_to_rms", syncResult.success ? "success" : "failed", {
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        email: customer.email,
+        phone: customer.phone,
+        lastUpdatedAt: customer.updatedAt.toISOString(),
+        error: syncResult.success ? undefined : syncResult.error,
       });
 
       if (syncResult.success) {
