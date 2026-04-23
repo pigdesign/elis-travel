@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog } from "@workspace/api-client-react";
-import { MapPin, Send, Loader2, Ticket } from "lucide-react";
+import { MapPin, Send, Loader2, Ticket, ArrowRight } from "lucide-react";
 
 export function OffersPage() {
   const { data, isLoading } = useListPublicCatalog();
@@ -43,16 +43,32 @@ export function OffersPage() {
                   <div className="w-12 h-12 rounded-full bg-accent/15 text-accent flex items-center justify-center mb-4">
                     <Ticket className="w-6 h-6" />
                   </div>
-                  <h2 className="text-xl font-serif font-bold text-foreground mb-2">
-                    {offer.name}
-                  </h2>
+                  <Link
+                    href={`/offerte/${encodeURIComponent(offer.id)}`}
+                    className="block group"
+                    data-testid={`link-offer-detail-${offer.id}`}
+                  >
+                    <h2 className="text-xl font-serif font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                      {offer.name}
+                    </h2>
+                  </Link>
                   {offer.destination && (
                     <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
                       <MapPin className="w-4 h-4" />
                       <span>{offer.destination}</span>
                     </div>
                   )}
-                  <div className="mt-auto pt-4">
+                  <div className="mt-auto pt-4 space-y-2">
+                    <Link href={`/offerte/${encodeURIComponent(offer.id)}`}>
+                      <Button
+                        variant="outline"
+                        className="w-full inline-flex items-center justify-center gap-2"
+                        data-testid={`button-view-offer-${offer.id}`}
+                      >
+                        Vedi dettagli
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </Link>
                     <Link href={`/contatti?offerId=${encodeURIComponent(offer.id)}`}>
                       <Button
                         className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2"

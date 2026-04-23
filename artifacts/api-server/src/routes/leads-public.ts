@@ -26,6 +26,79 @@ router.get("/catalog/products", async (_req, res) => {
   }
 });
 
+router.get("/catalog/products/offers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [offer] = await db
+      .select({
+        id: offersTable.id,
+        name: offersTable.name,
+        destination: offersTable.destination,
+        tourOperator: offersTable.tourOperator,
+        validFrom: offersTable.validFrom,
+        validTo: offersTable.validTo,
+        baseFormula: offersTable.baseFormula,
+        departureCity: offersTable.departureCity,
+        durationDays: offersTable.durationDays,
+        durationNights: offersTable.durationNights,
+        period: offersTable.period,
+        publicPrice: offersTable.publicPrice,
+        advertisingText: offersTable.advertisingText,
+        servicesIncluded: offersTable.servicesIncluded,
+        servicesExcluded: offersTable.servicesExcluded,
+        highlights: offersTable.highlights,
+        publicLink: offersTable.publicLink,
+        status: offersTable.status,
+      })
+      .from(offersTable)
+      .where(and(eq(offersTable.id, id), eq(offersTable.status, "published")))
+      .limit(1);
+
+    if (!offer) {
+      res.status(404).json({ error: "Offerta non trovata." });
+      return;
+    }
+
+    const { status: _status, ...publicOffer } = offer;
+    res.json(publicOffer);
+  } catch (err) {
+    console.error("Public offer detail fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.get("/catalog/products/excursions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [excursion] = await db
+      .select({
+        id: excursionsTable.id,
+        name: excursionsTable.name,
+        location: excursionsTable.location,
+        date: excursionsTable.date,
+        pricePerPerson: excursionsTable.pricePerPerson,
+        currentCapacity: excursionsTable.currentCapacity,
+        minThreshold: excursionsTable.minThreshold,
+        adherentsCount: excursionsTable.adherentsCount,
+        status: excursionsTable.status,
+      })
+      .from(excursionsTable)
+      .where(and(eq(excursionsTable.id, id), eq(excursionsTable.status, "confirmed")))
+      .limit(1);
+
+    if (!excursion) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
+
+    const { status: _status, ...publicExcursion } = excursion;
+    res.json(publicExcursion);
+  } catch (err) {
+    console.error("Public excursion detail fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 router.post("/leads", async (req, res) => {
   try {
     const {

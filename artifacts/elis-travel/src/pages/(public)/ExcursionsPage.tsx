@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog } from "@workspace/api-client-react";
-import { MapPin, Send, Loader2, Mountain, CalendarDays } from "lucide-react";
+import { MapPin, Send, Loader2, Mountain, CalendarDays, ArrowRight } from "lucide-react";
 
 function formatDate(value?: string | null) {
   if (!value) return null;
@@ -52,9 +52,15 @@ export function ExcursionsPage() {
                     <div className="w-12 h-12 rounded-full bg-accent/15 text-accent flex items-center justify-center mb-4">
                       <Mountain className="w-6 h-6" />
                     </div>
-                    <h2 className="text-xl font-serif font-bold text-foreground mb-2">
-                      {ex.name}
-                    </h2>
+                    <Link
+                      href={`/gite/${encodeURIComponent(ex.id)}`}
+                      className="block group"
+                      data-testid={`link-excursion-detail-${ex.id}`}
+                    >
+                      <h2 className="text-xl font-serif font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                        {ex.name}
+                      </h2>
+                    </Link>
                     {ex.location && (
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
                         <MapPin className="w-4 h-4" />
@@ -67,7 +73,17 @@ export function ExcursionsPage() {
                         <span>{dateLabel}</span>
                       </div>
                     )}
-                    <div className="mt-auto pt-4">
+                    <div className="mt-auto pt-4 space-y-2">
+                      <Link href={`/gite/${encodeURIComponent(ex.id)}`}>
+                        <Button
+                          variant="outline"
+                          className="w-full inline-flex items-center justify-center gap-2"
+                          data-testid={`button-view-excursion-${ex.id}`}
+                        >
+                          Vedi dettagli
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                      </Link>
                       <Link href={`/contatti?excursionId=${encodeURIComponent(ex.id)}`}>
                         <Button
                           className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2"

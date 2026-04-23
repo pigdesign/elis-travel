@@ -518,6 +518,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicCatalog"
+  /catalog/products/offers/{id}:
+    get:
+      operationId: getPublicOffer
+      tags: [public]
+      summary: Dettaglio pubblico di un'offerta pubblicata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dettaglio offerta pubblica
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicOfferDetail"
+        "404":
+          description: Offerta non trovata o non pubblicata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /catalog/products/excursions/{id}:
+    get:
+      operationId: getPublicExcursion
+      tags: [public]
+      summary: Dettaglio pubblico di una gita attiva
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dettaglio gita pubblica
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicExcursionDetail"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -1227,6 +1277,89 @@ components:
                 nullable: true
             required: [id, name]
       required: [offers, excursions]
+    PublicOfferDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        destination:
+          type: string
+          nullable: true
+        tourOperator:
+          type: string
+          nullable: true
+        validFrom:
+          type: string
+          format: date-time
+          nullable: true
+        validTo:
+          type: string
+          format: date-time
+          nullable: true
+        baseFormula:
+          type: string
+          nullable: true
+        departureCity:
+          type: string
+          nullable: true
+        durationDays:
+          type: integer
+          nullable: true
+        durationNights:
+          type: integer
+          nullable: true
+        period:
+          type: string
+          nullable: true
+        publicPrice:
+          type: string
+          nullable: true
+        advertisingText:
+          type: string
+          nullable: true
+        servicesIncluded:
+          type: string
+          nullable: true
+        servicesExcluded:
+          type: string
+          nullable: true
+        highlights:
+          type: string
+          nullable: true
+        publicLink:
+          type: string
+          nullable: true
+      required: [id, name]
+    PublicExcursionDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        location:
+          type: string
+          nullable: true
+        date:
+          type: string
+          nullable: true
+        pricePerPerson:
+          type: string
+          nullable: true
+        currentCapacity:
+          type: integer
+          nullable: true
+        minThreshold:
+          type: integer
+          nullable: true
+        adherentsCount:
+          type: integer
+          nullable: true
+      required: [id, name]
     PublicLeadResponse:
       type: object
       properties:

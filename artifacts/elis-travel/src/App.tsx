@@ -8,7 +8,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { HomePage } from "@/pages/(public)/HomePage";
 import { ContactsPage } from "@/pages/(public)/ContactsPage";
 import { OffersPage as PublicOffersPage } from "@/pages/(public)/OffersPage";
+import { OfferDetailPage as PublicOfferDetailPage } from "@/pages/(public)/OfferDetailPage";
 import { ExcursionsPage as PublicExcursionsPage } from "@/pages/(public)/ExcursionsPage";
+import { ExcursionDetailPage as PublicExcursionDetailPage } from "@/pages/(public)/ExcursionDetailPage";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
 import { DashboardPage } from "@/pages/(admin)/dashboard/DashboardPage";
@@ -25,7 +27,13 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/offerte" component={PublicOffersPage} />
+      <Route path="/offerte/:id">
+        {(params) => <PublicOfferDetailPage offerId={params.id} />}
+      </Route>
       <Route path="/gite" component={PublicExcursionsPage} />
+      <Route path="/gite/:id">
+        {(params) => <PublicExcursionDetailPage excursionId={params.id} />}
+      </Route>
       <Route path="/contatti" component={ContactsPage} />
 
       <Route path="/admin/login" component={LoginPage} />
