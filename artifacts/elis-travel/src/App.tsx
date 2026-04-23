@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { HomePage } from "@/pages/(public)/HomePage";
+import { ContactsPage } from "@/pages/(public)/ContactsPage";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
 import { DashboardPage } from "@/pages/(admin)/dashboard/DashboardPage";
@@ -21,6 +22,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/contatti" component={ContactsPage} />
 
       <Route path="/admin/login" component={LoginPage} />
 

@@ -219,3 +219,17 @@ export interface LeadNoteInput {
   text: string;
   authorName?: string;
 }
+
+export interface PublicLeadInput {
+  customerName: string;
+  email: string;
+  phone?: string | null;
+  message?: string | null;
+  offerId?: string | null;
+  excursionId?: string | null;
+}
+
+export interface PublicLeadResponse {
+  id: string;
+  message: string;
+}

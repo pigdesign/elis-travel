@@ -34,6 +34,8 @@ import type {
   OfferInput,
   OfferSummary,
   OkResponse,
+  PublicLeadInput,
+  PublicLeadResponse,
   Vehicle,
   VehicleUpdateInput,
 } from "./api.schemas";
@@ -1763,4 +1765,90 @@ export const useAddLeadNote = <
   TContext
 > => {
   return useMutation(getAddLeadNoteMutationOptions(options));
+};
+
+/**
+ * @summary Invia richiesta di contatto pubblica
+ */
+export const getSubmitContactRequestUrl = () => {
+  return `/api/leads`;
+};
+
+export const submitContactRequest = async (
+  publicLeadInput: PublicLeadInput,
+  options?: RequestInit,
+): Promise<PublicLeadResponse> => {
+  return customFetch<PublicLeadResponse>(getSubmitContactRequestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(publicLeadInput),
+  });
+};
+
+export const getSubmitContactRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitContactRequest>>,
+    TError,
+    { data: BodyType<PublicLeadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitContactRequest>>,
+  TError,
+  { data: BodyType<PublicLeadInput> },
+  TContext
+> => {
+  const mutationKey = ["submitContactRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitContactRequest>>,
+    { data: BodyType<PublicLeadInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return submitContactRequest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitContactRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitContactRequest>>
+>;
+export type SubmitContactRequestMutationBody = BodyType<PublicLeadInput>;
+export type SubmitContactRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Invia richiesta di contatto pubblica
+ */
+export const useSubmitContactRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitContactRequest>>,
+    TError,
+    { data: BodyType<PublicLeadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitContactRequest>>,
+  TError,
+  { data: BodyType<PublicLeadInput> },
+  TContext
+> => {
+  return useMutation(getSubmitContactRequestMutationOptions(options));
 };

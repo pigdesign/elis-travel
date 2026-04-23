@@ -24,5 +24,7 @@ export * from "./offerDetail";
 export * from "./offerInput";
 export * from "./offerSummary";
 export * from "./okResponse";
+export * from "./publicLeadInput";
+export * from "./publicLeadResponse";
 export * from "./vehicle";
 export * from "./vehicleUpdateInput";

@@ -29,12 +29,18 @@ export function Footer() {
           <div>
             <h4 className="text-lg font-bold mb-6 font-serif">Link rapidi</h4>
             <ul className="space-y-3">
-              {['Chi siamo', 'Destinazioni', 'Tour', 'Blog', 'Contattaci'].map((link) => (
-                <li key={link}>
-                  <a href="#" className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
+              {[
+                { label: 'Chi siamo', href: '#' },
+                { label: 'Destinazioni', href: '#' },
+                { label: 'Tour', href: '#' },
+                { label: 'Blog', href: '#' },
+                { label: 'Contattaci', href: '/contatti' },
+              ].map((link) => (
+                <li key={link.label}>
+                  <Link href={link.href} className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
-                    {link}
-                  </a>
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>

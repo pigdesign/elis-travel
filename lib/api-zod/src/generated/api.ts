@@ -520,3 +520,15 @@ export const AddLeadNoteBody = zod.object({
   text: zod.string(),
   authorName: zod.string().optional(),
 });
+
+/**
+ * @summary Invia richiesta di contatto pubblica
+ */
+export const SubmitContactRequestBody = zod.object({
+  customerName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+  message: zod.string().nullish(),
+  offerId: zod.string().uuid().nullish(),
+  excursionId: zod.string().uuid().nullish(),
+});

@@ -23,7 +23,7 @@ export function Header() {
     { name: "Destinazioni", href: "#destinations" },
     { name: "Tour", href: "#tours" },
     { name: "Chi siamo", href: "#about" },
-    { name: "Contatti", href: "#contact" },
+    { name: "Contatti", href: "/contatti" },
   ];
 
   return (
