@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:admin": "tsx src/seed-admin.ts",
-    "migrate:sessions": "tsx src/migrate-sessions.ts"
+    "migrate:sessions": "tsx src/migrate-sessions.ts",
+    "seed:demo": "tsx src/seed-demo.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

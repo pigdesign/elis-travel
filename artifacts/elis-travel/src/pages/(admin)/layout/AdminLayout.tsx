@@ -1,5 +1,5 @@
-import { Link, useLocation } from "wouter";
-import { Map, LayoutDashboard, Ticket, Users, LogOut, Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
+import { Map, LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
@@ -27,9 +27,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   }
 
   const navItems = [
-    { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-    { name: "Offerte", href: "/admin/offers", icon: Ticket },
-    { name: "Richieste", href: "/admin/leads", icon: Users },
+    { name: "Dashboard", path: "~/admin/dashboard", matchPath: "/admin/dashboard", icon: LayoutDashboard },
+    { name: "Gite di Gruppo", path: "~/admin/excursions", matchPath: "/admin/excursions", icon: Mountain },
+    { name: "Offerte", path: "~/admin/offers", matchPath: "/admin/offers", icon: Ticket },
+    { name: "Richieste", path: "~/admin/leads", matchPath: "/admin/leads", icon: Users },
   ];
 
   const handleLogout = () => {
@@ -40,25 +41,29 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-[100dvh] flex bg-muted/20">
       <aside className="w-64 bg-primary text-primary-foreground flex-shrink-0 border-r border-primary-border hidden md:flex flex-col">
         <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
-          <Link href="/" className="flex items-center gap-2 group">
+          <button
+            onClick={() => navigate("~/")}
+            className="flex items-center gap-2 group"
+          >
             <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-accent-foreground">
               <Map className="w-4 h-4" />
             </div>
             <span className="text-xl font-serif font-bold text-white">Elis Travel</span>
-          </Link>
+          </button>
         </div>
 
         <nav className="flex-1 py-6 px-4 space-y-2">
           {navItems.map((item) => {
             const isActive =
-              location === item.href ||
-              (location === "/admin" && item.href === "/admin/dashboard");
+              location === item.matchPath ||
+              location.startsWith(item.matchPath + "/") ||
+              (location === "/admin" && item.matchPath === "/admin/dashboard");
             return (
-              <Link
+              <button
                 key={item.name}
-                href={item.href}
+                onClick={() => navigate(item.path)}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium text-sm",
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium text-sm text-left",
                   isActive
                     ? "bg-accent text-accent-foreground"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
@@ -66,7 +71,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               >
                 <item.icon className="w-5 h-5" />
                 {item.name}
-              </Link>
+              </button>
             );
           })}
         </nav>
