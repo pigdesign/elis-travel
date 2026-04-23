@@ -1,0 +1,35 @@
+ElisTravel deve integrarsi con il CRM aziendale principale, chiamato RivieraTransferRMS. I due sistemi sono completamente separati. ElisTravel non ha e non avrà mai accesso diretto al database di RMS.
+
+OBIETTIVO:
+
+Implementare il modulo di integrazione Clienti seguendo il pattern "Anti-Corruption Layer". ElisTravel deve mantenere la propria tabella clienti indipendente ( customers ), ma essere in grado di cercare clienti su RMS via API e sincronizzare le modifiche in modo tracciabile.
+
+TASK TECNICI DA IMPLEMENTARE:
+
+1. STRUTTURA DATABASE (Drizzle):
+
+Oltre alla tua tabella locale customers (che DEVE usare UUID v4 come Primary Key), crea queste due tabelle per l'integrazione:
+
+- customer_external_links : Mappa i clienti. Campi: id (uuid), customer_id (FK verso la tua tabella locale), external_system (enum: 'riviera_rms'), external_id (string/number), last_sync_at (timestamp).
+
+- customer_sync_events (Audit Log): Traccia ogni sincronizzazione. Campi: id (uuid), customer_id , direction (enum: 'pull_from_rms', 'push_to_rms'), status (enum: 'success', 'failed', 'conflict'), payload_snapshot (jsonb), created_at .
+
+2. CLIENT HTTP DI INTEGRAZIONE:
+
+Crea un servizio backend (es. services/riviera-integration.service.ts ) dedicato a comunicare con RMS. Deve usare una chiave segreta ( RIVIERA_API_KEY ) presa dalle variabili d'ambiente.
+
+Implementa due metodi base:
+
+- searchCustomers(query) : Chiama GET /api/integration/customers di RMS.
+
+- syncCustomerToRms(customerData) : Invia un DTO anagrafico base (solo nome, cognome, email, tel, ecc.) a POST /api/integration/customers/sync di RMS. Includi sempre il campo lastUpdatedAt con il timestamp di ElisTravel per gestire i conflitti.
+
+3. LOGICA DI SINCRONIZZAZIONE (EVENT-DRIVEN):
+
+- Se la chiamata a RMS fallisce (es. rete giù), ElisTravel NON deve bloccarsi. Salva l'evento in customer_sync_events con stato failed per permettere un riavvio futuro tramite cron-job.
+
+- Mai implementare loop bidirezionali automatici senza controllo. La sincronizzazione da Elis a RMS deve passare solo attraverso questo servizio dedicato e tracciato.
+
+VINCOLI:
+
+Il frontend non deve sapere nulla di questa integrazione. È il backend di ElisTravel che gestisce il salvataggio locale e l'eventuale chiamata HTTP in background verso RivieraTransferRMS.
