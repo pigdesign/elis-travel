@@ -16,7 +16,7 @@ router.get("/catalog/products", async (_req, res) => {
     const excursions = await db
       .select({ id: excursionsTable.id, name: excursionsTable.name, location: excursionsTable.location, date: excursionsTable.date })
       .from(excursionsTable)
-      .where(and(ne(excursionsTable.status, "archived"), ne(excursionsTable.status, "completed")))
+      .where(eq(excursionsTable.status, "confirmed"))
       .orderBy(desc(excursionsTable.date));
 
     res.json({ offers, excursions });
