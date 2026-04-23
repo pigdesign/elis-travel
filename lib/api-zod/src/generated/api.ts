@@ -436,3 +436,87 @@ export const DeleteOfferResponse = zod.object({
 export const DuplicateOfferParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
+
+/**
+ * @summary Lista leads (inbox)
+ */
+export const ListLeadsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  customerName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+  customerId: zod.string().uuid().nullish(),
+  offerId: zod.string().uuid().nullish(),
+  excursionId: zod.string().uuid().nullish(),
+  type: zod.string().describe("generic | offer | excursion"),
+  status: zod.string().describe("new | contacted | quote_sent | won | lost"),
+  channel: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  lastContactAt: zod.coerce.date().nullish(),
+  receivedAt: zod.coerce.date(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  offerName: zod.string().nullish(),
+  excursionName: zod.string().nullish(),
+});
+export const ListLeadsResponse = zod.array(ListLeadsResponseItem);
+
+/**
+ * @summary Aggiorna stato lead
+ */
+export const UpdateLeadStatusParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateLeadStatusBody = zod.object({
+  status: zod.enum(["new", "contacted", "quote_sent", "won", "lost"]),
+});
+
+export const UpdateLeadStatusResponse = zod.object({
+  id: zod.string().uuid(),
+  customerName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+  customerId: zod.string().uuid().nullish(),
+  offerId: zod.string().uuid().nullish(),
+  excursionId: zod.string().uuid().nullish(),
+  type: zod.string().describe("generic | offer | excursion"),
+  status: zod.string().describe("new | contacted | quote_sent | won | lost"),
+  channel: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  lastContactAt: zod.coerce.date().nullish(),
+  receivedAt: zod.coerce.date(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  offerName: zod.string().nullish(),
+  excursionName: zod.string().nullish(),
+});
+
+/**
+ * @summary Note interne del lead
+ */
+export const ListLeadNotesParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListLeadNotesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  leadId: zod.string().uuid(),
+  text: zod.string(),
+  authorName: zod.string(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListLeadNotesResponse = zod.array(ListLeadNotesResponseItem);
+
+/**
+ * @summary Aggiungi nota al lead
+ */
+export const AddLeadNoteParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const AddLeadNoteBody = zod.object({
+  text: zod.string(),
+  authorName: zod.string().optional(),
+});

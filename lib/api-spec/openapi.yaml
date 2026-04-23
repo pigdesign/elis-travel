@@ -16,6 +16,8 @@ tags:
     description: Gite di gruppo
   - name: offers
     description: Offerte e pacchetti viaggio
+  - name: leads
+    description: Richieste clienti (Mini-CRM)
 paths:
   /healthz:
     get:
@@ -358,6 +360,108 @@ paths:
                 $ref: "#/components/schemas/OfferSummary"
         "404":
           description: Offerta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      summary: Lista leads (inbox)
+      responses:
+        "200":
+          description: Lista leads con dati prodotto collegato
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+  /admin/leads/{id}/status:
+    patch:
+      operationId: updateLeadStatus
+      tags: [leads]
+      summary: Aggiorna stato lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadStatusUpdate"
+      responses:
+        "200":
+          description: Stato aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "400":
+          description: Stato non valido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Lead non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/leads/{id}/notes:
+    get:
+      operationId: listLeadNotes
+      tags: [leads]
+      summary: Note interne del lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lista note
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeadNote"
+    post:
+      operationId: addLeadNote
+      tags: [leads]
+      summary: Aggiungi nota al lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadNoteInput"
+      responses:
+        "201":
+          description: Nota aggiunta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadNote"
+        "404":
+          description: Lead non trovato
           content:
             application/json:
               schema:
@@ -785,3 +889,113 @@ components:
         mainSource:
           type: string
           nullable: true
+
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        customerId:
+          type: string
+          format: uuid
+          nullable: true
+        offerId:
+          type: string
+          format: uuid
+          nullable: true
+        excursionId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          description: "generic | offer | excursion"
+        status:
+          type: string
+          description: "new | contacted | quote_sent | won | lost"
+        channel:
+          type: string
+          nullable: true
+        assignedTo:
+          type: string
+          nullable: true
+        lastContactAt:
+          type: string
+          format: date-time
+          nullable: true
+        receivedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        offerName:
+          type: string
+          nullable: true
+        excursionName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - customerName
+        - email
+        - type
+        - status
+        - receivedAt
+        - createdAt
+        - updatedAt
+    LeadNote:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leadId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        authorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - leadId
+        - text
+        - authorName
+        - createdAt
+        - updatedAt
+    LeadStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [new, contacted, quote_sent, won, lost]
+      required:
+        - status
+    LeadNoteInput:
+      type: object
+      properties:
+        text:
+          type: string
+        authorName:
+          type: string
+      required:
+        - text
