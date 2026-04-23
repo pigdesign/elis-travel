@@ -23,5 +23,27 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
+- `pnpm --filter @workspace/api-server run seed:admin` — seed initial admin user (admin@elistravel.it / admin123)
+- `pnpm --filter @workspace/api-server run migrate:sessions` — create admin_sessions table in DB
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Admin Auth System
+
+- **Login**: POST /api/auth/login (email + password, bcryptjs)
+- **Session**: express-session with connect-pg-simple store (table: `admin_sessions`, cookie: `elis.sid`)
+- **Auth guard**: `requireAuth` middleware in `artifacts/api-server/src/middlewares/requireAuth.ts`
+- **Auth context**: `artifacts/elis-travel/src/contexts/AuthContext.tsx`
+- **Login page**: `/admin/login` — `artifacts/elis-travel/src/pages/(admin)/login/LoginPage.tsx`
+- **Admin layout**: redirects unauthenticated users to `/admin/login` using `navigate("~/admin/login")`
+- **SESSION_SECRET**: Replit Secret (required at startup)
+- **Admin credentials**: admin@elistravel.it / admin123 (change after first login)
+
+## DB Schema (lib/db/src/schema/)
+
+- `auth.ts` — admin_users table (UUID PK, email, password_hash, name, role)
+- `customers.ts` — customers table
+- `excursions.ts` — excursions/gite table
+- `offers.ts` — offers/pacchetti table
+- `leads.ts` — leads/richieste table
+- `admin_sessions` — managed by connect-pg-simple (not in Drizzle schema, created via migrate:sessions)

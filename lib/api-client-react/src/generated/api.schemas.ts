@@ -8,3 +8,23 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+export interface OkResponse {
+  ok: boolean;
+}
+
+export interface ErrorResponse {
+  error: string;
+}

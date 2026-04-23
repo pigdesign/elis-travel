@@ -14,3 +14,35 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary Login admin
+ */
+export const AdminLoginBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const AdminLoginResponse = zod.object({
+  id: zod.string().uuid(),
+  email: zod.string().email(),
+  name: zod.string(),
+  role: zod.string(),
+});
+
+/**
+ * @summary Logout admin
+ */
+export const AdminLogoutResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Utente corrente
+ */
+export const GetAuthMeResponse = zod.object({
+  id: zod.string().uuid(),
+  email: zod.string().email(),
+  name: zod.string(),
+  role: zod.string(),
+});
