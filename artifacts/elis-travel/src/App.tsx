@@ -12,6 +12,7 @@ import { DashboardPage } from "@/pages/(admin)/dashboard/DashboardPage";
 import { ExcursionsPage } from "@/pages/(admin)/excursions/ExcursionsPage";
 import { ExcursionDetailPage } from "@/pages/(admin)/excursions/ExcursionDetailPage";
 import { OffersPage } from "@/pages/(admin)/offers/OffersPage";
+import { OfferDetailPage } from "@/pages/(admin)/offers/OfferDetailPage";
 import { LeadsPage } from "@/pages/(admin)/leads/LeadsPage";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,9 @@ function Router() {
               {(params) => <ExcursionDetailPage excursionId={params.id} />}
             </Route>
             <Route path="/offers" component={OffersPage} />
+            <Route path="/offers/:id">
+              {(params) => <OfferDetailPage offerId={params.id} />}
+            </Route>
             <Route path="/leads" component={LeadsPage} />
             <Route component={NotFound} />
           </Switch>

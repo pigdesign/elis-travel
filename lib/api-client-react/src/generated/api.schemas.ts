@@ -114,3 +114,57 @@ export interface Vehicle {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface OfferSummary {
+  id: string;
+  name: string;
+  destination: string;
+  tourOperator?: string | null;
+  status: string;
+  validFrom?: string | null;
+  validTo?: string | null;
+  durationDays?: number | null;
+  durationNights?: number | null;
+  period?: string | null;
+  publicPrice?: string | null;
+  leadsCount: number;
+  lastInterestAt?: string | null;
+  mainSource?: string | null;
+  publicLink?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type OfferDetail = OfferSummary & {
+  baseFormula?: string | null;
+  departureCity?: string | null;
+  advertisingText?: string | null;
+  servicesIncluded?: string | null;
+  servicesExcluded?: string | null;
+  highlights?: string | null;
+  pricingNotes?: string | null;
+  internalNotes?: string | null;
+};
+
+export interface OfferInput {
+  name?: string;
+  destination?: string;
+  tourOperator?: string | null;
+  status?: string;
+  validFrom?: string | null;
+  validTo?: string | null;
+  baseFormula?: string | null;
+  departureCity?: string | null;
+  durationDays?: number | null;
+  durationNights?: number | null;
+  period?: string | null;
+  publicPrice?: string | null;
+  advertisingText?: string | null;
+  servicesIncluded?: string | null;
+  servicesExcluded?: string | null;
+  highlights?: string | null;
+  pricingNotes?: string | null;
+  internalNotes?: string | null;
+  publicLink?: string | null;
+  mainSource?: string | null;
+}

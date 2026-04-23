@@ -278,3 +278,161 @@ export const ListVehiclesResponseItem = zod.object({
   updatedAt: zod.coerce.date(),
 });
 export const ListVehiclesResponse = zod.array(ListVehiclesResponseItem);
+
+/**
+ * @summary Lista offerte
+ */
+export const ListOffersResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  destination: zod.string(),
+  tourOperator: zod.string().nullish(),
+  status: zod.string(),
+  validFrom: zod.coerce.date().nullish(),
+  validTo: zod.coerce.date().nullish(),
+  durationDays: zod.number().nullish(),
+  durationNights: zod.number().nullish(),
+  period: zod.string().nullish(),
+  publicPrice: zod.string().nullish(),
+  leadsCount: zod.number(),
+  lastInterestAt: zod.coerce.date().nullish(),
+  mainSource: zod.string().nullish(),
+  publicLink: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListOffersResponse = zod.array(ListOffersResponseItem);
+
+/**
+ * @summary Crea nuova offerta
+ */
+export const CreateOfferBody = zod.object({
+  name: zod.string().optional(),
+  destination: zod.string().optional(),
+  tourOperator: zod.string().nullish(),
+  status: zod.string().optional(),
+  validFrom: zod.coerce.date().nullish(),
+  validTo: zod.coerce.date().nullish(),
+  baseFormula: zod.string().nullish(),
+  departureCity: zod.string().nullish(),
+  durationDays: zod.number().nullish(),
+  durationNights: zod.number().nullish(),
+  period: zod.string().nullish(),
+  publicPrice: zod.string().nullish(),
+  advertisingText: zod.string().nullish(),
+  servicesIncluded: zod.string().nullish(),
+  servicesExcluded: zod.string().nullish(),
+  highlights: zod.string().nullish(),
+  pricingNotes: zod.string().nullish(),
+  internalNotes: zod.string().nullish(),
+  publicLink: zod.string().nullish(),
+  mainSource: zod.string().nullish(),
+});
+
+/**
+ * @summary Dettaglio offerta
+ */
+export const GetOfferParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetOfferResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    destination: zod.string(),
+    tourOperator: zod.string().nullish(),
+    status: zod.string(),
+    validFrom: zod.coerce.date().nullish(),
+    validTo: zod.coerce.date().nullish(),
+    durationDays: zod.number().nullish(),
+    durationNights: zod.number().nullish(),
+    period: zod.string().nullish(),
+    publicPrice: zod.string().nullish(),
+    leadsCount: zod.number(),
+    lastInterestAt: zod.coerce.date().nullish(),
+    mainSource: zod.string().nullish(),
+    publicLink: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      baseFormula: zod.string().nullish(),
+      departureCity: zod.string().nullish(),
+      advertisingText: zod.string().nullish(),
+      servicesIncluded: zod.string().nullish(),
+      servicesExcluded: zod.string().nullish(),
+      highlights: zod.string().nullish(),
+      pricingNotes: zod.string().nullish(),
+      internalNotes: zod.string().nullish(),
+    }),
+  );
+
+/**
+ * @summary Aggiorna offerta
+ */
+export const UpdateOfferParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateOfferBody = zod.object({
+  name: zod.string().optional(),
+  destination: zod.string().optional(),
+  tourOperator: zod.string().nullish(),
+  status: zod.string().optional(),
+  validFrom: zod.coerce.date().nullish(),
+  validTo: zod.coerce.date().nullish(),
+  baseFormula: zod.string().nullish(),
+  departureCity: zod.string().nullish(),
+  durationDays: zod.number().nullish(),
+  durationNights: zod.number().nullish(),
+  period: zod.string().nullish(),
+  publicPrice: zod.string().nullish(),
+  advertisingText: zod.string().nullish(),
+  servicesIncluded: zod.string().nullish(),
+  servicesExcluded: zod.string().nullish(),
+  highlights: zod.string().nullish(),
+  pricingNotes: zod.string().nullish(),
+  internalNotes: zod.string().nullish(),
+  publicLink: zod.string().nullish(),
+  mainSource: zod.string().nullish(),
+});
+
+export const UpdateOfferResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  destination: zod.string(),
+  tourOperator: zod.string().nullish(),
+  status: zod.string(),
+  validFrom: zod.coerce.date().nullish(),
+  validTo: zod.coerce.date().nullish(),
+  durationDays: zod.number().nullish(),
+  durationNights: zod.number().nullish(),
+  period: zod.string().nullish(),
+  publicPrice: zod.string().nullish(),
+  leadsCount: zod.number(),
+  lastInterestAt: zod.coerce.date().nullish(),
+  mainSource: zod.string().nullish(),
+  publicLink: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Elimina offerta
+ */
+export const DeleteOfferParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DeleteOfferResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Duplica offerta
+ */
+export const DuplicateOfferParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});

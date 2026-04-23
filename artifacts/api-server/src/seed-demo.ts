@@ -3,6 +3,7 @@ import {
   excursionsTable,
   excursionVehiclesTable,
   excursionBookingsTable,
+  offersTable,
 } from "@workspace/db/schema";
 
 async function seedDemo() {
@@ -10,9 +11,8 @@ async function seedDemo() {
 
   const existingExcursions = await db.select().from(excursionsTable).limit(1);
   if (existingExcursions.length > 0) {
-    console.log("✓ Demo data already exists, skipping.");
-    process.exit(0);
-  }
+    console.log("✓ Excursion demo data already exists, skipping excursions.");
+  } else {
 
   const [pullman] = await db
     .insert(excursionVehiclesTable)
@@ -149,7 +149,143 @@ async function seedDemo() {
     }
   }
 
-  console.log(`✓ Created ${4} demo excursions with bookings`);
+    console.log(`✓ Created ${4} demo excursions with bookings`);
+  }
+
+  const existingOffers = await db.select().from(offersTable).limit(1);
+  if (existingOffers.length === 0) {
+    const offerValidFrom = (offsetDays: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      return d;
+    };
+
+    await db.insert(offersTable).values([
+      {
+        name: "Capodanno a Vienna",
+        destination: "Vienna, Austria",
+        tourOperator: "Alpitour",
+        status: "published",
+        validFrom: offerValidFrom(-30),
+        validTo: offerValidFrom(60),
+        baseFormula: "Volo + Hotel 4★ + colazione",
+        departureCity: "Milano Malpensa",
+        durationDays: 4,
+        durationNights: 3,
+        period: "30 Dic – 2 Gen",
+        publicPrice: "890.00",
+        advertisingText: "Festeggia il Capodanno nella magica Vienna! Concerti, mercatini e l'atmosfera mitteleuropea ti aspettano.",
+        servicesIncluded: "Volo A/R, Hotel 4 stelle BB, trasferimenti aeroporto, guida locale",
+        servicesExcluded: "Visti, assicurazione, pranzi e cene, extra personali",
+        highlights: "Concerto di Capodanno|Passeggiata al Prater|Mercatino di Natale",
+        pricingNotes: "Prezzo a persona in camera doppia. Supplemento singola €120.",
+        internalNotes: "Contratto con Alpitour valido fino al 30 Nov. Commissione 12%.",
+        publicLink: "https://elistravel.it/offerte/capodanno-vienna",
+        leadsCount: 23,
+        lastInterestAt: offerValidFrom(-2),
+        mainSource: "newsletter",
+      },
+      {
+        name: "Costiera Amalfitana — Primavera",
+        destination: "Amalfi, Positano, Ravello",
+        tourOperator: "Costa Express",
+        status: "published",
+        validFrom: offerValidFrom(30),
+        validTo: offerValidFrom(120),
+        baseFormula: "Pullman + Hotel 3★ + mezza pensione",
+        departureCity: "Verona",
+        durationDays: 5,
+        durationNights: 4,
+        period: "Aprile – Giugno",
+        publicPrice: "420.00",
+        advertisingText: "Un viaggio lungo la costa più bella d'Italia. Limoni, limonata e panorami mozzafiato.",
+        servicesIncluded: "Pullman privato, Hotel MP, guide, traghetto Positano",
+        servicesExcluded: "Bevande ai pasti, cena libera sabato, ingresso Villa Rufolo",
+        highlights: "Belvedere di Ravello|Sentiero degli Dei|Grotta dello Smeraldo",
+        pricingNotes: "Min 25 partecipanti. Prezzo include tutto il servizio a terra.",
+        internalNotes: "Fornita da Costa Express. Verificare disponibilità hotel prima di confermare.",
+        publicLink: null,
+        leadsCount: 15,
+        lastInterestAt: offerValidFrom(-5),
+        mainSource: "sito web",
+      },
+      {
+        name: "Marocco — Tour Imperiale 8 giorni",
+        destination: "Marrakech, Fès, Casablanca",
+        tourOperator: "Turisanda",
+        status: "published",
+        validFrom: offerValidFrom(15),
+        validTo: offerValidFrom(90),
+        baseFormula: "Volo + Riad 4★ + pensione completa + guida",
+        departureCity: "Roma Fiumicino",
+        durationDays: 8,
+        durationNights: 7,
+        period: "Mar – Mag / Set – Nov",
+        publicPrice: "1190.00",
+        advertisingText: "Scopri le città imperiali del Marocco: souq colorati, palazzi dorati e il deserto del Sahara.",
+        servicesIncluded: "Volo A/R, Riad PC, guida italiano parlante, jeep nel deserto",
+        servicesExcluded: "Mance, assicurazione sanitaria, extra personali",
+        highlights: "Djemaa el-Fna|Medina di Fès|Notte nel deserto",
+        pricingNotes: "Prezzo per persona in camera doppia. Singola +€250.",
+        internalNotes: "Tour garantito min 10 pax. Data confermata 15 aprile. Ottima marginalità.",
+        publicLink: "https://elistravel.it/offerte/marocco-tour-imperiale",
+        leadsCount: 31,
+        lastInterestAt: offerValidFrom(-1),
+        mainSource: "instagram",
+      },
+      {
+        name: "Maldive — Settimana al Paradiso",
+        destination: "Atollo di Ari, Maldive",
+        tourOperator: "Francorosso",
+        status: "draft",
+        validFrom: offerValidFrom(60),
+        validTo: offerValidFrom(180),
+        baseFormula: "Volo + Resort 5★ all inclusive",
+        departureCity: "Milano Malpensa",
+        durationDays: 9,
+        durationNights: 8,
+        period: "Ottobre – Aprile",
+        publicPrice: "3200.00",
+        advertisingText: null,
+        servicesIncluded: "Volo A/R, idrovolante, Resort All Inclusive, snorkeling attrezzatura",
+        servicesExcluded: "Escursioni opzionali, SPA, bevande premium",
+        highlights: "Overwater bungalow|Barriera corallina|Coucher du soleil in barca",
+        pricingNotes: "Prezzo in camera water bungalow. Land bungalow -€400.",
+        internalNotes: "Da finalizzare. Aspettiamo aggiornamento prezzi Francorosso Q3.",
+        publicLink: null,
+        leadsCount: 4,
+        lastInterestAt: offerValidFrom(-10),
+        mainSource: "fiera turismo",
+      },
+      {
+        name: "Barcellona City Break",
+        destination: "Barcellona, Spagna",
+        tourOperator: null,
+        status: "archived",
+        validFrom: offerValidFrom(-120),
+        validTo: offerValidFrom(-30),
+        baseFormula: "Volo + Hotel 3★ BB",
+        departureCity: "Venezia Marco Polo",
+        durationDays: 4,
+        durationNights: 3,
+        period: "Febbraio 2025",
+        publicPrice: "310.00",
+        advertisingText: "Weekend nella città di Gaudí: Sagrada Família, Park Güell e tapas a volontà!",
+        servicesIncluded: "Volo A/R, Hotel BB, metro pass 3 giorni",
+        servicesExcluded: "Ingressi musei, pasti, trasferimenti extra",
+        highlights: "Sagrada Família|Las Ramblas|Park Güell",
+        pricingNotes: "Offerta scaduta.",
+        internalNotes: "Archiviata. Buona performance: 48 leads. Replicare per autunno 2025.",
+        publicLink: null,
+        leadsCount: 48,
+        lastInterestAt: offerValidFrom(-32),
+        mainSource: "email marketing",
+      },
+    ]);
+
+    console.log("✓ Created 5 demo offers");
+  }
+
   process.exit(0);
 }
 
