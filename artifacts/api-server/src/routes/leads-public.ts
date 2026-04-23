@@ -1,9 +1,30 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, offersTable, excursionsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { leadsTable, leadNotesTable, offersTable, excursionsTable } from "@workspace/db/schema";
+import { eq, and, ne, desc } from "drizzle-orm";
 
 const router = Router();
+
+router.get("/catalog/products", async (_req, res) => {
+  try {
+    const offers = await db
+      .select({ id: offersTable.id, name: offersTable.name, destination: offersTable.destination })
+      .from(offersTable)
+      .where(eq(offersTable.status, "published"))
+      .orderBy(desc(offersTable.createdAt));
+
+    const excursions = await db
+      .select({ id: excursionsTable.id, name: excursionsTable.name, location: excursionsTable.location, date: excursionsTable.date })
+      .from(excursionsTable)
+      .where(and(ne(excursionsTable.status, "archived"), ne(excursionsTable.status, "completed")))
+      .orderBy(desc(excursionsTable.date));
+
+    res.json({ offers, excursions });
+  } catch (err) {
+    console.error("Public catalog fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
 
 router.post("/leads", async (req, res) => {
   try {
@@ -12,6 +33,7 @@ router.post("/leads", async (req, res) => {
       email,
       phone,
       message,
+      productRef,
       offerId,
       excursionId,
     } = req.body as {
@@ -19,6 +41,7 @@ router.post("/leads", async (req, res) => {
       email?: string;
       phone?: string;
       message?: string;
+      productRef?: string | null;
       offerId?: string | null;
       excursionId?: string | null;
     };
@@ -34,25 +57,33 @@ router.post("/leads", async (req, res) => {
       return;
     }
 
+    let parsedOfferId: string | null = offerId ?? null;
+    let parsedExcursionId: string | null = excursionId ?? null;
+    if (productRef && typeof productRef === "string" && productRef.includes(":")) {
+      const [kind, refId] = productRef.split(":");
+      if (kind === "offer") parsedOfferId = refId;
+      else if (kind === "excursion") parsedExcursionId = refId;
+    }
+
     let resolvedOfferId: string | null = null;
     let resolvedExcursionId: string | null = null;
     let type: "generic" | "offer" | "excursion" = "generic";
 
-    if (offerId) {
+    if (parsedOfferId) {
       const [offer] = await db
         .select({ id: offersTable.id })
         .from(offersTable)
-        .where(eq(offersTable.id, offerId))
+        .where(eq(offersTable.id, parsedOfferId))
         .limit(1);
       if (offer) {
         resolvedOfferId = offer.id;
         type = "offer";
       }
-    } else if (excursionId) {
+    } else if (parsedExcursionId) {
       const [excursion] = await db
         .select({ id: excursionsTable.id })
         .from(excursionsTable)
-        .where(eq(excursionsTable.id, excursionId))
+        .where(eq(excursionsTable.id, parsedExcursionId))
         .limit(1);
       if (excursion) {
         resolvedExcursionId = excursion.id;
@@ -73,6 +104,14 @@ router.post("/leads", async (req, res) => {
         channel: "website",
       })
       .returning();
+
+    if (message?.trim()) {
+      await db.insert(leadNotesTable).values({
+        leadId: lead.id,
+        text: `Messaggio dal form contatti:\n${message.trim()}`,
+        authorName: customerName.trim(),
+      });
+    }
 
     res.status(201).json({
       id: lead.id,

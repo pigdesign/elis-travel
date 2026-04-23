@@ -34,6 +34,7 @@ import type {
   OfferInput,
   OfferSummary,
   OkResponse,
+  PublicCatalog,
   PublicLeadInput,
   PublicLeadResponse,
   Vehicle,
@@ -1852,3 +1853,78 @@ export const useSubmitContactRequest = <
 > => {
   return useMutation(getSubmitContactRequestMutationOptions(options));
 };
+
+/**
+ * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
+ */
+export const getListPublicCatalogUrl = () => {
+  return `/api/catalog/products`;
+};
+
+export const listPublicCatalog = async (
+  options?: RequestInit,
+): Promise<PublicCatalog> => {
+  return customFetch<PublicCatalog>(getListPublicCatalogUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicCatalogQueryKey = () => {
+  return [`/api/catalog/products`] as const;
+};
+
+export const getListPublicCatalogQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicCatalog>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicCatalog>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPublicCatalogQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicCatalog>>
+  > = ({ signal }) => listPublicCatalog({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicCatalog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicCatalogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicCatalog>>
+>;
+export type ListPublicCatalogQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
+ */
+
+export function useListPublicCatalog<
+  TData = Awaited<ReturnType<typeof listPublicCatalog>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicCatalog>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicCatalogQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
