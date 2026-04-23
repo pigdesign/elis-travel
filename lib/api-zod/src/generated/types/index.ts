@@ -7,7 +7,14 @@
  */
 
 export * from "./adminUser";
+export * from "./booking";
+export * from "./bookingInput";
 export * from "./errorResponse";
+export * from "./excursionDetail";
+export * from "./excursionInput";
+export * from "./excursionSummary";
 export * from "./healthStatus";
 export * from "./loginRequest";
 export * from "./okResponse";
+export * from "./vehicle";
+export * from "./vehicleUpdateInput";

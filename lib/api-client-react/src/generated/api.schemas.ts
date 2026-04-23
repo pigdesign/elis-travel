@@ -28,3 +28,89 @@ export interface OkResponse {
 export interface ErrorResponse {
   error: string;
 }
+
+export interface ExcursionSummary {
+  id: string;
+  name: string;
+  location: string;
+  date: string;
+  status: string;
+  currentCapacity: number;
+  minThreshold: number;
+  adherentsCount: number;
+  depositsCount: number;
+  balancesCount: number;
+  vehicleFixedCost?: string;
+  mealCostPerPerson?: string;
+  entranceCostPerPerson?: string;
+  extraCostPerPerson?: string;
+  pricePerPerson: string;
+  vehicleId?: string | null;
+  switchThreshold?: number | null;
+  switchVehicleId?: string | null;
+  switchVehicleAdditionalCost?: string | null;
+  operationalNotes?: string | null;
+  ricaviStimati: number;
+  costiVariabili: number;
+  costiTotali: number;
+  margineNetto: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Booking {
+  id: string;
+  excursionId: string;
+  customerId?: string | null;
+  customerName: string;
+  seats: number;
+  paymentStatus: string;
+  bookedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ExcursionDetail = ExcursionSummary & {
+  bookings: Booking[];
+};
+
+export interface BookingInput {
+  customerName: string;
+  customerId?: string;
+  seats?: number;
+  paymentStatus?: string;
+}
+
+export interface ExcursionInput {
+  name?: string;
+  location?: string;
+  date?: string;
+  status?: string;
+  vehicleId?: string | null;
+  currentCapacity?: number;
+  minThreshold?: number;
+  vehicleFixedCost?: string;
+  mealCostPerPerson?: string;
+  entranceCostPerPerson?: string;
+  extraCostPerPerson?: string;
+  pricePerPerson?: string;
+  switchThreshold?: number | null;
+  switchVehicleId?: string | null;
+  switchVehicleAdditionalCost?: string | null;
+  operationalNotes?: string | null;
+}
+
+export interface VehicleUpdateInput {
+  vehicleId: string;
+  vehicleFixedCost?: string;
+}
+
+export interface Vehicle {
+  id: string;
+  name: string;
+  capacity: number;
+  fixedCost: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

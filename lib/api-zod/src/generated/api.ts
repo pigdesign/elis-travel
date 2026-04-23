@@ -8,7 +8,6 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -46,3 +45,236 @@ export const GetAuthMeResponse = zod.object({
   name: zod.string(),
   role: zod.string(),
 });
+
+/**
+ * @summary Lista gite
+ */
+export const ListExcursionsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  location: zod.string(),
+  date: zod.string(),
+  status: zod.string(),
+  currentCapacity: zod.number(),
+  minThreshold: zod.number(),
+  adherentsCount: zod.number(),
+  depositsCount: zod.number(),
+  balancesCount: zod.number(),
+  vehicleFixedCost: zod.string().optional(),
+  mealCostPerPerson: zod.string().optional(),
+  entranceCostPerPerson: zod.string().optional(),
+  extraCostPerPerson: zod.string().optional(),
+  pricePerPerson: zod.string(),
+  vehicleId: zod.string().nullish(),
+  switchThreshold: zod.number().nullish(),
+  switchVehicleId: zod.string().nullish(),
+  switchVehicleAdditionalCost: zod.string().nullish(),
+  operationalNotes: zod.string().nullish(),
+  ricaviStimati: zod.number(),
+  costiVariabili: zod.number(),
+  costiTotali: zod.number(),
+  margineNetto: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListExcursionsResponse = zod.array(ListExcursionsResponseItem);
+
+/**
+ * @summary Crea nuova gita
+ */
+export const CreateExcursionBody = zod.object({
+  name: zod.string().optional(),
+  location: zod.string().optional(),
+  date: zod.string().optional(),
+  status: zod.string().optional(),
+  vehicleId: zod.string().nullish(),
+  currentCapacity: zod.number().optional(),
+  minThreshold: zod.number().optional(),
+  vehicleFixedCost: zod.string().optional(),
+  mealCostPerPerson: zod.string().optional(),
+  entranceCostPerPerson: zod.string().optional(),
+  extraCostPerPerson: zod.string().optional(),
+  pricePerPerson: zod.string().optional(),
+  switchThreshold: zod.number().nullish(),
+  switchVehicleId: zod.string().nullish(),
+  switchVehicleAdditionalCost: zod.string().nullish(),
+  operationalNotes: zod.string().nullish(),
+});
+
+/**
+ * @summary Dettaglio gita con prenotazioni
+ */
+export const GetExcursionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetExcursionResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    location: zod.string(),
+    date: zod.string(),
+    status: zod.string(),
+    currentCapacity: zod.number(),
+    minThreshold: zod.number(),
+    adherentsCount: zod.number(),
+    depositsCount: zod.number(),
+    balancesCount: zod.number(),
+    vehicleFixedCost: zod.string().optional(),
+    mealCostPerPerson: zod.string().optional(),
+    entranceCostPerPerson: zod.string().optional(),
+    extraCostPerPerson: zod.string().optional(),
+    pricePerPerson: zod.string(),
+    vehicleId: zod.string().nullish(),
+    switchThreshold: zod.number().nullish(),
+    switchVehicleId: zod.string().nullish(),
+    switchVehicleAdditionalCost: zod.string().nullish(),
+    operationalNotes: zod.string().nullish(),
+    ricaviStimati: zod.number(),
+    costiVariabili: zod.number(),
+    costiTotali: zod.number(),
+    margineNetto: zod.number(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      bookings: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          excursionId: zod.string().uuid(),
+          customerId: zod.string().nullish(),
+          customerName: zod.string(),
+          seats: zod.number(),
+          paymentStatus: zod.string(),
+          bookedAt: zod.coerce.date(),
+          createdAt: zod.coerce.date(),
+          updatedAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  );
+
+/**
+ * @summary Aggiorna gita
+ */
+export const UpdateExcursionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateExcursionBody = zod.object({
+  name: zod.string().optional(),
+  location: zod.string().optional(),
+  date: zod.string().optional(),
+  status: zod.string().optional(),
+  vehicleId: zod.string().nullish(),
+  currentCapacity: zod.number().optional(),
+  minThreshold: zod.number().optional(),
+  vehicleFixedCost: zod.string().optional(),
+  mealCostPerPerson: zod.string().optional(),
+  entranceCostPerPerson: zod.string().optional(),
+  extraCostPerPerson: zod.string().optional(),
+  pricePerPerson: zod.string().optional(),
+  switchThreshold: zod.number().nullish(),
+  switchVehicleId: zod.string().nullish(),
+  switchVehicleAdditionalCost: zod.string().nullish(),
+  operationalNotes: zod.string().nullish(),
+});
+
+export const UpdateExcursionResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  location: zod.string(),
+  date: zod.string(),
+  status: zod.string(),
+  currentCapacity: zod.number(),
+  minThreshold: zod.number(),
+  adherentsCount: zod.number(),
+  depositsCount: zod.number(),
+  balancesCount: zod.number(),
+  vehicleFixedCost: zod.string().optional(),
+  mealCostPerPerson: zod.string().optional(),
+  entranceCostPerPerson: zod.string().optional(),
+  extraCostPerPerson: zod.string().optional(),
+  pricePerPerson: zod.string(),
+  vehicleId: zod.string().nullish(),
+  switchThreshold: zod.number().nullish(),
+  switchVehicleId: zod.string().nullish(),
+  switchVehicleAdditionalCost: zod.string().nullish(),
+  operationalNotes: zod.string().nullish(),
+  ricaviStimati: zod.number(),
+  costiVariabili: zod.number(),
+  costiTotali: zod.number(),
+  margineNetto: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Aggiungi prenotazione
+ */
+export const AddExcursionBookingParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const AddExcursionBookingBody = zod.object({
+  customerName: zod.string(),
+  customerId: zod.string().optional(),
+  seats: zod.number().optional(),
+  paymentStatus: zod.string().optional(),
+});
+
+/**
+ * @summary Cambia veicolo gita
+ */
+export const UpdateExcursionVehicleParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateExcursionVehicleBody = zod.object({
+  vehicleId: zod.string().uuid(),
+  vehicleFixedCost: zod.string().optional(),
+});
+
+export const UpdateExcursionVehicleResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  location: zod.string(),
+  date: zod.string(),
+  status: zod.string(),
+  currentCapacity: zod.number(),
+  minThreshold: zod.number(),
+  adherentsCount: zod.number(),
+  depositsCount: zod.number(),
+  balancesCount: zod.number(),
+  vehicleFixedCost: zod.string().optional(),
+  mealCostPerPerson: zod.string().optional(),
+  entranceCostPerPerson: zod.string().optional(),
+  extraCostPerPerson: zod.string().optional(),
+  pricePerPerson: zod.string(),
+  vehicleId: zod.string().nullish(),
+  switchThreshold: zod.number().nullish(),
+  switchVehicleId: zod.string().nullish(),
+  switchVehicleAdditionalCost: zod.string().nullish(),
+  operationalNotes: zod.string().nullish(),
+  ricaviStimati: zod.number(),
+  costiVariabili: zod.number(),
+  costiTotali: zod.number(),
+  margineNetto: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Lista veicoli disponibili
+ */
+export const ListVehiclesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  capacity: zod.number(),
+  fixedCost: zod.string(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListVehiclesResponse = zod.array(ListVehiclesResponseItem);

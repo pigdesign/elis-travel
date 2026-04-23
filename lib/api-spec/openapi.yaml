@@ -12,13 +12,14 @@ tags:
     description: Health operations
   - name: auth
     description: Autenticazione admin
+  - name: excursions
+    description: Gite di gruppo
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -80,6 +81,150 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions:
+    get:
+      operationId: listExcursions
+      tags: [excursions]
+      summary: Lista gite
+      responses:
+        "200":
+          description: Lista gite con dati finanziari
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExcursionSummary"
+    post:
+      operationId: createExcursion
+      tags: [excursions]
+      summary: Crea nuova gita
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExcursionInput"
+      responses:
+        "201":
+          description: Gita creata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionSummary"
+  /admin/excursions/{id}:
+    get:
+      operationId: getExcursion
+      tags: [excursions]
+      summary: Dettaglio gita con prenotazioni
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dettaglio gita
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionDetail"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateExcursion
+      tags: [excursions]
+      summary: Aggiorna gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExcursionInput"
+      responses:
+        "200":
+          description: Gita aggiornata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionSummary"
+  /admin/excursions/{id}/bookings:
+    post:
+      operationId: addExcursionBooking
+      tags: [excursions]
+      summary: Aggiungi prenotazione
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingInput"
+      responses:
+        "201":
+          description: Prenotazione aggiunta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /admin/excursions/{id}/vehicle:
+    patch:
+      operationId: updateExcursionVehicle
+      tags: [excursions]
+      summary: Cambia veicolo gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleUpdateInput"
+      responses:
+        "200":
+          description: Veicolo aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionSummary"
+  /admin/vehicles:
+    get:
+      operationId: listVehicles
+      tags: [excursions]
+      summary: Lista veicoli disponibili
+      responses:
+        "200":
+          description: Lista veicoli
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vehicle"
 components:
   schemas:
     HealthStatus:
@@ -132,3 +277,222 @@ components:
           type: string
       required:
         - error
+    ExcursionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        location:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+        currentCapacity:
+          type: integer
+        minThreshold:
+          type: integer
+        adherentsCount:
+          type: integer
+        depositsCount:
+          type: integer
+        balancesCount:
+          type: integer
+        vehicleFixedCost:
+          type: string
+        mealCostPerPerson:
+          type: string
+        entranceCostPerPerson:
+          type: string
+        extraCostPerPerson:
+          type: string
+        pricePerPerson:
+          type: string
+        vehicleId:
+          type: string
+          nullable: true
+        switchThreshold:
+          type: integer
+          nullable: true
+        switchVehicleId:
+          type: string
+          nullable: true
+        switchVehicleAdditionalCost:
+          type: string
+          nullable: true
+        operationalNotes:
+          type: string
+          nullable: true
+        ricaviStimati:
+          type: number
+        costiVariabili:
+          type: number
+        costiTotali:
+          type: number
+        margineNetto:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - location
+        - date
+        - status
+        - currentCapacity
+        - minThreshold
+        - adherentsCount
+        - depositsCount
+        - balancesCount
+        - pricePerPerson
+        - ricaviStimati
+        - costiVariabili
+        - costiTotali
+        - margineNetto
+        - createdAt
+        - updatedAt
+    ExcursionDetail:
+      allOf:
+        - $ref: "#/components/schemas/ExcursionSummary"
+        - type: object
+          properties:
+            bookings:
+              type: array
+              items:
+                $ref: "#/components/schemas/Booking"
+          required:
+            - bookings
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        excursionId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+        seats:
+          type: integer
+        paymentStatus:
+          type: string
+        bookedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - excursionId
+        - customerName
+        - seats
+        - paymentStatus
+        - bookedAt
+        - createdAt
+        - updatedAt
+    BookingInput:
+      type: object
+      properties:
+        customerName:
+          type: string
+        customerId:
+          type: string
+        seats:
+          type: integer
+        paymentStatus:
+          type: string
+      required:
+        - customerName
+    ExcursionInput:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+        vehicleId:
+          type: string
+          nullable: true
+        currentCapacity:
+          type: integer
+        minThreshold:
+          type: integer
+        vehicleFixedCost:
+          type: string
+        mealCostPerPerson:
+          type: string
+        entranceCostPerPerson:
+          type: string
+        extraCostPerPerson:
+          type: string
+        pricePerPerson:
+          type: string
+        switchThreshold:
+          type: integer
+          nullable: true
+        switchVehicleId:
+          type: string
+          nullable: true
+        switchVehicleAdditionalCost:
+          type: string
+          nullable: true
+        operationalNotes:
+          type: string
+          nullable: true
+    VehicleUpdateInput:
+      type: object
+      properties:
+        vehicleId:
+          type: string
+          format: uuid
+        vehicleFixedCost:
+          type: string
+      required:
+        - vehicleId
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        capacity:
+          type: integer
+        fixedCost:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - capacity
+        - fixedCost
+        - createdAt
+        - updatedAt

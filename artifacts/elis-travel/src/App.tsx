@@ -9,6 +9,8 @@ import { HomePage } from "@/pages/(public)/HomePage";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
 import { DashboardPage } from "@/pages/(admin)/dashboard/DashboardPage";
+import { ExcursionsPage } from "@/pages/(admin)/excursions/ExcursionsPage";
+import { ExcursionDetailPage } from "@/pages/(admin)/excursions/ExcursionDetailPage";
 import { OffersPage } from "@/pages/(admin)/offers/OffersPage";
 import { LeadsPage } from "@/pages/(admin)/leads/LeadsPage";
 
@@ -26,6 +28,10 @@ function Router() {
           <Switch>
             <Route path="/" component={DashboardPage} />
             <Route path="/dashboard" component={DashboardPage} />
+            <Route path="/excursions" component={ExcursionsPage} />
+            <Route path="/excursions/:id">
+              {(params) => <ExcursionDetailPage excursionId={params.id} />}
+            </Route>
             <Route path="/offers" component={OffersPage} />
             <Route path="/leads" component={LeadsPage} />
             <Route component={NotFound} />
