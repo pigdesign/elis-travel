@@ -20,8 +20,8 @@ export function Header() {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Destinazioni", href: "#destinations" },
-    { name: "Tour", href: "#tours" },
+    { name: "Offerte", href: "/offerte" },
+    { name: "Gite", href: "/gite" },
     { name: "Chi siamo", href: "#about" },
     { name: "Contatti", href: "/contatti" },
   ];

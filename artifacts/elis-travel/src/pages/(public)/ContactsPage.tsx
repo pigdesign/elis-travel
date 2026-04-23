@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from "react";
+import { useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,6 +18,7 @@ import {
   CheckCircle2,
   Loader2,
   AlertCircle,
+  Info,
 } from "lucide-react";
 
 const contactSchema = z.object({
@@ -59,6 +62,44 @@ export function ContactsPage() {
     isSuccess,
     reset: resetMutation,
   } = useSubmitContactRequest();
+
+  const search = useSearch();
+  const prefilledRef = useMemo(() => {
+    const params = new URLSearchParams(search);
+    const offerId = params.get("offerId");
+    if (offerId) return { kind: "offer" as const, id: offerId, ref: `offer:${offerId}` };
+    const excursionId = params.get("excursionId");
+    if (excursionId)
+      return { kind: "excursion" as const, id: excursionId, ref: `excursion:${excursionId}` };
+    return null;
+  }, [search]);
+
+  const prefilledProductLabel = useMemo(() => {
+    if (!prefilledRef || !catalog) return null;
+    if (prefilledRef.kind === "offer") {
+      const o = catalog.offers?.find((x) => x.id === prefilledRef.id);
+      if (!o) return null;
+      return o.destination ? `${o.name} — ${o.destination}` : o.name;
+    }
+    const ex = catalog.excursions?.find((x) => x.id === prefilledRef.id);
+    if (!ex) return null;
+    return ex.location ? `${ex.name} — ${ex.location}` : ex.name;
+  }, [prefilledRef, catalog]);
+
+  useEffect(() => {
+    if (prefilledRef) {
+      resetForm(
+        {
+          customerName: "",
+          email: "",
+          phone: "",
+          productRef: prefilledRef.ref,
+          message: "",
+        },
+        { keepDirtyValues: true }
+      );
+    }
+  }, [prefilledRef, resetForm]);
 
   const rootError = errors.root?.message;
 
@@ -187,6 +228,19 @@ export function ContactsPage() {
                     <p className="text-muted-foreground text-sm mb-6">
                       I campi contrassegnati con <span className="text-accent">*</span> sono obbligatori.
                     </p>
+
+                    {prefilledProductLabel && (
+                      <div
+                        className="flex items-start gap-2 p-3 bg-accent/10 border border-accent/30 rounded-lg text-sm text-foreground"
+                        data-testid="banner-prefilled-product"
+                      >
+                        <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-accent" />
+                        <span>
+                          Stai chiedendo info su:{" "}
+                          <strong className="font-semibold">{prefilledProductLabel}</strong>
+                        </span>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
