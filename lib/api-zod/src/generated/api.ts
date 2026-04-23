@@ -529,6 +529,33 @@ export const SubmitContactRequestBody = zod.object({
   email: zod.string().email(),
   phone: zod.string().nullish(),
   message: zod.string().nullish(),
+  productRef: zod
+    .string()
+    .nullish()
+    .describe(
+      "Riferimento prodotto nel formato 'offer:<uuid>' o 'excursion:<uuid>'",
+    ),
   offerId: zod.string().uuid().nullish(),
   excursionId: zod.string().uuid().nullish(),
+});
+
+/**
+ * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
+ */
+export const ListPublicCatalogResponse = zod.object({
+  offers: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      name: zod.string(),
+      destination: zod.string().nullish(),
+    }),
+  ),
+  excursions: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      name: zod.string(),
+      location: zod.string().nullish(),
+      date: zod.string().nullish(),
+    }),
+  ),
 });

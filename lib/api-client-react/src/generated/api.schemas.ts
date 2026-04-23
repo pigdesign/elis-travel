@@ -225,8 +225,28 @@ export interface PublicLeadInput {
   email: string;
   phone?: string | null;
   message?: string | null;
+  /** Riferimento prodotto nel formato 'offer:<uuid>' o 'excursion:<uuid>' */
+  productRef?: string | null;
   offerId?: string | null;
   excursionId?: string | null;
+}
+
+export type PublicCatalogOffersItem = {
+  id: string;
+  name: string;
+  destination?: string | null;
+};
+
+export type PublicCatalogExcursionsItem = {
+  id: string;
+  name: string;
+  location?: string | null;
+  date?: string | null;
+};
+
+export interface PublicCatalog {
+  offers: PublicCatalogOffersItem[];
+  excursions: PublicCatalogExcursionsItem[];
 }
 
 export interface PublicLeadResponse {

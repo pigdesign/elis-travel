@@ -11,6 +11,8 @@ export interface PublicLeadInput {
   email: string;
   phone?: string | null;
   message?: string | null;
+  /** Riferimento prodotto nel formato 'offer:<uuid>' o 'excursion:<uuid>' */
+  productRef?: string | null;
   offerId?: string | null;
   excursionId?: string | null;
 }

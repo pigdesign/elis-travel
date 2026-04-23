@@ -492,6 +492,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /catalog/products:
+    get:
+      operationId: listPublicCatalog
+      tags: [public]
+      summary: Lista offerte pubblicate e gite attive (per dropdown contatti)
+      responses:
+        "200":
+          description: Catalogo prodotti pubblici
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicCatalog"
 components:
   schemas:
     HealthStatus:
@@ -1039,6 +1051,10 @@ components:
         message:
           type: string
           nullable: true
+        productRef:
+          type: string
+          nullable: true
+          description: "Riferimento prodotto nel formato 'offer:<uuid>' o 'excursion:<uuid>'"
         offerId:
           type: string
           format: uuid
@@ -1050,6 +1066,41 @@ components:
       required:
         - customerName
         - email
+    PublicCatalog:
+      type: object
+      properties:
+        offers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              destination:
+                type: string
+                nullable: true
+            required: [id, name]
+        excursions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              location:
+                type: string
+                nullable: true
+              date:
+                type: string
+                nullable: true
+            required: [id, name]
+      required: [offers, excursions]
     PublicLeadResponse:
       type: object
       properties:
