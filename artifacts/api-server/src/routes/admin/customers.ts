@@ -277,6 +277,101 @@ router.patch("/customers/:id", async (req, res) => {
   }
 });
 
+router.post("/customers/rms/import", async (req, res) => {
+  try {
+    const { rmsExternalId, firstName, lastName, email, phone } = req.body as {
+      rmsExternalId?: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string | null;
+    };
+
+    if (!rmsExternalId?.trim() || !firstName?.trim() || !lastName?.trim() || !email?.trim()) {
+      res.status(400).json({ error: "rmsExternalId, firstName, lastName ed email sono obbligatori." });
+      return;
+    }
+
+    const existingByEmail = await db
+      .select({ id: customersTable.id })
+      .from(customersTable)
+      .where(ilike(customersTable.email, email.trim()))
+      .limit(1);
+
+    let customerId: string;
+    if (existingByEmail.length > 0) {
+      customerId = existingByEmail[0].id;
+    } else {
+      const [newCustomer] = await db
+        .insert(customersTable)
+        .values({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone?.trim() || null,
+        })
+        .returning({ id: customersTable.id });
+      customerId = newCustomer.id;
+    }
+
+    const [existingLink] = await db
+      .select()
+      .from(customerExternalLinksTable)
+      .where(
+        and(
+          eq(customerExternalLinksTable.customerId, customerId),
+          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
+        ),
+      )
+      .limit(1);
+
+    if (!existingLink) {
+      await db.insert(customerExternalLinksTable).values({
+        customerId,
+        externalSystem: "riviera_rms",
+        externalId: rmsExternalId.trim(),
+      });
+
+      await db.insert(customerSyncEventsTable).values({
+        eventId: randomUUID(),
+        customerId,
+        sourceSystem: "riviera_rms",
+        eventType: "pull_from_rms",
+        status: "success",
+        payload: JSON.stringify({ rmsExternalId: rmsExternalId.trim(), source: "import" }),
+        occurredAt: new Date(),
+      });
+    }
+
+    const [finalCustomer] = await db
+      .select()
+      .from(customersTable)
+      .where(eq(customersTable.id, customerId))
+      .limit(1);
+
+    const [finalLink] = await db
+      .select()
+      .from(customerExternalLinksTable)
+      .where(
+        and(
+          eq(customerExternalLinksTable.customerId, customerId),
+          eq(customerExternalLinksTable.externalSystem, "riviera_rms"),
+        ),
+      )
+      .limit(1);
+
+    res.status(201).json({
+      ...finalCustomer,
+      rmsLinked: true,
+      rmsExternalId: finalLink?.externalId ?? null,
+      rmsLastSyncAt: finalLink?.lastSyncAt ?? null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 router.post("/customers/:id/link", async (req, res) => {
   try {
     const { id } = req.params;

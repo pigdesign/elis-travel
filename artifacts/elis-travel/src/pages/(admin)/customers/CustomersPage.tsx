@@ -8,6 +8,7 @@ import {
   useLinkCustomerToRms,
   useSyncCustomerToRms,
   useSearchRmsCustomers,
+  useImportCustomerFromRms,
   getListCustomersQueryKey,
   getGetCustomerQueryKey,
   getSearchRmsCustomersQueryKey,
@@ -117,6 +118,15 @@ function CustomerDetailPanel({
     },
   });
 
+  const { mutate: importFromRms, isPending: importing } = useImportCustomerFromRms({
+    mutation: {
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: getListCustomersQueryKey() });
+        setRmsSearchQuery("");
+      },
+    },
+  });
+
   const { mutate: syncToRms, isPending: syncing } = useSyncCustomerToRms({
     mutation: {
       onSuccess: () => {
@@ -152,6 +162,18 @@ function CustomerDetailPanel({
 
   const handleLink = (rmsId: string) => {
     linkToRms({ id: customerId, data: { rmsExternalId: rmsId } });
+  };
+
+  const handleImportFromRms = (r: RmsSearchResult) => {
+    importFromRms({
+      data: {
+        rmsExternalId: r.id,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email,
+        phone: r.phone ?? null,
+      },
+    });
   };
 
   const handleSync = () => {
@@ -326,21 +348,34 @@ function CustomerDetailPanel({
             {rmsResults.length > 0 && (
               <div className="space-y-2">
                 {(rmsResults as RmsSearchResult[]).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-white">
+                  <div key={r.id} className="p-3 border border-border rounded-lg bg-white space-y-2">
                     <div>
                       <div className="font-medium text-sm">{r.firstName} {r.lastName}</div>
                       <div className="text-xs text-muted-foreground">{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
                       <div className="text-xs text-muted-foreground">ID RMS: {r.id}</div>
                     </div>
-                    <Button
-                      onClick={() => handleLink(r.id)}
-                      disabled={linking}
-                      className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 h-auto ml-3 flex-shrink-0"
-                    >
-                      {linking ? <Loader2 className="w-3 h-3 animate-spin" /> : <>
-                        <ExternalLink className="w-3 h-3 mr-1" />Collega
-                      </>}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleLink(r.id)}
+                        disabled={linking || importing}
+                        className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 h-auto"
+                        title="Collega questo cliente locale al profilo RMS selezionato"
+                      >
+                        {linking ? <Loader2 className="w-3 h-3 animate-spin" /> : <>
+                          <Link2 className="w-3 h-3 mr-1" />Collega
+                        </>}
+                      </Button>
+                      <Button
+                        onClick={() => handleImportFromRms(r)}
+                        disabled={linking || importing}
+                        className="text-xs bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 h-auto"
+                        title="Importa questo profilo RMS come nuovo cliente locale (deduplicazione per email)"
+                      >
+                        {importing ? <Loader2 className="w-3 h-3 animate-spin" /> : <>
+                          <ExternalLink className="w-3 h-3 mr-1" />Importa come nuovo
+                        </>}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

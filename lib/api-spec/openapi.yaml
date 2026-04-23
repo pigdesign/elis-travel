@@ -135,6 +135,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/customers/rms/import:
+    post:
+      operationId: importCustomerFromRms
+      tags: [customers]
+      summary: Importa un cliente da RMS come profilo locale (crea + collega automaticamente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerRmsImportInput"
+      responses:
+        "201":
+          description: Cliente importato (creato o deduplicato per email) e collegato a RMS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSummary"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/customers/rms/search:
     get:
       operationId: searchRmsCustomers
@@ -1712,6 +1736,27 @@ components:
           type: string
       required:
         - rmsExternalId
+    CustomerRmsImportInput:
+      type: object
+      properties:
+        rmsExternalId:
+          type: string
+          description: ID esterno del cliente nel sistema RMS
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+      required:
+        - rmsExternalId
+        - firstName
+        - lastName
+        - email
     RmsSearchResult:
       type: object
       properties:

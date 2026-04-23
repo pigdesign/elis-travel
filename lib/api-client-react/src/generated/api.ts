@@ -22,6 +22,7 @@ import type {
   BookingInput,
   CustomerCreate,
   CustomerDetail,
+  CustomerRmsImportInput,
   CustomerRmsLinkInput,
   CustomerSummary,
   CustomerUpdate,
@@ -548,6 +549,93 @@ export const useCreateCustomer = <
   TContext
 > => {
   return useMutation(getCreateCustomerMutationOptions(options));
+};
+
+/**
+ * @summary Importa un cliente da RMS come profilo locale (crea + collega automaticamente)
+ */
+export const getImportCustomerFromRmsUrl = () => {
+  return `/api/admin/customers/rms/import`;
+};
+
+export const importCustomerFromRms = async (
+  customerRmsImportInput: CustomerRmsImportInput,
+  options?: RequestInit,
+): Promise<CustomerSummary> => {
+  return customFetch<CustomerSummary>(getImportCustomerFromRmsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(customerRmsImportInput),
+  });
+};
+
+export const getImportCustomerFromRmsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importCustomerFromRms>>,
+    TError,
+    { data: BodyType<CustomerRmsImportInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importCustomerFromRms>>,
+  TError,
+  { data: BodyType<CustomerRmsImportInput> },
+  TContext
+> => {
+  const mutationKey = ["importCustomerFromRms"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importCustomerFromRms>>,
+    { data: BodyType<CustomerRmsImportInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importCustomerFromRms(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportCustomerFromRmsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importCustomerFromRms>>
+>;
+export type ImportCustomerFromRmsMutationBody =
+  BodyType<CustomerRmsImportInput>;
+export type ImportCustomerFromRmsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Importa un cliente da RMS come profilo locale (crea + collega automaticamente)
+ */
+export const useImportCustomerFromRms = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importCustomerFromRms>>,
+    TError,
+    { data: BodyType<CustomerRmsImportInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importCustomerFromRms>>,
+  TError,
+  { data: BodyType<CustomerRmsImportInput> },
+  TContext
+> => {
+  return useMutation(getImportCustomerFromRmsMutationOptions(options));
 };
 
 /**
