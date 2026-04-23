@@ -86,7 +86,7 @@ router.post("/leads", async (req, res) => {
       const [offer] = await db
         .select({ id: offersTable.id })
         .from(offersTable)
-        .where(eq(offersTable.id, parsedOfferId))
+        .where(and(eq(offersTable.id, parsedOfferId), eq(offersTable.status, "published")))
         .limit(1);
       if (offer) {
         resolvedOfferId = offer.id;
@@ -96,7 +96,13 @@ router.post("/leads", async (req, res) => {
       const [excursion] = await db
         .select({ id: excursionsTable.id })
         .from(excursionsTable)
-        .where(eq(excursionsTable.id, parsedExcursionId))
+        .where(
+          and(
+            eq(excursionsTable.id, parsedExcursionId),
+            ne(excursionsTable.status, "archived"),
+            ne(excursionsTable.status, "completed"),
+          ),
+        )
         .limit(1);
       if (excursion) {
         resolvedExcursionId = excursion.id;
