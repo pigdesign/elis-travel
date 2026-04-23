@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useState } from "react";
 import {
   ArrowLeft,
   MapPin,
@@ -10,10 +11,18 @@ import {
   CheckCircle,
   Clock,
   CreditCard,
+  Trash2,
+  Plus,
+  X,
+  Loader2,
+  ChevronRight,
 } from "lucide-react";
 import {
   useGetExcursion,
   useUpdateExcursion,
+  useUpdateExcursionBookingPayment,
+  useDeleteExcursionBooking,
+  useAddExcursionBooking,
   getGetExcursionQueryKey,
   getListExcursionsQueryKey,
 } from "@workspace/api-client-react";
@@ -73,16 +82,75 @@ function AvatarInitials({ name }: { name: string }) {
   );
 }
 
-function BookingRow({ booking }: { booking: Booking }) {
+const PAYMENT_NEXT: Record<string, { next: "pending" | "deposit" | "paid"; label: string } | null> = {
+  pending: { next: "deposit", label: "→ Acconto" },
+  deposit: { next: "paid", label: "→ Saldato" },
+  paid: null,
+};
+
+function BookingRow({
+  booking,
+  excursionId,
+}: {
+  booking: Booking;
+  excursionId: string;
+}) {
+  const queryClient = useQueryClient();
   const paymentCfg = PAYMENT_STATUS_CONFIG[booking.paymentStatus] ?? PAYMENT_STATUS_CONFIG["pending"];
   const PayIcon = paymentCfg.icon;
+  const nextStep = PAYMENT_NEXT[booking.paymentStatus];
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: getGetExcursionQueryKey(excursionId) });
+    void queryClient.invalidateQueries({ queryKey: getListExcursionsQueryKey() });
+  };
+
+  const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateExcursionBookingPayment({
+    mutation: { onSuccess: invalidate },
+  });
+  const { mutateAsync: deleteBooking, isPending: isDeleting } = useDeleteExcursionBooking({
+    mutation: { onSuccess: invalidate },
+  });
+
+  const advance = async () => {
+    if (!nextStep) return;
+    try {
+      await updateStatus({
+        id: excursionId,
+        bookingId: booking.id,
+        data: { paymentStatus: nextStep.next },
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Impossibile aggiornare lo stato.");
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm(`Eliminare la prenotazione di ${booking.customerName}?`)) return;
+    try {
+      await deleteBooking({ id: excursionId, bookingId: booking.id });
+    } catch (e) {
+      console.error(e);
+      alert("Impossibile eliminare la prenotazione.");
+    }
+  };
+
+  const busy = isUpdating || isDeleting;
 
   return (
     <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors">
       <td className="py-2.5 pl-4 pr-2">
         <div className="flex items-center gap-2">
           <AvatarInitials name={booking.customerName} />
-          <span className="font-medium text-sm text-foreground">{booking.customerName}</span>
+          <div className="min-w-0">
+            <div className="font-medium text-sm text-foreground truncate">{booking.customerName}</div>
+            {booking.email && (
+              <div className="text-xs text-muted-foreground truncate" data-testid={`text-booking-email-${booking.id}`}>
+                {booking.email}
+              </div>
+            )}
+          </div>
         </div>
       </td>
       <td className="py-2.5 px-2 text-center">
@@ -97,10 +165,179 @@ function BookingRow({ booking }: { booking: Booking }) {
           {paymentCfg.label}
         </span>
       </td>
-      <td className="py-2.5 pr-4 pl-2 text-sm text-muted-foreground text-right">
+      <td className="py-2.5 px-2 text-sm text-muted-foreground">
         {formatDateTime(booking.bookedAt)}
       </td>
+      <td className="py-2.5 pr-4 pl-2 text-right">
+        <div className="inline-flex items-center gap-1">
+          {nextStep && (
+            <button
+              type="button"
+              onClick={advance}
+              disabled={busy}
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              data-testid={`button-advance-${booking.id}`}
+              title={`Avanza a ${nextStep.next}`}
+            >
+              {nextStep.label}
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={remove}
+            disabled={busy}
+            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md text-red-600 hover:bg-red-50 disabled:opacity-50"
+            data-testid={`button-delete-${booking.id}`}
+            title="Elimina prenotazione"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
     </tr>
+  );
+}
+
+function AddParticipantModal({
+  excursionId,
+  onClose,
+}: {
+  excursionId: string;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [seats, setSeats] = useState(1);
+  const [paymentStatus, setPaymentStatus] = useState<"pending" | "deposit" | "paid">("pending");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { mutateAsync, isPending } = useAddExcursionBooking({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getGetExcursionQueryKey(excursionId) });
+        void queryClient.invalidateQueries({ queryKey: getListExcursionsQueryKey() });
+      },
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    if (!name.trim()) {
+      setErrorMsg("Il nome è obbligatorio.");
+      return;
+    }
+    try {
+      await mutateAsync({
+        id: excursionId,
+        data: {
+          customerName: name.trim(),
+          email: email.trim() || null,
+          seats,
+          paymentStatus,
+        },
+      });
+      onClose();
+    } catch (err: unknown) {
+      const e = err as { data?: { error?: string }; message?: string };
+      setErrorMsg(e?.data?.error ?? e?.message ?? "Impossibile aggiungere il partecipante.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" data-testid="modal-add-participant">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-foreground">Aggiungi partecipante</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-md hover:bg-muted/50"
+            data-testid="button-close-modal"
+          >
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Nome e cognome *</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              data-testid="input-add-name"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              data-testid="input-add-email"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Posti *</label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                required
+                value={seats}
+                onChange={(e) => setSeats(Math.max(1, Number(e.target.value) || 1))}
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="input-add-seats"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Stato pagamento</label>
+              <select
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value as "pending" | "deposit" | "paid")}
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="select-add-payment"
+              >
+                <option value="pending">In attesa</option>
+                <option value="deposit">Acconto</option>
+                <option value="paid">Saldato</option>
+              </select>
+            </div>
+          </div>
+          {errorMsg && (
+            <div className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-2 text-sm rounded-md hover:bg-muted/50 text-muted-foreground"
+              data-testid="button-cancel-add"
+            >
+              Annulla
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+              data-testid="button-submit-add"
+            >
+              {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              Aggiungi
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -111,6 +348,7 @@ interface ExcursionDetailPageProps {
 export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const { data: exc, isLoading, error } = useGetExcursion(excursionId);
   const queryClient = useQueryClient();
+  const [showAddModal, setShowAddModal] = useState(false);
   const { mutateAsync: updateExcursion } = useUpdateExcursion({
     mutation: {
       onSuccess: () => {
@@ -233,10 +471,19 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </div>
 
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-border/50">
+            <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Users className="w-4 h-4" /> Partecipanti ({bookings.length})
               </h2>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                data-testid="button-add-participant"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Aggiungi partecipante
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -245,16 +492,17 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                     <th className="py-2 pl-4 pr-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nome</th>
                     <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Posti</th>
                     <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pagamento</th>
-                    <th className="py-2 pr-4 pl-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prenotato il</th>
+                    <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prenotato il</th>
+                    <th className="py-2 pr-4 pl-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bookings.map((b) => (
-                    <BookingRow key={b.id} booking={b} />
+                    <BookingRow key={b.id} booking={b} excursionId={excursionId} />
                   ))}
                   {bookings.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-10 text-center text-muted-foreground">
+                      <td colSpan={5} className="py-10 text-center text-muted-foreground">
                         Nessuna prenotazione ancora
                       </td>
                     </tr>
@@ -362,6 +610,10 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </div>
         </div>
       </div>
+
+      {showAddModal && (
+        <AddParticipantModal excursionId={excursionId} onClose={() => setShowAddModal(false)} />
+      )}
     </div>
   );
 }

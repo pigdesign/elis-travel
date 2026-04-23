@@ -5,7 +5,13 @@ import {
   excursionBookingsTable,
   excursionVehiclesTable,
 } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
+
+const VALID_PAYMENT_STATUSES = ["pending", "deposit", "paid"] as const;
+type PaymentStatus = (typeof VALID_PAYMENT_STATUSES)[number];
+function isValidPaymentStatus(s: unknown): s is PaymentStatus {
+  return typeof s === "string" && (VALID_PAYMENT_STATUSES as readonly string[]).includes(s);
+}
 
 const router = Router();
 
@@ -157,54 +163,182 @@ router.post("/excursions/:id/bookings", async (req, res) => {
     const body = req.body as {
       customerName: string;
       customerId?: string;
+      email?: string | null;
+      phone?: string | null;
       seats?: number;
       paymentStatus?: string;
     };
 
-    const [excursion] = await db
-      .select()
-      .from(excursionsTable)
-      .where(eq(excursionsTable.id, id))
-      .limit(1);
+    if (!body.customerName?.trim()) {
+      res.status(400).json({ error: "Nome obbligatorio." });
+      return;
+    }
 
-    if (!excursion) {
+    const seats = Math.max(1, Math.min(50, body.seats ?? 1));
+    const paymentStatusRaw = body.paymentStatus ?? "pending";
+    if (!isValidPaymentStatus(paymentStatusRaw)) {
+      res.status(400).json({ error: "Stato pagamento non valido." });
+      return;
+    }
+    const paymentStatus = paymentStatusRaw;
+
+    const booking = await db.transaction(async (tx) => {
+      const [excursion] = await tx
+        .select()
+        .from(excursionsTable)
+        .where(eq(excursionsTable.id, id))
+        .for("update")
+        .limit(1);
+
+      if (!excursion) return null;
+
+      const [created] = await tx
+        .insert(excursionBookingsTable)
+        .values({
+          excursionId: id,
+          customerName: body.customerName.trim(),
+          customerId: body.customerId ?? null,
+          email: body.email?.trim() || null,
+          phone: body.phone?.trim() || null,
+          seats,
+          paymentStatus,
+        })
+        .returning();
+
+      await tx
+        .update(excursionsTable)
+        .set({
+          adherentsCount: sql`${excursionsTable.adherentsCount} + ${seats}`,
+          depositsCount:
+            paymentStatus === "deposit"
+              ? sql`${excursionsTable.depositsCount} + ${seats}`
+              : excursionsTable.depositsCount,
+          balancesCount:
+            paymentStatus === "paid"
+              ? sql`${excursionsTable.balancesCount} + ${seats}`
+              : excursionsTable.balancesCount,
+          updatedAt: new Date(),
+        })
+        .where(eq(excursionsTable.id, id));
+
+      return created;
+    });
+
+    if (!booking) {
       res.status(404).json({ error: "Gita non trovata." });
       return;
     }
 
-    const [booking] = await db
-      .insert(excursionBookingsTable)
-      .values({
-        excursionId: id,
-        customerName: body.customerName,
-        customerId: body.customerId ?? null,
-        seats: body.seats ?? 1,
-        paymentStatus: body.paymentStatus ?? "pending",
-      })
-      .returning();
-
-    const seats = body.seats ?? 1;
-    const newAdherents = excursion.adherentsCount + seats;
-    const newDeposits =
-      body.paymentStatus === "deposit"
-        ? excursion.depositsCount + seats
-        : excursion.depositsCount;
-    const newBalances =
-      body.paymentStatus === "paid"
-        ? excursion.balancesCount + seats
-        : excursion.balancesCount;
-
-    await db
-      .update(excursionsTable)
-      .set({
-        adherentsCount: newAdherents,
-        depositsCount: newDeposits,
-        balancesCount: newBalances,
-        updatedAt: new Date(),
-      })
-      .where(eq(excursionsTable.id, id));
-
     res.status(201).json(booking);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.patch("/excursions/:id/bookings/:bookingId", async (req, res) => {
+  try {
+    const { id, bookingId } = req.params;
+    const { paymentStatus } = req.body as { paymentStatus?: string };
+
+    if (!isValidPaymentStatus(paymentStatus)) {
+      res.status(400).json({ error: "Stato pagamento non valido." });
+      return;
+    }
+
+    const updated = await db.transaction(async (tx) => {
+      const [booking] = await tx
+        .select()
+        .from(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.id, bookingId))
+        .for("update")
+        .limit(1);
+
+      if (!booking || booking.excursionId !== id) return null;
+
+      const oldStatus = booking.paymentStatus;
+      const seats = booking.seats;
+
+      let depositsDelta = 0;
+      let balancesDelta = 0;
+      if (oldStatus === "deposit") depositsDelta -= seats;
+      if (oldStatus === "paid") balancesDelta -= seats;
+      if (paymentStatus === "deposit") depositsDelta += seats;
+      if (paymentStatus === "paid") balancesDelta += seats;
+
+      const [u] = await tx
+        .update(excursionBookingsTable)
+        .set({ paymentStatus, updatedAt: new Date() })
+        .where(eq(excursionBookingsTable.id, bookingId))
+        .returning();
+
+      if (depositsDelta !== 0 || balancesDelta !== 0) {
+        await tx
+          .update(excursionsTable)
+          .set({
+            depositsCount: sql`GREATEST(0, ${excursionsTable.depositsCount} + ${depositsDelta})`,
+            balancesCount: sql`GREATEST(0, ${excursionsTable.balancesCount} + ${balancesDelta})`,
+            updatedAt: new Date(),
+          })
+          .where(eq(excursionsTable.id, id));
+      }
+
+      return u;
+    });
+
+    if (!updated) {
+      res.status(404).json({ error: "Prenotazione non trovata." });
+      return;
+    }
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.delete("/excursions/:id/bookings/:bookingId", async (req, res) => {
+  try {
+    const { id, bookingId } = req.params;
+
+    const removed = await db.transaction(async (tx) => {
+      const [booking] = await tx
+        .select()
+        .from(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.id, bookingId))
+        .for("update")
+        .limit(1);
+
+      if (!booking || booking.excursionId !== id) return false;
+
+      await tx
+        .delete(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.id, bookingId));
+
+      const seats = booking.seats;
+      const depositsDelta = booking.paymentStatus === "deposit" ? -seats : 0;
+      const balancesDelta = booking.paymentStatus === "paid" ? -seats : 0;
+
+      await tx
+        .update(excursionsTable)
+        .set({
+          adherentsCount: sql`GREATEST(0, ${excursionsTable.adherentsCount} - ${seats})`,
+          depositsCount: sql`GREATEST(0, ${excursionsTable.depositsCount} + ${depositsDelta})`,
+          balancesCount: sql`GREATEST(0, ${excursionsTable.balancesCount} + ${balancesDelta})`,
+          updatedAt: new Date(),
+        })
+        .where(eq(excursionsTable.id, id));
+
+      return true;
+    });
+
+    if (!removed) {
+      res.status(404).json({ error: "Prenotazione non trovata." });
+      return;
+    }
+
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });

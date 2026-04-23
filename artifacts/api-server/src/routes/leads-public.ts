@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, leadNotesTable, offersTable, excursionsTable } from "@workspace/db/schema";
-import { eq, and, ne, desc } from "drizzle-orm";
+import { leadsTable, leadNotesTable, offersTable, excursionsTable, excursionBookingsTable, customersTable } from "@workspace/db/schema";
+import { eq, and, ne, desc, sql, or } from "drizzle-orm";
 
 const router = Router();
 
@@ -289,6 +289,155 @@ router.post("/leads", async (req, res) => {
     });
   } catch (err) {
     console.error("Public lead creation failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.post("/excursions/:id/book", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { customerName, email, phone, seats, paymentType } = req.body as {
+      customerName?: string;
+      email?: string;
+      phone?: string;
+      seats?: number;
+      paymentType?: string;
+    };
+
+    if (!customerName?.trim() || !email?.trim()) {
+      res.status(400).json({ error: "Nome e email sono obbligatori." });
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      res.status(400).json({ error: "Indirizzo email non valido." });
+      return;
+    }
+    if (customerName.length > 200 || email.length > 200) {
+      res.status(400).json({ error: "Nome o email troppo lunghi." });
+      return;
+    }
+    if (phone && phone.length > 40) {
+      res.status(400).json({ error: "Numero di telefono troppo lungo." });
+      return;
+    }
+    const seatsNum = Number(seats);
+    if (!Number.isInteger(seatsNum) || seatsNum < 1 || seatsNum > 10) {
+      res.status(400).json({ error: "Numero posti non valido (1-10)." });
+      return;
+    }
+    if (paymentType !== "deposit" && paymentType !== "full") {
+      res.status(400).json({ error: "Tipo di pagamento non valido." });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const paymentStatus = paymentType === "full" ? "paid" : "deposit";
+
+    const result = await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(excursionsTable)
+        .set({
+          adherentsCount: sql`${excursionsTable.adherentsCount} + ${seatsNum}`,
+          depositsCount:
+            paymentStatus === "deposit"
+              ? sql`${excursionsTable.depositsCount} + ${seatsNum}`
+              : excursionsTable.depositsCount,
+          balancesCount:
+            paymentStatus === "paid"
+              ? sql`${excursionsTable.balancesCount} + ${seatsNum}`
+              : excursionsTable.balancesCount,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(excursionsTable.id, id),
+            ne(excursionsTable.status, "completed"),
+            ne(excursionsTable.status, "cancelled"),
+            ne(excursionsTable.status, "archived"),
+            or(
+              eq(excursionsTable.currentCapacity, 0),
+              sql`${excursionsTable.adherentsCount} + ${seatsNum} <= ${excursionsTable.currentCapacity}`,
+            ),
+          ),
+        )
+        .returning();
+
+      if (updated.length === 0) {
+        const [exists] = await tx
+          .select({
+            id: excursionsTable.id,
+            status: excursionsTable.status,
+            currentCapacity: excursionsTable.currentCapacity,
+            adherentsCount: excursionsTable.adherentsCount,
+          })
+          .from(excursionsTable)
+          .where(eq(excursionsTable.id, id))
+          .limit(1);
+
+        if (!exists) return { kind: "notfound" as const };
+        if (
+          exists.status === "completed" ||
+          exists.status === "cancelled" ||
+          exists.status === "archived"
+        ) {
+          return { kind: "closed" as const };
+        }
+        const remaining = (exists.currentCapacity ?? 0) - (exists.adherentsCount ?? 0);
+        return { kind: "full" as const, remaining: Math.max(0, remaining) };
+      }
+
+      const [existingCustomer] = await tx
+        .select({ id: customersTable.id })
+        .from(customersTable)
+        .where(eq(customersTable.email, normalizedEmail))
+        .limit(1);
+
+      const [booking] = await tx
+        .insert(excursionBookingsTable)
+        .values({
+          excursionId: id,
+          customerId: existingCustomer?.id ?? null,
+          customerName: customerName.trim(),
+          email: normalizedEmail,
+          phone: phone?.trim() || null,
+          seats: seatsNum,
+          paymentStatus,
+        })
+        .returning();
+
+      return { kind: "ok" as const, booking };
+    });
+
+    if (result.kind === "notfound") {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
+    if (result.kind === "closed") {
+      res.status(400).json({ error: "Le prenotazioni per questa gita sono chiuse." });
+      return;
+    }
+    if (result.kind === "full") {
+      res.status(400).json({
+        error:
+          result.remaining <= 0
+            ? "Posti esauriti per questa gita."
+            : `Sono rimasti solo ${result.remaining} posti disponibili.`,
+      });
+      return;
+    }
+
+    res.status(201).json({
+      id: result.booking.id,
+      seats: result.booking.seats,
+      paymentStatus: result.booking.paymentStatus,
+      message:
+        paymentStatus === "paid"
+          ? "Prenotazione confermata. Ti contatteremo per perfezionare il pagamento."
+          : "Prenotazione registrata con acconto. Ti contatteremo per i dettagli del pagamento.",
+    });
+  } catch (err) {
+    console.error("Public excursion booking failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
   }
 });

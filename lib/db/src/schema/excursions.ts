@@ -79,6 +79,8 @@ export const excursionBookingsTable = pgTable("excursion_bookings", {
     onDelete: "set null",
   }),
   customerName: text("customer_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
   seats: integer("seats").notNull().default(1),
   paymentStatus: text("payment_status").notNull().default("pending"),
   bookedAt: timestamp("booked_at").notNull().defaultNow(),

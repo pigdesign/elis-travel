@@ -64,6 +64,8 @@ export interface Booking {
   excursionId: string;
   customerId?: string | null;
   customerName: string;
+  email?: string | null;
+  phone?: string | null;
   seats: number;
   paymentStatus: string;
   bookedAt: string;
@@ -78,8 +80,50 @@ export type ExcursionDetail = ExcursionSummary & {
 export interface BookingInput {
   customerName: string;
   customerId?: string;
+  email?: string | null;
+  phone?: string | null;
   seats?: number;
   paymentStatus?: string;
+}
+
+export type BookingPaymentStatusUpdatePaymentStatus =
+  (typeof BookingPaymentStatusUpdatePaymentStatus)[keyof typeof BookingPaymentStatusUpdatePaymentStatus];
+
+export const BookingPaymentStatusUpdatePaymentStatus = {
+  pending: "pending",
+  deposit: "deposit",
+  paid: "paid",
+} as const;
+
+export interface BookingPaymentStatusUpdate {
+  paymentStatus: BookingPaymentStatusUpdatePaymentStatus;
+}
+
+export type PublicBookingInputPaymentType =
+  (typeof PublicBookingInputPaymentType)[keyof typeof PublicBookingInputPaymentType];
+
+export const PublicBookingInputPaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export interface PublicBookingInput {
+  customerName: string;
+  email: string;
+  phone?: string;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  seats: number;
+  paymentType: PublicBookingInputPaymentType;
+}
+
+export interface PublicBookingResponse {
+  id: string;
+  seats: number;
+  paymentStatus: string;
+  message: string;
 }
 
 export interface ExcursionInput {
