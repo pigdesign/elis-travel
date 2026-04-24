@@ -13,10 +13,12 @@ import {
   CreditCard,
   Trash2,
   Plus,
+  Pencil,
   X,
   Loader2,
   ChevronRight,
 } from "lucide-react";
+import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
 import {
   useGetExcursion,
   useUpdateExcursion,
@@ -349,6 +351,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const { data: exc, isLoading, error } = useGetExcursion(excursionId);
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const { mutateAsync: updateExcursion } = useUpdateExcursion({
     mutation: {
       onSuccess: () => {
@@ -410,6 +413,15 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
             <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatDate(exc.date)}</span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowEditModal(true)}
+          className="inline-flex items-center gap-1.5 bg-white hover:bg-muted/50 border border-border text-foreground text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+          data-testid="button-edit-excursion"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+          Modifica
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -613,6 +625,14 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
 
       {showAddModal && (
         <AddParticipantModal excursionId={excursionId} onClose={() => setShowAddModal(false)} />
+      )}
+
+      {showEditModal && (
+        <ExcursionFormModal
+          mode="edit"
+          initial={exc}
+          onClose={() => setShowEditModal(false)}
+        />
       )}
     </div>
   );
