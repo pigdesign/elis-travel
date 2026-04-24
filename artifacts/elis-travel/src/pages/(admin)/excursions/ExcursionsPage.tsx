@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
 import {
   ChevronDown,
   ChevronUp,
@@ -292,6 +293,8 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
 
 export function ExcursionsPage() {
   const { data: excursions, isLoading, error } = useListExcursions();
+  const [, setLocation] = useLocation();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -302,11 +305,24 @@ export function ExcursionsPage() {
             Gestisci le gite, monitora le adesioni e il conto economico
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+          data-testid="button-new-excursion"
+        >
           <Plus className="w-4 h-4" />
           Nuova Gita
         </button>
       </div>
+
+      {showCreateModal && (
+        <ExcursionFormModal
+          mode="create"
+          onClose={() => setShowCreateModal(false)}
+          onSaved={(saved) => setLocation(`~/admin/excursions/${saved.id}`)}
+        />
+      )}
 
       {isLoading && (
         <div className="flex items-center justify-center h-40 text-muted-foreground">
