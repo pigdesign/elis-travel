@@ -255,6 +255,7 @@ router.patch("/excursions/:id/bookings/:bookingId", async (req, res) => {
         .limit(1);
 
       if (!booking || booking.excursionId !== id) return null;
+      if (booking.cancelledAt) return { cancelled: true as const };
 
       const oldStatus = booking.paymentStatus;
       const seats = booking.seats;
@@ -290,6 +291,10 @@ router.patch("/excursions/:id/bookings/:bookingId", async (req, res) => {
       res.status(404).json({ error: "Prenotazione non trovata." });
       return;
     }
+    if ("cancelled" in updated) {
+      res.status(400).json({ error: "Prenotazione annullata: impossibile aggiornare lo stato di pagamento." });
+      return;
+    }
 
     res.json(updated);
   } catch (err) {
@@ -315,6 +320,10 @@ router.delete("/excursions/:id/bookings/:bookingId", async (req, res) => {
       await tx
         .delete(excursionBookingsTable)
         .where(eq(excursionBookingsTable.id, bookingId));
+
+      // If the booking was already cancelled, counters were already
+      // decremented at cancellation time — do not decrement again.
+      if (booking.cancelledAt) return true;
 
       const seats = booking.seats;
       const depositsDelta = booking.paymentStatus === "deposit" ? -seats : 0;

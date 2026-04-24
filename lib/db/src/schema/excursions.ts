@@ -84,6 +84,7 @@ export const excursionBookingsTable = pgTable("excursion_bookings", {
   seats: integer("seats").notNull().default(1),
   paymentStatus: text("payment_status").notNull().default("pending"),
   bookedAt: timestamp("booked_at").notNull().defaultNow(),
+  cancelledAt: timestamp("cancelled_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

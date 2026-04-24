@@ -2,7 +2,11 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { leadsTable, leadNotesTable, offersTable, excursionsTable, excursionBookingsTable, customersTable } from "@workspace/db/schema";
 import { eq, and, ne, desc, sql, or } from "drizzle-orm";
-import { dispatchExcursionBookingEmails } from "../services/excursion-booking-emails";
+import {
+  dispatchExcursionBookingEmails,
+  dispatchExcursionBookingCancellationEmails,
+} from "../services/excursion-booking-emails";
+import { verifyBookingCancellationToken } from "../services/booking-cancellation-token";
 
 const router = Router();
 
@@ -470,6 +474,257 @@ router.post("/excursions/:id/book", async (req, res) => {
   } catch (err) {
     console.error("Public excursion booking failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+function escapeHtmlSimple(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderCancellationPage(opts: {
+  status: number;
+  title: string;
+  heading: string;
+  body: string;
+  showForm?: { actionUrl: string; submitLabel: string } | null;
+}): { status: number; html: string } {
+  const formBlock = opts.showForm
+    ? `<form method="POST" action="${escapeHtmlSimple(opts.showForm.actionUrl)}" style="margin-top:24px;">
+        <button type="submit" style="display:inline-block;padding:12px 20px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-weight:600;font-size:16px;cursor:pointer;">${escapeHtmlSimple(opts.showForm.submitLabel)}</button>
+      </form>`
+    : "";
+  const html = `<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtmlSimple(opts.title)}</title></head>
+<body style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#f5f5f5;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;padding:32px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+    <h1 style="margin:0 0 16px;font-size:22px;">${escapeHtmlSimple(opts.heading)}</h1>
+    <div style="color:#444;line-height:1.5;">${opts.body}</div>
+    ${formBlock}
+  </div>
+</body></html>`;
+  return { status: opts.status, html };
+}
+
+router.get("/excursions/bookings/:id/cancel", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const token = (req.query.token as string) || "";
+    if (!verifyBookingCancellationToken(id, token)) {
+      const page = renderCancellationPage({
+        status: 403,
+        title: "Link non valido",
+        heading: "Link di annullamento non valido",
+        body: "<p>Il link che hai usato non è valido o è stato manomesso. Contatta l'agenzia per assistenza.</p>",
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
+    const [booking] = await db
+      .select({
+        id: excursionBookingsTable.id,
+        seats: excursionBookingsTable.seats,
+        cancelledAt: excursionBookingsTable.cancelledAt,
+        excursionName: excursionsTable.name,
+        excursionLocation: excursionsTable.location,
+        excursionDate: excursionsTable.date,
+      })
+      .from(excursionBookingsTable)
+      .innerJoin(
+        excursionsTable,
+        eq(excursionBookingsTable.excursionId, excursionsTable.id),
+      )
+      .where(eq(excursionBookingsTable.id, id))
+      .limit(1);
+
+    if (!booking) {
+      const page = renderCancellationPage({
+        status: 404,
+        title: "Prenotazione non trovata",
+        heading: "Prenotazione non trovata",
+        body: "<p>Non abbiamo trovato la prenotazione richiesta. Potrebbe essere già stata rimossa.</p>",
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
+    if (booking.cancelledAt) {
+      const page = renderCancellationPage({
+        status: 200,
+        title: "Prenotazione già annullata",
+        heading: "Prenotazione già annullata",
+        body: `<p>Questa prenotazione per <strong>${escapeHtmlSimple(booking.excursionName)}</strong> risulta già annullata.</p>`,
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
+
+    const dateLabel = (() => {
+      try {
+        const d = new Date(booking.excursionDate);
+        if (Number.isNaN(d.getTime())) return booking.excursionDate;
+        return d.toLocaleDateString("it-IT", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        });
+      } catch {
+        return booking.excursionDate;
+      }
+    })();
+
+    const page = renderCancellationPage({
+      status: 200,
+      title: "Conferma annullamento",
+      heading: "Conferma annullamento prenotazione",
+      body: `
+        <p>Stai per annullare la prenotazione per:</p>
+        <ul>
+          <li><strong>${escapeHtmlSimple(booking.excursionName)}</strong></li>
+          <li>${escapeHtmlSimple(booking.excursionLocation)} — ${escapeHtmlSimple(dateLabel)}</li>
+          <li>Posti: <strong>${booking.seats}</strong></li>
+        </ul>
+        <p>L'operazione non è reversibile. I posti torneranno disponibili per altri clienti.</p>
+      `,
+      showForm: {
+        actionUrl: `/api/excursions/bookings/${encodeURIComponent(id)}/cancel?token=${encodeURIComponent(token)}`,
+        submitLabel: "Conferma annullamento",
+      },
+    });
+    res.status(page.status).type("text/html").send(page.html);
+  } catch (err) {
+    console.error("Cancellation page render failed:", err);
+    res.status(500).type("text/plain").send("Errore interno del server.");
+  }
+});
+
+router.post("/excursions/bookings/:id/cancel", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const token = ((req.query.token as string) || (req.body?.token as string) || "");
+    if (!verifyBookingCancellationToken(id, token)) {
+      const page = renderCancellationPage({
+        status: 403,
+        title: "Link non valido",
+        heading: "Link di annullamento non valido",
+        body: "<p>Il link che hai usato non è valido o è stato manomesso. Contatta l'agenzia per assistenza.</p>",
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const [booking] = await tx
+        .select({
+          id: excursionBookingsTable.id,
+          excursionId: excursionBookingsTable.excursionId,
+          seats: excursionBookingsTable.seats,
+          paymentStatus: excursionBookingsTable.paymentStatus,
+          cancelledAt: excursionBookingsTable.cancelledAt,
+          customerName: excursionBookingsTable.customerName,
+          email: excursionBookingsTable.email,
+          phone: excursionBookingsTable.phone,
+        })
+        .from(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.id, id))
+        .limit(1);
+
+      if (!booking) return { kind: "notfound" as const };
+      if (booking.cancelledAt) return { kind: "already" as const, booking };
+
+      const now = new Date();
+      const updatedBooking = await tx
+        .update(excursionBookingsTable)
+        .set({ cancelledAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(excursionBookingsTable.id, id),
+            sql`${excursionBookingsTable.cancelledAt} IS NULL`,
+          ),
+        )
+        .returning();
+
+      if (updatedBooking.length === 0) {
+        return { kind: "already" as const, booking };
+      }
+
+      const isDeposit = booking.paymentStatus === "deposit";
+      const isPaid = booking.paymentStatus === "paid";
+
+      const [excursion] = await tx
+        .update(excursionsTable)
+        .set({
+          adherentsCount: sql`GREATEST(${excursionsTable.adherentsCount} - ${booking.seats}, 0)`,
+          depositsCount: isDeposit
+            ? sql`GREATEST(${excursionsTable.depositsCount} - ${booking.seats}, 0)`
+            : excursionsTable.depositsCount,
+          balancesCount: isPaid
+            ? sql`GREATEST(${excursionsTable.balancesCount} - ${booking.seats}, 0)`
+            : excursionsTable.balancesCount,
+          updatedAt: now,
+        })
+        .where(eq(excursionsTable.id, booking.excursionId))
+        .returning({
+          id: excursionsTable.id,
+          name: excursionsTable.name,
+          location: excursionsTable.location,
+          date: excursionsTable.date,
+        });
+
+      return { kind: "ok" as const, booking, excursion };
+    });
+
+    if (result.kind === "notfound") {
+      const page = renderCancellationPage({
+        status: 404,
+        title: "Prenotazione non trovata",
+        heading: "Prenotazione non trovata",
+        body: "<p>Non abbiamo trovato la prenotazione richiesta.</p>",
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
+    if (result.kind === "already") {
+      const page = renderCancellationPage({
+        status: 200,
+        title: "Prenotazione già annullata",
+        heading: "Prenotazione già annullata",
+        body: "<p>Questa prenotazione risulta già annullata.</p>",
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
+
+    if (result.excursion) {
+      dispatchExcursionBookingCancellationEmails({
+        bookingId: result.booking.id,
+        customerName: result.booking.customerName,
+        customerEmail: result.booking.email ?? null,
+        customerPhone: result.booking.phone ?? null,
+        seats: result.booking.seats,
+        excursion: {
+          id: result.excursion.id,
+          name: result.excursion.name,
+          location: result.excursion.location,
+          date: result.excursion.date,
+        },
+      });
+    }
+
+    const excursionName = result.excursion?.name || "la tua gita";
+    const page = renderCancellationPage({
+      status: 200,
+      title: "Prenotazione annullata",
+      heading: "Prenotazione annullata",
+      body: `<p>La prenotazione per <strong>${escapeHtmlSimple(excursionName)}</strong> è stata annullata correttamente. Riceverai una email di conferma.</p>`,
+    });
+    res.status(page.status).type("text/html").send(page.html);
+  } catch (err) {
+    console.error("Booking cancellation failed:", err);
+    res.status(500).type("text/plain").send("Errore interno del server.");
   }
 });
 
