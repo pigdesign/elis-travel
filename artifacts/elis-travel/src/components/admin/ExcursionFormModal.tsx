@@ -321,6 +321,15 @@ export function ExcursionFormModal({
                 {fieldErrors.date && (
                   <p className="text-xs text-red-600 mt-1">{fieldErrors.date}</p>
                 )}
+                {!fieldErrors.date && form.date && form.date < todayISO() && (
+                  <p
+                    className="text-xs text-amber-700 mt-1 flex items-center gap-1"
+                    data-testid="warning-excursion-past-date"
+                  >
+                    <AlertCircle className="w-3 h-3" />
+                    Attenzione: la data è nel passato.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">
@@ -565,7 +574,65 @@ export function ExcursionFormModal({
               onChange={(url) => setField("coverImageUrl", url)}
               testIdPrefix="excursion-form-cover"
             />
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">
+                ...oppure incolla un URL immagine
+              </label>
+              <input
+                type="url"
+                value={form.coverImageUrl ?? ""}
+                onChange={(e) =>
+                  setField("coverImageUrl", e.target.value.trim() === "" ? null : e.target.value)
+                }
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="https://..."
+                data-testid="input-excursion-cover-url"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Puoi caricare un file con il pulsante sopra oppure incollare direttamente un link a un'immagine.
+              </p>
+            </div>
           </section>
+
+          {mode === "edit" && initial && "adherentsCount" in initial && (
+            <section className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Contatori prenotazioni (sola lettura)
+              </h4>
+              <div className="grid grid-cols-3 gap-3 bg-muted/30 rounded-md p-3">
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Aderenti</div>
+                  <div
+                    className="text-base font-semibold text-foreground"
+                    data-testid="text-counter-adherents"
+                  >
+                    {initial.adherentsCount}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Acconti</div>
+                  <div
+                    className="text-base font-semibold text-foreground"
+                    data-testid="text-counter-deposits"
+                  >
+                    {initial.depositsCount}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Saldati</div>
+                  <div
+                    className="text-base font-semibold text-foreground"
+                    data-testid="text-counter-balances"
+                  >
+                    {initial.balancesCount}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Aggiornati automaticamente dalle prenotazioni: non sono modificabili da qui.
+              </p>
+            </section>
+          )}
 
           {errorMsg && (
             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
