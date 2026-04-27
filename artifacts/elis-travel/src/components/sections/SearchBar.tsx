@@ -63,7 +63,7 @@ export function SearchBar() {
           <div className="px-4 md:px-0 shrink-0">
             <Button
               size="lg"
-              className="w-full md:w-auto h-14 px-8 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/30 whitespace-nowrap"
+              className="w-full md:w-auto h-14 px-8 rounded-full hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/30 whitespace-nowrap border-t-[#fa811ee6] border-r-[#fa811ee6] border-b-[#fa811ee6] border-l-[#fa811ee6] bg-[#fa811ee6] text-[20px]"
             >
               <Search className="w-5 h-5 mr-2" />
               Richiedi preventivo
