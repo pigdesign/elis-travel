@@ -159,7 +159,7 @@ export function OffersPage() {
                     <Link href={`/contatti?offerId=${encodeURIComponent(offer.id)}`}>
                       <Button
                         className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2 font-bold text-[16px] pt-[15px] pb-[15px]"
-                        style={{ borderWidth: 0 }}
+                        style={{ borderColor: "#ea812b" }}
                         data-testid={`button-request-info-offer-${offer.id}`}
                       >
                         <Send className="w-4 h-4" />
