@@ -35,27 +35,18 @@ export function PopularTours() {
   return (
     <section className="py-24 bg-muted/30" id="tours">
       <div className="container mx-auto px-4 md:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-16">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="max-w-2xl"
-          >
-            <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Tour in evidenza</span>
-            <h2 className="brand-title brand-title-primary md:text-5xl text-[60px] text-center">Scopri le nostre migliori Offerte</h2>
-          </motion.div>
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="mt-6 md:mt-0"
-          >
-            <p className="text-muted-foreground max-w-md text-right">
-              Itinerari curati con attenzione per la fuga perfetta. Che tu cerchi relax o avventura, abbiamo il tour ideale per te.
-            </p>
-          </motion.div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="flex flex-col items-center text-center mb-16"
+        >
+          <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Tour in evidenza</span>
+          <h2 className="brand-title brand-title-primary text-[60px] mb-4">Scopri le nostre migliori Offerte</h2>
+          <p className="text-muted-foreground max-w-xl">
+            Itinerari curati con attenzione per la fuga perfetta. Che tu cerchi relax o avventura, abbiamo il tour ideale per te.
+          </p>
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {TOURS.map((tour, index) => (
