@@ -39,7 +39,7 @@ export function EasySteps() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="lg:self-start"
+            className="lg:self-center flex flex-col items-center text-center"
           >
             <span className="text-accent font-bold tracking-wider uppercase text-[30px] mb-4 block">Come funziona</span>
             <h2 className="brand-title brand-title-primary mb-8 text-[#ffffff] text-[60px]">
