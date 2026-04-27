@@ -68,7 +68,8 @@ export function BestServices() {
         <img
           src={travelerImg}
           alt="Traveler"
-          className="w-full h-full object-contain object-bottom"
+          className="h-full w-auto object-bottom"
+          style={{ display: "block" }}
         />
       </motion.div>
 
