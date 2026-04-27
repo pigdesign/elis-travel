@@ -13,9 +13,8 @@ const REASONS = [
 export function WhyChooseUs() {
   return (
     <section className="py-24 bg-accent relative overflow-hidden">
-
       <div className="container relative z-10 mx-auto px-4 md:px-8">
-        <div className="bg-primary/5 rounded-[3rem] p-8 md:p-16 border border-primary/10 backdrop-blur-sm">
+        <div className="rounded-[3rem] p-8 md:p-16 border border-primary/10 backdrop-blur-sm bg-[#0589ae00]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             
             <motion.div
