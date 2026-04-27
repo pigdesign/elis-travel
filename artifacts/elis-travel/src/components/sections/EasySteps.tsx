@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import bgImg from "@assets/Gemini_Generated_Image_madap7madap7mada_1777289660530.png";
 import { MapPin, CalendarCheck, PlaneTakeoff } from "lucide-react";
 const STEPS = [
   {
@@ -23,8 +24,16 @@ const STEPS = [
 
 export function EasySteps() {
   return (
-    <section className="py-24 bg-background overflow-hidden">
-      <div className="container mx-auto px-4 md:px-8">
+    <section
+      className="py-24 overflow-hidden relative"
+      style={{
+        backgroundImage: `url(${bgImg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="absolute inset-0 bg-white/75 backdrop-blur-[2px]" />
+      <div className="relative z-10 container mx-auto px-4 md:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
