@@ -51,16 +51,16 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   push_to_rms: "Inviato a RMS",
 };
 const EVENT_STATUS_CFG: Record<string, { label: string; className: string }> = {
-  success: { label: "Riuscito", className: "bg-green-100 text-green-700" },
-  failed: { label: "Fallito", className: "bg-red-100 text-red-700" },
-  conflict: { label: "Conflitto", className: "bg-yellow-100 text-yellow-700" },
+  success: { label: "Riuscito", className: "bg-emerald-100 text-emerald-700" },
+  failed: { label: "Fallito", className: "bg-destructive/10 text-destructive" },
+  conflict: { label: "Conflitto", className: "bg-accent/15 text-accent" },
 };
 
 function RmsBadge({ linked, lastSyncAt }: { linked: boolean; lastSyncAt?: string | null }) {
   if (!linked) return null;
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary"
       title={lastSyncAt ? `Ultima sync: ${formatDateTime(lastSyncAt)}` : "Collegato a RMS"}
     >
       <Link2 className="w-3 h-3" />

@@ -22,11 +22,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; dot: string }> = {
-  new: { label: "Nuova", className: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-  contacted: { label: "Contattata", className: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
-  quote_sent: { label: "Preventivo inviato", className: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
-  won: { label: "Vinto", className: "bg-green-100 text-green-700", dot: "bg-green-500" },
-  lost: { label: "Perso", className: "bg-red-100 text-red-700", dot: "bg-red-400" },
+  new: { label: "Nuova", className: "bg-primary/10 text-primary", dot: "bg-primary" },
+  contacted: { label: "Contattata", className: "bg-accent/15 text-accent", dot: "bg-accent" },
+  quote_sent: { label: "Preventivo inviato", className: "bg-primary/20 text-primary", dot: "bg-primary/70" },
+  won: { label: "Vinto", className: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  lost: { label: "Perso", className: "bg-destructive/10 text-destructive", dot: "bg-destructive/70" },
 };
 
 function timeAgo(date: string | Date): string {
@@ -82,11 +82,11 @@ export function DashboardPage() {
   const inProgressLeads = data.leadsByStatus.contacted + data.leadsByStatus.quote_sent;
 
   const STATUS_BREAKDOWN: { key: keyof typeof data.leadsByStatus; label: string; className: string; dot: string }[] = [
-    { key: "new", label: "Nuove", className: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-    { key: "contacted", label: "Contattate", className: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
-    { key: "quote_sent", label: "Preventivo", className: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
-    { key: "won", label: "Vinte", className: "bg-green-100 text-green-700", dot: "bg-green-500" },
-    { key: "lost", label: "Perse", className: "bg-red-100 text-red-700", dot: "bg-red-400" },
+    { key: "new", label: "Nuove", className: "bg-primary/10 text-primary", dot: "bg-primary" },
+    { key: "contacted", label: "Contattate", className: "bg-accent/15 text-accent", dot: "bg-accent" },
+    { key: "quote_sent", label: "Preventivo", className: "bg-primary/20 text-primary", dot: "bg-primary/70" },
+    { key: "won", label: "Vinte", className: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+    { key: "lost", label: "Perse", className: "bg-destructive/10 text-destructive", dot: "bg-destructive/70" },
   ];
 
   return (
@@ -309,7 +309,7 @@ export function DashboardPage() {
                           className={cn(
                             "text-xs font-semibold px-2 py-0.5 rounded-full",
                             days <= 7
-                              ? "bg-red-100 text-red-700"
+                              ? "bg-destructive/10 text-destructive"
                               : "bg-muted text-muted-foreground",
                           )}
                         >

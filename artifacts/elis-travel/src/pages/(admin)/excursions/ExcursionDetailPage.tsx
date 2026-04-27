@@ -35,16 +35,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  draft: { label: "Bozza", className: "bg-gray-100 text-gray-700" },
-  confirmed: { label: "Confermata", className: "bg-emerald-100 text-emerald-700" },
-  completed: { label: "Completata", className: "bg-blue-100 text-blue-700" },
-  cancelled: { label: "Annullata", className: "bg-red-100 text-red-700" },
+  draft: { label: "Bozza", className: "bg-muted text-muted-foreground" },
+  confirmed: { label: "Confermata", className: "bg-primary/10 text-primary" },
+  completed: { label: "Completata", className: "bg-emerald-100 text-emerald-700" },
+  cancelled: { label: "Annullata", className: "bg-destructive/10 text-destructive" },
 };
 
 const PAYMENT_STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string }> = {
-  pending: { label: "In attesa", icon: Clock, className: "text-gray-500" },
-  deposit: { label: "Acconto", icon: CreditCard, className: "text-amber-600" },
-  paid: { label: "Saldato", icon: CheckCircle, className: "text-emerald-600" },
+  pending: { label: "In attesa", icon: Clock, className: "text-muted-foreground" },
+  deposit: { label: "Acconto", icon: CreditCard, className: "text-accent" },
+  paid: { label: "Saldato", icon: CheckCircle, className: "text-primary" },
 };
 
 function formatEur(n: number) {
@@ -208,7 +208,7 @@ function BookingRow({
               type="button"
               onClick={advance}
               disabled={busy}
-              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 font-medium transition-colors"
               data-testid={`button-advance-${booking.id}`}
               title={`Avanza a ${nextStep.next}`}
             >
@@ -522,7 +522,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-primary mb-4 pb-2 border-b border-primary/10">
               Immagine di copertina
             </h2>
             <CoverImageUploader
@@ -535,7 +535,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </div>
 
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-1.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-primary mb-4 flex items-center gap-1.5 pb-2 border-b border-primary/10">
               <Users className="w-4 h-4" /> Stato Adesioni
             </h2>
 
@@ -546,33 +546,33 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
               </div>
               <div className="flex gap-3 pb-1">
                 <div className="text-center">
-                  <div className="text-xl font-bold text-amber-600">{exc.depositsCount}</div>
+                  <div className="text-xl font-bold text-accent">{exc.depositsCount}</div>
                   <div className="text-xs text-muted-foreground">acconti</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-emerald-600">{exc.balancesCount}</div>
+                  <div className="text-xl font-bold text-primary">{exc.balancesCount}</div>
                   <div className="text-xs text-muted-foreground">saldi</div>
                 </div>
               </div>
             </div>
 
-            <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden mb-1">
+            <div className="relative h-3.5 bg-muted rounded-full overflow-hidden mb-1">
               {adherentsPct > 0 && (
                 <div
-                  className={`absolute left-0 top-0 h-full rounded-full transition-all ${overThreshold ? "bg-emerald-500" : "bg-amber-400"}`}
+                  className={`absolute left-0 top-0 h-full rounded-full transition-all ${overThreshold ? "bg-primary" : "bg-accent"}`}
                   style={{ width: `${adherentsPct}%` }}
                 />
               )}
               {thresholdPct > 0 && thresholdPct < 100 && (
                 <div
-                  className="absolute top-0 h-full w-0.5 bg-gray-500"
+                  className="absolute top-0 h-full w-0.5 bg-foreground/25"
                   style={{ left: `${thresholdPct}%` }}
                 />
               )}
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>0</span>
-              <span className="text-gray-600">Soglia min: {exc.minThreshold}</span>
+              <span>Soglia min: {exc.minThreshold}</span>
               <span>{capacityMax}</span>
             </div>
           </div>
@@ -580,7 +580,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                   <Users className="w-4 h-4" /> Partecipanti ({activeBookings.length})
                 </h2>
                 {cancelledBookings.length > 0 && (
@@ -657,7 +657,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
               <div className="h-px bg-border/50 my-2" />
               <div className="flex justify-between font-semibold text-base">
                 <span>Margine netto</span>
-                <span className={exc.margineNetto >= 0 ? "text-emerald-600" : "text-red-500"}>
+                <span className={exc.margineNetto >= 0 ? "text-primary" : "text-destructive"}>
                   {formatEur(exc.margineNetto)}
                 </span>
               </div>
@@ -686,7 +686,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                 </div>
                 <div className="flex justify-between font-medium border-t border-border/50 pt-1.5">
                   <span>Margine/persona</span>
-                  <span className={marginePerPersona >= 0 ? "text-emerald-600" : "text-red-500"}>
+                  <span className={marginePerPersona >= 0 ? "text-primary" : "text-destructive"}>
                     {formatEur(marginePerPersona)}
                   </span>
                 </div>
@@ -695,7 +695,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </div>
 
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5 pb-2 border-b border-primary/10">
               <Bus className="w-4 h-4" /> Logistica Mezzo
             </h2>
             {needsVehicleAlert && (

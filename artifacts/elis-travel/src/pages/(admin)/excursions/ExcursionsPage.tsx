@@ -17,10 +17,10 @@ import { useListExcursions } from "@workspace/api-client-react";
 import type { ExcursionSummary } from "@workspace/api-client-react";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  draft: { label: "Bozza", className: "bg-gray-100 text-gray-700" },
-  confirmed: { label: "Confermata", className: "bg-emerald-100 text-emerald-700" },
-  completed: { label: "Completata", className: "bg-blue-100 text-blue-700" },
-  cancelled: { label: "Annullata", className: "bg-red-100 text-red-700" },
+  draft: { label: "Bozza", className: "bg-muted text-muted-foreground" },
+  confirmed: { label: "Confermata", className: "bg-primary/10 text-primary" },
+  completed: { label: "Completata", className: "bg-emerald-100 text-emerald-700" },
+  cancelled: { label: "Annullata", className: "bg-destructive/10 text-destructive" },
 };
 
 function formatEur(n: number) {
@@ -40,16 +40,16 @@ function AdherentsBar({ adherents, threshold, capacity }: { adherents: number; t
 
   return (
     <div className="w-full">
-      <div className="relative h-2.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="relative h-2 bg-muted rounded-full overflow-hidden">
         {adherentsPct > 0 && (
           <div
-            className={`absolute left-0 top-0 h-full rounded-full transition-all ${overThreshold ? "bg-emerald-500" : "bg-amber-400"}`}
+            className={`absolute left-0 top-0 h-full rounded-full transition-all ${overThreshold ? "bg-primary" : "bg-accent"}`}
             style={{ width: `${adherentsPct}%` }}
           />
         )}
         {thresholdPct > 0 && thresholdPct < 100 && (
           <div
-            className="absolute top-0 h-full w-0.5 bg-gray-400 opacity-60"
+            className="absolute top-0 h-full w-0.5 bg-foreground/20"
             style={{ left: `${thresholdPct}%` }}
           />
         )}
@@ -136,11 +136,11 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
         </td>
         <td className="py-3 px-2 text-center">
           <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-700 rounded px-1.5 py-0.5">
-              <span>A</span><span className="font-semibold">{exc.depositsCount}</span>
+            <span className="inline-flex items-center gap-0.5 bg-accent/10 text-accent rounded-md px-1.5 py-0.5 font-medium">
+              <span>A</span><span className="font-bold">{exc.depositsCount}</span>
             </span>
-            <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 rounded px-1.5 py-0.5">
-              <span>S</span><span className="font-semibold">{exc.balancesCount}</span>
+            <span className="inline-flex items-center gap-0.5 bg-primary/10 text-primary rounded-md px-1.5 py-0.5 font-medium">
+              <span>S</span><span className="font-bold">{exc.balancesCount}</span>
             </span>
           </div>
         </td>
@@ -162,9 +162,9 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
         <tr className="border-b border-border/50 bg-muted/10">
           <td colSpan={8} className="px-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl p-4 border border-border/50">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5" /> A — Conto Economico
+              <div className="bg-white rounded-2xl p-4 border border-border/50 shadow-sm">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5 pb-2 border-b border-primary/10">
+                  <TrendingUp className="w-3.5 h-3.5" /> Conto Economico
                 </h4>
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
@@ -185,7 +185,7 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
                   </div>
                   <div className="flex justify-between border-t border-border/50 pt-1.5 font-medium">
                     <span>Margine/persona</span>
-                    <span className={marginePerPersona >= 0 ? "text-emerald-600" : "text-red-500"}>
+                    <span className={marginePerPersona >= 0 ? "text-primary font-semibold" : "text-destructive"}>
                       {formatEur(marginePerPersona)}
                     </span>
                   </div>
@@ -195,16 +195,16 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
                   </div>
                   <div className="flex justify-between border-t border-border/50 pt-1.5 font-semibold">
                     <span>Margine netto totale</span>
-                    <span className={exc.margineNetto >= 0 ? "text-emerald-600" : "text-red-500"}>
+                    <span className={exc.margineNetto >= 0 ? "text-primary" : "text-destructive"}>
                       {formatEur(exc.margineNetto)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-4 border border-border/50">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" /> B — Stato Adesioni
+              <div className="bg-white rounded-2xl p-4 border border-border/50 shadow-sm">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5 pb-2 border-b border-primary/10">
+                  <Users className="w-3.5 h-3.5" /> Stato Adesioni
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -221,12 +221,12 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
                   </div>
                   <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-amber-600">Acconti (A)</span>
-                      <span className="font-semibold text-amber-600">{exc.depositsCount}</span>
+                      <span className="text-accent font-medium">Acconti (A)</span>
+                      <span className="font-semibold text-accent">{exc.depositsCount}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-emerald-600">Saldi (S)</span>
-                      <span className="font-semibold text-emerald-600">{exc.balancesCount}</span>
+                      <span className="text-primary font-medium">Saldi (S)</span>
+                      <span className="font-semibold text-primary">{exc.balancesCount}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">In attesa</span>
@@ -236,9 +236,9 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-4 border border-border/50">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                  <Bus className="w-3.5 h-3.5" /> C — Logistica Mezzo
+              <div className="bg-white rounded-2xl p-4 border border-border/50 shadow-sm">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5 pb-2 border-b border-primary/10">
+                  <Bus className="w-3.5 h-3.5" /> Logistica Mezzo
                 </h4>
                 {needsVehicleAlert && (
                   <div className="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
@@ -308,7 +308,7 @@ export function ExcursionsPage() {
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors shadow-sm"
           data-testid="button-new-excursion"
         >
           <Plus className="w-4 h-4" />
