@@ -43,7 +43,7 @@ export function PopularDestinations() {
           className="text-center max-w-2xl mx-auto mb-16"
         >
           <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Mete top</span>
-          <h2 className="brand-title text-blue-600 text-4xl md:text-5xl mb-6">Esplora le destinazioni più amate</h2>
+          <h2 className="brand-title md:text-5xl mb-6 text-[#0489ae] border-t-[#0489ae] border-r-[#0489ae] border-b-[#0489ae] border-l-[#0489ae] text-[63px]">Esplora le destinazioni più amate</h2>
           <p className="text-muted-foreground text-lg">
             Scopri la nostra selezione curata dei luoghi più belli del mondo.
           </p>
