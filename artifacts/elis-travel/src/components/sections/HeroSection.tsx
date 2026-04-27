@@ -23,9 +23,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-left"
           >
-            <span className="inline-block py-1 px-3 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-sm font-semibold tracking-widest uppercase mb-6 text-blue-600">
-              Esplora il mondo
-            </span>
+            <span className="inline-block py-1 px-3 rounded-full backdrop-blur-md border border-white/30 tracking-widest uppercase mb-6 text-[#ffffff] bg-[#fa8d34] border-t-[#ffffff00] border-r-[#ffffff00] border-b-[#ffffff00] border-l-[#ffffff00] border-t-[3px] border-r-[3px] border-b-[3px] border-l-[3px] font-bold text-[22px]">Esplora con noi</span>
           </motion.div>
 
           <motion.h1
