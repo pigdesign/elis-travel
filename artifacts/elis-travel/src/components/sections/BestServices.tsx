@@ -55,23 +55,28 @@ export function BestServices() {
       </div>
 
       {/* Desktop image — absolute child of section, fills full section height */}
-      <motion.div
-        initial={{ opacity: 0, x: -30 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true }}
-        className="hidden lg:block absolute inset-y-0 z-10"
+      <div
+        className="hidden lg:block absolute z-10"
         style={{
+          top: 0,
+          bottom: 0,
           left: "calc(50% - 36rem)",
           width: "30rem",
         }}
       >
-        <img
+        <motion.img
           src={travelerImg}
           alt="Traveler"
-          className="h-full w-auto object-bottom"
-          style={{ display: "block" }}
+          initial={{ opacity: 0, x: -30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          style={{
+            display: "block",
+            height: "100%",
+            width: "auto",
+          }}
         />
-      </motion.div>
+      </div>
 
       {/* Content container */}
       <div className="relative z-20 mx-auto max-w-6xl">
