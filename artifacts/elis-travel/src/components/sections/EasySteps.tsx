@@ -38,20 +38,6 @@ export function EasySteps() {
               <br />
               prenotare il tuo prossimo viaggio
             </h2>
-            <div className="rounded-[1.8rem] overflow-hidden shadow-2xl bg-white max-w-[260px]">
-              <div className="relative h-[230px] bg-[radial-gradient(circle_at_30%_25%,rgba(9,168,195,0.18),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(249,115,22,0.12))]">
-              </div>
-              <div className="bg-accent text-accent-foreground p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider">Offerta speciale</p>
-                <div className="flex items-end gap-2 mt-1">
-                  <span className="text-6xl font-black leading-none">48</span>
-                  <div className="pb-2">
-                    <span className="text-xl font-black">%</span>
-                    <p className="text-xs font-semibold">di sconto</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </motion.div>
 
           <div className="space-y-4">
