@@ -121,7 +121,7 @@ export function OffersPage() {
                       </div>
                     )}
                   </Link>
-                  <div className="p-6 flex flex-col flex-1 bg-[#f4e3c736]">
+                  <div className="p-6 flex flex-col flex-1 bg-[#f9fafb]">
                   <Link
                     href={buildSlugUrl("offerte", offer.id, offer.name)}
                     className="block group"
