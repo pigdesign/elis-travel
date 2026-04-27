@@ -124,7 +124,9 @@ export function BestServices() {
                       borderBottomLeftRadius: "18px",
                       boxShadow: "0 6px 28px rgba(0,0,0,0.09)",
                       minHeight: "260px",
-                      padding: "38px 22px 52px",
+                      padding: index === 0 ? "38px 20px 38px" : "38px 22px 52px",
+                      ...(index === 0 || index === 1 ? { width: "181px" } : {}),
+                      ...(index === 1 || index === 2 ? { height: "339px" } : {}),
                     }}
                   >
                     <div className="mb-5 mt-2">
