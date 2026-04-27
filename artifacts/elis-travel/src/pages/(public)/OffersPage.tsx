@@ -141,15 +141,8 @@ export function OffersPage() {
                   <div className="mt-auto pt-4 space-y-2">
                     <Link href={buildSlugUrl("offerte", offer.id, offer.name)}>
                       <Button
-                        variant="outline"
-                        className="w-full inline-flex items-center justify-center gap-2"
-                        style={{
-                          marginTop: "21px",
-                          marginBottom: "21px",
-                          paddingTop: "15px",
-                          paddingBottom: "15px",
-                          border: "3px solid #00000026",
-                        }}
+                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2 font-bold text-[16px]"
+                        style={{ paddingTop: "15px", paddingBottom: "15px", borderWidth: 0 }}
                         data-testid={`button-view-offer-${offer.id}`}
                       >
                         Vedi dettagli
