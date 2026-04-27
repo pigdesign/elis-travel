@@ -41,7 +41,7 @@ export function EasySteps() {
             viewport={{ once: true }}
             className="lg:self-start"
           >
-            <span className="text-accent font-bold tracking-wider uppercase text-sm mb-4 block">Come funziona</span>
+            <span className="text-accent font-bold tracking-wider uppercase text-[30px] mb-4 block">Come funziona</span>
             <h2 className="brand-title brand-title-primary mb-8 text-[#ffffff] text-[60px]">
               3 semplici passi per
               <br />
