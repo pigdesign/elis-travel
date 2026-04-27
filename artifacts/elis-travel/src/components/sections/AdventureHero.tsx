@@ -5,14 +5,13 @@ export function AdventureHero() {
   return (
     <section className="relative py-32 flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-primary/60 mix-blend-multiply z-10" />
+        <div className="absolute inset-0 mix-blend-multiply z-10 bg-[#00000017]" />
         <img
           src="/images/adventure-bg-elis.jpg"
           alt="Adventure Travel"
           className="w-full h-full object-cover"
         />
       </div>
-
       <div className="container relative z-20 mx-auto px-4 md:px-8 text-center text-white">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
