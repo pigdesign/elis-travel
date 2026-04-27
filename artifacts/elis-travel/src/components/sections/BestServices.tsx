@@ -52,24 +52,28 @@ export function BestServices() {
       <div className="lg:hidden w-full h-72 overflow-hidden">
         <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
       </div>
-      <div className="relative z-20 mx-auto pl-[30px] pr-[30px] max-w-6xl">
-        <div className="flex flex-col lg:flex-row lg:items-stretch lg:justify-center gap-0 lg:min-h-[620px]">
-          {/* LEFT: Traveler image — in flow, fills full section height */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="hidden lg:flex lg:w-[38%] flex-shrink-0 items-end justify-center h-full"
-          >
-            <img
-              src={travelerImg}
-              alt="Traveler"
-              className="w-auto h-full object-contain object-bottom"
-            />
-          </motion.div>
+      {/* Outer wrapper: relative so the image can be absolute inside it */}
+      <div className="relative z-20 mx-auto max-w-6xl">
+        {/* Image: absolute, anchored to inset-y-0 left-0 of this container */}
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          className="hidden lg:block absolute inset-y-0 left-0 w-[42%] z-10"
+        >
+          <img
+            src={travelerImg}
+            alt="Traveler"
+            className="w-full h-full object-contain object-bottom"
+          />
+        </motion.div>
 
-          {/* RIGHT: Content */}
-          <div className="lg:w-[58%] lg:pl-12 py-[60px]">
+        <div className="flex flex-col lg:flex-row">
+          {/* Spacer that mirrors image width */}
+          <div className="hidden lg:block lg:w-[42%] flex-shrink-0" />
+
+          {/* RIGHT: Content — drives the container height */}
+          <div className="lg:w-[58%] lg:pl-12 py-[70px] pr-[30px]">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
