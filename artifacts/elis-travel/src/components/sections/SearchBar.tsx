@@ -50,7 +50,7 @@ export function SearchBar() {
 
         {/* Riga 2: Email + Bottone */}
         <div className="flex flex-col md:flex-row md:items-center gap-3">
-          <div className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer flex-1">
+          <div className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer flex-1 opacity-[1] bg-[#e6e6e680]">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <Mail className="w-4 h-4" />
             </div>
