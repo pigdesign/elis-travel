@@ -20,8 +20,17 @@ export function OffersPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <section className="relative pt-40 pb-20 bg-gradient-to-br from-primary to-primary/80 text-white">
-        <div className="container mx-auto px-4 md:px-8 text-center">
+      <section
+        className="relative pt-40 pb-20 text-white overflow-hidden"
+        style={{
+          backgroundImage: 'url("/images/offerte-hero.jpg")',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <div className="absolute inset-0 bg-primary/60" />
+        <div className="container relative z-10 mx-auto px-4 md:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Offerte viaggio</h1>
           <p className="text-white/80 max-w-2xl mx-auto text-lg">
             Scopri le nostre proposte di viaggio e richiedi informazioni con un click.
