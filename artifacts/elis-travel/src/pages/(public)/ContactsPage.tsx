@@ -150,65 +150,79 @@ export function ContactsPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <section className="relative pt-40 pb-20 bg-gradient-to-br from-primary to-primary/80 text-white">
-        <div className="container mx-auto px-4 md:px-8 text-center">
-          <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Contattaci</h1>
-          <p className="text-white/80 max-w-2xl mx-auto text-lg">
-            Hai un viaggio in mente? Scrivici e il nostro team ti risponderà al più presto.
-          </p>
-        </div>
-      </section>
+      {/* Hero onepage con immagine */}
+      <section
+        className="relative min-h-screen flex flex-col overflow-hidden"
+        style={{
+          backgroundImage: 'url("/images/hero-bg.png")',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Overlay come HeroSection della home */}
+        <div className="absolute inset-0 bg-black/22 z-0" />
 
-      <section className="py-20">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 max-w-6xl mx-auto">
-            <div className="space-y-8 lg:col-span-1">
-              <div>
-                <h2 className="text-2xl font-serif font-bold text-foreground mb-3">
-                  I nostri recapiti
-                </h2>
-                <p className="text-muted-foreground text-sm leading-relaxed">
+        <div className="container relative z-10 mx-auto px-4 md:px-8 pt-36 pb-20 flex flex-col flex-1">
+          {/* Titolo hero */}
+          <div className="text-center text-white mb-12">
+            <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4 drop-shadow-lg">
+              Contattaci
+            </h1>
+            <p className="text-white/85 max-w-2xl mx-auto text-lg">
+              Hai un viaggio in mente? Scrivici e il nostro team ti risponderà al più presto.
+            </p>
+          </div>
+
+          {/* Contenuto: recapiti + form */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto w-full flex-1">
+            {/* Recapiti */}
+            <div className="space-y-6 lg:col-span-1">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-white">
+                <h2 className="text-xl font-serif font-bold mb-2">I nostri recapiti</h2>
+                <p className="text-white/75 text-sm leading-relaxed mb-6">
                   Vieni a trovarci in agenzia o contattaci direttamente per organizzare la tua prossima vacanza.
                 </p>
-              </div>
 
-              <div className="space-y-5">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-accent/15 text-accent flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Sede</div>
-                    <div className="text-muted-foreground text-sm">
-                      via Cavour 59c<br />17051 Andora (SV)
+                <div className="space-y-5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-accent/80 text-white flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white">Sede</div>
+                      <div className="text-white/75 text-sm">
+                        via Cavour 59c<br />17051 Andora (SV)
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-accent/15 text-accent flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-5 h-5" />
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-accent/80 text-white flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white">Telefono</div>
+                      <div className="text-white/75 text-sm">+39 06 1234 5678</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Telefono</div>
-                    <div className="text-muted-foreground text-sm">+39 06 1234 5678</div>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-accent/15 text-accent flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Email</div>
-                    <div className="text-muted-foreground text-sm">info@elis-travel.it</div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-accent/80 text-white flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white">Email</div>
+                      <div className="text-white/75 text-sm">info@elis-travel.it</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
+            {/* Form */}
             <div className="lg:col-span-2">
-              <div className="bg-white border border-border rounded-2xl p-6 md:p-10 shadow-sm">
+              <div className="bg-white/95 backdrop-blur-md border border-white/30 rounded-2xl p-6 md:p-10 shadow-2xl">
                 {isSuccess ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4">
