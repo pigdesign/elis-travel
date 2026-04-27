@@ -63,7 +63,7 @@ export function EasySteps() {
                   {String(index + 1).padStart(2, "0")}
                 </div>
                 <div className="flex-1">
-                  <h3 className="brand-title brand-title-primary text-base md:text-lg mb-1">{step.title}</h3>
+                  <h3 className="brand-title brand-title-primary md:text-lg mb-1 text-[#ffffff] text-[30px]">{step.title}</h3>
                   <p className="text-xs md:text-sm text-muted-foreground max-w-[260px]">{step.desc}</p>
                 </div>
                 <div className="w-16 h-16 rounded-full border-4 border-accent/80 flex items-center justify-center text-accent shrink-0">
