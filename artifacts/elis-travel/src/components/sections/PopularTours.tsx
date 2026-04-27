@@ -43,7 +43,7 @@ export function PopularTours() {
             className="max-w-2xl"
           >
             <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Tour in evidenza</span>
-            <h2 className="brand-title brand-title-primary text-4xl md:text-5xl">Esplora i tour più popolari</h2>
+            <h2 className="brand-title brand-title-primary md:text-5xl text-[60px] text-center">Scopri le nostre migliori Offerte</h2>
           </motion.div>
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
