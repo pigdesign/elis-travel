@@ -28,10 +28,7 @@ export function Header() {
 
   return (
     <header
-      className={cn(
-        "fixed top-0 w-full z-50 transition-all duration-300",
-        isScrolled ? "bg-white/95 backdrop-blur-md shadow-sm py-4" : "bg-transparent py-6"
-      )}
+      className="fixed top-0 w-full z-50 transition-all duration-300 backdrop-blur-md shadow-sm py-4 bg-[#ffffff7a]"
     >
       <div className="container mx-auto px-4 md:px-8">
         <div className="flex items-center justify-between">
@@ -83,7 +80,6 @@ export function Header() {
           </button>
         </div>
       </div>
-
       {/* Mobile Nav */}
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-lg py-4 px-4 flex flex-col gap-4">
