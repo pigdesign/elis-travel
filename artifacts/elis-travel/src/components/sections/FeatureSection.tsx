@@ -16,9 +16,8 @@ export function FeatureSection() {
             transition={{ duration: 0.8 }}
           >
             <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">I nostri valori</span>
-            <h2 className="brand-title brand-title-primary text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight">
-              Consigliamo destinazioni bellissime ogni mese
-            </h2>
+            <h2 className="brand-title brand-title-primary text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight">Gite organizzate
+            destinazioni bellissime ogni mese</h2>
             <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
               Con oltre 20 anni di esperienza, curiamo le esperienze di viaggio più spettacolari. Crediamo che il viaggio debba essere senza stress, coinvolgente e trasformativo.
             </p>
