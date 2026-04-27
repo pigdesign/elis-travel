@@ -568,6 +568,51 @@ export const ListVehiclesResponseItem = zod.object({
 export const ListVehiclesResponse = zod.array(ListVehiclesResponseItem);
 
 /**
+ * @summary Crea un nuovo mezzo
+ */
+export const CreateVehicleBody = zod.object({
+  name: zod.string(),
+  capacity: zod.number(),
+  fixedCost: zod.string(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Modifica un mezzo esistente
+ */
+export const UpdateVehicleParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateVehicleBody = zod.object({
+  name: zod.string(),
+  capacity: zod.number(),
+  fixedCost: zod.string(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateVehicleResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  capacity: zod.number(),
+  fixedCost: zod.string(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Elimina un mezzo non collegato a gite
+ */
+export const DeleteVehicleParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DeleteVehicleResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary Lista offerte
  */
 export const ListOffersResponseItem = zod.object({

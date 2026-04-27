@@ -16,6 +16,7 @@ import { LoginPage } from "@/pages/(admin)/login/LoginPage";
 import { DashboardPage } from "@/pages/(admin)/dashboard/DashboardPage";
 import { ExcursionsPage } from "@/pages/(admin)/excursions/ExcursionsPage";
 import { ExcursionDetailPage } from "@/pages/(admin)/excursions/ExcursionDetailPage";
+import { VehiclesPage } from "@/pages/(admin)/vehicles/VehiclesPage";
 import { OffersPage } from "@/pages/(admin)/offers/OffersPage";
 import { OfferDetailPage } from "@/pages/(admin)/offers/OfferDetailPage";
 import { LeadsPage } from "@/pages/(admin)/leads/LeadsPage";
@@ -48,6 +49,7 @@ function Router() {
             <Route path="/excursions/:id">
               {(params) => <ExcursionDetailPage excursionId={params.id} />}
             </Route>
+            <Route path="/vehicles" component={VehiclesPage} />
             <Route path="/offers" component={OffersPage} />
             <Route path="/offers/:id">
               {(params) => <OfferDetailPage offerId={params.id} />}

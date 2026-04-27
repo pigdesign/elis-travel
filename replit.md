@@ -61,6 +61,19 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **SESSION_SECRET**: Replit Secret (required at startup)
 - **Admin credentials**: admin@elistravel.it / admin123 (change after first login)
 
+## Excursion vehicles management
+
+- **DB Table**: `excursionVehiclesTable` (in `lib/db/src/schema/excursions.ts`) — id, name, capacity, fixedCost, notes
+- **Backend routes** (`artifacts/api-server/src/routes/admin/excursions.ts`):
+  - `GET /api/admin/vehicles` — lista veicoli (ordinata per nome)
+  - `POST /api/admin/vehicles` — crea mezzo (validazione: nome, capacità 1-1000, costo >= 0)
+  - `PATCH /api/admin/vehicles/:id` — modifica mezzo
+  - `DELETE /api/admin/vehicles/:id` — elimina; restituisce 409 se il mezzo è collegato come `vehicleId` o `switchVehicleId` in qualche gita
+- **Frontend**: `artifacts/elis-travel/src/pages/(admin)/vehicles/VehiclesPage.tsx`
+  - Route: `/admin/vehicles`, voce sidebar "Mezzi" (icona `Bus`)
+  - Tabella con CRUD via dialog; conferma eliminazione con `AlertDialog`
+  - Dopo ogni mutation invalida `getListVehiclesQueryKey()`, così il select del form gita (`useListVehicles`) mostra subito i nuovi mezzi
+
 ## Email notifications (excursion bookings)
 
 - **Service**: `artifacts/api-server/src/services/email.service.ts`

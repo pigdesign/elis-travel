@@ -605,6 +605,101 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vehicle"
+    post:
+      operationId: createVehicle
+      tags: [excursions]
+      summary: Crea un nuovo mezzo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleInput"
+      responses:
+        "201":
+          description: Mezzo creato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/vehicles/{id}:
+    patch:
+      operationId: updateVehicle
+      tags: [excursions]
+      summary: Modifica un mezzo esistente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleInput"
+      responses:
+        "200":
+          description: Mezzo aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Mezzo non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteVehicle
+      tags: [excursions]
+      summary: Elimina un mezzo non collegato a gite
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Mezzo eliminato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "404":
+          description: Mezzo non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Mezzo collegato a una o più gite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/offers:
     get:
       operationId: listOffers
@@ -1288,6 +1383,22 @@ components:
         - fixedCost
         - createdAt
         - updatedAt
+    VehicleInput:
+      type: object
+      properties:
+        name:
+          type: string
+        capacity:
+          type: integer
+        fixedCost:
+          type: string
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - capacity
+        - fixedCost
     OfferSummary:
       type: object
       properties:

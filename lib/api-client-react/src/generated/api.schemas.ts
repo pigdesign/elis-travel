@@ -162,6 +162,13 @@ export interface Vehicle {
   updatedAt: string;
 }
 
+export interface VehicleInput {
+  name: string;
+  capacity: number;
+  fixedCost: string;
+  notes?: string | null;
+}
+
 export interface OfferSummary {
   id: string;
   name: string;
@@ -478,4 +485,8 @@ export type SearchRmsCustomersParams = {
    * Testo di ricerca (min 2 caratteri)
    */
   q: string;
+};
+
+export type DeleteVehicle200 = {
+  ok: boolean;
 };

@@ -454,4 +454,162 @@ router.get("/vehicles", async (_req, res) => {
   }
 });
 
+function parseVehicleBody(body: Partial<typeof excursionVehiclesTable.$inferInsert>) {
+  const errors: string[] = [];
+
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (!name) errors.push("Il nome è obbligatorio.");
+
+  const capacityRaw = body.capacity;
+  const capacity =
+    typeof capacityRaw === "number"
+      ? capacityRaw
+      : typeof capacityRaw === "string"
+      ? parseInt(capacityRaw, 10)
+      : NaN;
+  if (!Number.isFinite(capacity) || capacity <= 0 || capacity > 1000) {
+    errors.push("La capienza deve essere un numero positivo (max 1000).");
+  }
+
+  const fixedCostRaw = body.fixedCost;
+  const fixedCostStr =
+    typeof fixedCostRaw === "string"
+      ? fixedCostRaw.trim().replace(",", ".")
+      : typeof fixedCostRaw === "number"
+      ? String(fixedCostRaw)
+      : "";
+  const fixedCostNum = parseFloat(fixedCostStr);
+  if (!Number.isFinite(fixedCostNum) || fixedCostNum < 0) {
+    errors.push("Il costo fisso deve essere un numero maggiore o uguale a 0.");
+  }
+
+  const notes =
+    typeof body.notes === "string" && body.notes.trim() !== ""
+      ? body.notes.trim()
+      : null;
+
+  return {
+    errors,
+    values: {
+      name,
+      capacity: Math.trunc(capacity),
+      fixedCost: fixedCostNum.toFixed(2),
+      notes,
+    },
+  };
+}
+
+router.post("/vehicles", async (req, res) => {
+  try {
+    const body = req.body as Partial<typeof excursionVehiclesTable.$inferInsert>;
+    const { errors, values } = parseVehicleBody(body);
+
+    if (errors.length > 0) {
+      res.status(400).json({ error: errors.join(" ") });
+      return;
+    }
+
+    const [created] = await db
+      .insert(excursionVehiclesTable)
+      .values(values)
+      .returning();
+
+    res.status(201).json(created);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.patch("/vehicles/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body as Partial<typeof excursionVehiclesTable.$inferInsert>;
+
+    const [existing] = await db
+      .select()
+      .from(excursionVehiclesTable)
+      .where(eq(excursionVehiclesTable.id, id))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ error: "Mezzo non trovato." });
+      return;
+    }
+
+    const merged: Partial<typeof excursionVehiclesTable.$inferInsert> = {
+      name: body.name ?? existing.name,
+      capacity: body.capacity ?? existing.capacity,
+      fixedCost: body.fixedCost ?? existing.fixedCost,
+      notes: "notes" in body ? body.notes ?? null : existing.notes,
+    };
+
+    const { errors, values } = parseVehicleBody(merged);
+    if (errors.length > 0) {
+      res.status(400).json({ error: errors.join(" ") });
+      return;
+    }
+
+    const [updated] = await db
+      .update(excursionVehiclesTable)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(excursionVehiclesTable.id, id))
+      .returning();
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.delete("/vehicles/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.transaction(async (tx) => {
+      const [vehicle] = await tx
+        .select({ id: excursionVehiclesTable.id })
+        .from(excursionVehiclesTable)
+        .where(eq(excursionVehiclesTable.id, id))
+        .limit(1);
+
+      if (!vehicle) return { status: 404 as const };
+
+      const [{ count }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(excursionsTable)
+        .where(
+          sql`${excursionsTable.vehicleId} = ${id} OR ${excursionsTable.switchVehicleId} = ${id}`,
+        );
+
+      if (count > 0) {
+        return { status: 409 as const, count };
+      }
+
+      await tx
+        .delete(excursionVehiclesTable)
+        .where(eq(excursionVehiclesTable.id, id));
+      return { status: 200 as const };
+    });
+
+    if (result.status === 404) {
+      res.status(404).json({ error: "Mezzo non trovato." });
+      return;
+    }
+    if (result.status === 409) {
+      res.status(409).json({
+        error:
+          "Impossibile eliminare: il mezzo è collegato ad almeno una gita. Modifica prima le gite che lo utilizzano.",
+      });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 export default router;
