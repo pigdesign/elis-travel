@@ -78,7 +78,7 @@ export function BestServices() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="brand-title brand-title-accent md:text-4xl lg:text-5xl mb-6 text-[#f97316] text-[70px]">
+              <h2 className="brand-title brand-title-accent md:text-4xl lg:text-5xl mb-6 text-[70px] text-[#ffffff]">
                 Offriamo i migliori <span className="text-white">servizi</span>
               </h2>
               <p className="text-white/80 text-lg max-w-xl mb-8">
