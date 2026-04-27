@@ -59,7 +59,7 @@ export function EasySteps() {
                 transition={{ delay: index * 0.15, duration: 0.5 }}
                 className="flex items-center gap-4 rounded-[1.6rem] p-4 md:p-5 shadow-[0_16px_40px_rgba(9,168,195,0.12)] bg-[#fa811ec4]"
               >
-                <div className="w-16 h-16 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-2xl shrink-0">
+                <div className="w-16 h-16 rounded-2xl text-white flex items-center justify-center font-black shrink-0 text-[35px] bg-[#0cb8e8]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
                 <div className="flex-1">
