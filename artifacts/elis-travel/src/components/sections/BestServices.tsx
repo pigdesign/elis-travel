@@ -48,27 +48,25 @@ export function BestServices() {
           <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.85,121.32,192.5,108.5,236.4,99.5,279.7,80.4,321.39,56.44Z"></path>
         </svg>
       </div>
-      {/* Full-height traveler image — absolute on the left */}
-      <motion.div
-        initial={{ opacity: 0, x: -30 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true }}
-        className="hidden lg:block absolute inset-y-0 left-0 w-[30%] z-10"
-      >
-        <img
-          src={travelerImg}
-          alt="Traveler"
-          className="h-full object-contain object-bottom flex flex-col text-right w-[671px]"
-        />
-      </motion.div>
-      {/* Mobile image (normal flow) */}
+      {/* Mobile image */}
       <div className="lg:hidden w-full h-72 overflow-hidden">
         <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
       </div>
-      <div className="relative z-20 mx-auto pt-[150px] pb-[150px] pl-[30px] pr-[30px] max-w-7xl rotate-[360deg]">
-        <div className="flex flex-col lg:flex-row">
-          {/* Spacer for image column on desktop */}
-          <div className="hidden lg:block lg:w-[30%] flex-shrink-0" />
+      <div className="relative z-20 mx-auto pt-[80px] pb-[80px] pl-[30px] pr-[30px] max-w-6xl">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-0">
+          {/* LEFT: Traveler image — in flow */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="hidden lg:flex lg:w-[38%] flex-shrink-0 items-end justify-center self-stretch"
+          >
+            <img
+              src={travelerImg}
+              alt="Traveler"
+              className="w-full h-full object-contain object-bottom max-h-[560px]"
+            />
+          </motion.div>
 
           {/* RIGHT: Content */}
           <div className="lg:w-[58%] lg:pl-12">
