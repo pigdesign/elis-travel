@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
-import { Map, LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus } from "lucide-react";
+import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.png";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
@@ -52,13 +53,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             onClick={() => navigate("~/")}
             className="flex items-center gap-2.5 group"
           >
-            <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-white shadow-sm">
-              <Map className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-base font-bold text-white tracking-tight">Elis Travel</span>
-              <span className="text-[10px] text-white/50 font-medium tracking-widest uppercase">Admin</span>
-            </div>
+            <img
+              src={logoImg}
+              alt="Elis Travel"
+              className="h-10 w-auto object-contain"
+            />
           </button>
         </div>
 
