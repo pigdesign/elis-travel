@@ -61,6 +61,17 @@ function formatDateTime(dtStr: string) {
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function formatDateTimeFull(dtStr: string) {
+  const d = new Date(dtStr);
+  return d.toLocaleString("it-IT", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -141,40 +152,58 @@ function BookingRow({
   };
 
   const busy = isUpdating || isDeleting;
+  const isCancelled = !!booking.cancelledAt;
 
   return (
-    <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+    <tr className={`border-b border-border/50 transition-colors ${isCancelled ? "bg-gray-50/80 opacity-70" : "hover:bg-muted/20"}`}
+      data-testid={`booking-row-${booking.id}`}
+    >
       <td className="py-2.5 pl-4 pr-2">
         <div className="flex items-center gap-2">
           <AvatarInitials name={booking.customerName} />
           <div className="min-w-0">
-            <div className="font-medium text-sm text-foreground truncate">{booking.customerName}</div>
+            <div className={`font-medium text-sm truncate ${isCancelled ? "line-through text-muted-foreground" : "text-foreground"}`}>
+              {booking.customerName}
+            </div>
             {booking.email && (
               <div className="text-xs text-muted-foreground truncate" data-testid={`text-booking-email-${booking.id}`}>
                 {booking.email}
+              </div>
+            )}
+            {isCancelled && booking.cancelledAt && (
+              <div className="text-xs text-red-500 mt-0.5">
+                Annullata il {formatDateTimeFull(booking.cancelledAt)}
               </div>
             )}
           </div>
         </div>
       </td>
       <td className="py-2.5 px-2 text-center">
-        <span className="inline-flex items-center gap-1 text-sm">
+        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
           <Users className="w-3.5 h-3.5 text-muted-foreground" />
           {booking.seats}
         </span>
       </td>
       <td className="py-2.5 px-2">
-        <span className={`inline-flex items-center gap-1 text-xs font-medium ${paymentCfg.className}`}>
-          <PayIcon className="w-3.5 h-3.5" />
-          {paymentCfg.label}
-        </span>
+        {isCancelled ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700"
+            data-testid={`badge-cancelled-${booking.id}`}
+          >
+            Annullata
+          </span>
+        ) : (
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${paymentCfg.className}`}>
+            <PayIcon className="w-3.5 h-3.5" />
+            {paymentCfg.label}
+          </span>
+        )}
       </td>
       <td className="py-2.5 px-2 text-sm text-muted-foreground">
         {formatDateTime(booking.bookedAt)}
       </td>
       <td className="py-2.5 pr-4 pl-2 text-right">
         <div className="inline-flex items-center gap-1">
-          {nextStep && (
+          {!isCancelled && nextStep && (
             <button
               type="button"
               onClick={advance}
@@ -356,6 +385,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
   const { mutateAsync: updateExcursion } = useUpdateExcursion({
     mutation: {
       onSuccess: () => {
@@ -428,7 +458,10 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     exc.switchThreshold != null &&
     exc.switchVehicleId != null &&
     exc.adherentsCount >= exc.switchThreshold;
-  const bookings = exc.bookings ?? [];
+  const allBookings = exc.bookings ?? [];
+  const activeBookings = allBookings.filter((b) => !b.cancelledAt);
+  const cancelledBookings = allBookings.filter((b) => !!b.cancelledAt);
+  const bookings = showCancelled ? allBookings : activeBookings;
 
   return (
     <div className="space-y-6">
@@ -545,10 +578,23 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </div>
 
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Users className="w-4 h-4" /> Partecipanti ({bookings.length})
-              </h2>
+            <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Users className="w-4 h-4" /> Partecipanti ({activeBookings.length})
+                </h2>
+                {cancelledBookings.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelled((v) => !v)}
+                    className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${showCancelled ? "bg-red-100 border-red-300 text-red-700" : "bg-gray-100 border-gray-200 text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600"}`}
+                    data-testid="button-toggle-cancelled"
+                  >
+                    {cancelledBookings.length} annullat{cancelledBookings.length === 1 ? "a" : "e"}
+                    {showCancelled ? " ✕" : ""}
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
@@ -577,7 +623,9 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                   {bookings.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-10 text-center text-muted-foreground">
-                        Nessuna prenotazione ancora
+                        {allBookings.length === 0
+                          ? "Nessuna prenotazione ancora"
+                          : "Tutte le prenotazioni sono state annullate"}
                       </td>
                     </tr>
                   )}

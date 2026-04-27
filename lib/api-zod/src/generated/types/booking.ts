@@ -16,6 +16,7 @@ export interface Booking {
   seats: number;
   paymentStatus: string;
   bookedAt: Date;
+  cancelledAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

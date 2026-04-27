@@ -1127,6 +1127,10 @@ components:
         bookedAt:
           type: string
           format: date-time
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time

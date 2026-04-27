@@ -363,6 +363,7 @@ export const GetExcursionResponse = zod
           seats: zod.number(),
           paymentStatus: zod.string(),
           bookedAt: zod.coerce.date(),
+          cancelledAt: zod.coerce.date().nullish(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date(),
         }),
@@ -476,6 +477,7 @@ export const UpdateExcursionBookingPaymentResponse = zod.object({
   seats: zod.number(),
   paymentStatus: zod.string(),
   bookedAt: zod.coerce.date(),
+  cancelledAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

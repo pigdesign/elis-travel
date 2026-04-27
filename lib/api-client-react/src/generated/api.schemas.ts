@@ -69,6 +69,7 @@ export interface Booking {
   seats: number;
   paymentStatus: string;
   bookedAt: string;
+  cancelledAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
