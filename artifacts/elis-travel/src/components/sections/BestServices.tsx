@@ -49,7 +49,6 @@ export function BestServices() {
           <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.85,121.32,192.5,108.5,236.4,99.5,279.7,80.4,321.39,56.44Z"></path>
         </svg>
       </div>
-
       {/* Full-height traveler image — absolute on the left */}
       <motion.div
         initial={{ opacity: 0, x: -30 }}
@@ -63,12 +62,10 @@ export function BestServices() {
           className="h-full object-contain object-bottom flex flex-col text-right w-[671px]"
         />
       </motion.div>
-
       {/* Mobile image (normal flow) */}
       <div className="lg:hidden w-full h-72 overflow-hidden">
         <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
       </div>
-
       <div className="relative z-20 mx-auto pt-[150px] pb-[150px] pl-[30px] pr-[30px] max-w-7xl rotate-[360deg]">
         <div className="flex flex-col lg:flex-row">
           {/* Spacer for image column on desktop */}
@@ -81,7 +78,7 @@ export function BestServices() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="brand-title brand-title-accent text-3xl md:text-4xl lg:text-5xl mb-6">
+              <h2 className="brand-title brand-title-accent md:text-4xl lg:text-5xl mb-6 text-[#f97316] text-[70px]">
                 Offriamo i migliori <span className="text-white">servizi</span>
               </h2>
               <p className="text-white/80 text-lg max-w-xl mb-8">
@@ -93,7 +90,7 @@ export function BestServices() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-10 items-stretch">
               {SERVICES.map((service, index) => (
                 /* Outer wrapper: handles motion + provides overflow:visible context for the badge */
-                <motion.div
+                (<motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -136,7 +133,6 @@ export function BestServices() {
                       {service.desc}
                     </p>
                   </div>
-
                   {/* Step badge — bleeds outside the card at bottom-left */}
                   <div
                     className="absolute flex flex-col items-start justify-end"
@@ -164,7 +160,7 @@ export function BestServices() {
                       {service.stepNum}
                     </span>
                   </div>
-                </motion.div>
+                </motion.div>)
               ))}
             </div>
             
