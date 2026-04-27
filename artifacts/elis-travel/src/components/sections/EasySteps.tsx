@@ -41,7 +41,7 @@ export function EasySteps() {
             className="lg:self-start"
           >
             <span className="text-accent font-bold tracking-wider uppercase text-sm mb-4 block">Come funziona</span>
-            <h2 className="brand-title brand-title-primary text-4xl md:text-5xl mb-8 leading-tight">
+            <h2 className="brand-title brand-title-primary md:text-5xl mb-8 text-[#ffffff] text-[73px]">
               3 semplici passi per
               <br />
               prenotare il tuo prossimo viaggio
