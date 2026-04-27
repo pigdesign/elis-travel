@@ -25,7 +25,7 @@ export function EasySteps() {
   return (
     <section className="py-24 bg-background overflow-hidden">
       <div className="container mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)] gap-8 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
