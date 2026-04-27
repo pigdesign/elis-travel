@@ -21,7 +21,7 @@ export function OffersPage() {
       <Header />
 
       <section
-        className="relative pt-40 pb-20 text-white overflow-hidden"
+        className="relative pt-60 pb-32 text-white overflow-hidden"
         style={{
           backgroundImage: 'url("/images/offerte-hero.jpg")',
           backgroundSize: "cover",
