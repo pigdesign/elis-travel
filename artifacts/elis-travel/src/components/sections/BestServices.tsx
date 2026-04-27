@@ -102,50 +102,18 @@ export function BestServices() {
                   className="relative"
                   style={{ paddingBottom: "14px", paddingLeft: "14px" }}
                 >
-                  {/* Card — asymmetric border-radius: top-left & bottom-right prominent */}
+                  {/* Card */}
                   <div
-                    className="relative bg-white flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300"
-                    style={(() => {
-                      const baseStyle: React.CSSProperties = {
-                        borderTopLeftRadius: "46px",
-                        borderTopRightRadius: "18px",
-                        borderBottomRightRadius: "46px",
-                        borderBottomLeftRadius: "18px",
-                        boxShadow: "0 6px 28px rgba(0,0,0,0.09)",
-                        minHeight: "260px",
-                        padding: "38px 22px 52px",
-                      };
-
-                      if (index === 0) {
-                        return {
-                          ...baseStyle,
-                          position: "absolute",
-                          transform: "rotate(360deg)",
-                          minHeight: "unset",
-                          height: "225px",
-                        };
-                      }
-
-                      if (index === 1) {
-                        return {
-                          ...baseStyle,
-                          boxSizing: "content-box",
-                        };
-                      }
-
-                      if (index === 2) {
-                        return {
-                          ...baseStyle,
-                          boxSizing: "content-box",
-                          width: "auto",
-                          minHeight: "unset",
-                          height: "190px",
-                          padding: "20px",
-                        };
-                      }
-
-                      return baseStyle;
-                    })()}
+                    className="relative bg-white flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300 h-full"
+                    style={{
+                      borderTopLeftRadius: "46px",
+                      borderTopRightRadius: "18px",
+                      borderBottomRightRadius: "46px",
+                      borderBottomLeftRadius: "18px",
+                      boxShadow: "0 6px 28px rgba(0,0,0,0.09)",
+                      minHeight: "260px",
+                      padding: "38px 22px 52px",
+                    }}
                   >
                     {/* Icon — linear, no circle background */}
                     <div className="mb-5 mt-2">
