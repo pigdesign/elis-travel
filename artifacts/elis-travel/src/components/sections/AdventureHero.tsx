@@ -5,7 +5,15 @@ export function AdventureHero() {
   return (
     <section className="relative py-32 flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-primary/60 mix-blend-multiply z-10" />
+        <div
+          className="absolute inset-0 bg-primary/60 mix-blend-multiply z-10"
+          style={{
+            backgroundImage: 'url("/images/adventure-bg-elis.jpg")',
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
         <img
           src="/images/adventure-bg.png"
           alt="Adventure Travel"
