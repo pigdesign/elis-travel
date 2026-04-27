@@ -28,11 +28,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; dot: string }> = {
-  new: { label: "Nuova", className: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-  contacted: { label: "Contattata", className: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
-  quote_sent: { label: "Preventivo inviato", className: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
-  won: { label: "Vinto", className: "bg-green-100 text-green-700", dot: "bg-green-500" },
-  lost: { label: "Perso", className: "bg-red-100 text-red-700", dot: "bg-red-400" },
+  new: { label: "Nuova", className: "bg-primary/10 text-primary", dot: "bg-primary" },
+  contacted: { label: "Contattata", className: "bg-accent/15 text-accent", dot: "bg-accent" },
+  quote_sent: { label: "Preventivo inviato", className: "bg-primary/20 text-primary", dot: "bg-primary/70" },
+  won: { label: "Vinto", className: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  lost: { label: "Perso", className: "bg-destructive/10 text-destructive", dot: "bg-destructive/70" },
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -381,7 +381,7 @@ export function LeadsPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold text-foreground">Richieste</h1>
             {newCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-accent text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">
                 {newCount} nuove
               </span>
             )}
@@ -401,10 +401,10 @@ export function LeadsPage() {
               key={tab.key}
               onClick={() => setActiveFilter(tab.key)}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
+                "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-white border border-border text-muted-foreground hover:bg-muted/30"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-white border border-border text-muted-foreground hover:bg-primary/5 hover:border-primary/30"
               )}
             >
               {tab.label}

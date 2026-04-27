@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 import { OfferFormModal } from "./OfferFormModal";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  draft: { label: "Bozza", className: "bg-gray-100 text-gray-600" },
-  published: { label: "Pubblicata", className: "bg-emerald-100 text-emerald-700" },
-  archived: { label: "Archiviata", className: "bg-stone-200 text-stone-600" },
+  draft: { label: "Bozza", className: "bg-muted text-muted-foreground" },
+  published: { label: "Pubblicata", className: "bg-primary/10 text-primary" },
+  archived: { label: "Archiviata", className: "bg-stone-100 text-stone-500" },
 };
 
 function formatDate(ts: string | null | undefined) {

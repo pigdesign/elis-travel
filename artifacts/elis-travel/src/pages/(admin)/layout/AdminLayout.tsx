@@ -43,21 +43,26 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-[100dvh] flex bg-muted/20">
-      <aside className="w-64 bg-primary text-primary-foreground flex-shrink-0 border-r border-primary-border hidden md:flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
+    <div className="min-h-[100dvh] flex bg-muted/30">
+      <aside className="w-64 flex-shrink-0 hidden md:flex flex-col"
+        style={{ background: "linear-gradient(160deg, hsl(193 95% 28%) 0%, hsl(193 90% 22%) 100%)" }}
+      >
+        <div className="h-16 flex items-center px-5 border-b border-white/10 shrink-0">
           <button
             onClick={() => navigate("~/")}
-            className="flex items-center gap-2 group"
+            className="flex items-center gap-2.5 group"
           >
-            <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-accent-foreground">
+            <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-white shadow-sm">
               <Map className="w-4 h-4" />
             </div>
-            <span className="text-xl font-serif font-bold text-white">Elis Travel</span>
+            <div className="flex flex-col leading-none">
+              <span className="text-base font-bold text-white tracking-tight">Elis Travel</span>
+              <span className="text-[10px] text-white/50 font-medium tracking-widest uppercase">Admin</span>
+            </div>
           </button>
         </div>
 
-        <nav className="flex-1 py-6 px-4 space-y-2">
+        <nav className="flex-1 py-5 px-3 space-y-0.5">
           {navItems.map((item) => {
             const isActive =
               location === item.matchPath ||
@@ -68,16 +73,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 key={item.name}
                 onClick={() => navigate(item.path)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium text-sm text-left",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-sm text-left",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-white/65 hover:bg-white/10 hover:text-white"
                 )}
               >
-                <item.icon className="w-5 h-5" />
-                <span className="flex-1">{item.name}</span>
+                <item.icon className={cn("w-4.5 h-4.5 flex-shrink-0", isActive ? "text-white" : "text-white/65")} />
+                <span className="flex-1 text-[13px]">{item.name}</span>
                 {item.matchPath === "/admin/leads" && newLeadsCount > 0 && (
-                  <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-sm">
                     {newLeadsCount}
                   </span>
                 )}
@@ -86,18 +91,18 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10 space-y-1">
+        <div className="p-3 border-t border-white/10 space-y-0.5">
           {state.user && (
-            <div className="px-4 py-2 text-white/50 text-xs truncate">
+            <div className="px-3.5 py-2 text-white/40 text-xs truncate">
               {state.user.name}
             </div>
           )}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-colors font-medium text-sm text-left"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-white/65 hover:bg-white/10 hover:text-white transition-all font-medium text-sm text-left"
           >
-            <LogOut className="w-5 h-5" />
-            Esci
+            <LogOut className="w-4.5 h-4.5" />
+            <span className="text-[13px]">Esci</span>
           </button>
         </div>
       </aside>
@@ -112,7 +117,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             Esci
           </button>
         </header>
-        <main className="flex-1 p-8 overflow-auto">{children}</main>
+        <main className="flex-1 p-6 md:p-8 overflow-auto">{children}</main>
       </div>
     </div>
   );
