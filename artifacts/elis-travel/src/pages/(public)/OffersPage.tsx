@@ -19,7 +19,6 @@ export function OffersPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-
       <section
         className="relative pt-60 pb-32 text-white overflow-hidden"
         style={{
@@ -29,7 +28,7 @@ export function OffersPage() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <div className="absolute inset-0 bg-primary/60" />
+        <div className="absolute inset-0 bg-[#47474754]" />
         <div className="container relative z-10 mx-auto px-4 md:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Offerte viaggio</h1>
           <p className="text-white/80 max-w-2xl mx-auto text-lg">
@@ -37,7 +36,6 @@ export function OffersPage() {
           </p>
         </div>
       </section>
-
       <section className="py-20">
         <div className="container mx-auto px-4 md:px-8">
           {isLoading ? (
@@ -119,7 +117,6 @@ export function OffersPage() {
           )}
         </div>
       </section>
-
       <Footer />
     </div>
   );
