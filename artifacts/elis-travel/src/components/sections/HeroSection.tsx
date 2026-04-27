@@ -38,7 +38,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-            className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-0 leading-relaxed font-light text-left"
+            className="text-lg md:text-xl mb-10 max-w-2xl mx-0 leading-relaxed text-left font-bold bg-[transparent] text-[#ffffff]"
           >
             Scopri la straordinaria bellezza della baia di Ha Long, la cultura vibrante e i paesaggi indimenticabili. La tua prossima grande avventura inizia qui con le nostre guide locali selezionate.
           </motion.p>
