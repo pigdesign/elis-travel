@@ -66,7 +66,7 @@ export function EasySteps() {
                   <h3 className="brand-title brand-title-primary mb-1 text-[#ffffff] text-[30px]">{step.title}</h3>
                   <p className="text-xs md:text-sm max-w-[260px] text-[#ffffff] font-bold">{step.desc}</p>
                 </div>
-                <div className="w-16 h-16 rounded-full border-4 border-accent/80 flex items-center justify-center text-accent shrink-0">
+                <div className="w-16 h-16 rounded-full border-4 border-accent/80 flex items-center justify-center shrink-0 text-[#ffffff] border-t-[#fffdfccc] border-r-[#fffdfccc] border-b-[#fffdfccc] border-l-[#fffdfccc]">
                   <step.icon className="w-7 h-7" />
                 </div>
               </motion.div>
