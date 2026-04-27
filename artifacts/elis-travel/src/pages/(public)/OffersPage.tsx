@@ -84,7 +84,6 @@ export function OffersPage() {
           </div>
         </div>
       </div>
-
       <section className="py-20">
         <div className="container mx-auto px-4 md:px-8">
           {isLoading ? (
@@ -122,7 +121,7 @@ export function OffersPage() {
                       </div>
                     )}
                   </Link>
-                  <div className="p-6 flex flex-col flex-1">
+                  <div className="p-6 flex flex-col flex-1 bg-[#f4e3c736]">
                   <Link
                     href={buildSlugUrl("offerte", offer.id, offer.name)}
                     className="block group"
