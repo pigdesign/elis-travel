@@ -54,29 +54,23 @@ export function BestServices() {
         <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
       </div>
 
-      {/* Desktop image — absolute child of section, fills full section height */}
-      <div
+      {/* Desktop image — background-image fills full section height with original proportions */}
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true }}
         className="hidden lg:block absolute z-10"
         style={{
           top: 0,
           bottom: 0,
           left: "calc(50% - 36rem)",
           width: "30rem",
+          backgroundImage: `url(${travelerImg})`,
+          backgroundSize: "auto 100%",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "bottom center",
         }}
-      >
-        <motion.img
-          src={travelerImg}
-          alt="Traveler"
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          style={{
-            display: "block",
-            height: "100%",
-            width: "auto",
-          }}
-        />
-      </div>
+      />
 
       {/* Content container */}
       <div className="relative z-20 mx-auto max-w-6xl">
