@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Clock,
   CreditCard,
   Trash2,
+  Copy,
   Plus,
   Pencil,
   X,
@@ -22,6 +23,7 @@ import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
 import {
   useGetExcursion,
   useUpdateExcursion,
+  useDeleteExcursion,
   useUpdateExcursionBookingPayment,
   useDeleteExcursionBooking,
   useAddExcursionBooking,
@@ -350,8 +352,10 @@ interface ExcursionDetailPageProps {
 export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const { data: exc, isLoading, error } = useGetExcursion(excursionId);
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const { mutateAsync: updateExcursion } = useUpdateExcursion({
     mutation: {
       onSuccess: () => {
@@ -360,6 +364,37 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
       },
     },
   });
+  const { mutateAsync: deleteExcursion, isPending: isDeleting } = useDeleteExcursion({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListExcursionsQueryKey() });
+      },
+    },
+  });
+
+  const handleDelete = async () => {
+    if (!exc) return;
+    if (
+      !window.confirm(
+        `Eliminare definitivamente la gita "${exc.name}"? L'operazione non è reversibile.`,
+      )
+    )
+      return;
+    try {
+      await deleteExcursion({ id: excursionId });
+      navigate("/excursions");
+    } catch (err: unknown) {
+      const e = err as { status?: number; data?: { error?: string }; message?: string };
+      if (e?.status === 409) {
+        alert(
+          e?.data?.error ??
+            "Impossibile eliminare: la gita ha prenotazioni. Elimina prima tutte le prenotazioni oppure annulla la gita.",
+        );
+      } else {
+        alert(e?.data?.error ?? e?.message ?? "Impossibile eliminare la gita.");
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -413,15 +448,42 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
             <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatDate(exc.date)}</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowEditModal(true)}
-          className="inline-flex items-center gap-1.5 bg-white hover:bg-muted/50 border border-border text-foreground text-sm font-medium px-3 py-2 rounded-xl transition-colors"
-          data-testid="button-edit-excursion"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-          Modifica
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowEditModal(true)}
+            className="inline-flex items-center gap-1.5 bg-white hover:bg-muted/50 border border-border text-foreground text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+            data-testid="button-edit-excursion"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Modifica
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDuplicateModal(true)}
+            className="inline-flex items-center gap-1.5 bg-white hover:bg-muted/50 border border-border text-foreground text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+            data-testid="button-duplicate-excursion"
+            title="Duplica gita"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Duplica
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="inline-flex items-center gap-1.5 bg-white hover:bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-3 py-2 rounded-xl transition-colors disabled:opacity-60"
+            data-testid="button-delete-excursion"
+            title="Elimina gita"
+          >
+            {isDeleting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            Elimina
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -632,6 +694,19 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           mode="edit"
           initial={exc}
           onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {showDuplicateModal && (
+        <ExcursionFormModal
+          mode="create"
+          initial={exc}
+          isDuplicate
+          onClose={() => setShowDuplicateModal(false)}
+          onSaved={(saved) => {
+            setShowDuplicateModal(false);
+            navigate(`/excursions/${saved.id}`);
+          }}
         />
       )}
     </div>

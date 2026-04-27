@@ -157,6 +157,51 @@ router.patch("/excursions/:id", async (req, res) => {
   }
 });
 
+router.delete("/excursions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.transaction(async (tx) => {
+      const [excursion] = await tx
+        .select({ id: excursionsTable.id })
+        .from(excursionsTable)
+        .where(eq(excursionsTable.id, id))
+        .limit(1);
+
+      if (!excursion) return { status: 404 as const };
+
+      const [{ count }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.excursionId, id));
+
+      if (count > 0) {
+        return { status: 409 as const, count };
+      }
+
+      await tx.delete(excursionsTable).where(eq(excursionsTable.id, id));
+      return { status: 200 as const };
+    });
+
+    if (result.status === 404) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
+    if (result.status === 409) {
+      res.status(409).json({
+        error:
+          "Impossibile eliminare: la gita ha prenotazioni. Elimina prima tutte le prenotazioni oppure annulla la gita.",
+      });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 router.post("/excursions/:id/bookings", async (req, res) => {
   try {
     const { id } = req.params;

@@ -1498,6 +1498,90 @@ export const useUpdateExcursion = <
 };
 
 /**
+ * @summary Elimina gita
+ */
+export const getDeleteExcursionUrl = (id: string) => {
+  return `/api/admin/excursions/${id}`;
+};
+
+export const deleteExcursion = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteExcursionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteExcursionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExcursion>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteExcursion>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteExcursion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteExcursion>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteExcursion(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteExcursionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteExcursion>>
+>;
+
+export type DeleteExcursionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Elimina gita
+ */
+export const useDeleteExcursion = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExcursion>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteExcursion>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteExcursionMutationOptions(options));
+};
+
+/**
  * @summary Aggiungi prenotazione
  */
 export const getAddExcursionBookingUrl = (id: string) => {

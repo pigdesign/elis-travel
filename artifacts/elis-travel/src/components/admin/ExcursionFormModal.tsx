@@ -68,11 +68,14 @@ function emptyState(): FormState {
   };
 }
 
-function fromExcursion(exc: ExcursionDetail | ExcursionSummary): FormState {
+function fromExcursion(
+  exc: ExcursionDetail | ExcursionSummary,
+  opts?: { clearDate?: boolean },
+): FormState {
   return {
     name: exc.name ?? "",
     location: exc.location ?? "",
-    date: exc.date ?? todayISO(),
+    date: opts?.clearDate ? "" : exc.date ?? todayISO(),
     status: exc.status ?? "draft",
     pricePerPerson: exc.pricePerPerson ?? "0",
     mealCostPerPerson: exc.mealCostPerPerson ?? "0",
@@ -128,6 +131,13 @@ function toPayload(s: FormState): ExcursionInput {
 export interface ExcursionFormModalProps {
   mode: "create" | "edit";
   initial?: ExcursionDetail | ExcursionSummary;
+  /**
+   * When true (and mode === "create"), the form is treated as a duplication
+   * template: all fields are pre-filled from `initial`, but the date is left
+   * blank so the admin must pick a new one. Booking counters are not carried
+   * over (they are zeroed by the create endpoint).
+   */
+  isDuplicate?: boolean;
   onClose: () => void;
   onSaved?: (excursion: ExcursionSummary) => void;
 }
@@ -135,12 +145,15 @@ export interface ExcursionFormModalProps {
 export function ExcursionFormModal({
   mode,
   initial,
+  isDuplicate,
   onClose,
   onSaved,
 }: ExcursionFormModalProps) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(() =>
-    initial ? fromExcursion(initial) : emptyState(),
+    initial
+      ? fromExcursion(initial, { clearDate: mode === "create" && !!isDuplicate })
+      : emptyState(),
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});

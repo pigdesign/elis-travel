@@ -428,6 +428,17 @@ export const UpdateExcursionResponse = zod.object({
 });
 
 /**
+ * @summary Elimina gita
+ */
+export const DeleteExcursionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DeleteExcursionResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary Aggiungi prenotazione
  */
 export const AddExcursionBookingParams = zod.object({

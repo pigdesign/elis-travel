@@ -407,6 +407,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExcursionSummary"
+    delete:
+      operationId: deleteExcursion
+      tags: [excursions]
+      summary: Elimina gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Gita eliminata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Gita con prenotazioni esistenti, impossibile eliminare
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/excursions/{id}/bookings:
     post:
       operationId: addExcursionBooking
