@@ -31,12 +31,6 @@ const TESTIMONIALS = [
 export function Testimonials() {
   return (
     <section className="py-32 bg-muted/20 relative overflow-hidden">
-      {/* Massive background text */}
-      <div className="absolute top-10 left-0 w-full overflow-hidden flex justify-center pointer-events-none opacity-[0.03] z-0 select-none">
-        <h2 className="text-[15rem] font-bold text-primary whitespace-nowrap leading-none tracking-tighter">
-          TESTIMONIALS
-        </h2>
-      </div>
 
       <div className="container relative z-10 mx-auto px-4 md:px-8">
         <motion.div 
@@ -46,7 +40,7 @@ export function Testimonials() {
           className="text-center max-w-2xl mx-auto mb-20"
         >
           <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Recensioni top</span>
-          <h2 className="brand-title brand-title-primary text-4xl md:text-5xl">Cosa dicono i nostri clienti</h2>
+          <h2 className="brand-title brand-title-primary text-4xl md:text-5xl" style={{ color: "#fa811e" }}>Cosa dicono i nostri clienti</h2>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
