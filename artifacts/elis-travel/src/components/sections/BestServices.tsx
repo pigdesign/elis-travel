@@ -52,24 +52,24 @@ export function BestServices() {
       <div className="lg:hidden w-full h-72 overflow-hidden">
         <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
       </div>
-      <div className="relative z-20 mx-auto pt-[80px] pb-[80px] pl-[30px] pr-[30px] max-w-6xl">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-0">
-          {/* LEFT: Traveler image — in flow */}
+      <div className="relative z-20 mx-auto pl-[30px] pr-[30px] max-w-6xl">
+        <div className="flex flex-col lg:flex-row lg:items-stretch lg:justify-center gap-0 lg:min-h-[620px]">
+          {/* LEFT: Traveler image — in flow, fills full section height */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="hidden lg:flex lg:w-[38%] flex-shrink-0 items-end justify-center self-stretch"
+            className="hidden lg:flex lg:w-[38%] flex-shrink-0 items-end justify-center h-full"
           >
             <img
               src={travelerImg}
               alt="Traveler"
-              className="w-full h-full object-contain object-bottom"
+              className="w-auto h-full object-contain object-bottom"
             />
           </motion.div>
 
           {/* RIGHT: Content */}
-          <div className="lg:w-[58%] lg:pl-12">
+          <div className="lg:w-[58%] lg:pl-12 py-[60px]">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
