@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog } from "@workspace/api-client-react";
-import { MapPin, Send, Loader2, Ticket, ArrowRight } from "lucide-react";
+import { MapPin, Send, Loader2, Ticket, ArrowRight, Tag } from "lucide-react";
 import { useSeo, buildSlugUrl } from "@/lib/seo";
 
 export function OffersPage() {
@@ -36,6 +36,55 @@ export function OffersPage() {
           </p>
         </div>
       </section>
+      {/* Barra filtri */}
+      <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-10 mb-12">
+        <div className="bg-white rounded-[2rem] shadow-2xl p-5 md:p-6 max-w-5xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            {/* Ricerca destinazione */}
+            <div className="flex items-center gap-3 flex-1 px-4 py-3 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors cursor-pointer">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Destinazione</p>
+                <p className="font-bold text-foreground text-sm">Dove vuoi andare?</p>
+              </div>
+            </div>
+
+            <div className="hidden md:block w-px h-10 bg-border/60" />
+
+            {/* Categorie */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {["Tutti", "Italia", "Europa", "Asia", "Africa", "America"].map((cat, i) => (
+                <button
+                  key={cat}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap ${
+                    i === 0
+                      ? "bg-accent text-white shadow-sm shadow-accent/30"
+                      : "bg-muted/50 text-foreground/70 hover:bg-primary/10 hover:text-primary"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="hidden md:block w-px h-10 bg-border/60" />
+
+            {/* Budget */}
+            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors cursor-pointer shrink-0">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <Tag className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Budget</p>
+                <p className="font-bold text-foreground text-sm">Qualsiasi</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <section className="py-20">
         <div className="container mx-auto px-4 md:px-8">
           {isLoading ? (
