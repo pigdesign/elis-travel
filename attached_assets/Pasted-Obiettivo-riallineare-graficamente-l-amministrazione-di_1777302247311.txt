@@ -1,0 +1,120 @@
+Obiettivo: riallineare graficamente l’amministrazione di Elis Travel allo stile visivo del front-end pubblico già presente nel progetto, mantenendo però un’identità da area gestionale: chiara, leggibile, ordinata e professionale.
+
+L’agente deve analizzare direttamente il front-end esistente e ricavare da lì palette, stile, proporzioni, bordi, ombre, pulsanti e componenti visivi principali. Non deve inventare un nuovo stile.
+
+INTERVENTO RICHIESTO
+
+1. Palette colori
+Allineare l’admin ai colori principali del front-end:
+- verde acqua / teal come colore principale istituzionale;
+- arancione come colore di azione, evidenza e call to action;
+- bianco e grigi molto chiari come base;
+- evitare bande scure troppo pesanti o colori non presenti nel front-end.
+
+La sidebar attuale può mantenere una tinta teal, ma deve risultare più coerente con il front-end: più morbida, meno “software gestionale generico”, più vicina al mondo travel.
+
+2. Sidebar amministrativa
+Rivedere la sidebar mantenendo la struttura esistente:
+- logo Elis Travel in alto;
+- voci di navigazione chiare;
+- icone coerenti e leggere;
+- stato attivo ben visibile ma elegante;
+- badge notifiche più coerente con l’arancione del front-end;
+- fondo sidebar in teal, con eventuale gradiente leggerissimo o variazione tonale se già presente nel front-end.
+
+Non trasformare la sidebar in elemento decorativo: deve restare funzionale.
+
+3. Area contenuti
+L’area principale deve diventare più coerente con il front-end:
+- fondo generale molto chiaro, caldo e pulito;
+- card bianche con bordi arrotondati generosi;
+- ombre morbide, non troppo marcate;
+- maggiore respiro tra sezioni, righe e blocchi;
+- titolo pagina più vicino allo stile del front-end, con peso tipografico forte ma pulito.
+
+4. Tabelle e righe dati
+Mantenere la struttura gestionale attuale, ma migliorare la resa visiva:
+- righe più ariose;
+- bordi più morbidi;
+- header tabella più leggero;
+- separatori sottili;
+- hover sulle righe con sfondo leggermente teal molto chiaro;
+- immagini/thumbnail delle gite con bordi arrotondati;
+- indicatori di stato più eleganti e coerenti.
+
+5. Badge e stati
+Riallineare visivamente:
+- “Bozza” → badge neutro chiaro;
+- “Confermata” → badge verde/teal chiaro;
+- acconti/pagamenti → arancione;
+- saldi/completati → verde;
+- errori/margini negativi → rosso solo dove necessario.
+
+I badge devono sembrare parte del sistema grafico del front-end, non etichette standard da dashboard.
+
+6. Pulsanti
+Il pulsante “+ Nuova Gita” deve richiamare le CTA del front-end:
+- forma pill arrotondata;
+- colore teal o arancione a seconda della gerarchia;
+- hover morbido;
+- icona ben allineata;
+- dimensione più elegante e coerente.
+
+Usare l’arancione per azioni più commerciali/importanti e il teal per azioni amministrative principali.
+
+7. Card di dettaglio espanse
+Le card interne tipo:
+- A — Conto Economico
+- B — Stato Adesioni
+- C — Logistica Mezzo
+
+devono essere riallineate allo stile del front-end:
+- card bianche arrotondate;
+- intestazioni con piccole icone coerenti;
+- micro-accenti teal/arancione;
+- numeri importanti ben leggibili;
+- separatori leggeri;
+- layout ordinato e più “premium”.
+
+8. Progress bar adesioni
+Migliorare le barre di avanzamento:
+- fondo grigio chiaro;
+- avanzamento verde/teal;
+- eventuale arancione quando sotto soglia;
+- testo piccolo ma leggibile;
+- stile coerente con un gestionale travel moderno.
+
+9. Tipografia
+Utilizzare la stessa famiglia tipografica o lo stesso sistema tipografico del front-end, se già definito.
+Migliorare:
+- gerarchia titoli;
+- leggibilità delle tabelle;
+- spaziatura;
+- pesi dei testi;
+- microcopy secondario.
+
+10. Atmosfera generale
+L’admin deve sembrare parte dello stesso ecosistema Elis Travel:
+- travel;
+- moderno;
+- solare;
+- leggero;
+- organizzato;
+- coerente con il front-end pubblico.
+
+Non deve però diventare una landing page: deve restare una dashboard amministrativa chiara, veloce da usare e leggibile.
+
+VINCOLI IMPORTANTI
+
+- Non modificare logiche, API, dati, calcoli, stati o funzionamento.
+- Non cambiare la struttura funzionale delle pagine.
+- Intervenire principalmente su UI, colori, spaziature, bordi, badge, pulsanti, sidebar, card e tabelle.
+- Riutilizzare il più possibile variabili CSS, token Tailwind o componenti già presenti.
+- Se esistono già colori/theme del front-end, centralizzare o riutilizzare quelli.
+- Evitare hardcoded sparsi.
+- Mantenere responsive design.
+- Non peggiorare la leggibilità delle tabelle.
+- Non usare effetti eccessivi, animazioni pesanti o decorazioni inutili.
+
+Risultato atteso:
+un’amministrazione Elis Travel coerente con il front-end pubblico, con identità visiva teal/arancione, card morbide, pulsanti arrotondati, sidebar più elegante, tabelle più pulite e un aspetto complessivo più travel, moderno e professionale.
