@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/shared/Button";
-import { MapPin, Calendar, Users, Search } from "lucide-react";
+import { MapPin, Calendar, Users, Mail, Search } from "lucide-react";
 
 export function SearchBar() {
   return (
@@ -10,48 +10,57 @@ export function SearchBar() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8 }}
-        className="bg-white rounded-[2.5rem] shadow-2xl p-4 md:p-6 lg:p-8 max-w-5xl mx-auto"
+        className="bg-white rounded-[2.5rem] shadow-2xl p-4 md:p-5 max-w-6xl mx-auto"
       >
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 items-center">
-          
-          <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer border md:border-none border-border">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-              <MapPin className="w-5 h-5" />
+        <div className="flex flex-col md:flex-row md:items-center md:divide-x md:divide-border gap-3 md:gap-0">
+
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer md:flex-1">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <MapPin className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Località</p>
-              <p className="font-bold text-foreground">Dove vuoi andare?</p>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium">Località</p>
+              <p className="font-bold text-foreground text-sm truncate">Dove vuoi andare?</p>
             </div>
           </div>
 
-          <div className="hidden md:block w-px h-12 bg-border mx-auto"></div>
-
-          <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer border md:border-none border-border">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-              <Calendar className="w-5 h-5" />
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer md:flex-1">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <Calendar className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Check-in / Check-out</p>
-              <p className="font-bold text-foreground">Aggiungi le date</p>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium">Check-in / Check-out</p>
+              <p className="font-bold text-foreground text-sm truncate">Aggiungi le date</p>
             </div>
           </div>
 
-          <div className="hidden md:block w-px h-12 bg-border mx-auto"></div>
-
-          <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer border md:border-none border-border">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-              <Users className="w-5 h-5" />
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer md:flex-1">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <Users className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Ospiti</p>
-              <p className="font-bold text-foreground">2 ospiti, 1 camera</p>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium">Ospiti</p>
+              <p className="font-bold text-foreground text-sm truncate">2 ospiti, 1 camera</p>
             </div>
           </div>
 
-          <div className="md:ml-auto mt-2 md:mt-0">
-            <Button size="lg" className="w-full md:w-auto h-16 px-8 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg shadow-lg shadow-accent/30">
-              <Search className="w-6 h-6 mr-2" />
-              Cerca
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer md:flex-1">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <Mail className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium">Email</p>
+              <p className="font-bold text-foreground text-sm truncate text-muted-foreground/70">La tua email</p>
+            </div>
+          </div>
+
+          <div className="px-4 md:pl-5 md:pr-0 shrink-0">
+            <Button
+              size="lg"
+              className="w-full md:w-auto h-14 px-6 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/30 whitespace-nowrap"
+            >
+              <Search className="w-5 h-5 mr-2" />
+              Richiedi preventivo
             </Button>
           </div>
 
