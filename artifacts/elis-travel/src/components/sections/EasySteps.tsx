@@ -25,7 +25,7 @@ export function EasySteps() {
   return (
     <section className="py-24 bg-background overflow-hidden">
       <div className="container mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_minmax(320px,1fr)] gap-8 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)] gap-8 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -64,26 +64,6 @@ export function EasySteps() {
             ))}
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="hidden lg:block relative"
-          >
-            <div className="absolute inset-0 -left-6 -top-6 rounded-full bg-primary/10 blur-3xl" />
-            <div className="relative z-10 h-[560px] rounded-[3rem] bg-gradient-to-br from-primary/10 via-white to-accent/10 flex items-center justify-center overflow-hidden shadow-2xl">
-              <div className="absolute inset-10 rounded-[2.5rem] border-4 border-dashed border-primary/15" />
-              <div className="w-56 h-56 rounded-full bg-accent/20 blur-3xl absolute top-16 right-16" />
-              <div className="w-40 h-40 rounded-full bg-primary/20 blur-3xl absolute bottom-20 left-10" />
-              <div className="relative z-10 text-center px-8">
-                <p className="text-accent font-bold uppercase tracking-[0.35em] text-sm mb-3">For Summer</p>
-                <div className="w-56 h-72 rounded-[2.5rem] bg-white/80 backdrop-blur-md shadow-[0_24px_60px_rgba(9,168,195,0.15)] flex items-center justify-center">
-                  <span className="brand-title brand-title-accent text-7xl -rotate-90">Summer</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </div>
     </section>
