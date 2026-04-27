@@ -49,7 +49,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 border-0 border-solid border-black bg-transparent absolute"
           >
-            <Button size="lg" className="h-14 px-8 text-base w-full sm:w-auto bg-primary hover:bg-primary/90 text-white">
+            <Button size="lg" className="h-14 px-8 w-full sm:w-auto bg-primary hover:bg-primary/90 text-white text-[17px] font-bold">
               Scopri i tour
             </Button>
             <Button size="lg" variant="outline" className="h-14 px-8 text-base w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm">
