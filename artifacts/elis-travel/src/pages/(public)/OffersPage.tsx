@@ -142,7 +142,14 @@ export function OffersPage() {
                     <Link href={buildSlugUrl("offerte", offer.id, offer.name)}>
                       <Button
                         variant="outline"
-                        className="w-full inline-flex items-center justify-center gap-2 mt-[21px] mb-[21px] pt-[15px] pb-[15px] border-t-[#00000026] border-r-[#00000026] border-b-[#00000026] border-l-[#00000026] border-t-[3px] border-r-[3px] border-b-[3px] border-l-[3px]"
+                        className="w-full inline-flex items-center justify-center gap-2"
+                        style={{
+                          marginTop: "21px",
+                          marginBottom: "21px",
+                          paddingTop: "15px",
+                          paddingBottom: "15px",
+                          border: "3px solid #00000026",
+                        }}
                         data-testid={`button-view-offer-${offer.id}`}
                       >
                         Vedi dettagli
