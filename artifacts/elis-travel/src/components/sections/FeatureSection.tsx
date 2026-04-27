@@ -71,13 +71,6 @@ export function FeatureSection() {
             <div className="absolute bottom-0 left-0 w-[60%] h-[60%] rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white z-20">
               <img src="/images/tour-3.png" alt="Travel" className="w-full h-full object-cover" />
             </div>
-
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-accent rounded-full z-30 flex items-center justify-center shadow-xl shadow-accent/30 text-accent-foreground">
-              <div className="text-center">
-                <div className="font-bold text-2xl">4.9/5</div>
-                <div className="text-xs uppercase tracking-wider font-bold">Rating</div>
-              </div>
-            </div>
           </motion.div>
 
         </div>
