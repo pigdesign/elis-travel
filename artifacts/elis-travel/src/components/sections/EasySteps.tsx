@@ -40,7 +40,6 @@ export function EasySteps() {
             </h2>
             <div className="rounded-[1.8rem] overflow-hidden shadow-2xl bg-white max-w-[260px]">
               <div className="relative h-[230px] bg-[radial-gradient(circle_at_30%_25%,rgba(9,168,195,0.18),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(249,115,22,0.12))]">
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(255,255,255,0.15)_100%)]" />
                 <div className="absolute left-4 right-4 bottom-4 top-4 rounded-[1.25rem] border border-white/60 backdrop-blur-sm bg-white/20" />
               </div>
               <div className="bg-accent text-accent-foreground p-5">
