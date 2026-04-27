@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Map, LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound } from "lucide-react";
+import { Map, LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
@@ -32,6 +32,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { name: "Dashboard", path: "~/admin/dashboard", matchPath: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Gite di Gruppo", path: "~/admin/excursions", matchPath: "/admin/excursions", icon: Mountain },
+    { name: "Mezzi", path: "~/admin/vehicles", matchPath: "/admin/vehicles", icon: Bus },
     { name: "Offerte", path: "~/admin/offers", matchPath: "/admin/offers", icon: Ticket },
     { name: "Richieste", path: "~/admin/leads", matchPath: "/admin/leads", icon: Users },
     { name: "Clienti", path: "~/admin/customers", matchPath: "/admin/customers", icon: UserRound },

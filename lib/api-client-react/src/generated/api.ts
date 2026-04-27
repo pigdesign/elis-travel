@@ -29,6 +29,7 @@ import type {
   CustomerSummary,
   CustomerUpdate,
   DashboardStats,
+  DeleteVehicle200,
   ErrorResponse,
   ExcursionDetail,
   ExcursionInput,
@@ -56,6 +57,7 @@ import type {
   UploadUrlRequest,
   UploadUrlResponse,
   Vehicle,
+  VehicleInput,
   VehicleUpdateInput,
 } from "./api.schemas";
 
@@ -2114,6 +2116,263 @@ export function useListVehicles<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Crea un nuovo mezzo
+ */
+export const getCreateVehicleUrl = () => {
+  return `/api/admin/vehicles`;
+};
+
+export const createVehicle = async (
+  vehicleInput: VehicleInput,
+  options?: RequestInit,
+): Promise<Vehicle> => {
+  return customFetch<Vehicle>(getCreateVehicleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(vehicleInput),
+  });
+};
+
+export const getCreateVehicleMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVehicle>>,
+    TError,
+    { data: BodyType<VehicleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createVehicle>>,
+  TError,
+  { data: BodyType<VehicleInput> },
+  TContext
+> => {
+  const mutationKey = ["createVehicle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createVehicle>>,
+    { data: BodyType<VehicleInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createVehicle(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateVehicleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createVehicle>>
+>;
+export type CreateVehicleMutationBody = BodyType<VehicleInput>;
+export type CreateVehicleMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Crea un nuovo mezzo
+ */
+export const useCreateVehicle = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVehicle>>,
+    TError,
+    { data: BodyType<VehicleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createVehicle>>,
+  TError,
+  { data: BodyType<VehicleInput> },
+  TContext
+> => {
+  return useMutation(getCreateVehicleMutationOptions(options));
+};
+
+/**
+ * @summary Modifica un mezzo esistente
+ */
+export const getUpdateVehicleUrl = (id: string) => {
+  return `/api/admin/vehicles/${id}`;
+};
+
+export const updateVehicle = async (
+  id: string,
+  vehicleInput: VehicleInput,
+  options?: RequestInit,
+): Promise<Vehicle> => {
+  return customFetch<Vehicle>(getUpdateVehicleUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(vehicleInput),
+  });
+};
+
+export const getUpdateVehicleMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVehicle>>,
+    TError,
+    { id: string; data: BodyType<VehicleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateVehicle>>,
+  TError,
+  { id: string; data: BodyType<VehicleInput> },
+  TContext
+> => {
+  const mutationKey = ["updateVehicle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateVehicle>>,
+    { id: string; data: BodyType<VehicleInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateVehicle(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateVehicleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateVehicle>>
+>;
+export type UpdateVehicleMutationBody = BodyType<VehicleInput>;
+export type UpdateVehicleMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Modifica un mezzo esistente
+ */
+export const useUpdateVehicle = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVehicle>>,
+    TError,
+    { id: string; data: BodyType<VehicleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateVehicle>>,
+  TError,
+  { id: string; data: BodyType<VehicleInput> },
+  TContext
+> => {
+  return useMutation(getUpdateVehicleMutationOptions(options));
+};
+
+/**
+ * @summary Elimina un mezzo non collegato a gite
+ */
+export const getDeleteVehicleUrl = (id: string) => {
+  return `/api/admin/vehicles/${id}`;
+};
+
+export const deleteVehicle = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeleteVehicle200> => {
+  return customFetch<DeleteVehicle200>(getDeleteVehicleUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVehicleMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVehicle>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVehicle>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteVehicle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVehicle>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteVehicle(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVehicleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVehicle>>
+>;
+
+export type DeleteVehicleMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Elimina un mezzo non collegato a gite
+ */
+export const useDeleteVehicle = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVehicle>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVehicle>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteVehicleMutationOptions(options));
+};
 
 /**
  * @summary Lista offerte
