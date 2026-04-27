@@ -53,7 +53,7 @@ export function BestServices() {
         initial={{ opacity: 0, x: -30 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
-        className="hidden lg:block absolute inset-y-0 left-0 w-[42%] z-10"
+        className="hidden lg:block absolute inset-y-0 left-0 w-[30%] z-10"
       >
         <img
           src={travelerImg}
@@ -68,7 +68,7 @@ export function BestServices() {
       <div className="relative z-20 mx-auto pt-[150px] pb-[150px] pl-[30px] pr-[30px] max-w-7xl rotate-[360deg]">
         <div className="flex flex-col lg:flex-row">
           {/* Spacer for image column on desktop */}
-          <div className="hidden lg:block lg:w-[42%] flex-shrink-0" />
+          <div className="hidden lg:block lg:w-[30%] flex-shrink-0" />
 
           {/* RIGHT: Content */}
           <div className="lg:w-[58%] lg:pl-12">
