@@ -263,7 +263,7 @@ export function ExcursionFormModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-y-auto"
       data-testid="modal-excursion-form"
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8">
