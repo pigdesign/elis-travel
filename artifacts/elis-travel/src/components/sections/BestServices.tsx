@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Sailboat, Calendar, UserCheck } from "lucide-react";
 import travelerImg from "@assets/elis_travel_offerte.png_1776682556019.jpg";
-import coastalImg from "../../assets/coastal-hero.png";
 
 const SERVICES = [
   {
@@ -164,16 +163,6 @@ export function BestServices() {
               ))}
             </div>
             
-            {/* Coastal pill image */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4 }}
-              className="mt-8 rounded-[2rem] overflow-hidden shadow-2xl"
-            >
-              <img src={coastalImg} alt="Coastal View" className="w-full h-40 md:h-48 object-cover hover:scale-105 transition-transform duration-700" />
-            </motion.div>
           </div>
           
         </div>
