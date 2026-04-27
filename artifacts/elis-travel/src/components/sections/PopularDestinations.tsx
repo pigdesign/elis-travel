@@ -35,7 +35,7 @@ const DESTINATIONS = [
 export function PopularDestinations() {
   return (
     <section className="py-20 bg-background" id="destinations">
-      <div className="container mx-auto px-4 md:px-8">
+      <div className="container mx-auto px-4 md:px-8 text-[#0489ae] border-t-[#0489ae] border-r-[#0489ae] border-b-[#0489ae] border-l-[#0489ae] text-[63px]">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
