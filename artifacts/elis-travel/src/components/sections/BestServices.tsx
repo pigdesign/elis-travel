@@ -48,32 +48,38 @@ export function BestServices() {
           <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.85,121.32,192.5,108.5,236.4,99.5,279.7,80.4,321.39,56.44Z"></path>
         </svg>
       </div>
+
       {/* Mobile image */}
       <div className="lg:hidden w-full h-72 overflow-hidden">
         <img src={travelerImg} alt="Traveler" className="w-full h-full object-cover object-top" />
       </div>
-      {/* Outer wrapper: relative so the image can be absolute inside it */}
+
+      {/* Desktop image — absolute child of section, fills full section height */}
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true }}
+        className="hidden lg:block absolute inset-y-0 z-10"
+        style={{
+          left: "calc(50% - 36rem)",
+          width: "30rem",
+        }}
+      >
+        <img
+          src={travelerImg}
+          alt="Traveler"
+          className="w-full h-full object-contain object-bottom"
+        />
+      </motion.div>
+
+      {/* Content container */}
       <div className="relative z-20 mx-auto max-w-6xl">
-        {/* Image: absolute, anchored to inset-y-0 left-0 of this container */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          className="hidden lg:block absolute inset-y-0 left-0 w-[42%] z-10"
-        >
-          <img
-            src={travelerImg}
-            alt="Traveler"
-            className="w-full h-full object-contain object-bottom"
-          />
-        </motion.div>
-
         <div className="flex flex-col lg:flex-row">
-          {/* Spacer that mirrors image width */}
-          <div className="hidden lg:block lg:w-[42%] flex-shrink-0" />
+          {/* Spacer: mirrors image column width */}
+          <div className="hidden lg:block flex-shrink-0" style={{ width: "30rem" }} />
 
-          {/* RIGHT: Content — drives the container height */}
-          <div className="lg:w-[58%] lg:pl-12 py-[70px] pr-[30px]">
+          {/* RIGHT: Content */}
+          <div className="flex-1 lg:pl-12 py-[70px] pr-[30px]">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -90,7 +96,6 @@ export function BestServices() {
             {/* 3 Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-10 items-stretch">
               {SERVICES.map((service, index) => (
-                /* Outer wrapper: handles motion + provides overflow:visible context for the badge */
                 (<motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30 }}
@@ -100,7 +105,6 @@ export function BestServices() {
                   className="relative"
                   style={{ paddingBottom: "14px", paddingLeft: "14px" }}
                 >
-                  {/* Card */}
                   <div
                     className="relative bg-white flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300 h-full"
                     style={{
@@ -113,7 +117,6 @@ export function BestServices() {
                       padding: "38px 22px 52px",
                     }}
                   >
-                    {/* Icon — linear, no circle background */}
                     <div className="mb-5 mt-2">
                       <service.icon
                         className="w-10 h-10"
@@ -121,20 +124,13 @@ export function BestServices() {
                         style={{ color: service.iconColor }}
                       />
                     </div>
-
-                    {/* Title */}
-                    <h3
-                      className="text-base font-semibold mb-3 leading-snug text-primary"
-                    >
+                    <h3 className="text-base font-semibold mb-3 leading-snug text-primary">
                       {service.title}
                     </h3>
-
-                    {/* Description */}
                     <p className="text-sm text-gray-400 leading-relaxed flex-1">
                       {service.desc}
                     </p>
                   </div>
-                  {/* Step badge — bleeds outside the card at bottom-left */}
                   <div
                     className="absolute flex flex-col items-start justify-end"
                     style={{
