@@ -11,4 +11,7 @@ export type PublicCatalogOffersItem = {
   name: string;
   destination?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured: boolean;
+  lastMinute: boolean;
 };

@@ -23,6 +23,9 @@ export interface OfferSummary {
   mainSource?: string | null;
   publicLink?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured: boolean;
+  lastMinute: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

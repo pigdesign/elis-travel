@@ -28,4 +28,7 @@ export interface OfferInput {
   publicLink?: string | null;
   mainSource?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured?: boolean;
+  lastMinute?: boolean;
 }

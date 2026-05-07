@@ -25,4 +25,7 @@ export interface PublicOfferDetail {
   highlights?: string | null;
   publicLink?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured: boolean;
+  lastMinute: boolean;
 }

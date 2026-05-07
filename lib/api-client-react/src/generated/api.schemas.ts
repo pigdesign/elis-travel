@@ -186,6 +186,9 @@ export interface OfferSummary {
   mainSource?: string | null;
   publicLink?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured: boolean;
+  lastMinute: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -223,6 +226,9 @@ export interface OfferInput {
   publicLink?: string | null;
   mainSource?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured?: boolean;
+  lastMinute?: boolean;
 }
 
 export interface Lead {
@@ -333,6 +339,9 @@ export type PublicCatalogOffersItem = {
   name: string;
   destination?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured: boolean;
+  lastMinute: boolean;
 };
 
 export type PublicCatalogExcursionsItem = {
@@ -367,6 +376,9 @@ export interface PublicOfferDetail {
   highlights?: string | null;
   publicLink?: string | null;
   coverImageUrl?: string | null;
+  category?: string | null;
+  featured: boolean;
+  lastMinute: boolean;
 }
 
 export interface PublicExcursionDetail {

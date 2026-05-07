@@ -961,6 +961,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /catalog/products/destinations:
+    get:
+      operationId: listPublicOfferDestinations
+      tags: [public]
+      summary: Lista destinazioni distinte delle offerte pubblicate
+      responses:
+        "200":
+          description: Array di destinazioni
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
   /catalog/products:
     get:
       operationId: listPublicCatalog
@@ -1449,6 +1463,13 @@ components:
         coverImageUrl:
           type: string
           nullable: true
+        category:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        lastMinute:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -1461,6 +1482,8 @@ components:
         - destination
         - status
         - leadsCount
+        - featured
+        - lastMinute
         - createdAt
         - updatedAt
     OfferDetail:
@@ -1557,6 +1580,13 @@ components:
         coverImageUrl:
           type: string
           nullable: true
+        category:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        lastMinute:
+          type: boolean
 
     Lead:
       type: object
@@ -1827,7 +1857,14 @@ components:
               coverImageUrl:
                 type: string
                 nullable: true
-            required: [id, name]
+              category:
+                type: string
+                nullable: true
+              featured:
+                type: boolean
+              lastMinute:
+                type: boolean
+            required: [id, name, featured, lastMinute]
         excursions:
           type: array
           items:
@@ -1907,7 +1944,14 @@ components:
         coverImageUrl:
           type: string
           nullable: true
-      required: [id, name]
+        category:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        lastMinute:
+          type: boolean
+      required: [id, name, featured, lastMinute]
     PublicExcursionDetail:
       type: object
       properties:
