@@ -155,6 +155,7 @@ router.get("/catalog/products", async (_req, res) => {
         category: offersTable.category,
         featured: offersTable.featured,
         lastMinute: offersTable.lastMinute,
+        publicPrice: offersTable.publicPrice,
       })
       .from(offersTable)
       .where(eq(offersTable.status, "published"))
