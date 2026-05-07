@@ -975,6 +975,20 @@ paths:
                 type: array
                 items:
                   type: string
+  /catalog/excursions/locations:
+    get:
+      operationId: listPublicExcursionLocations
+      tags: [public]
+      summary: Lista località distinte delle gite attive
+      responses:
+        "200":
+          description: Array di località
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
   /catalog/products:
     get:
       operationId: listPublicCatalog

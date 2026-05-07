@@ -901,6 +901,14 @@ export const ListPublicOfferDestinationsResponse = zod.array(
 );
 
 /**
+ * @summary Lista località distinte delle gite attive
+ */
+export const ListPublicExcursionLocationsResponseItem = zod.string();
+export const ListPublicExcursionLocationsResponse = zod.array(
+  ListPublicExcursionLocationsResponseItem,
+);
+
+/**
  * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
  */
 export const ListPublicCatalogResponse = zod.object({
