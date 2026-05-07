@@ -26,6 +26,11 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   archived: { label: "Archiviata", className: "bg-stone-100 text-stone-500" },
 };
 
+const CATEGORY_LABEL: Record<string, string> = {
+  crociera: "Crociera",
+  vacanza: "Vacanza",
+};
+
 function formatDate(ts: string | null | undefined) {
   if (!ts) return "–";
   return new Date(ts).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
@@ -73,6 +78,22 @@ function OfferCard({ offer, onOpen }: { offer: OfferSummary; onOpen: () => void 
             <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold", statusCfg.className)}>
               {statusCfg.label}
             </span>
+            {offer.category && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                <span className="font-normal opacity-70">Tipologia:</span>
+                {CATEGORY_LABEL[offer.category] ?? offer.category}
+              </span>
+            )}
+            {offer.featured && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                ★ In Evidenza
+              </span>
+            )}
+            {offer.lastMinute && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-200">
+                Last Minute
+              </span>
+            )}
             {offer.tourOperator && (
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                 {offer.tourOperator}
