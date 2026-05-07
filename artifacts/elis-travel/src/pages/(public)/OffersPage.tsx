@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
@@ -18,10 +17,29 @@ export function OffersPage() {
   const { data: destinations = [] } = useListPublicOfferDestinations();
   const offers = data?.offers ?? [];
 
-  const [category, setCategory] = useState("");
-  const [destination, setDestination] = useState("");
-  const [featured, setFeatured] = useState(false);
-  const [lastMinute, setLastMinute] = useState(false);
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(search);
+
+  const category = params.get("category") ?? "";
+  const destination = params.get("destination") ?? "";
+  const featured = params.get("featured") === "true";
+  const lastMinute = params.get("lastMinute") === "true";
+
+  function setFilter(key: string, value: string | boolean) {
+    const p = new URLSearchParams(search);
+    if (value === "" || value === false) {
+      p.delete(key);
+    } else {
+      p.set(key, String(value));
+    }
+    const qs = p.toString();
+    navigate(`/offerte${qs ? `?${qs}` : ""}`);
+  }
+
+  function clearFilters() {
+    navigate("/offerte");
+  }
 
   useSeo({
     title: "Offerte viaggio",
@@ -79,7 +97,7 @@ export function OffersPage() {
                 <div className="relative">
                   <select
                     value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
+                    onChange={(e) => setFilter("destination", e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     className="w-full bg-transparent text-sm font-bold text-foreground appearance-none cursor-pointer focus:outline-none pr-4 truncate"
                   >
@@ -103,7 +121,7 @@ export function OffersPage() {
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
-                      onClick={() => setCategory(cat.value)}
+                      onClick={() => setFilter("category", cat.value)}
                       className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
                         category === cat.value
                           ? "bg-accent text-white shadow shadow-accent/25 scale-105"
@@ -120,7 +138,7 @@ export function OffersPage() {
             {/* In Evidenza + Last Minute */}
             <div className="flex items-center gap-2 px-6 py-5 shrink-0">
               <button
-                onClick={() => setFeatured((v) => !v)}
+                onClick={() => setFilter("featured", !featured)}
                 className={`inline-flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   featured
                     ? "bg-amber-50 text-amber-700 ring-2 ring-amber-400"
@@ -131,7 +149,7 @@ export function OffersPage() {
                 In Evidenza
               </button>
               <button
-                onClick={() => setLastMinute((v) => !v)}
+                onClick={() => setFilter("lastMinute", !lastMinute)}
                 className={`inline-flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   lastMinute
                     ? "bg-red-50 text-red-600 ring-2 ring-red-400"
@@ -147,12 +165,7 @@ export function OffersPage() {
             <div className="flex items-center px-4 py-3 md:py-0 bg-muted/20 md:bg-transparent">
               {hasFilters ? (
                 <button
-                  onClick={() => {
-                    setCategory("");
-                    setDestination("");
-                    setFeatured(false);
-                    setLastMinute(false);
-                  }}
+                  onClick={clearFilters}
                   className="w-full md:w-auto px-5 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-semibold hover:bg-muted/80 transition-colors"
                 >
                   Azzera
