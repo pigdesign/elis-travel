@@ -118,8 +118,8 @@ export function SearchBar() {
 
     const parts: string[] = [];
     if (destination.trim()) parts.push(`Destinazione: ${destination.trim()}`);
-    if (departureDate) parts.push(`Partenza: ${departureDate}`);
-    if (returnDate) parts.push(`Ritorno: ${returnDate}`);
+    if (departureDate) parts.push(`Partenza: ${formatDateIt(departureDate)}`);
+    if (returnDate) parts.push(`Ritorno: ${formatDateIt(returnDate)}`);
     const peopleParts: string[] = [];
     if (adults > 0) peopleParts.push(`${adults} adult${adults === 1 ? "o" : "i"}`);
     if (children > 0) {
@@ -314,12 +314,12 @@ export function SearchBar() {
               <User className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground font-medium">Nome (opzionale)</p>
+              <p className="text-xs text-muted-foreground font-medium">Nome e cognome (opzionale)</p>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Il tuo nome"
+                placeholder="Il tuo nome e cognome"
                 className="font-bold text-foreground text-sm bg-transparent outline-none w-full placeholder:font-bold placeholder:text-muted-foreground/50"
               />
             </div>
