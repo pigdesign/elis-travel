@@ -3442,6 +3442,82 @@ export function useListPublicExcursionLocations<
 }
 
 /**
+ * @summary Lista mesi distinti (YYYY-MM) delle gite attive
+ */
+export const getListPublicExcursionMonthsUrl = () => {
+  return `/api/catalog/excursions/months`;
+};
+
+export const listPublicExcursionMonths = async (
+  options?: RequestInit,
+): Promise<string[]> => {
+  return customFetch<string[]>(getListPublicExcursionMonthsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicExcursionMonthsQueryKey = () => {
+  return [`/api/catalog/excursions/months`] as const;
+};
+
+export const getListPublicExcursionMonthsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicExcursionMonths>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicExcursionMonths>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPublicExcursionMonthsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicExcursionMonths>>
+  > = ({ signal }) => listPublicExcursionMonths({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicExcursionMonths>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicExcursionMonthsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicExcursionMonths>>
+>;
+export type ListPublicExcursionMonthsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista mesi distinti (YYYY-MM) delle gite attive
+ */
+
+export function useListPublicExcursionMonths<
+  TData = Awaited<ReturnType<typeof listPublicExcursionMonths>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicExcursionMonths>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicExcursionMonthsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
  */
 export const getListPublicCatalogUrl = () => {

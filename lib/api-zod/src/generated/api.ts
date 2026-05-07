@@ -909,6 +909,14 @@ export const ListPublicExcursionLocationsResponse = zod.array(
 );
 
 /**
+ * @summary Lista mesi distinti (YYYY-MM) delle gite attive
+ */
+export const ListPublicExcursionMonthsResponseItem = zod.string();
+export const ListPublicExcursionMonthsResponse = zod.array(
+  ListPublicExcursionMonthsResponseItem,
+);
+
+/**
  * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
  */
 export const ListPublicCatalogResponse = zod.object({

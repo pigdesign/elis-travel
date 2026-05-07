@@ -3,7 +3,7 @@ import { Link, useSearch, useLocation } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
-import { useListPublicCatalog, useListPublicExcursionLocations } from "@workspace/api-client-react";
+import { useListPublicCatalog, useListPublicExcursionLocations, useListPublicExcursionMonths } from "@workspace/api-client-react";
 import { MapPin, Send, Loader2, Mountain, CalendarDays, ArrowRight, Tag, ChevronDown, Search, X } from "lucide-react";
 import { useSeo, buildSlugUrl } from "@/lib/seo";
 
@@ -12,6 +12,19 @@ function formatDate(value?: string | null) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function formatMonth(yyyyMm: string): string {
+  const [year, month] = yyyyMm.split("-");
+  const d = new Date(Number(year), Number(month) - 1, 1);
+  return d.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+}
+
+function getExcursionMonth(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function LocationCombobox({
@@ -153,9 +166,115 @@ function LocationCombobox({
   );
 }
 
+function MonthCombobox({
+  months,
+  value,
+  onChange,
+}: {
+  months: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  function select(m: string) {
+    onChange(m);
+    setOpen(false);
+  }
+
+  function clear(e: React.MouseEvent) {
+    e.stopPropagation();
+    onChange("");
+    setOpen(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative md:w-56 shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-6 py-5 text-left hover:bg-muted/30 transition-colors group"
+      >
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${open ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
+          <CalendarDays className="w-5 h-5 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Periodo</p>
+          <div className="flex items-center gap-1">
+            <span className={`text-sm font-bold truncate flex-1 ${value ? "text-foreground" : "text-muted-foreground/60"}`}>
+              {value ? formatMonth(value) : "Quando vuoi partire?"}
+            </span>
+            {value ? (
+              <X
+                className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={clear}
+              />
+            ) : (
+              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+            )}
+          </div>
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
+          <div className="max-h-56 overflow-y-auto py-1.5">
+            <button
+              type="button"
+              onClick={() => select("")}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                value === ""
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5 shrink-0 opacity-50" />
+              Tutti i mesi
+            </button>
+
+            {months.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground text-center">Nessun mese disponibile</p>
+            ) : (
+              months.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => select(m)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 capitalize ${
+                    value === m
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <CalendarDays className="w-3.5 h-3.5 shrink-0 text-primary/60" />
+                  {formatMonth(m)}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ExcursionsPage() {
   const { data, isLoading } = useListPublicCatalog();
   const { data: locations = [] } = useListPublicExcursionLocations();
+  const { data: months = [] } = useListPublicExcursionMonths();
   const excursions = data?.excursions ?? [];
 
   const search = useSearch();
@@ -163,6 +282,7 @@ export function ExcursionsPage() {
   const params = new URLSearchParams(search);
   const location = params.get("location") ?? "";
   const category = params.get("category") ?? "";
+  const month = params.get("month") ?? "";
 
   function setFilter(key: string, value: string) {
     const p = new URLSearchParams(search);
@@ -177,6 +297,7 @@ export function ExcursionsPage() {
 
   function setLocation(v: string) { setFilter("location", v); }
   function setCategory(v: string) { setFilter("category", v); }
+  function setMonth(v: string) { setFilter("month", v); }
 
   useSeo({
     title: "Gite ed escursioni",
@@ -187,10 +308,12 @@ export function ExcursionsPage() {
 
   const filtered = excursions.filter((ex) => {
     if (location && ex.location !== location) return false;
+    if (category && (ex as unknown as Record<string, string>)["category"] !== category) return false;
+    if (month && getExcursionMonth(ex.date) !== month) return false;
     return true;
   });
 
-  const hasFilters = location !== "" || category !== "";
+  const hasFilters = location !== "" || category !== "" || month !== "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -226,7 +349,7 @@ export function ExcursionsPage() {
               onChange={setLocation}
             />
 
-            {/* Categorie */}
+            {/* Tipologia — category pills */}
             <div className="flex items-center gap-3 px-6 py-5 flex-1">
               <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
                 <Tag className="w-5 h-5 text-accent" />
@@ -258,7 +381,14 @@ export function ExcursionsPage() {
               </div>
             </div>
 
-            {/* Pulsante azzera */}
+            {/* Periodo — month combobox */}
+            <MonthCombobox
+              months={months}
+              value={month}
+              onChange={setMonth}
+            />
+
+            {/* Pulsante azzera / cerca */}
             <div className="flex items-center px-4 py-3 md:py-0 bg-muted/20 md:bg-transparent">
               {hasFilters ? (
                 <button

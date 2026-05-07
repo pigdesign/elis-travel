@@ -989,6 +989,20 @@ paths:
                 type: array
                 items:
                   type: string
+  /catalog/excursions/months:
+    get:
+      operationId: listPublicExcursionMonths
+      tags: [public]
+      summary: Lista mesi distinti (YYYY-MM) delle gite attive
+      responses:
+        "200":
+          description: Array di mesi nel formato YYYY-MM
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
   /catalog/products:
     get:
       operationId: listPublicCatalog

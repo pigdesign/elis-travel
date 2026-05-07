@@ -120,6 +120,30 @@ router.get("/catalog/excursions/locations", async (_req, res) => {
   }
 });
 
+router.get("/catalog/excursions/months", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({ date: excursionsTable.date })
+      .from(excursionsTable)
+      .where(eq(excursionsTable.status, "confirmed"))
+      .orderBy(excursionsTable.date);
+    const monthSet = new Set<string>();
+    for (const r of rows) {
+      if (r.date) {
+        const d = new Date(r.date);
+        if (!Number.isNaN(d.getTime())) {
+          const month = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+          monthSet.add(month);
+        }
+      }
+    }
+    res.json(Array.from(monthSet).sort());
+  } catch (err) {
+    console.error("Public excursion months fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 router.get("/catalog/products", async (_req, res) => {
   try {
     const offers = await db
