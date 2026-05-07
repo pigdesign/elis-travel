@@ -123,9 +123,15 @@ export function PopularTours() {
   const go = useCallback(
     (dir: 1 | -1) => {
       if (jumping.current) return;
-      setIndex(rawIndexRef.current + dir);
+      const next = rawIndexRef.current + dir;
+      // Clamp within the valid extended range so rapid clicks can't accumulate
+      // into an index that requires multiple wrap-around corrections.
+      const minIdx = 0;
+      const maxIdx = (needsCarousel ? featured.length + visible * 2 : featured.length) - 1;
+      if (next < minIdx || next > maxIdx) return;
+      setIndex(next);
     },
-    [],
+    [needsCarousel, featured.length, visible],
   );
 
   function handleTransitionEnd() {
