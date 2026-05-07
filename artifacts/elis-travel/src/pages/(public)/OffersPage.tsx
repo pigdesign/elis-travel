@@ -1,9 +1,10 @@
+import { useState, useRef, useEffect } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog, useListPublicOfferDestinations } from "@workspace/api-client-react";
-import { MapPin, Send, Loader2, Ticket, ArrowRight, Star, Clock } from "lucide-react";
+import { MapPin, Send, Loader2, Ticket, ArrowRight, Star, Clock, ChevronDown, Search, X } from "lucide-react";
 import { useSeo, buildSlugUrl } from "@/lib/seo";
 
 const CATEGORIES = [
@@ -11,6 +12,145 @@ const CATEGORIES = [
   { value: "crociera", label: "Crociere" },
   { value: "vacanza", label: "Vacanze" },
 ];
+
+function DestinationCombobox({
+  destinations,
+  value,
+  onChange,
+}: {
+  destinations: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
+
+  const filtered = query.trim()
+    ? destinations.filter((d) => d.toLowerCase().includes(query.toLowerCase()))
+    : destinations;
+
+  function select(dest: string) {
+    onChange(dest);
+    setOpen(false);
+    setQuery("");
+  }
+
+  function clear(e: React.MouseEvent) {
+    e.stopPropagation();
+    onChange("");
+    setOpen(false);
+    setQuery("");
+  }
+
+  return (
+    <div ref={containerRef} className="relative md:w-64 shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-6 py-5 text-left hover:bg-muted/30 transition-colors group"
+      >
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${open ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
+          <MapPin className="w-5 h-5 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Destinazione</p>
+          <div className="flex items-center gap-1">
+            <span className={`text-sm font-bold truncate flex-1 ${value ? "text-foreground" : "text-muted-foreground/60"}`}>
+              {value || "Dove vuoi andare?"}
+            </span>
+            {value ? (
+              <X
+                className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={clear}
+              />
+            ) : (
+              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+            )}
+          </div>
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
+          <div className="p-3 border-b border-border">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border border-border focus-within:border-primary focus-within:bg-white transition-colors">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cerca destinazione…"
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+              />
+              {query && (
+                <button onClick={() => setQuery("")} className="shrink-0 text-muted-foreground hover:text-foreground">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto py-1.5">
+            <button
+              type="button"
+              onClick={() => select("")}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                value === ""
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5 shrink-0 opacity-50" />
+              Tutte le destinazioni
+            </button>
+
+            {filtered.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground text-center">Nessun risultato</p>
+            ) : (
+              filtered.map((dest) => (
+                <button
+                  key={dest}
+                  type="button"
+                  onClick={() => select(dest)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                    value === dest
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5 shrink-0 text-primary/60" />
+                  {dest}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function OffersPage() {
   const { data, isLoading } = useListPublicCatalog();
@@ -81,34 +221,15 @@ export function OffersPage() {
 
       {/* Barra filtri */}
       <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-8 mb-14">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-5xl mx-auto overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-5xl mx-auto overflow-visible">
           <div className="flex flex-col md:flex-row md:divide-x divide-border">
 
-            {/* Destinazione */}
-            <button
-              className="flex items-center gap-3 px-6 py-5 text-left hover:bg-muted/30 transition-colors md:w-64 shrink-0 group"
-              onClick={() => {}}
-            >
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                <MapPin className="w-5 h-5 text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Destinazione</p>
-                <div className="relative">
-                  <select
-                    value={destination}
-                    onChange={(e) => setFilter("destination", e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-transparent text-sm font-bold text-foreground appearance-none cursor-pointer focus:outline-none pr-4 truncate"
-                  >
-                    <option value="">Dove vuoi andare?</option>
-                    {destinations.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </button>
+            {/* Destinazione — custom combobox */}
+            <DestinationCombobox
+              destinations={destinations}
+              value={destination}
+              onChange={(v) => setFilter("destination", v)}
+            />
 
             {/* Tipologia */}
             <div className="flex items-center gap-3 px-6 py-5 flex-1">
