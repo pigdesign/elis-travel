@@ -162,17 +162,21 @@ export function ExcursionsPage() {
   const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
   const location = params.get("location") ?? "";
+  const category = params.get("category") ?? "";
 
-  function setLocation(v: string) {
+  function setFilter(key: string, value: string) {
     const p = new URLSearchParams(search);
-    if (v === "") {
-      p.delete("location");
+    if (value === "") {
+      p.delete(key);
     } else {
-      p.set("location", v);
+      p.set(key, value);
     }
     const qs = p.toString();
     navigate(`/gite${qs ? `?${qs}` : ""}`);
   }
+
+  function setLocation(v: string) { setFilter("location", v); }
+  function setCategory(v: string) { setFilter("category", v); }
 
   useSeo({
     title: "Gite ed escursioni",
@@ -186,7 +190,7 @@ export function ExcursionsPage() {
     return true;
   });
 
-  const hasFilters = location !== "";
+  const hasFilters = location !== "" || category !== "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -222,8 +226,40 @@ export function ExcursionsPage() {
               onChange={setLocation}
             />
 
-            {/* Pulsante cerca / reset */}
-            <div className="flex items-center px-4 py-3 md:py-0 bg-muted/20 md:bg-transparent ml-auto">
+            {/* Categorie */}
+            <div className="flex items-center gap-3 px-6 py-5 flex-1">
+              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                <Tag className="w-5 h-5 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">Tipologia</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { value: "", label: "Tutti" },
+                    { value: "giornata", label: "In giornata" },
+                    { value: "weekend", label: "Weekend" },
+                    { value: "mare", label: "Mare" },
+                    { value: "montagna", label: "Montagna" },
+                    { value: "cultura", label: "Cultura" },
+                  ].map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setCategory(cat.value)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                        category === cat.value
+                          ? "bg-accent text-white shadow shadow-accent/25 scale-105"
+                          : "bg-muted text-muted-foreground hover:bg-accent/10 hover:text-accent"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Pulsante azzera */}
+            <div className="flex items-center px-4 py-3 md:py-0 bg-muted/20 md:bg-transparent">
               {hasFilters ? (
                 <button
                   onClick={() => navigate("/gite")}
@@ -233,8 +269,8 @@ export function ExcursionsPage() {
                 </button>
               ) : (
                 <div className="w-full md:w-auto px-5 py-3 rounded-xl bg-accent text-white text-sm font-bold flex items-center gap-2 cursor-default select-none">
-                  <Tag className="w-4 h-4" />
-                  Filtra per località
+                  <ArrowRight className="w-4 h-4" />
+                  Cerca
                 </div>
               )}
             </div>
