@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useListPublicCatalog } from "@workspace/api-client-react";
@@ -80,34 +80,86 @@ export function PopularTours() {
   const featured = (data?.offers ?? []).filter((o) => o.featured);
 
   const [visible, setVisible] = useState(3);
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
     function update() {
       setVisible(mq.matches ? 3 : 1);
-      setCurrentIndex(0);
     }
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const maxIndex = Math.max(0, featured.length - visible);
-  const canPrev = currentIndex > 0;
-  const canNext = currentIndex < maxIndex;
+  const needsCarousel = featured.length > visible;
 
-  function prev() {
-    setCurrentIndex((i) => Math.max(0, i - 1));
+  // Clone `visible` items on each side for seamless infinite loop
+  const extItems = needsCarousel
+    ? [...featured.slice(-visible), ...featured, ...featured.slice(0, visible)]
+    : featured;
+
+  const startIndex = needsCarousel ? visible : 0;
+  const [rawIndex, setRawIndex] = useState(startIndex);
+  const rawIndexRef = useRef(startIndex);
+
+  // Sync ref with state so event handlers read fresh value
+  rawIndexRef.current = rawIndex;
+
+  // Reset when visible or featured length changes
+  useEffect(() => {
+    const idx = needsCarousel ? visible : 0;
+    rawIndexRef.current = idx;
+    setRawIndex(idx);
+  }, [visible, featured.length, needsCarousel]);
+
+  const trackRef = useRef<HTMLDivElement>(null);
+  const jumping = useRef(false);
+
+  function setIndex(i: number) {
+    rawIndexRef.current = i;
+    setRawIndex(i);
   }
-  function next() {
-    setCurrentIndex((i) => Math.min(maxIndex, i + 1));
+
+  const go = useCallback(
+    (dir: 1 | -1) => {
+      if (jumping.current) return;
+      setIndex(rawIndexRef.current + dir);
+    },
+    [],
+  );
+
+  function handleTransitionEnd() {
+    if (!needsCarousel) return;
+    const cur = rawIndexRef.current;
+    let newIndex = cur;
+
+    if (cur >= featured.length + visible) {
+      // Slid past end clones → jump to equivalent real position
+      newIndex = cur - featured.length;
+    } else if (cur < visible) {
+      // Slid before start clones → jump to equivalent real position
+      newIndex = cur + featured.length;
+    }
+
+    if (newIndex !== cur) {
+      jumping.current = true;
+      if (trackRef.current) trackRef.current.style.transition = "none";
+      setIndex(newIndex);
+      // Re-enable transition after layout has settled
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (trackRef.current) trackRef.current.style.transition = "";
+          jumping.current = false;
+        }),
+      );
+    }
   }
 
   if (!data || featured.length === 0) return null;
 
-  const trackWidthPct = featured.length > 0 ? (featured.length / visible) * 100 : 100;
-  const translatePct = featured.length > 0 ? -(currentIndex * 100) / featured.length : 0;
+  const N = extItems.length;
+  const trackWidthPct = (N / visible) * 100;
+  const translatePct = -(rawIndex * 100) / N;
 
   return (
     <section className="py-24 bg-muted/30" id="tours">
@@ -130,52 +182,49 @@ export function PopularTours() {
           </p>
         </motion.div>
 
-        <div className="relative">
-          {featured.length > visible && (
-            <>
-              <button
-                onClick={prev}
-                disabled={!canPrev}
-                className="absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center border border-border transition-all hover:shadow-xl disabled:opacity-30 disabled:cursor-not-allowed"
-                aria-label="Precedente"
-              >
-                <ChevronLeft className="w-5 h-5 text-foreground" />
-              </button>
-              <button
-                onClick={next}
-                disabled={!canNext}
-                className="absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center border border-border transition-all hover:shadow-xl disabled:opacity-30 disabled:cursor-not-allowed"
-                aria-label="Successiva"
-              >
-                <ChevronRight className="w-5 h-5 text-foreground" />
-              </button>
-            </>
+        {/* Carousel — arrows are flex siblings, fully external to the card area */}
+        <div className="flex items-center gap-4">
+          {needsCarousel && (
+            <button
+              onClick={() => go(-1)}
+              className="flex-none w-11 h-11 rounded-full bg-white shadow-md flex items-center justify-center border border-border hover:shadow-lg transition-all shrink-0"
+              aria-label="Precedente"
+            >
+              <ChevronLeft className="w-5 h-5 text-foreground" />
+            </button>
           )}
 
-          <div className="overflow-hidden">
+          <div className="overflow-hidden flex-1 min-w-0">
             <div
+              ref={trackRef}
               className="flex transition-transform duration-500 ease-in-out"
               style={{
                 width: `${trackWidthPct}%`,
                 transform: `translateX(${translatePct}%)`,
               }}
+              onTransitionEnd={handleTransitionEnd}
             >
-              {featured.map((offer, idx) => (
-                <motion.div
-                  key={offer.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.08, duration: 0.4 }}
-                  style={{ width: `${100 / featured.length}%` }}
-                  className="px-4"
+              {extItems.map((offer, idx) => (
+                <div
+                  key={`${offer.id}-${idx}`}
+                  style={{ width: `${100 / N}%` }}
+                  className="px-3"
                 >
                   <FeaturedOfferCard offer={offer} />
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
 
+          {needsCarousel && (
+            <button
+              onClick={() => go(1)}
+              className="flex-none w-11 h-11 rounded-full bg-white shadow-md flex items-center justify-center border border-border hover:shadow-lg transition-all shrink-0"
+              aria-label="Successiva"
+            >
+              <ChevronRight className="w-5 h-5 text-foreground" />
+            </button>
+          )}
         </div>
 
         <motion.div
@@ -185,7 +234,7 @@ export function PopularTours() {
           transition={{ delay: 0.2 }}
           className="text-center mt-14"
         >
-          <Link href="/offerte">
+          <Link href="/offerte?featured=true">
             <span className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-white font-bold text-base shadow-lg shadow-accent/25 hover:bg-accent/90 hover:shadow-xl transition-all">
               Scopri tutte le offerte
               <ArrowRight className="w-5 h-5" />
