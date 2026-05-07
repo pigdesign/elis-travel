@@ -103,6 +103,23 @@ router.get("/catalog/products/destinations", async (_req, res) => {
   }
 });
 
+router.get("/catalog/excursions/locations", async (_req, res) => {
+  try {
+    const rows = await db
+      .selectDistinct({ location: excursionsTable.location })
+      .from(excursionsTable)
+      .where(eq(excursionsTable.status, "confirmed"))
+      .orderBy(excursionsTable.location);
+    const locations = rows
+      .map((r) => r.location)
+      .filter((l): l is string => typeof l === "string" && l.trim().length > 0);
+    res.json(locations);
+  } catch (err) {
+    console.error("Public excursion locations fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 router.get("/catalog/products", async (_req, res) => {
   try {
     const offers = await db

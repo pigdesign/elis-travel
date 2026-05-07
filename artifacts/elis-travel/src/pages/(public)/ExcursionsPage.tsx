@@ -1,9 +1,10 @@
-import { Link } from "wouter";
+import { useState, useRef, useEffect } from "react";
+import { Link, useSearch, useLocation } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
-import { useListPublicCatalog } from "@workspace/api-client-react";
-import { MapPin, Send, Loader2, Mountain, CalendarDays, ArrowRight, Tag } from "lucide-react";
+import { useListPublicCatalog, useListPublicExcursionLocations } from "@workspace/api-client-react";
+import { MapPin, Send, Loader2, Mountain, CalendarDays, ArrowRight, Tag, ChevronDown, Search, X } from "lucide-react";
 import { useSeo, buildSlugUrl } from "@/lib/seo";
 
 function formatDate(value?: string | null) {
@@ -13,15 +14,179 @@ function formatDate(value?: string | null) {
   return d.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
 }
 
+function LocationCombobox({
+  locations,
+  value,
+  onChange,
+}: {
+  locations: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
+
+  const filtered = query.trim()
+    ? locations.filter((l) => l.toLowerCase().includes(query.toLowerCase()))
+    : locations;
+
+  function select(loc: string) {
+    onChange(loc);
+    setOpen(false);
+    setQuery("");
+  }
+
+  function clear(e: React.MouseEvent) {
+    e.stopPropagation();
+    onChange("");
+    setOpen(false);
+    setQuery("");
+  }
+
+  return (
+    <div ref={containerRef} className="relative md:w-64 shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-6 py-5 text-left hover:bg-muted/30 transition-colors group"
+      >
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${open ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
+          <MapPin className="w-5 h-5 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Località</p>
+          <div className="flex items-center gap-1">
+            <span className={`text-sm font-bold truncate flex-1 ${value ? "text-foreground" : "text-muted-foreground/60"}`}>
+              {value || "Dove vuoi andare?"}
+            </span>
+            {value ? (
+              <X
+                className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={clear}
+              />
+            ) : (
+              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+            )}
+          </div>
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
+          <div className="p-3 border-b border-border">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border border-border focus-within:border-primary focus-within:bg-white transition-colors">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cerca località…"
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery("")} className="shrink-0 text-muted-foreground hover:text-foreground">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto py-1.5">
+            <button
+              type="button"
+              onClick={() => select("")}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                value === ""
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5 shrink-0 opacity-50" />
+              Tutte le località
+            </button>
+
+            {filtered.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground text-center">Nessun risultato</p>
+            ) : (
+              filtered.map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => select(loc)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                    value === loc
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5 shrink-0 text-primary/60" />
+                  {loc}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ExcursionsPage() {
   const { data, isLoading } = useListPublicCatalog();
+  const { data: locations = [] } = useListPublicExcursionLocations();
   const excursions = data?.excursions ?? [];
+
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(search);
+  const location = params.get("location") ?? "";
+
+  function setLocation(v: string) {
+    const p = new URLSearchParams(search);
+    if (v === "") {
+      p.delete("location");
+    } else {
+      p.set("location", v);
+    }
+    const qs = p.toString();
+    navigate(`/gite${qs ? `?${qs}` : ""}`);
+  }
+
   useSeo({
     title: "Gite ed escursioni",
     description:
       "Gite ed escursioni organizzate da Elis Travel: esperienze in giornata e weekend in compagnia. Trova quella che fa per te.",
     canonicalPath: "/gite",
   });
+
+  const filtered = excursions.filter((ex) => {
+    if (location && ex.location !== location) return false;
+    return true;
+  });
+
+  const hasFilters = location !== "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,49 +212,33 @@ export function ExcursionsPage() {
 
       {/* Barra filtri */}
       <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-10 mb-12">
-        <div className="bg-white rounded-[2rem] shadow-2xl p-5 md:p-6 max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            {/* Ricerca località */}
-            <div className="flex items-center gap-3 flex-1 px-4 py-3 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors cursor-pointer">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <MapPin className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Località</p>
-                <p className="font-bold text-foreground text-sm">Dove vuoi andare?</p>
-              </div>
-            </div>
+        <div className="bg-white rounded-2xl shadow-2xl max-w-5xl mx-auto overflow-visible">
+          <div className="flex flex-col md:flex-row md:divide-x divide-border">
 
-            <div className="hidden md:block w-px h-10 bg-border/60" />
+            {/* Località — custom combobox */}
+            <LocationCombobox
+              locations={locations}
+              value={location}
+              onChange={setLocation}
+            />
 
-            {/* Categorie */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {["Tutti", "Giornata", "Weekend", "Montagna", "Mare", "Cultura"].map((cat, i) => (
+            {/* Pulsante cerca / reset */}
+            <div className="flex items-center px-4 py-3 md:py-0 bg-muted/20 md:bg-transparent ml-auto">
+              {hasFilters ? (
                 <button
-                  key={cat}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap ${
-                    i === 0
-                      ? "bg-accent text-white shadow-sm shadow-accent/30"
-                      : "bg-muted/50 text-foreground/70 hover:bg-primary/10 hover:text-primary"
-                  }`}
+                  onClick={() => navigate("/gite")}
+                  className="w-full md:w-auto px-5 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-semibold hover:bg-muted/80 transition-colors"
                 >
-                  {cat}
+                  Azzera
                 </button>
-              ))}
+              ) : (
+                <div className="w-full md:w-auto px-5 py-3 rounded-xl bg-accent text-white text-sm font-bold flex items-center gap-2 cursor-default select-none">
+                  <Tag className="w-4 h-4" />
+                  Filtra per località
+                </div>
+              )}
             </div>
 
-            <div className="hidden md:block w-px h-10 bg-border/60" />
-
-            {/* Data */}
-            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors cursor-pointer shrink-0">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <Tag className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Budget</p>
-                <p className="font-bold text-foreground text-sm">Qualsiasi</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -100,13 +249,15 @@ export function ExcursionsPage() {
             <div className="flex justify-center py-20 text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
-          ) : excursions.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="text-center py-20 text-muted-foreground">
-              Nessuna gita in programma al momento. Torna a trovarci presto!
+              {hasFilters
+                ? "Nessuna gita corrisponde ai filtri selezionati."
+                : "Nessuna gita in programma al momento. Torna a trovarci presto!"}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {excursions.map((ex) => {
+              {filtered.map((ex) => {
                 const dateLabel = formatDate(ex.date);
                 return (
                   <article

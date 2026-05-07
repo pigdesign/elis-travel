@@ -3365,6 +3365,83 @@ export function useListPublicOfferDestinations<
 }
 
 /**
+ * @summary Lista località distinte delle gite attive
+ */
+export const getListPublicExcursionLocationsUrl = () => {
+  return `/api/catalog/excursions/locations`;
+};
+
+export const listPublicExcursionLocations = async (
+  options?: RequestInit,
+): Promise<string[]> => {
+  return customFetch<string[]>(getListPublicExcursionLocationsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicExcursionLocationsQueryKey = () => {
+  return [`/api/catalog/excursions/locations`] as const;
+};
+
+export const getListPublicExcursionLocationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicExcursionLocations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicExcursionLocations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPublicExcursionLocationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicExcursionLocations>>
+  > = ({ signal }) =>
+    listPublicExcursionLocations({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicExcursionLocations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicExcursionLocationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicExcursionLocations>>
+>;
+export type ListPublicExcursionLocationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista località distinte delle gite attive
+ */
+
+export function useListPublicExcursionLocations<
+  TData = Awaited<ReturnType<typeof listPublicExcursionLocations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicExcursionLocations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicExcursionLocationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
  */
 export const getListPublicCatalogUrl = () => {
