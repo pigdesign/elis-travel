@@ -303,6 +303,19 @@ export function OffersPage() {
         </div>
       </div>
 
+      {/* Contatore risultati */}
+      {hasFilters && !isLoading && (
+        <div className="container mx-auto px-4 md:px-8 -mt-8 mb-6 flex justify-center">
+          <span className="text-sm font-semibold text-muted-foreground bg-white border border-border rounded-full px-4 py-1.5 shadow-sm">
+            {filtered.length === 0
+              ? "Nessuna offerta trovata"
+              : filtered.length === 1
+              ? "1 offerta trovata"
+              : `${filtered.length} offerte trovate`}
+          </span>
+        </div>
+      )}
+
       <section className="py-20">
         <div className="container mx-auto px-4 md:px-8">
           {isLoading ? (
