@@ -176,20 +176,6 @@ export function PopularTours() {
             </div>
           </div>
 
-          {featured.length > visible && (
-            <div className="flex justify-center gap-2 mt-8">
-              {Array.from({ length: maxIndex + 1 }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentIndex(i)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    i === currentIndex ? "bg-accent scale-110" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                  }`}
-                  aria-label={`Vai alla slide ${i + 1}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         <motion.div
