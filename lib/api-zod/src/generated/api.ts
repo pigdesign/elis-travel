@@ -632,6 +632,9 @@ export const ListOffersResponseItem = zod.object({
   mainSource: zod.string().nullish(),
   publicLink: zod.string().nullish(),
   coverImageUrl: zod.string().nullish(),
+  category: zod.string().nullish(),
+  featured: zod.boolean(),
+  lastMinute: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -662,6 +665,9 @@ export const CreateOfferBody = zod.object({
   publicLink: zod.string().nullish(),
   mainSource: zod.string().nullish(),
   coverImageUrl: zod.string().nullish(),
+  category: zod.string().nullish(),
+  featured: zod.boolean().optional(),
+  lastMinute: zod.boolean().optional(),
 });
 
 /**
@@ -689,6 +695,9 @@ export const GetOfferResponse = zod
     mainSource: zod.string().nullish(),
     publicLink: zod.string().nullish(),
     coverImageUrl: zod.string().nullish(),
+    category: zod.string().nullish(),
+    featured: zod.boolean(),
+    lastMinute: zod.boolean(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   })
@@ -734,6 +743,9 @@ export const UpdateOfferBody = zod.object({
   publicLink: zod.string().nullish(),
   mainSource: zod.string().nullish(),
   coverImageUrl: zod.string().nullish(),
+  category: zod.string().nullish(),
+  featured: zod.boolean().optional(),
+  lastMinute: zod.boolean().optional(),
 });
 
 export const UpdateOfferResponse = zod.object({
@@ -753,6 +765,9 @@ export const UpdateOfferResponse = zod.object({
   mainSource: zod.string().nullish(),
   publicLink: zod.string().nullish(),
   coverImageUrl: zod.string().nullish(),
+  category: zod.string().nullish(),
+  featured: zod.boolean(),
+  lastMinute: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -878,6 +893,14 @@ export const SubmitContactRequestBody = zod.object({
 });
 
 /**
+ * @summary Lista destinazioni distinte delle offerte pubblicate
+ */
+export const ListPublicOfferDestinationsResponseItem = zod.string();
+export const ListPublicOfferDestinationsResponse = zod.array(
+  ListPublicOfferDestinationsResponseItem,
+);
+
+/**
  * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
  */
 export const ListPublicCatalogResponse = zod.object({
@@ -887,6 +910,9 @@ export const ListPublicCatalogResponse = zod.object({
       name: zod.string(),
       destination: zod.string().nullish(),
       coverImageUrl: zod.string().nullish(),
+      category: zod.string().nullish(),
+      featured: zod.boolean(),
+      lastMinute: zod.boolean(),
     }),
   ),
   excursions: zod.array(
@@ -926,6 +952,9 @@ export const GetPublicOfferResponse = zod.object({
   highlights: zod.string().nullish(),
   publicLink: zod.string().nullish(),
   coverImageUrl: zod.string().nullish(),
+  category: zod.string().nullish(),
+  featured: zod.boolean(),
+  lastMinute: zod.boolean(),
 });
 
 /**

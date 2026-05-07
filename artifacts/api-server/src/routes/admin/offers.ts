@@ -5,13 +5,20 @@ import { eq, desc } from "drizzle-orm";
 
 const router = Router();
 
+const ALLOWED_CATEGORIES = new Set(["crociera", "vacanza"]);
+
+function sanitizeCategory(value: unknown): string | null {
+  if (!value || typeof value !== "string") return null;
+  return ALLOWED_CATEGORIES.has(value) ? value : null;
+}
+
 const MUTABLE_FIELDS = [
   "name", "destination", "tourOperator", "status",
   "validFrom", "validTo", "baseFormula", "departureCity",
   "durationDays", "durationNights", "period", "publicPrice",
   "advertisingText", "servicesIncluded", "servicesExcluded",
   "highlights", "pricingNotes", "internalNotes", "publicLink",
-  "mainSource", "coverImageUrl",
+  "mainSource", "coverImageUrl", "category", "featured", "lastMinute",
 ] as const;
 
 function pickMutable(body: Record<string, unknown>) {
@@ -63,6 +70,9 @@ router.post("/offers", async (req, res) => {
         publicLink: (body.publicLink as string) ?? null,
         mainSource: (body.mainSource as string) ?? null,
         coverImageUrl: (body.coverImageUrl as string) ?? null,
+        category: sanitizeCategory(body.category),
+        featured: typeof body.featured === "boolean" ? body.featured : false,
+        lastMinute: typeof body.lastMinute === "boolean" ? body.lastMinute : false,
         leadsCount: 0,
       })
       .returning();
@@ -103,6 +113,7 @@ router.patch("/offers/:id", async (req, res) => {
 
     if (allowed.validFrom) allowed.validFrom = new Date(allowed.validFrom as unknown as string);
     if (allowed.validTo) allowed.validTo = new Date(allowed.validTo as unknown as string);
+    if ("category" in allowed) allowed.category = sanitizeCategory(allowed.category);
 
     const [updated] = await db
       .update(offersTable)

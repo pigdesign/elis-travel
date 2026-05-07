@@ -3288,6 +3288,83 @@ export const useSubmitContactRequest = <
 };
 
 /**
+ * @summary Lista destinazioni distinte delle offerte pubblicate
+ */
+export const getListPublicOfferDestinationsUrl = () => {
+  return `/api/catalog/products/destinations`;
+};
+
+export const listPublicOfferDestinations = async (
+  options?: RequestInit,
+): Promise<string[]> => {
+  return customFetch<string[]>(getListPublicOfferDestinationsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicOfferDestinationsQueryKey = () => {
+  return [`/api/catalog/products/destinations`] as const;
+};
+
+export const getListPublicOfferDestinationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicOfferDestinations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicOfferDestinations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPublicOfferDestinationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicOfferDestinations>>
+  > = ({ signal }) =>
+    listPublicOfferDestinations({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicOfferDestinations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicOfferDestinationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicOfferDestinations>>
+>;
+export type ListPublicOfferDestinationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista destinazioni distinte delle offerte pubblicate
+ */
+
+export function useListPublicOfferDestinations<
+  TData = Awaited<ReturnType<typeof listPublicOfferDestinations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicOfferDestinations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicOfferDestinationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Lista offerte pubblicate e gite attive (per dropdown contatti)
  */
 export const getListPublicCatalogUrl = () => {

@@ -86,10 +86,35 @@ router.get("/sitemap.xml", async (req, res) => {
   }
 });
 
+router.get("/catalog/products/destinations", async (_req, res) => {
+  try {
+    const rows = await db
+      .selectDistinct({ destination: offersTable.destination })
+      .from(offersTable)
+      .where(eq(offersTable.status, "published"))
+      .orderBy(offersTable.destination);
+    const destinations = rows
+      .map((r) => r.destination)
+      .filter((d): d is string => typeof d === "string" && d.trim().length > 0);
+    res.json(destinations);
+  } catch (err) {
+    console.error("Public destinations fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 router.get("/catalog/products", async (_req, res) => {
   try {
     const offers = await db
-      .select({ id: offersTable.id, name: offersTable.name, destination: offersTable.destination, coverImageUrl: offersTable.coverImageUrl })
+      .select({
+        id: offersTable.id,
+        name: offersTable.name,
+        destination: offersTable.destination,
+        coverImageUrl: offersTable.coverImageUrl,
+        category: offersTable.category,
+        featured: offersTable.featured,
+        lastMinute: offersTable.lastMinute,
+      })
       .from(offersTable)
       .where(eq(offersTable.status, "published"))
       .orderBy(desc(offersTable.createdAt));
@@ -130,6 +155,9 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
         highlights: offersTable.highlights,
         publicLink: offersTable.publicLink,
         coverImageUrl: offersTable.coverImageUrl,
+        category: offersTable.category,
+        featured: offersTable.featured,
+        lastMinute: offersTable.lastMinute,
         status: offersTable.status,
       })
       .from(offersTable)

@@ -37,6 +37,9 @@ type OfferFormData = {
   mainSource: string;
   internalNotes: string;
   coverImageUrl: string;
+  category: string;
+  featured: boolean;
+  lastMinute: boolean;
 };
 
 const emptyForm: OfferFormData = {
@@ -61,6 +64,9 @@ const emptyForm: OfferFormData = {
   mainSource: "",
   internalNotes: "",
   coverImageUrl: "",
+  category: "",
+  featured: false,
+  lastMinute: false,
 };
 
 function offerToForm(offer: OfferSummary | OfferDetail): OfferFormData {
@@ -87,6 +93,9 @@ function offerToForm(offer: OfferSummary | OfferDetail): OfferFormData {
     mainSource: offer.mainSource ?? "",
     internalNotes: detail.internalNotes ?? "",
     coverImageUrl: offer.coverImageUrl ?? "",
+    category: offer.category ?? "",
+    featured: offer.featured ?? false,
+    lastMinute: offer.lastMinute ?? false,
   };
 }
 
@@ -113,6 +122,9 @@ function formToPayload(form: OfferFormData) {
     mainSource: form.mainSource.trim() || null,
     internalNotes: form.internalNotes.trim() || null,
     coverImageUrl: form.coverImageUrl.trim() || null,
+    category: form.category || null,
+    featured: form.featured,
+    lastMinute: form.lastMinute,
   };
 }
 
@@ -177,6 +189,10 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
   ) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const toggle = (field: "featured" | "lastMinute") => () => {
+    setForm((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const validate = () => {
@@ -257,6 +273,16 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                 </select>
               </Field>
 
+              <Field label="Tipologia">
+                <select value={form.category} onChange={set("category")} className={inputCls}>
+                  <option value="">— Nessuna —</option>
+                  <option value="crociera">Crociera</option>
+                  <option value="vacanza">Vacanza</option>
+                </select>
+              </Field>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-4 items-end">
               <Field label="Prezzo Base (€)">
                 <input
                   type="number"
@@ -268,6 +294,42 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                   className={inputCls}
                 />
               </Field>
+
+              <div className="flex flex-col gap-2 pb-0.5">
+                <label className={labelCls}>In Evidenza</label>
+                <button
+                  type="button"
+                  onClick={toggle("featured")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                    form.featured
+                      ? "bg-amber-500 text-white border-amber-500"
+                      : "bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-600"
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${form.featured ? "border-white bg-white" : "border-current"}`}>
+                    {form.featured && <span className="w-2 h-2 rounded-full bg-amber-500 block" />}
+                  </span>
+                  {form.featured ? "Sì" : "No"}
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2 pb-0.5">
+                <label className={labelCls}>Last Minute</label>
+                <button
+                  type="button"
+                  onClick={toggle("lastMinute")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                    form.lastMinute
+                      ? "bg-red-500 text-white border-red-500"
+                      : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600"
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${form.lastMinute ? "border-white bg-white" : "border-current"}`}>
+                    {form.lastMinute && <span className="w-2 h-2 rounded-full bg-red-500 block" />}
+                  </span>
+                  {form.lastMinute ? "Sì" : "No"}
+                </button>
+              </div>
             </div>
 
             <Field label="Link Pubblico">
