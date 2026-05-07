@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useListPublicCatalog } from "@workspace/api-client-react";
@@ -8,10 +8,7 @@ import type { PublicCatalogOffersItem } from "@workspace/api-client-react";
 
 function FeaturedOfferCard({ offer }: { offer: PublicCatalogOffersItem }) {
   return (
-    <Link
-      href={buildSlugUrl("offerte", offer.id, offer.name)}
-      className="block group h-full"
-    >
+    <Link href={buildSlugUrl("offerte", offer.id, offer.name)} className="block group h-full">
       <div className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
         <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
           {offer.coverImageUrl ? (
@@ -61,7 +58,11 @@ function FeaturedOfferCard({ offer }: { offer: PublicCatalogOffersItem }) {
               <div>
                 <span className="text-xs text-muted-foreground block">Da</span>
                 <span className="font-bold text-xl text-primary">
-                  {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(offer.publicPrice)}
+                  {new Intl.NumberFormat("it-IT", {
+                    style: "currency",
+                    currency: "EUR",
+                    maximumFractionDigits: 0,
+                  }).format(offer.publicPrice)}
                 </span>
               </div>
             ) : (
@@ -93,90 +94,91 @@ export function PopularTours() {
 
   const needsCarousel = featured.length > visible;
 
-  // Clone `visible` items on each side for seamless infinite loop
+  // Cloni: `visible` item in testa e in coda per il loop infinito
   const extItems = needsCarousel
     ? [...featured.slice(-visible), ...featured, ...featured.slice(0, visible)]
     : featured;
 
-  const startIndex = needsCarousel ? visible : 0;
-  const [rawIndex, setRawIndex] = useState(startIndex);
-  const rawIndexRef = useRef(startIndex);
-
-  // Sync ref with state so event handlers read fresh value
-  rawIndexRef.current = rawIndex;
-
-  // Reset when visible or featured length changes
-  useEffect(() => {
-    const idx = needsCarousel ? visible : 0;
-    rawIndexRef.current = idx;
-    setRawIndex(idx);
-  }, [visible, featured.length, needsCarousel]);
-
+  const N = extItems.length;
   const trackRef = useRef<HTMLDivElement>(null);
-  const jumping = useRef(false);
 
-  function setIndex(i: number) {
-    rawIndexRef.current = i;
-    setRawIndex(i);
+  // Tutta la logica di posizione vive in refs — nessun React state durante l'animazione,
+  // così non c'è mai una re-render che può interferire con la transizione CSS.
+  const indexRef = useRef(needsCarousel ? visible : 0);
+  const animatingRef = useRef(false);
+
+  // Applica la posizione direttamente sul DOM element.
+  // Gestiamo la transition interamente inline: nessuna dipendenza da classi Tailwind.
+  function applyPosition(index: number, animated: boolean) {
+    const el = trackRef.current;
+    if (!el) return;
+    if (!animated) {
+      el.style.transition = "none";
+      // Reflow sincrono: il browser processa transition:none prima di tutto il resto
+      void el.offsetWidth;
+    } else {
+      el.style.transition = "transform 500ms ease-in-out";
+    }
+    el.style.transform = `translateX(${-(index * 100) / N}%)`;
   }
 
-  const go = useCallback(
-    (dir: 1 | -1) => {
-      if (jumping.current) return;
-      const next = rawIndexRef.current + dir;
-      // Clamp within the valid extended range so rapid clicks can't accumulate
-      // into an index that requires multiple wrap-around corrections.
-      const minIdx = 0;
-      const maxIdx = (needsCarousel ? featured.length + visible * 2 : featured.length) - 1;
-      if (next < minIdx || next > maxIdx) return;
-      setIndex(next);
-    },
-    [needsCarousel, featured.length, visible],
-  );
+  // Registra il listener nativo (non React) sul transitionend del solo track element.
+  // Il listener nativo NON fa bubbling dal punto di vista dell'applicazione:
+  // usare addEventListener direttamente sul nodo garantisce che l'handler sia chiamato
+  // solo quando la transizione di QUEL nodo finisce, non quella dei figli.
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el || !needsCarousel) return;
 
-  function handleTransitionEnd() {
-    if (!needsCarousel) return;
-    const cur = rawIndexRef.current;
-    let newIndex = cur;
+    function onTrackTransitionEnd(e: TransitionEvent) {
+      // Doppio controllo: solo la transizione transform di questo elemento esatto.
+      if (e.target !== el || e.propertyName !== "transform") return;
 
-    if (cur >= featured.length + visible) {
-      // Slid past end clones → jump to equivalent real position
-      newIndex = cur - featured.length;
-    } else if (cur < visible) {
-      // Slid before start clones → jump to equivalent real position
-      newIndex = cur + featured.length;
-    }
+      const cur = indexRef.current;
+      let jumpTo = cur;
 
-    if (newIndex !== cur) {
-      jumping.current = true;
-      if (trackRef.current) {
-        trackRef.current.style.transition = "none";
-        // Force a synchronous layout reflow so the browser commits
-        // transition:none before anything else happens. Without this, React
-        // can flush the state update while the CSS transition is still active,
-        // causing the track to animate backward (elastic/rubber-band effect).
-        void trackRef.current.offsetWidth;
-        // Set the jump position directly on the DOM element so the browser
-        // sees the new transform immediately — no animation possible since
-        // transition is already none at this point.
-        const jumpTranslate = -(newIndex * 100) / N;
-        trackRef.current.style.transform = `translateX(${jumpTranslate}%)`;
+      if (cur >= featured.length + visible) {
+        jumpTo = cur - featured.length;
+      } else if (cur < visible) {
+        jumpTo = cur + featured.length;
       }
-      setIndex(newIndex);
-      // One rAF is enough: the DOM is already at the correct position,
-      // we just need to re-enable the Tailwind transition class.
-      requestAnimationFrame(() => {
-        if (trackRef.current) trackRef.current.style.transition = "";
-        jumping.current = false;
-      });
+
+      if (jumpTo !== cur) {
+        indexRef.current = jumpTo;
+        applyPosition(jumpTo, false); // jump istantaneo, nessuna transizione
+      }
+
+      animatingRef.current = false;
     }
+
+    el.addEventListener("transitionend", onTrackTransitionEnd);
+    return () => el.removeEventListener("transitionend", onTrackTransitionEnd);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsCarousel, featured.length, visible, N]);
+
+  // Resetta la posizione quando visible o il numero di item cambia
+  useEffect(() => {
+    const startIdx = needsCarousel ? visible : 0;
+    indexRef.current = startIdx;
+    applyPosition(startIdx, false);
+    animatingRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, featured.length, needsCarousel]);
+
+  function go(dir: 1 | -1) {
+    if (animatingRef.current) return;
+    const next = indexRef.current + dir;
+    // Limita a [0, N-1] per evitare indici fuori range
+    if (next < 0 || next >= N) return;
+    indexRef.current = next;
+    animatingRef.current = true;
+    applyPosition(next, true);
   }
 
   if (!data || featured.length === 0) return null;
 
-  const N = extItems.length;
   const trackWidthPct = (N / visible) * 100;
-  const translatePct = -(rawIndex * 100) / N;
+  const startTranslate = -(indexRef.current * 100) / N;
 
   return (
     <section className="py-24 bg-muted/30" id="tours">
@@ -199,7 +201,7 @@ export function PopularTours() {
           </p>
         </motion.div>
 
-        {/* Carousel — arrows are flex siblings, fully external to the card area */}
+        {/* Frecce esterne al contenitore card — layout flex */}
         <div className="flex items-center gap-4">
           {needsCarousel && (
             <button
@@ -212,14 +214,19 @@ export function PopularTours() {
           )}
 
           <div className="overflow-hidden flex-1 min-w-0">
+            {/*
+              Il transform iniziale viene calcolato una volta sola al mount.
+              Dopodiché tutto è controllato via ref/DOM direttamente,
+              senza che React rischi di sovrascrivere la posizione durante
+              le transizioni.
+            */}
             <div
               ref={trackRef}
-              className="flex transition-transform duration-500 ease-in-out"
+              className="flex"
               style={{
                 width: `${trackWidthPct}%`,
-                transform: `translateX(${translatePct}%)`,
+                transform: `translateX(${startTranslate}%)`,
               }}
-              onTransitionEnd={handleTransitionEnd}
             >
               {extItems.map((offer, idx) => (
                 <div
