@@ -342,6 +342,7 @@ export type PublicCatalogOffersItem = {
   category?: string | null;
   featured: boolean;
   lastMinute: boolean;
+  publicPrice?: number | null;
 };
 
 export type PublicCatalogExcursionsItem = {

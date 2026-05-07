@@ -57,7 +57,16 @@ function FeaturedOfferCard({ offer }: { offer: PublicCatalogOffersItem }) {
             </span>
           )}
           <div className="mt-auto flex items-center justify-between pt-4 border-t border-border">
-            <span className="text-sm text-muted-foreground">Scopri l&apos;offerta</span>
+            {offer.publicPrice != null ? (
+              <div>
+                <span className="text-xs text-muted-foreground block">Da</span>
+                <span className="font-bold text-xl text-primary">
+                  {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(offer.publicPrice)}
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">Scopri l&apos;offerta</span>
+            )}
             <ArrowRight className="w-5 h-5 text-accent group-hover:translate-x-1 transition-transform" />
           </div>
         </div>

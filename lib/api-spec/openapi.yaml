@@ -1892,6 +1892,9 @@ components:
                 type: boolean
               lastMinute:
                 type: boolean
+              publicPrice:
+                type: number
+                nullable: true
             required: [id, name, featured, lastMinute]
         excursions:
           type: array

@@ -929,6 +929,7 @@ export const ListPublicCatalogResponse = zod.object({
       category: zod.string().nullish(),
       featured: zod.boolean(),
       lastMinute: zod.boolean(),
+      publicPrice: zod.number().nullish(),
     }),
   ),
   excursions: zod.array(
