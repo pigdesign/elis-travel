@@ -149,15 +149,26 @@ export function PopularTours() {
 
     if (newIndex !== cur) {
       jumping.current = true;
-      if (trackRef.current) trackRef.current.style.transition = "none";
+      if (trackRef.current) {
+        trackRef.current.style.transition = "none";
+        // Force a synchronous layout reflow so the browser commits
+        // transition:none before anything else happens. Without this, React
+        // can flush the state update while the CSS transition is still active,
+        // causing the track to animate backward (elastic/rubber-band effect).
+        void trackRef.current.offsetWidth;
+        // Set the jump position directly on the DOM element so the browser
+        // sees the new transform immediately — no animation possible since
+        // transition is already none at this point.
+        const jumpTranslate = -(newIndex * 100) / N;
+        trackRef.current.style.transform = `translateX(${jumpTranslate}%)`;
+      }
       setIndex(newIndex);
-      // Re-enable transition after layout has settled
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          if (trackRef.current) trackRef.current.style.transition = "";
-          jumping.current = false;
-        }),
-      );
+      // One rAF is enough: the DOM is already at the correct position,
+      // we just need to re-enable the Tailwind transition class.
+      requestAnimationFrame(() => {
+        if (trackRef.current) trackRef.current.style.transition = "";
+        jumping.current = false;
+      });
     }
   }
 
