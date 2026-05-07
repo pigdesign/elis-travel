@@ -105,7 +105,7 @@ function DestinationCombobox({
                 className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
               />
               {query && (
-                <button onClick={() => setQuery("")} className="shrink-0 text-muted-foreground hover:text-foreground">
+                <button type="button" onClick={() => setQuery("")} className="shrink-0 text-muted-foreground hover:text-foreground">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
