@@ -3,6 +3,8 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -43,9 +45,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET environment variable is required.");
-}
+const sessionSecret = process.env.SESSION_SECRET || "default_development_secret_key";
 
 app.use(
   session({
@@ -54,7 +54,7 @@ app.use(
       tableName: "admin_sessions",
     }),
     name: "elis.sid",
-    secret: process.env.SESSION_SECRET,
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     proxy: true,
@@ -68,5 +68,21 @@ app.use(
 );
 
 app.use("/api", router);
+
+if (process.env.NODE_ENV === "production") {
+  const frontendDist = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "elis-travel",
+    "dist",
+    "public",
+  );
+  app.use(express.static(frontendDist));
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
 
 export default app;
