@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
-import { Map } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import logoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.png";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -30,11 +30,12 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-border/50">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mb-4">
-              <Map className="w-7 h-7 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">Elis Travel</h1>
-            <p className="text-muted-foreground text-sm mt-1">Accedi al pannello di gestione</p>
+            <img 
+              src={logoImg} 
+              alt="Elis Travel" 
+              className="w-auto h-16 object-contain mb-2" 
+            />
+            <p className="text-muted-foreground text-sm mt-2">Accedi al pannello di gestione</p>
           </div>
 
           <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
