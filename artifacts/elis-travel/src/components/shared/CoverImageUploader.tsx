@@ -32,29 +32,17 @@ export function CoverImageUploader({
     }
     setBusy(true);
     try {
-      const reqRes = await fetch("/api/storage/uploads/request-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: file.name,
-          size: file.size,
-          contentType: file.type,
-        }),
-      });
-      if (!reqRes.ok) throw new Error("Impossibile generare l'URL di upload.");
-      const reqJson = (await reqRes.json()) as {
-        uploadURL: string;
-        objectPath: string;
-      };
+      const formData = new FormData();
+      formData.append("file", file);
 
-      const putRes = await fetch(reqJson.uploadURL, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
+      const putRes = await fetch("/api/storage/uploads/ftp", {
+        method: "POST",
+        body: formData,
       });
       if (!putRes.ok) throw new Error("Caricamento file fallito.");
 
-      const publicUrl = `/api/storage${reqJson.objectPath}`;
+      const reqJson = await putRes.json() as { publicUrl: string };
+      const publicUrl = reqJson.publicUrl;
       await onChange(publicUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore upload immagine.");

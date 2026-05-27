@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import logoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.png";
+import logoImg from "@assets/logo2.png";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -33,7 +33,7 @@ export function LoginPage() {
             <img 
               src={logoImg} 
               alt="Elis Travel" 
-              className="w-auto h-16 object-contain mb-2" 
+              className="w-auto h-28 object-contain mb-2" 
             />
             <p className="text-muted-foreground text-sm mt-2">Accedi al pannello di gestione</p>
           </div>

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/shared/Button";
 import { Play } from "lucide-react";
-import heroBg from "@assets/Gemini_Generated_Image_3chg7z3chg7z3chg_1776677826049.png";
+import heroBg from "@/assets/hero.png";
 
 export function HeroSection() {
   return (
@@ -30,7 +30,7 @@ export function HeroSection() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-            className="text-white drop-shadow-2xl font-black text-left mb-[30px] text-[130px] md:text-[130px] lg:text-[130px] leading-[126px]"
+            className="text-white drop-shadow-2xl font-black text-left mb-[30px] text-6xl md:text-8xl lg:text-[100px] xl:text-[130px] leading-tight md:leading-[1.1] lg:leading-[126px]"
           >Scopri il tuo
           prossimo viaggio</motion.h1>
 
@@ -47,7 +47,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 border-0 border-solid border-black bg-transparent absolute"
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-start gap-4 border-0 border-solid border-black bg-transparent relative"
           >
             <Button size="lg" className="h-14 px-8 w-full sm:w-auto bg-primary hover:bg-primary/90 text-white text-[17px] font-bold">
               Scopri i tour

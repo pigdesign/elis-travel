@@ -5,11 +5,47 @@ import {
   ObjectNotFoundError,
 } from "../lib/objectStorage";
 import { requireAuth } from "../middlewares/requireAuth";
+import multer from "multer";
+import { FtpStorageService } from "../lib/ftpStorage";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+const ftpStorageService = new FtpStorageService();
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const upload = multer({
+  limits: { fileSize: MAX_UPLOAD_BYTES },
+  storage: multer.memoryStorage(),
+});
+
+router.post(
+  "/storage/uploads/ftp",
+  requireAuth,
+  upload.single("file"),
+  async (req: Request, res: Response) => {
+    if (!req.file) {
+      res.status(400).json({ error: "No file uploaded" });
+      return;
+    }
+
+    if (!req.file.mimetype.startsWith("image/")) {
+      res.status(400).json({ error: "Only image uploads are allowed" });
+      return;
+    }
+
+    try {
+      const stream = Readable.from(req.file.buffer);
+      const publicUrl = await ftpStorageService.uploadFile(stream, req.file.originalname);
+      
+      res.json({
+        publicUrl,
+      });
+    } catch (error) {
+      req.log.error({ err: error }, "Error uploading file via FTP");
+      res.status(500).json({ error: "Failed to upload file via FTP" });
+    }
+  }
+);
 
 router.post(
   "/storage/uploads/request-url",
