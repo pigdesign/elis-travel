@@ -113,13 +113,6 @@ function ExcursionCard({ ex }: { ex: PublicCatalogExcursionsItem }) {
           </h2>
         </Link>
 
-        {/* Descrizione breve */}
-        {ex.notes && (
-          <p className="text-sm text-muted-foreground leading-snug line-clamp-2 mb-3">
-            {ex.notes}
-          </p>
-        )}
-
         {/* Info: location + data */}
         <div className="space-y-1.5 mb-4">
           {ex.location && (

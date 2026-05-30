@@ -381,7 +381,6 @@ export type PublicCatalogExcursionsItem = {
   adherentsCount?: number | null;
   minThreshold?: number | null;
   status?: string | null;
-  notes?: string | null;
 };
 
 export interface PublicCatalog {

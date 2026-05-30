@@ -173,7 +173,6 @@ router.get("/catalog/products", async (_req, res) => {
         adherentsCount: excursionsTable.adherentsCount,
         minThreshold: excursionsTable.minThreshold,
         status: excursionsTable.status,
-        notes: excursionsTable.notes,
       })
       .from(excursionsTable)
       .where(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")))
