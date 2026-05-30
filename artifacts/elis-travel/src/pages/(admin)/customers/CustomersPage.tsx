@@ -7,6 +7,7 @@ import {
   useUpdateCustomer,
   useLinkCustomerToRms,
   useSyncCustomerToRms,
+  usePullCustomerFromRms,
   useSearchRmsCustomers,
   useImportCustomerFromRms,
   getListCustomersQueryKey,
@@ -231,6 +232,15 @@ function CustomerDetailPanel({
     },
   });
 
+  const { mutate: pullFromRms, isPending: pulling } = usePullCustomerFromRms({
+    mutation: {
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: getGetCustomerQueryKey(customerId) });
+        void qc.invalidateQueries({ queryKey: getListCustomersQueryKey() });
+      },
+    },
+  });
+
   const startEdit = () => {
     if (!customer) return;
     setForm({
@@ -272,6 +282,10 @@ function CustomerDetailPanel({
 
   const handleSync = () => {
     syncToRms({ id: customerId });
+  };
+
+  const handlePull = () => {
+    pullFromRms({ id: customerId });
   };
 
   if (isLoading) {
@@ -387,17 +401,32 @@ function CustomerDetailPanel({
             RivieraTransferRMS
           </h3>
           {c.rmsLinked && (
-            <Button
-              onClick={handleSync}
-              disabled={syncing}
-              className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 h-auto"
-            >
-              {syncing ? (
-                <><Loader2 className="w-3 h-3 animate-spin mr-1" />Sincronizzazione...</>
-              ) : (
-                <><RefreshCw className="w-3 h-3 mr-1" />Sincronizza su RMS</>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handlePull}
+                disabled={syncing || pulling}
+                className="text-xs bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1.5 h-auto"
+                title="Scarica i dati da RMS e sovrascrivi quelli locali"
+              >
+                {pulling ? (
+                  <><Loader2 className="w-3 h-3 animate-spin mr-1" />Scaricamento...</>
+                ) : (
+                  <><Download className="w-3 h-3 mr-1" />Scarica aggiornamenti da RMS</>
+                )}
+              </Button>
+              <Button
+                onClick={handleSync}
+                disabled={syncing || pulling}
+                className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 h-auto"
+                title="Invia i dati locali a RMS"
+              >
+                {syncing ? (
+                  <><Loader2 className="w-3 h-3 animate-spin mr-1" />Invio in corso...</>
+                ) : (
+                  <><RefreshCw className="w-3 h-3 mr-1" />Invia modifiche a RMS</>
+                )}
+              </Button>
+            </div>
           )}
         </div>
 

@@ -96,6 +96,29 @@ export class RivieraIntegrationService {
     }
   }
 
+  async getCustomerById(rmsId: string): Promise<ServiceResult<RmsSearchResult>> {
+    if (!this.isConfigured()) {
+      return { success: false, error: "RivieraTransferRMS non configurato (variabili d'ambiente mancanti)." };
+    }
+    try {
+      const url = `${this.baseUrl}/api/integration/customers/${encodeURIComponent(rmsId)}`;
+      const resp = await fetch(url, {
+        method: "GET",
+        headers: this.headers,
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        return { success: false, error: `RMS ha risposto con errore ${resp.status}: ${text.slice(0, 200)}` };
+      }
+      const data = (await resp.json()) as RmsCustomerRaw;
+      return { success: true, data: mapRmsCustomer(data) };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: `Impossibile raggiungere RMS: ${msg}` };
+    }
+  }
+
   async syncCustomerToRms(
     customer: RmsCustomer,
     lastUpdatedAt: Date,

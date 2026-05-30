@@ -284,6 +284,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/customers/{id}/pull:
+    post:
+      operationId: pullCustomerFromRms
+      tags: [customers]
+      summary: Scarica aggiornamenti da RMS per un cliente collegato (sovrascrive dati locali)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Sincronizzazione completata e dati aggiornati
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSummary"
+        "400":
+          description: Cliente non ancora collegato a RMS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Cliente non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Errore di comunicazione con RMS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/customers/{id}/sync:
     post:
       operationId: syncCustomerToRms

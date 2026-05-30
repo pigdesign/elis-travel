@@ -208,6 +208,26 @@ export const LinkCustomerToRmsResponse = zod.object({
 });
 
 /**
+ * @summary Scarica aggiornamenti da RMS per un cliente collegato (sovrascrive dati locali)
+ */
+export const PullCustomerFromRmsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const PullCustomerFromRmsResponse = zod.object({
+  id: zod.string().uuid(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().email(),
+  phone: zod.string().nullish(),
+  rmsLinked: zod.boolean(),
+  rmsExternalId: zod.string().nullish(),
+  rmsLastSyncAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Avvia sincronizzazione del cliente verso RMS (fire-and-forget)
  */
 export const SyncCustomerToRmsParams = zod.object({

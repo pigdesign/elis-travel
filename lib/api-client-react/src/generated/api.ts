@@ -1006,6 +1006,90 @@ export const useLinkCustomerToRms = <
 };
 
 /**
+ * @summary Scarica aggiornamenti da RMS per un cliente collegato (sovrascrive dati locali)
+ */
+export const getPullCustomerFromRmsUrl = (id: string) => {
+  return `/api/admin/customers/${id}/pull`;
+};
+
+export const pullCustomerFromRms = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CustomerSummary> => {
+  return customFetch<CustomerSummary>(getPullCustomerFromRmsUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPullCustomerFromRmsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof pullCustomerFromRms>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof pullCustomerFromRms>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["pullCustomerFromRms"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof pullCustomerFromRms>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return pullCustomerFromRms(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PullCustomerFromRmsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof pullCustomerFromRms>>
+>;
+
+export type PullCustomerFromRmsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Scarica aggiornamenti da RMS per un cliente collegato (sovrascrive dati locali)
+ */
+export const usePullCustomerFromRms = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof pullCustomerFromRms>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof pullCustomerFromRms>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getPullCustomerFromRmsMutationOptions(options));
+};
+
+/**
  * @summary Avvia sincronizzazione del cliente verso RMS (fire-and-forget)
  */
 export const getSyncCustomerToRmsUrl = (id: string) => {

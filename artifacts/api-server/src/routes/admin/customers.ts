@@ -562,4 +562,85 @@ router.post("/customers/:id/sync", async (req, res) => {
   }
 });
 
+router.post("/customers/:id/pull", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [customer] = await db
+      .select()
+      .from(customersTable)
+      .where(eq(customersTable.id, id))
+      .limit(1);
+
+    if (!customer) {
+      res.status(404).json({ error: "Cliente non trovato." });
+      return;
+    }
+
+    const [link] = await db
+      .select()
+      .from(customerExternalLinksTable)
+      .where(
+        and(
+          eq(customerExternalLinksTable.customerId, id),
+          eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM),
+        ),
+      )
+      .limit(1);
+
+    if (!link) {
+      res.status(400).json({ error: "Il cliente non è ancora collegato a RMS." });
+      return;
+    }
+
+    const rmsRes = await rivieraService.getCustomerById(link.externalId);
+    if (!rmsRes.success) {
+      await syncEvent(id, "riviera_rms", "pull_from_rms", "failed", { error: rmsRes.error });
+      res.status(502).json({ error: rmsRes.error });
+      return;
+    }
+
+    const rmsData = rmsRes.data;
+    
+    // Fallback: se RMS ha l'email vuota, manteniamo quella che abbiamo già su ElisTravel
+    const newEmail = rmsData.email ? rmsData.email.toLowerCase() : customer.email;
+
+    const [updated] = await db
+      .update(customersTable)
+      .set({
+        firstName: rmsData.firstName,
+        lastName: rmsData.lastName,
+        email: newEmail,
+        phone: rmsData.phone || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(customersTable.id, id))
+      .returning();
+
+    await db
+      .update(customerExternalLinksTable)
+      .set({ lastSyncAt: new Date(), updatedAt: new Date() })
+      .where(eq(customerExternalLinksTable.id, link.id));
+
+    await syncEvent(id, "riviera_rms", "pull_from_rms", "success", {
+      firstName: updated.firstName,
+      lastName: updated.lastName,
+      email: updated.email,
+      phone: updated.phone,
+      source: "manual_pull",
+    });
+
+    res.json({
+      ...updated,
+      rmsLinked: true,
+      rmsExternalId: link.externalId,
+      rmsLastSyncAt: new Date(),
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
 export default router;
