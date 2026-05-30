@@ -253,6 +253,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Elimina cliente da ElisTravel (non tocca RMS)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Cliente eliminato
+        "404":
+          description: Cliente non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/customers/{id}/link:
     post:
       operationId: linkCustomerToRms
@@ -2116,6 +2136,10 @@ components:
           type: string
           nullable: true
         rmsLastSyncAt:
+          type: string
+          format: date-time
+          nullable: true
+        rmsLinkedAt:
           type: string
           format: date-time
           nullable: true

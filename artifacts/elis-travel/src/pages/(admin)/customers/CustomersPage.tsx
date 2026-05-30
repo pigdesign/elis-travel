@@ -5,6 +5,7 @@ import {
   useGetCustomer,
   useCreateCustomer,
   useUpdateCustomer,
+  useDeleteCustomer,
   useLinkCustomerToRms,
   useSyncCustomerToRms,
   usePullCustomerFromRms,
@@ -34,6 +35,7 @@ import {
   ExternalLink,
   ChevronLeft,
   Download,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/shared/Button";
@@ -181,6 +183,8 @@ function CustomerDetailPanel({
     mobile: "",
   });
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const [rmsSearchQuery, setRmsSearchQuery] = useState("");
   const debouncedRmsQ = useDebounce(rmsSearchQuery, 500);
   const rmsSearchParams = { q: debouncedRmsQ };
@@ -193,6 +197,15 @@ function CustomerDetailPanel({
       },
     },
   );
+
+  const { mutate: deleteCustomer, isPending: deleting } = useDeleteCustomer({
+    mutation: {
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: getListCustomersQueryKey() });
+        onClose();
+      },
+    },
+  });
 
   const { mutate: updateCustomer, isPending: updating } = useUpdateCustomer({
     mutation: {
@@ -455,6 +468,9 @@ function CustomerDetailPanel({
             <div className="min-w-0 flex-1">
               <div className="font-medium text-blue-900 truncate">Collegato a RMS</div>
               <div className="text-blue-700 text-xs font-mono truncate">ID esterno: {c.rmsExternalId}</div>
+              {c.rmsLinkedAt && (
+                <div className="text-blue-600 text-xs truncate">Su RMS dal: {formatDate(c.rmsLinkedAt)}</div>
+              )}
               {c.rmsLastSyncAt && (
                 <div className="text-blue-600 text-xs truncate">Ultima sync: {formatDateTime(c.rmsLastSyncAt)}</div>
               )}
@@ -537,6 +553,37 @@ function CustomerDetailPanel({
           </div>
         )}
       </div>
+
+      {confirmDelete ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-medium text-red-900">Eliminare <span className="font-bold">{c.firstName} {c.lastName}</span> da ElisTravel?</p>
+          <p className="text-xs text-red-700">Il profilo su RMS non verrà toccato. L'azione non è reversibile.</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => deleteCustomer({ id: c.id })}
+              disabled={deleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+              Sì, elimina
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="px-3 py-1.5 border border-border text-xs font-medium rounded-lg hover:bg-muted"
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 font-medium self-start"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Elimina cliente da ElisTravel
+        </button>
+      )}
 
       {c.syncEvents && c.syncEvents.length > 0 && (
         <div className="bg-white border border-border rounded-xl p-5 space-y-3">

@@ -72,6 +72,7 @@ export const ListCustomersResponse = zod.object({
       rmsLinked: zod.boolean(),
       rmsExternalId: zod.string().nullish(),
       rmsLastSyncAt: zod.coerce.date().nullish(),
+      rmsLinkedAt: zod.coerce.date().nullish(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -144,6 +145,7 @@ export const GetCustomerResponse = zod
     rmsLinked: zod.boolean(),
     rmsExternalId: zod.string().nullish(),
     rmsLastSyncAt: zod.coerce.date().nullish(),
+    rmsLinkedAt: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   })
@@ -186,6 +188,7 @@ export const UpdateCustomerResponse = zod.object({
   rmsLinked: zod.boolean(),
   rmsExternalId: zod.string().nullish(),
   rmsLastSyncAt: zod.coerce.date().nullish(),
+  rmsLinkedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -211,6 +214,7 @@ export const LinkCustomerToRmsResponse = zod.object({
   rmsLinked: zod.boolean(),
   rmsExternalId: zod.string().nullish(),
   rmsLastSyncAt: zod.coerce.date().nullish(),
+  rmsLinkedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -232,6 +236,7 @@ export const PullCustomerFromRmsResponse = zod.object({
   rmsLinked: zod.boolean(),
   rmsExternalId: zod.string().nullish(),
   rmsLastSyncAt: zod.coerce.date().nullish(),
+  rmsLinkedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

@@ -416,6 +416,7 @@ export interface CustomerSummary {
   rmsLinked: boolean;
   rmsExternalId?: string | null;
   rmsLastSyncAt?: string | null;
+  rmsLinkedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

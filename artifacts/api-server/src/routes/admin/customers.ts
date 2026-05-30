@@ -100,6 +100,7 @@ router.get("/customers", async (req, res) => {
         customerId: customerExternalLinksTable.customerId,
         externalId: customerExternalLinksTable.externalId,
         lastSyncAt: customerExternalLinksTable.lastSyncAt,
+        createdAt: customerExternalLinksTable.createdAt,
       })
       .from(customerExternalLinksTable)
       .where(eq(customerExternalLinksTable.externalSystem, RMS_SYSTEM));
@@ -113,6 +114,7 @@ router.get("/customers", async (req, res) => {
         rmsLinked: Boolean(link),
         rmsExternalId: link?.externalId ?? null,
         rmsLastSyncAt: link?.lastSyncAt ?? null,
+        rmsLinkedAt: link?.createdAt ?? null,
       };
     });
 
@@ -161,7 +163,7 @@ router.post("/customers", async (req, res) => {
       })
       .returning();
 
-    res.status(201).json({ ...customer, rmsLinked: false, rmsExternalId: null, rmsLastSyncAt: null });
+    res.status(201).json({ ...customer, rmsLinked: false, rmsExternalId: null, rmsLastSyncAt: null, rmsLinkedAt: null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -288,6 +290,7 @@ router.post("/customers/rms/import", async (req, res) => {
       rmsLinked: true,
       rmsExternalId: finalLink?.externalId ?? null,
       rmsLastSyncAt: finalLink?.lastSyncAt ?? null,
+      rmsLinkedAt: finalLink?.createdAt ?? null,
     });
   } catch (err) {
     console.error(err);
@@ -332,6 +335,7 @@ router.get("/customers/:id", async (req, res) => {
       rmsLinked: Boolean(link),
       rmsExternalId: link?.externalId ?? null,
       rmsLastSyncAt: link?.lastSyncAt ?? null,
+      rmsLinkedAt: link?.createdAt ?? null,
       syncEvents: events.map((e) => ({
         id: e.id,
         eventType: e.eventType,
@@ -437,7 +441,28 @@ router.patch("/customers/:id", async (req, res) => {
       rmsLinked: Boolean(link),
       rmsExternalId: link?.externalId ?? null,
       rmsLastSyncAt: link?.lastSyncAt ?? null,
+      rmsLinkedAt: link?.createdAt ?? null,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.delete("/customers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [deleted] = await db
+      .delete(customersTable)
+      .where(eq(customersTable.id, id))
+      .returning({ id: customersTable.id });
+
+    if (!deleted) {
+      res.status(404).json({ error: "Cliente non trovato." });
+      return;
+    }
+
+    res.status(204).send();
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -496,7 +521,7 @@ router.post("/customers/:id/link", async (req, res) => {
 
     await syncEvent(id, "elis_travel", "pull_from_rms", "success", { rmsExternalId: rmsExternalId.trim() });
 
-    res.json({ ...customer, rmsLinked: true, rmsExternalId: link.externalId, rmsLastSyncAt: link.lastSyncAt });
+    res.json({ ...customer, rmsLinked: true, rmsExternalId: link.externalId, rmsLastSyncAt: link.lastSyncAt, rmsLinkedAt: link.createdAt });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -650,6 +675,7 @@ router.post("/customers/:id/pull", async (req, res) => {
       rmsLinked: true,
       rmsExternalId: link.externalId,
       rmsLastSyncAt: new Date(),
+      rmsLinkedAt: link.createdAt,
     });
 
   } catch (err) {
