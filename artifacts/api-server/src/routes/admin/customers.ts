@@ -412,6 +412,7 @@ router.patch("/customers/:id", async (req, res) => {
             lastName: updated.lastName,
             email: updated.email,
             phone: updated.phone,
+            mobile: updated.mobile,
             externalRef: link.externalId,
           },
           updated.updatedAt,

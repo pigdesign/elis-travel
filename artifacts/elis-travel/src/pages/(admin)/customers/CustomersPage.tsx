@@ -93,7 +93,7 @@ function PageLevelRmsSearch({ onImported }: { onImported: () => void }) {
   });
 
   const handleImport = (r: RmsSearchResult) => {
-    importFromRms({ data: { rmsExternalId: r.id, firstName: r.firstName, lastName: r.lastName, email: r.email, phone: r.phone ?? null } });
+    importFromRms({ data: { rmsExternalId: r.id, firstName: r.firstName, lastName: r.lastName, email: r.email, phone: r.phone ?? null, mobile: r.mobile ?? null } });
   };
 
   return (
