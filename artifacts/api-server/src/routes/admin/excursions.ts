@@ -5,15 +5,51 @@ import {
   excursionBookingsTable,
   excursionVehiclesTable,
 } from "@workspace/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, inArray, isNull } from "drizzle-orm";
 
-const VALID_PAYMENT_STATUSES = ["pending", "deposit", "paid"] as const;
+const VALID_PAYMENT_STATUSES = [
+  "pending",
+  "deposit_requested",
+  "deposit",
+  "full_requested",
+  "paid",
+  "refunded",
+] as const;
 type PaymentStatus = (typeof VALID_PAYMENT_STATUSES)[number];
 function isValidPaymentStatus(s: unknown): s is PaymentStatus {
   return typeof s === "string" && (VALID_PAYMENT_STATUSES as readonly string[]).includes(s);
 }
 
+const ADMIN_CREATABLE_STATUSES = ["pending", "deposit", "paid"] as const;
+type AdminCreatableStatus = (typeof ADMIN_CREATABLE_STATUSES)[number];
+function isAdminCreatableStatus(s: unknown): s is AdminCreatableStatus {
+  return typeof s === "string" && (ADMIN_CREATABLE_STATUSES as readonly string[]).includes(s);
+}
+
+const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
+  deposit_requested: ["deposit"],
+  full_requested: ["paid"],
+  pending: ["deposit", "paid"],
+  deposit: ["paid", "refunded"],
+  paid: ["refunded"],
+  refunded: [],
+};
+
 const router = Router();
+
+async function getPendingRequestsCount(excursionId: string): Promise<number> {
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(excursionBookingsTable)
+    .where(
+      and(
+        eq(excursionBookingsTable.excursionId, excursionId),
+        inArray(excursionBookingsTable.paymentStatus, ["deposit_requested", "full_requested"]),
+        isNull(excursionBookingsTable.cancelledAt),
+      ),
+    );
+  return count ?? 0;
+}
 
 function calcFinancials(e: typeof excursionsTable.$inferSelect) {
   const price = parseFloat(e.pricePerPerson ?? "0");
@@ -33,14 +69,29 @@ function calcFinancials(e: typeof excursionsTable.$inferSelect) {
 
 router.get("/excursions", async (_req, res) => {
   try {
-    const excursions = await db
-      .select()
-      .from(excursionsTable)
-      .orderBy(desc(excursionsTable.date));
+    const [excursions, pendingCounts] = await Promise.all([
+      db.select().from(excursionsTable).orderBy(desc(excursionsTable.date)),
+      db
+        .select({
+          excursionId: excursionBookingsTable.excursionId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(excursionBookingsTable)
+        .where(
+          and(
+            inArray(excursionBookingsTable.paymentStatus, ["deposit_requested", "full_requested"]),
+            isNull(excursionBookingsTable.cancelledAt),
+          ),
+        )
+        .groupBy(excursionBookingsTable.excursionId),
+    ]);
+
+    const pendingMap = new Map(pendingCounts.map((r) => [r.excursionId, r.count]));
 
     const result = excursions.map((e) => ({
       ...e,
       ...calcFinancials(e),
+      pendingRequestsCount: pendingMap.get(e.id) ?? 0,
     }));
 
     res.json(result);
@@ -80,7 +131,7 @@ router.post("/excursions", async (req, res) => {
       })
       .returning();
 
-    res.status(201).json({ ...created, ...calcFinancials(created) });
+    res.status(201).json({ ...created, ...calcFinancials(created), pendingRequestsCount: 0 });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -108,9 +159,16 @@ router.get("/excursions/:id", async (req, res) => {
       .where(eq(excursionBookingsTable.excursionId, id))
       .orderBy(desc(excursionBookingsTable.bookedAt));
 
+    const pendingRequestsCount = bookings.filter(
+      (b) =>
+        (b.paymentStatus === "deposit_requested" || b.paymentStatus === "full_requested") &&
+        !b.cancelledAt,
+    ).length;
+
     res.json({
       ...excursion,
       ...calcFinancials(excursion),
+      pendingRequestsCount,
       bookings,
     });
   } catch (err) {
@@ -150,7 +208,8 @@ router.patch("/excursions/:id", async (req, res) => {
       return;
     }
 
-    res.json({ ...updated, ...calcFinancials(updated) });
+    const pendingRequestsCount = await getPendingRequestsCount(id);
+    res.json({ ...updated, ...calcFinancials(updated), pendingRequestsCount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -210,6 +269,8 @@ router.post("/excursions/:id/bookings", async (req, res) => {
       customerId?: string;
       email?: string | null;
       phone?: string | null;
+      adults?: number;
+      children?: number;
       seats?: number;
       paymentStatus?: string;
     };
@@ -219,9 +280,11 @@ router.post("/excursions/:id/bookings", async (req, res) => {
       return;
     }
 
-    const seats = Math.max(1, Math.min(50, body.seats ?? 1));
+    const adults = Math.max(1, Math.min(50, body.adults ?? 1));
+    const children = Math.max(0, Math.min(50, body.children ?? 0));
+    const seats = adults + children;
     const paymentStatusRaw = body.paymentStatus ?? "pending";
-    if (!isValidPaymentStatus(paymentStatusRaw)) {
+    if (!isAdminCreatableStatus(paymentStatusRaw)) {
       res.status(400).json({ error: "Stato pagamento non valido." });
       return;
     }
@@ -246,6 +309,8 @@ router.post("/excursions/:id/bookings", async (req, res) => {
           email: body.email?.trim() || null,
           phone: body.phone?.trim() || null,
           seats,
+          adults,
+          children,
           paymentStatus,
         })
         .returning();
@@ -303,6 +368,11 @@ router.patch("/excursions/:id/bookings/:bookingId", async (req, res) => {
       if (booking.cancelledAt) return { cancelled: true as const };
 
       const oldStatus = booking.paymentStatus;
+      const allowed = ALLOWED_TRANSITIONS[oldStatus] ?? [];
+      if (!allowed.includes(paymentStatus)) {
+        return { invalidTransition: true as const, from: oldStatus, to: paymentStatus };
+      }
+
       const seats = booking.seats;
 
       let depositsDelta = 0;
@@ -338,6 +408,12 @@ router.patch("/excursions/:id/bookings/:bookingId", async (req, res) => {
     }
     if ("cancelled" in updated) {
       res.status(400).json({ error: "Prenotazione annullata: impossibile aggiornare lo stato di pagamento." });
+      return;
+    }
+    if ("invalidTransition" in updated) {
+      res.status(400).json({
+        error: `Transizione non consentita da "${updated.from}" a "${updated.to}".`,
+      });
       return;
     }
 
@@ -434,7 +510,8 @@ router.patch("/excursions/:id/vehicle", async (req, res) => {
       return;
     }
 
-    res.json({ ...updated, ...calcFinancials(updated) });
+    const pendingRequestsCount = await getPendingRequestsCount(id);
+    res.json({ ...updated, ...calcFinancials(updated), pendingRequestsCount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });

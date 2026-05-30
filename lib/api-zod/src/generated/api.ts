@@ -304,6 +304,7 @@ export const ListExcursionsResponseItem = zod.object({
   adherentsCount: zod.number(),
   depositsCount: zod.number(),
   balancesCount: zod.number(),
+  pendingRequestsCount: zod.number(),
   vehicleFixedCost: zod.string().optional(),
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
@@ -366,6 +367,7 @@ export const GetExcursionResponse = zod
     adherentsCount: zod.number(),
     depositsCount: zod.number(),
     balancesCount: zod.number(),
+    pendingRequestsCount: zod.number(),
     vehicleFixedCost: zod.string().optional(),
     mealCostPerPerson: zod.string().optional(),
     entranceCostPerPerson: zod.string().optional(),
@@ -395,6 +397,8 @@ export const GetExcursionResponse = zod
           email: zod.string().nullish(),
           phone: zod.string().nullish(),
           seats: zod.number(),
+          adults: zod.number(),
+          children: zod.number(),
           paymentStatus: zod.string(),
           bookedAt: zod.coerce.date(),
           cancelledAt: zod.coerce.date().nullish(),
@@ -443,6 +447,7 @@ export const UpdateExcursionResponse = zod.object({
   adherentsCount: zod.number(),
   depositsCount: zod.number(),
   balancesCount: zod.number(),
+  pendingRequestsCount: zod.number(),
   vehicleFixedCost: zod.string().optional(),
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
@@ -485,6 +490,8 @@ export const AddExcursionBookingBody = zod.object({
   customerId: zod.string().optional(),
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
+  adults: zod.number().min(1).optional(),
+  children: zod.number().min(0).optional(),
   seats: zod.number().optional(),
   paymentStatus: zod.string().optional(),
 });
@@ -498,7 +505,7 @@ export const UpdateExcursionBookingPaymentParams = zod.object({
 });
 
 export const UpdateExcursionBookingPaymentBody = zod.object({
-  paymentStatus: zod.enum(["pending", "deposit", "paid"]),
+  paymentStatus: zod.enum(["pending", "deposit_requested", "deposit", "full_requested", "paid", "refunded"]),
 });
 
 export const UpdateExcursionBookingPaymentResponse = zod.object({
@@ -509,6 +516,8 @@ export const UpdateExcursionBookingPaymentResponse = zod.object({
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
   seats: zod.number(),
+  adults: zod.number(),
+  children: zod.number(),
   paymentStatus: zod.string(),
   bookedAt: zod.coerce.date(),
   cancelledAt: zod.coerce.date().nullish(),
@@ -535,13 +544,12 @@ export const CreatePublicExcursionBookingParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
-export const createPublicExcursionBookingBodySeatsMax = 10;
-
 export const CreatePublicExcursionBookingBody = zod.object({
   customerName: zod.string(),
   email: zod.string(),
   phone: zod.string().optional(),
-  seats: zod.number().min(1).max(createPublicExcursionBookingBodySeatsMax),
+  adults: zod.number().min(1),
+  children: zod.number().min(0).optional(),
   paymentType: zod.enum(["deposit", "full"]),
 });
 
@@ -568,6 +576,7 @@ export const UpdateExcursionVehicleResponse = zod.object({
   adherentsCount: zod.number(),
   depositsCount: zod.number(),
   balancesCount: zod.number(),
+  pendingRequestsCount: zod.number(),
   vehicleFixedCost: zod.string().optional(),
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
@@ -1045,3 +1054,25 @@ export const RequestUploadUrlResponse = zod.object({
     contentType: zod.string(),
   }),
 });
+
+/**
+ * @summary Leggi impostazioni
+ */
+export const GetAdminSettingsResponse = zod.object({
+  payment_iban: zod.string().nullish(),
+  payment_beneficiary: zod.string().nullish(),
+  payment_bank: zod.string().nullish(),
+  payment_notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Aggiorna impostazioni
+ */
+export const UpdateAdminSettingsBody = zod.object({
+  payment_iban: zod.string().optional(),
+  payment_beneficiary: zod.string().optional(),
+  payment_bank: zod.string().optional(),
+  payment_notes: zod.string().optional(),
+});
+
+export const UpdateAdminSettingsResponse = GetAdminSettingsResponse;

@@ -371,11 +371,12 @@ router.post("/leads", async (req, res) => {
 router.post("/excursions/:id/book", async (req, res) => {
   try {
     const { id } = req.params;
-    const { customerName, email, phone, seats, paymentType } = req.body as {
+    const { customerName, email, phone, adults, children, paymentType } = req.body as {
       customerName?: string;
       email?: string;
       phone?: string;
-      seats?: number;
+      adults?: number;
+      children?: number;
       paymentType?: string;
     };
 
@@ -396,32 +397,30 @@ router.post("/excursions/:id/book", async (req, res) => {
       res.status(400).json({ error: "Numero di telefono troppo lungo." });
       return;
     }
-    const seatsNum = Number(seats);
-    if (!Number.isInteger(seatsNum) || seatsNum < 1 || seatsNum > 10) {
-      res.status(400).json({ error: "Numero posti non valido (1-10)." });
+    const adultsNum = Number(adults);
+    const childrenNum = Number(children ?? 0);
+    if (!Number.isInteger(adultsNum) || adultsNum < 1) {
+      res.status(400).json({ error: "Almeno 1 adulto è obbligatorio." });
       return;
     }
+    if (!Number.isInteger(childrenNum) || childrenNum < 0) {
+      res.status(400).json({ error: "Numero bambini non valido." });
+      return;
+    }
+    const seatsNum = adultsNum + childrenNum;
     if (paymentType !== "deposit" && paymentType !== "full") {
       res.status(400).json({ error: "Tipo di pagamento non valido." });
       return;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const paymentStatus = paymentType === "full" ? "paid" : "deposit";
+    const paymentStatus = paymentType === "full" ? "full_requested" : "deposit_requested";
 
     const result = await db.transaction(async (tx) => {
       const updated = await tx
         .update(excursionsTable)
         .set({
           adherentsCount: sql`${excursionsTable.adherentsCount} + ${seatsNum}`,
-          depositsCount:
-            paymentStatus === "deposit"
-              ? sql`${excursionsTable.depositsCount} + ${seatsNum}`
-              : excursionsTable.depositsCount,
-          balancesCount:
-            paymentStatus === "paid"
-              ? sql`${excursionsTable.balancesCount} + ${seatsNum}`
-              : excursionsTable.balancesCount,
           updatedAt: new Date(),
         })
         .where(
@@ -477,6 +476,8 @@ router.post("/excursions/:id/book", async (req, res) => {
           email: normalizedEmail,
           phone: phone?.trim() || null,
           seats: seatsNum,
+          adults: adultsNum,
+          children: childrenNum,
           paymentStatus,
         })
         .returning();
@@ -521,6 +522,8 @@ router.post("/excursions/:id/book", async (req, res) => {
         customerEmail: normalizedEmail,
         customerPhone: phone?.trim() || null,
         seats: seatsNum,
+        adults: adultsNum,
+        children: childrenNum,
         paymentType: paymentType as "deposit" | "full",
         excursion: {
           id: result.excursion.id,
@@ -535,11 +538,13 @@ router.post("/excursions/:id/book", async (req, res) => {
     res.status(201).json({
       id: result.booking.id,
       seats: result.booking.seats,
+      adults: result.booking.adults,
+      children: result.booking.children,
       paymentStatus: result.booking.paymentStatus,
       message:
-        paymentStatus === "paid"
-          ? "Prenotazione confermata. Ti contatteremo per perfezionare il pagamento."
-          : "Prenotazione registrata con acconto. Ti contatteremo per i dettagli del pagamento.",
+        paymentStatus === "full_requested"
+          ? "Richiesta ricevuta. Ti contatteremo a breve con gli estremi per il pagamento completo."
+          : "Richiesta ricevuta. Ti contatteremo a breve con gli estremi per versare l'acconto.",
     });
   } catch (err) {
     console.error("Public excursion booking failed:", err);

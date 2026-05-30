@@ -67,6 +67,8 @@ export interface Booking {
   email?: string | null;
   phone?: string | null;
   seats: number;
+  adults: number;
+  children: number;
   paymentStatus: string;
   bookedAt: string;
   cancelledAt?: string | null;
@@ -83,6 +85,8 @@ export interface BookingInput {
   customerId?: string;
   email?: string | null;
   phone?: string | null;
+  adults?: number;
+  children?: number;
   seats?: number;
   paymentStatus?: string;
 }
@@ -112,20 +116,30 @@ export interface PublicBookingInput {
   customerName: string;
   email: string;
   phone?: string;
-  /**
-   * @minimum 1
-   * @maximum 10
-   */
-  seats: number;
+  /** @minimum 1 */
+  adults: number;
+  /** @minimum 0 */
+  children?: number;
   paymentType: PublicBookingInputPaymentType;
 }
 
 export interface PublicBookingResponse {
   id: string;
   seats: number;
+  adults: number;
+  children: number;
   paymentStatus: string;
   message: string;
 }
+
+export interface Settings {
+  payment_iban?: string | null;
+  payment_beneficiary?: string | null;
+  payment_bank?: string | null;
+  payment_notes?: string | null;
+}
+
+export type SettingsInput = Partial<Settings>;
 
 export interface ExcursionInput {
   name?: string;

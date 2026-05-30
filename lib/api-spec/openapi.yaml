@@ -1147,6 +1147,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Leggi impostazioni
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Impostazioni correnti
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+    put:
+      operationId: updateAdminSettings
+      tags: [admin]
+      summary: Aggiorna impostazioni
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsInput"
+      responses:
+        "200":
+          description: Impostazioni aggiornate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
 components:
   schemas:
     HealthStatus:
@@ -1223,6 +1256,8 @@ components:
           type: integer
         balancesCount:
           type: integer
+        pendingRequestsCount:
+          type: integer
         vehicleFixedCost:
           type: string
         mealCostPerPerson:
@@ -1276,6 +1311,7 @@ components:
         - adherentsCount
         - depositsCount
         - balancesCount
+        - pendingRequestsCount
         - pricePerPerson
         - ricaviStimati
         - costiVariabili
@@ -1316,6 +1352,10 @@ components:
           nullable: true
         seats:
           type: integer
+        adults:
+          type: integer
+        children:
+          type: integer
         paymentStatus:
           type: string
         bookedAt:
@@ -1336,6 +1376,8 @@ components:
         - excursionId
         - customerName
         - seats
+        - adults
+        - children
         - paymentStatus
         - bookedAt
         - createdAt
@@ -1353,6 +1395,12 @@ components:
         phone:
           type: string
           nullable: true
+        adults:
+          type: integer
+          minimum: 1
+        children:
+          type: integer
+          minimum: 0
         seats:
           type: integer
         paymentStatus:
@@ -1364,7 +1412,7 @@ components:
       properties:
         paymentStatus:
           type: string
-          enum: [pending, deposit, paid]
+          enum: [pending, deposit_requested, deposit, full_requested, paid, refunded]
       required:
         - paymentStatus
     PublicBookingInput:
@@ -1376,17 +1424,19 @@ components:
           type: string
         phone:
           type: string
-        seats:
+        adults:
           type: integer
           minimum: 1
-          maximum: 10
+        children:
+          type: integer
+          minimum: 0
         paymentType:
           type: string
           enum: [deposit, full]
       required:
         - customerName
         - email
-        - seats
+        - adults
         - paymentType
     PublicBookingResponse:
       type: object
@@ -1396,11 +1446,15 @@ components:
           format: uuid
         seats:
           type: integer
+        adults:
+          type: integer
+        children:
+          type: integer
         paymentStatus:
           type: string
         message:
           type: string
-      required: [id, seats, paymentStatus, message]
+      required: [id, seats, adults, children, paymentStatus, message]
     ExcursionInput:
       type: object
       properties:
@@ -2293,3 +2347,29 @@ components:
       required:
         - id
         - message
+    SettingsResponse:
+      type: object
+      properties:
+        payment_iban:
+          type: string
+          nullable: true
+        payment_beneficiary:
+          type: string
+          nullable: true
+        payment_bank:
+          type: string
+          nullable: true
+        payment_notes:
+          type: string
+          nullable: true
+    SettingsInput:
+      type: object
+      properties:
+        payment_iban:
+          type: string
+        payment_beneficiary:
+          type: string
+        payment_bank:
+          type: string
+        payment_notes:
+          type: string

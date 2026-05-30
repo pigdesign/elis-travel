@@ -18,6 +18,10 @@ import {
   X,
   Loader2,
   ChevronRight,
+  RotateCcw,
+  Mail,
+  ClipboardCopy,
+  CheckCheck,
 } from "lucide-react";
 import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
 import {
@@ -27,6 +31,7 @@ import {
   useUpdateExcursionBookingPayment,
   useDeleteExcursionBooking,
   useAddExcursionBooking,
+  useGetAdminSettings,
   getGetExcursionQueryKey,
   getListExcursionsQueryKey,
 } from "@workspace/api-client-react";
@@ -42,9 +47,12 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 };
 
 const PAYMENT_STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string }> = {
-  pending: { label: "In attesa", icon: Clock, className: "text-muted-foreground" },
-  deposit: { label: "Acconto", icon: CreditCard, className: "text-accent" },
-  paid: { label: "Saldato", icon: CheckCircle, className: "text-primary" },
+  pending:           { label: "In attesa",        icon: Clock,       className: "text-muted-foreground" },
+  deposit_requested: { label: "Richiesta acconto", icon: Clock,       className: "text-amber-600" },
+  deposit:           { label: "Acconto",           icon: CreditCard,  className: "text-accent" },
+  full_requested:    { label: "Richiesta totale",  icon: Clock,       className: "text-amber-600" },
+  paid:              { label: "Saldato",           icon: CheckCircle, className: "text-primary" },
+  refunded:          { label: "Rimborsato",        icon: RotateCcw,   className: "text-slate-500" },
 };
 
 function formatEur(n: number) {
@@ -97,23 +105,42 @@ function AvatarInitials({ name }: { name: string }) {
   );
 }
 
-const PAYMENT_NEXT: Record<string, { next: "pending" | "deposit" | "paid"; label: string } | null> = {
-  pending: { next: "deposit", label: "→ Acconto" },
-  deposit: { next: "paid", label: "→ Saldato" },
-  paid: null,
+const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
+  deposit_requested: ["deposit"],
+  full_requested:    ["paid"],
+  pending:           ["deposit", "paid"],
+  deposit:           ["paid", "refunded"],
+  paid:              ["refunded"],
+  refunded:          [],
+};
+
+const TRANSITION_LABELS: Record<string, Record<string, string>> = {
+  deposit_requested: { deposit:  "Conferma acconto" },
+  full_requested:    { paid:     "Conferma pagamento" },
+  pending:           { deposit:  "→ Acconto",  paid: "→ Saldato" },
+  deposit:           { paid:     "→ Saldato",  refunded: "→ Rimborsa" },
+  paid:              { refunded: "→ Rimborsa" },
 };
 
 function BookingRow({
   booking,
   excursionId,
+  excursionName,
+  excursionDate,
+  excursionLocation,
+  pricePerPerson,
 }: {
   booking: Booking;
   excursionId: string;
+  excursionName: string;
+  excursionDate: string;
+  excursionLocation: string;
+  pricePerPerson: string | null;
 }) {
   const queryClient = useQueryClient();
   const paymentCfg = PAYMENT_STATUS_CONFIG[booking.paymentStatus] ?? PAYMENT_STATUS_CONFIG["pending"];
   const PayIcon = paymentCfg.icon;
-  const nextStep = PAYMENT_NEXT[booking.paymentStatus];
+  const allowedNextStates = ALLOWED_TRANSITIONS[booking.paymentStatus] ?? [];
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getGetExcursionQueryKey(excursionId) });
@@ -127,13 +154,12 @@ function BookingRow({
     mutation: { onSuccess: invalidate },
   });
 
-  const advance = async () => {
-    if (!nextStep) return;
+  const transitionTo = async (targetStatus: string) => {
     try {
       await updateStatus({
         id: excursionId,
         bookingId: booking.id,
-        data: { paymentStatus: nextStep.next },
+        data: { paymentStatus: targetStatus as "pending" | "deposit_requested" | "deposit" | "full_requested" | "paid" | "refunded" },
       });
     } catch (e) {
       console.error(e);
@@ -154,8 +180,13 @@ function BookingRow({
   const busy = isUpdating || isDeleting;
   const isCancelled = !!booking.cancelledAt;
 
+  const isRequest =
+    booking.paymentStatus === "deposit_requested" ||
+    booking.paymentStatus === "full_requested";
+
   return (
-    <tr className={`border-b border-border/50 transition-colors ${isCancelled ? "bg-gray-50/80 opacity-70" : "hover:bg-muted/20"}`}
+    <>
+    <tr className={`border-b ${isRequest ? "" : "border-border/50"} transition-colors ${isCancelled ? "bg-gray-50/80 opacity-70" : "hover:bg-muted/20"}`}
       data-testid={`booking-row-${booking.id}`}
     >
       <td className="py-2.5 pl-4 pr-2">
@@ -179,9 +210,9 @@ function BookingRow({
         </div>
       </td>
       <td className="py-2.5 px-2 text-center">
-        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground" title={`${booking.adults} adult${booking.adults === 1 ? "o" : "i"}${booking.children > 0 ? ` + ${booking.children} bambin${booking.children === 1 ? "o" : "i"}` : ""}`}>
           <Users className="w-3.5 h-3.5 text-muted-foreground" />
-          {booking.seats}
+          {booking.children > 0 ? `${booking.adults}A+${booking.children}B` : booking.adults}
         </span>
       </td>
       <td className="py-2.5 px-2">
@@ -202,20 +233,29 @@ function BookingRow({
         {formatDateTime(booking.bookedAt)}
       </td>
       <td className="py-2.5 pr-4 pl-2 text-right">
-        <div className="inline-flex items-center gap-1">
-          {!isCancelled && nextStep && (
-            <button
-              type="button"
-              onClick={advance}
-              disabled={busy}
-              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 font-medium transition-colors"
-              data-testid={`button-advance-${booking.id}`}
-              title={`Avanza a ${nextStep.next}`}
-            >
-              {nextStep.label}
-              <ChevronRight className="w-3 h-3" />
-            </button>
-          )}
+        <div className="inline-flex items-center gap-1 flex-wrap justify-end">
+          {!isCancelled && allowedNextStates.map((targetStatus) => {
+            const label = TRANSITION_LABELS[booking.paymentStatus]?.[targetStatus] ?? `→ ${targetStatus}`;
+            const isRefund = targetStatus === "refunded";
+            return (
+              <button
+                key={targetStatus}
+                type="button"
+                onClick={() => transitionTo(targetStatus)}
+                disabled={busy}
+                className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                  isRefund
+                    ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    : "bg-primary/10 text-primary hover:bg-primary/20"
+                }`}
+                data-testid={`button-transition-${booking.id}-${targetStatus}`}
+                title={label}
+              >
+                {label}
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            );
+          })}
           <button
             type="button"
             onClick={remove}
@@ -229,6 +269,149 @@ function BookingRow({
         </div>
       </td>
     </tr>
+    {isRequest && (
+      <tr className="border-b border-amber-100 bg-amber-50/30">
+        <td colSpan={5} className="pb-1">
+          <BookingEmailPanel
+            booking={booking}
+            excursionName={excursionName}
+            excursionDate={excursionDate}
+            excursionLocation={excursionLocation}
+            pricePerPerson={pricePerPerson}
+          />
+        </td>
+      </tr>
+    )}
+    </>
+  );
+}
+
+function BookingEmailPanel({
+  booking,
+  excursionName,
+  excursionDate,
+  excursionLocation,
+  pricePerPerson,
+}: {
+  booking: Booking;
+  excursionName: string;
+  excursionDate: string;
+  excursionLocation: string;
+  pricePerPerson: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { data: settings } = useGetAdminSettings();
+
+  const isRequest =
+    booking.paymentStatus === "deposit_requested" ||
+    booking.paymentStatus === "full_requested";
+  if (!isRequest) return null;
+
+  const totalPeople = booking.adults + booking.children;
+  const price = pricePerPerson ? Number(pricePerPerson) : null;
+  const totalAmount =
+    price !== null && !Number.isNaN(price)
+      ? new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(
+          price * totalPeople,
+        )
+      : null;
+
+  const dateLabel = (() => {
+    const d = new Date(excursionDate + "T00:00:00");
+    return d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  })();
+
+  const participantsLine =
+    booking.children > 0
+      ? `${booking.adults} adult${booking.adults === 1 ? "o" : "i"} + ${booking.children} bambin${booking.children === 1 ? "o" : "i"}`
+      : `${booking.adults} adult${booking.adults === 1 ? "o" : "i"}`;
+
+  const hasPaymentInfo =
+    settings?.payment_iban || settings?.payment_beneficiary || settings?.payment_bank;
+
+  const emailText = [
+    `Gentile ${booking.customerName},`,
+    "",
+    `in seguito alla sua richiesta di prenotazione per la gita "${excursionName}" (${excursionLocation}, ${dateLabel}), le inviamo le coordinate per il pagamento.`,
+    "",
+    `— DETTAGLI PRENOTAZIONE —`,
+    `Gita: ${excursionName}`,
+    `Data: ${dateLabel}`,
+    `Partecipanti: ${participantsLine}`,
+    ...(totalAmount ? [`Totale: ${totalAmount}`] : []),
+    "",
+    ...(booking.paymentStatus === "deposit_requested"
+      ? [`Modalità: Acconto (il saldo verrà richiesto in prossimità della partenza)`]
+      : [`Modalità: Pagamento completo`]),
+    "",
+    ...(hasPaymentInfo
+      ? [
+          `— COORDINATE DI PAGAMENTO —`,
+          ...(settings?.payment_beneficiary ? [`Intestatario: ${settings.payment_beneficiary}`] : []),
+          ...(settings?.payment_iban ? [`IBAN: ${settings.payment_iban}`] : []),
+          ...(settings?.payment_bank ? [`Banca: ${settings.payment_bank}`] : []),
+          ...(settings?.payment_notes ? [`Causale: ${settings.payment_notes}`] : [`Causale: Prenotazione gita ${excursionName} – ${booking.customerName}`]),
+          "",
+        ]
+      : [`[INSERIRE QUI LE COORDINATE DI PAGAMENTO]`, ""]),
+    `Per confermare la prenotazione, le chiediamo inoltre di comunicarci i nominativi e i recapiti di tutti i partecipanti.`,
+    "",
+    `Rimaniamo a disposizione per qualsiasi informazione.`,
+    "",
+    `Cordiali saluti,`,
+    `Elis Travel`,
+  ].join("\n");
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(emailText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback
+    }
+  };
+
+  return (
+    <div className="mt-2 mx-4 mb-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium border border-amber-200 transition-colors"
+      >
+        <Mail className="w-3.5 h-3.5" />
+        {open ? "Chiudi email" : "Genera email"}
+      </button>
+      {open && (
+        <div className="mt-2 p-3 bg-gray-50 border border-border rounded-lg">
+          {!hasPaymentInfo && (
+            <div className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              Le coordinate di pagamento non sono configurate. Vai in{" "}
+              <a href="/admin/settings" className="underline font-medium">Impostazioni</a>{" "}
+              per aggiungerle.
+            </div>
+          )}
+          <textarea
+            readOnly
+            value={emailText}
+            rows={Math.min(20, emailText.split("\n").length + 2)}
+            className="w-full text-xs font-mono bg-white border border-border rounded p-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <button
+            type="button"
+            onClick={copyToClipboard}
+            className="mt-2 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors"
+          >
+            {copied ? (
+              <><CheckCheck className="w-3.5 h-3.5" />Copiato!</>
+            ) : (
+              <><ClipboardCopy className="w-3.5 h-3.5" />Copia testo</>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -242,7 +425,8 @@ function AddParticipantModal({
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [seats, setSeats] = useState(1);
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "deposit" | "paid">("pending");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -268,7 +452,8 @@ function AddParticipantModal({
         data: {
           customerName: name.trim(),
           email: email.trim() || null,
-          seats,
+          adults,
+          children,
           paymentStatus,
         },
       });
@@ -315,18 +500,30 @@ function AddParticipantModal({
               data-testid="input-add-email"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Posti *</label>
+              <label className="block text-xs font-medium text-foreground mb-1">Adulti *</label>
               <input
                 type="number"
                 min={1}
                 max={50}
                 required
-                value={seats}
-                onChange={(e) => setSeats(Math.max(1, Number(e.target.value) || 1))}
+                value={adults}
+                onChange={(e) => setAdults(Math.max(1, Number(e.target.value) || 1))}
                 className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                data-testid="input-add-seats"
+                data-testid="input-add-adults"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Bambini</label>
+              <input
+                type="number"
+                min={0}
+                max={50}
+                value={children}
+                onChange={(e) => setChildren(Math.max(0, Number(e.target.value) || 0))}
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="input-add-children"
               />
             </div>
             <div>
@@ -338,7 +535,7 @@ function AddParticipantModal({
                 data-testid="select-add-payment"
               >
                 <option value="pending">In attesa</option>
-                <option value="deposit">Acconto</option>
+                <option value="deposit">Acconto versato</option>
                 <option value="paid">Saldato</option>
               </select>
             </div>
@@ -618,7 +815,15 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                 </thead>
                 <tbody>
                   {bookings.map((b) => (
-                    <BookingRow key={b.id} booking={b} excursionId={excursionId} />
+                    <BookingRow
+                      key={b.id}
+                      booking={b}
+                      excursionId={excursionId}
+                      excursionName={exc.name}
+                      excursionDate={exc.date}
+                      excursionLocation={exc.location}
+                      pricePerPerson={exc.pricePerPerson}
+                    />
                   ))}
                   {bookings.length === 0 && (
                     <tr>

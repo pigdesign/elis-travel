@@ -1,16 +1,21 @@
 import { useLocation } from "wouter";
-import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus, Settings } from "lucide-react";
 import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.png";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
-import { useListLeads } from "@workspace/api-client-react";
+import { useListLeads, useListExcursions } from "@workspace/api-client-react";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, navigate] = useLocation();
   const { state, logout } = useAuth();
   const { data: leads = [] } = useListLeads();
+  const { data: excursions = [] } = useListExcursions();
   const newLeadsCount = leads.filter((l) => l.status === "new").length;
+  const pendingBookingsCount = excursions.reduce(
+    (sum, e) => sum + ((e as { pendingRequestsCount?: number }).pendingRequestsCount ?? 0),
+    0,
+  );
 
   useEffect(() => {
     if (state.status === "unauthenticated") {
@@ -37,6 +42,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { name: "Offerte", path: "~/admin/offers", matchPath: "/admin/offers", icon: Ticket },
     { name: "Richieste", path: "~/admin/leads", matchPath: "/admin/leads", icon: Users },
     { name: "Clienti", path: "~/admin/customers", matchPath: "/admin/customers", icon: UserRound },
+    { name: "Impostazioni", path: "~/admin/settings", matchPath: "/admin/settings", icon: Settings },
   ];
 
   const handleLogout = () => {
@@ -83,6 +89,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 {item.matchPath === "/admin/leads" && newLeadsCount > 0 && (
                   <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-sm">
                     {newLeadsCount}
+                  </span>
+                )}
+                {item.matchPath === "/admin/excursions" && pendingBookingsCount > 0 && (
+                  <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-sm">
+                    {pendingBookingsCount}
                   </span>
                 )}
               </button>

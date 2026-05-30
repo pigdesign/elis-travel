@@ -82,6 +82,8 @@ export const excursionBookingsTable = pgTable("excursion_bookings", {
   email: text("email"),
   phone: text("phone"),
   seats: integer("seats").notNull().default(1),
+  adults: integer("adults").notNull().default(1),
+  children: integer("children").notNull().default(0),
   paymentStatus: text("payment_status").notNull().default("pending"),
   bookedAt: timestamp("booked_at").notNull().defaultNow(),
   cancelledAt: timestamp("cancelled_at"),

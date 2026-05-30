@@ -12,6 +12,8 @@ export type ExcursionBookingEmailData = {
   customerEmail: string;
   customerPhone?: string | null;
   seats: number;
+  adults: number;
+  children: number;
   paymentType: "deposit" | "full";
   excursion: {
     id: string;
@@ -92,6 +94,10 @@ export function buildCustomerEmail(
         )
       : null;
   const paymentInstructions = getPaymentInstructions(data.paymentType);
+  const participantsLabel =
+    data.children > 0
+      ? `${data.adults} adult${data.adults === 1 ? "o" : "i"} + ${data.children} bambin${data.children === 1 ? "o" : "i"}`
+      : `${data.adults} adult${data.adults === 1 ? "o" : "i"}`;
 
   const subject = `Conferma prenotazione: ${data.excursion.name}`;
 
@@ -105,7 +111,7 @@ export function buildCustomerEmail(
   lines.push(`• Gita: ${data.excursion.name}`);
   lines.push(`• Località: ${data.excursion.location}`);
   lines.push(`• Data: ${dateLabel}`);
-  lines.push(`• Posti prenotati: ${data.seats}`);
+  lines.push(`• Partecipanti: ${participantsLabel}`);
   if (pricePerPerson) lines.push(`• Prezzo per persona: ${pricePerPerson}`);
   if (totalPrice) lines.push(`• Totale: ${totalPrice}`);
   lines.push(`• Modalità di pagamento scelta: ${paymentLabel}`);
@@ -156,7 +162,7 @@ export function buildCustomerEmail(
     `<tr><td style="padding:6px 0;color:#555;">Gita</td><td style="padding:6px 0;font-weight:600;">${escapeHtml(data.excursion.name)}</td></tr>`,
     `<tr><td style="padding:6px 0;color:#555;">Località</td><td style="padding:6px 0;">${escapeHtml(data.excursion.location)}</td></tr>`,
     `<tr><td style="padding:6px 0;color:#555;">Data</td><td style="padding:6px 0;">${escapeHtml(dateLabel)}</td></tr>`,
-    `<tr><td style="padding:6px 0;color:#555;">Posti</td><td style="padding:6px 0;">${data.seats}</td></tr>`,
+    `<tr><td style="padding:6px 0;color:#555;">Partecipanti</td><td style="padding:6px 0;">${escapeHtml(participantsLabel)}</td></tr>`,
   ];
   if (pricePerPerson)
     detailsRows.push(
@@ -241,6 +247,10 @@ export function buildAdminEmail(
       : null;
   const paymentLabel =
     data.paymentType === "full" ? "Saldo intero" : "Acconto";
+  const participantsLabel =
+    data.children > 0
+      ? `${data.adults} adult${data.adults === 1 ? "o" : "i"} + ${data.children} bambin${data.children === 1 ? "o" : "i"}`
+      : `${data.adults} adult${data.adults === 1 ? "o" : "i"}`;
 
   const subject = `Nuova prenotazione gita: ${data.excursion.name} (${data.seats} posti)`;
 
@@ -255,7 +265,7 @@ export function buildAdminEmail(
     `Email: ${data.customerEmail}`,
     `Telefono: ${data.customerPhone || "—"}`,
     "",
-    `Posti: ${data.seats}`,
+    `Partecipanti: ${participantsLabel}`,
     `Pagamento: ${paymentLabel}`,
     totalPrice ? `Totale: ${totalPrice}` : "",
     "",
@@ -271,7 +281,7 @@ export function buildAdminEmail(
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Cliente</td><td style="padding:4px 0;">${escapeHtml(data.customerName)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Email</td><td style="padding:4px 0;">${escapeHtml(data.customerEmail)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Telefono</td><td style="padding:4px 0;">${escapeHtml(data.customerPhone || "—")}</td></tr>
-    <tr><td style="padding:4px 12px 4px 0;color:#555;">Posti</td><td style="padding:4px 0;">${data.seats}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#555;">Partecipanti</td><td style="padding:4px 0;">${escapeHtml(participantsLabel)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Pagamento</td><td style="padding:4px 0;">${escapeHtml(paymentLabel)}</td></tr>
     ${totalPrice ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Totale</td><td style="padding:4px 0;">${escapeHtml(totalPrice)}</td></tr>` : ""}
     <tr><td style="padding:4px 12px 4px 0;color:#555;">ID prenotazione</td><td style="padding:4px 0;">${escapeHtml(data.bookingId)}</td></tr>

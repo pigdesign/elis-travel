@@ -4,6 +4,7 @@ import offersRouter from "./offers";
 import leadsRouter from "./leads";
 import dashboardRouter from "./dashboard";
 import customersRouter from "./customers";
+import settingsRouter from "./settings";
 
 const adminRouter = Router();
 
@@ -12,5 +13,6 @@ adminRouter.use(offersRouter);
 adminRouter.use(leadsRouter);
 adminRouter.use(dashboardRouter);
 adminRouter.use(customersRouter);
+adminRouter.use(settingsRouter);
 
 export default adminRouter;

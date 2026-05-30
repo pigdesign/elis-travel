@@ -21,6 +21,7 @@ import { OffersPage } from "@/pages/(admin)/offers/OffersPage";
 import { OfferDetailPage } from "@/pages/(admin)/offers/OfferDetailPage";
 import { LeadsPage } from "@/pages/(admin)/leads/LeadsPage";
 import { CustomersPage } from "@/pages/(admin)/customers/CustomersPage";
+import { SettingsPage } from "@/pages/(admin)/settings/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ function Router() {
             </Route>
             <Route path="/leads" component={LeadsPage} />
             <Route path="/customers" component={CustomersPage} />
+            <Route path="/settings" component={SettingsPage} />
             <Route component={NotFound} />
           </Switch>
         </AdminLayout>

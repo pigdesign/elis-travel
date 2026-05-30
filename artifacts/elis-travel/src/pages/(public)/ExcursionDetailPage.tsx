@@ -261,6 +261,11 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                   <BookingCard
                     excursionId={excursion.id}
                     seatsAvailable={seatsInfo?.available ?? true}
+                    remainingSeats={
+                      excursion.currentCapacity
+                        ? Math.max(0, (excursion.currentCapacity ?? 0) - (excursion.adherentsCount ?? 0))
+                        : undefined
+                    }
                     priceLabel={priceLabel}
                   />
                 </div>
@@ -310,19 +315,22 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
 interface BookingCardProps {
   excursionId: string;
   seatsAvailable: boolean;
+  remainingSeats?: number;
   priceLabel: string | null;
 }
 
-function BookingCard({ excursionId, seatsAvailable, priceLabel }: BookingCardProps) {
+function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel }: BookingCardProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [seats, setSeats] = useState(1);
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
   const [paymentType, setPaymentType] = useState<"deposit" | "full">("deposit");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
-    seats: number;
+    adults: number;
+    children: number;
     paymentStatus: string;
     message: string;
   } | null>(null);
@@ -370,11 +378,16 @@ function BookingCard({ excursionId, seatsAvailable, priceLabel }: BookingCardPro
         <p className="text-emerald-900 text-sm mb-3">{confirmation.message}</p>
         <ul className="text-sm text-emerald-900 space-y-1 mb-4">
           <li>
-            <strong>Posti prenotati:</strong> {confirmation.seats}
+            <strong>Adulti:</strong> {confirmation.adults}
           </li>
+          {confirmation.children > 0 && (
+            <li>
+              <strong>Bambini ({"<"}12 anni):</strong> {confirmation.children}
+            </li>
+          )}
           <li>
             <strong>Modalità di pagamento:</strong>{" "}
-            {confirmation.paymentStatus === "paid" ? "Importo completo" : "Acconto"}
+            {confirmation.paymentStatus === "full_requested" ? "Importo completo" : "Acconto"}
           </li>
         </ul>
         <button
@@ -384,7 +397,8 @@ function BookingCard({ excursionId, seatsAvailable, priceLabel }: BookingCardPro
             setName("");
             setEmail("");
             setPhone("");
-            setSeats(1);
+            setAdults(1);
+            setChildren(0);
             setPaymentType("deposit");
           }}
           className="text-sm text-emerald-800 underline hover:text-emerald-900"
@@ -410,12 +424,14 @@ function BookingCard({ excursionId, seatsAvailable, priceLabel }: BookingCardPro
           customerName: name.trim(),
           email: email.trim(),
           phone: phone.trim() || undefined,
-          seats,
+          adults,
+          children: children || undefined,
           paymentType,
         },
       });
       setConfirmation({
-        seats: res.seats,
+        adults: res.adults,
+        children: res.children,
         paymentStatus: res.paymentStatus,
         message: res.message,
       });
@@ -485,19 +501,50 @@ function BookingCard({ excursionId, seatsAvailable, priceLabel }: BookingCardPro
             />
           </div>
           <div>
-            <label htmlFor="bk-seats" className="block text-xs font-medium text-foreground mb-1">
-              Numero posti *
+            <label htmlFor="bk-adults" className="block text-xs font-medium text-foreground mb-1">
+              Adulti (≥12 anni) *
             </label>
             <input
-              id="bk-seats"
+              id="bk-adults"
               type="number"
               min={1}
-              max={10}
+              max={remainingSeats ?? undefined}
               required
-              value={seats}
-              onChange={(e) => setSeats(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+              value={adults}
+              onChange={(e) => {
+                const v = Math.max(1, Number(e.target.value) || 1);
+                const total = v + children;
+                if (remainingSeats !== undefined && total > remainingSeats) {
+                  setAdults(Math.max(1, remainingSeats - children));
+                } else {
+                  setAdults(v);
+                }
+              }}
               className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-              data-testid="input-booking-seats"
+              data-testid="input-booking-adults"
+            />
+          </div>
+          <div>
+            <label htmlFor="bk-children" className="block text-xs font-medium text-foreground mb-1">
+              Bambini (&lt;12 anni)
+            </label>
+            <input
+              id="bk-children"
+              type="number"
+              min={0}
+              max={remainingSeats !== undefined ? Math.max(0, remainingSeats - adults) : undefined}
+              value={children}
+              onChange={(e) => {
+                const v = Math.max(0, Number(e.target.value) || 0);
+                const total = adults + v;
+                if (remainingSeats !== undefined && total > remainingSeats) {
+                  setChildren(Math.max(0, remainingSeats - adults));
+                } else {
+                  setChildren(v);
+                }
+              }}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              data-testid="input-booking-children"
             />
           </div>
         </div>
