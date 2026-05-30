@@ -12,6 +12,12 @@ export const adminUsersTable = pgTable("admin_users", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const adminSessionsTable = pgTable("admin_sessions", {
+  sid: text("sid").primaryKey(),
+  sess: text("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
 export const insertAdminUserSchema = createInsertSchema(adminUsersTable).omit({
   id: true,
   createdAt: true,

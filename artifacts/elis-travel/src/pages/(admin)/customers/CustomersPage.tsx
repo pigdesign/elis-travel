@@ -249,7 +249,7 @@ function CustomerDetailPanel({
       lastName: customer.lastName,
       email: customer.email,
       phone: customer.phone ?? "",
-      mobile: (customer as any).mobile ?? "",
+      mobile: customer.mobile ?? "",
     });
     setEditing(true);
   };
@@ -279,7 +279,7 @@ function CustomerDetailPanel({
         lastName: r.lastName,
         email: r.email,
         phone: r.phone ?? null,
-        mobile: (r as any).mobile ?? null,
+        mobile: r.mobile ?? null,
       },
     });
   };
@@ -346,7 +346,7 @@ function CustomerDetailPanel({
             </div>
             <div>
               <div className="text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Cellulare</div>
-              <div className="font-medium">{(c as any).mobile ?? "—"}</div>
+              <div className="font-medium">{c.mobile ?? "—"}</div>
             </div>
           </div>
           <div className="text-xs text-muted-foreground">Cliente dal {formatDate(c.createdAt)}</div>
@@ -773,7 +773,7 @@ export function CustomersPage() {
                           <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-3">
                             <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>
                             {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />F: {c.phone}</span>}
-                            {(c as any).mobile && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />C: {(c as any).mobile}</span>}
+                            {c.mobile && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />C: {c.mobile}</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
