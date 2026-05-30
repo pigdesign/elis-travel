@@ -37,6 +37,7 @@ import type {
   HealthStatus,
   Lead,
   LeadNote,
+  LeadConvertToCustomerInput,
   LeadNoteInput,
   LeadStatusUpdate,
   ListCustomersParams,
@@ -3367,6 +3368,74 @@ export const useAddLeadNote = <
   TContext
 > => {
   return useMutation(getAddLeadNoteMutationOptions(options));
+};
+
+export const getConvertLeadToCustomerUrl = (id: string) => {
+  return `/api/admin/leads/${id}/convert-to-customer`;
+};
+
+export const convertLeadToCustomer = async (
+  id: string,
+  leadConvertToCustomerInput: LeadConvertToCustomerInput,
+  options?: RequestInit,
+): Promise<CustomerSummary> => {
+  return customFetch<CustomerSummary>(getConvertLeadToCustomerUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(leadConvertToCustomerInput),
+  });
+};
+
+export const getConvertLeadToCustomerMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof convertLeadToCustomer>>,
+    TError,
+    { id: string; data: BodyType<LeadConvertToCustomerInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof convertLeadToCustomer>>,
+  TError,
+  { id: string; data: BodyType<LeadConvertToCustomerInput> },
+  TContext
+> => {
+  const mutationKey = ["convertLeadToCustomer"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof convertLeadToCustomer>>,
+    { id: string; data: BodyType<LeadConvertToCustomerInput> }
+  > = ({ id, data }) => {
+    return convertLeadToCustomer(id, data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type ConvertLeadToCustomerMutationBody = BodyType<LeadConvertToCustomerInput>;
+export type ConvertLeadToCustomerMutationError = ErrorType<ErrorResponse>;
+
+export const useConvertLeadToCustomer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof convertLeadToCustomer>>,
+    TError,
+    { id: string; data: BodyType<LeadConvertToCustomerInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof convertLeadToCustomer>>,
+  TError,
+  { id: string; data: BodyType<LeadConvertToCustomerInput> },
+  TContext
+> => {
+  return useMutation(getConvertLeadToCustomerMutationOptions(options));
 };
 
 /**

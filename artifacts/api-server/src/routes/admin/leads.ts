@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, leadNotesTable, offersTable, excursionsTable } from "@workspace/db/schema";
+import { leadsTable, leadNotesTable, offersTable, excursionsTable, customersTable } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
@@ -121,6 +121,73 @@ router.post("/leads/:id/notes", async (req, res) => {
       .returning();
 
     res.status(201).json(note);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.post("/leads/:id/convert-to-customer", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, email, phone, mobile } = req.body as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      mobile?: string;
+    };
+
+    if (!firstName?.trim() || !lastName?.trim() || !email?.trim()) {
+      res.status(400).json({ error: "Nome, cognome e email sono obbligatori." });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      res.status(400).json({ error: "Email non valida." });
+      return;
+    }
+
+    const [lead] = await db
+      .select({ id: leadsTable.id, customerId: leadsTable.customerId })
+      .from(leadsTable)
+      .where(eq(leadsTable.id, id))
+      .limit(1);
+
+    if (!lead) {
+      res.status(404).json({ error: "Lead non trovato." });
+      return;
+    }
+
+    if (lead.customerId) {
+      res.status(409).json({ error: "Questo lead è già collegato a un cliente." });
+      return;
+    }
+
+    const [customer] = await db
+      .insert(customersTable)
+      .values({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone?.trim() || null,
+        mobile: mobile?.trim() || null,
+      })
+      .returning();
+
+    await db
+      .update(leadsTable)
+      .set({ customerId: customer.id, updatedAt: new Date() })
+      .where(eq(leadsTable.id, id));
+
+    res.status(201).json({
+      ...customer,
+      rmsLinked: false,
+      rmsExternalId: null,
+      rmsLastSyncAt: null,
+      rmsLinkedAt: null,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });

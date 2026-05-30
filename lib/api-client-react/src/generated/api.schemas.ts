@@ -340,6 +340,14 @@ export interface LeadNoteInput {
   authorName?: string;
 }
 
+export interface LeadConvertToCustomerInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+  mobile?: string | null;
+}
+
 export interface PublicLeadInput {
   customerName: string;
   email: string;

@@ -13,12 +13,16 @@ import {
   Mountain,
   Ticket,
   Send,
+  UserPlus,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import {
   useListLeads,
   useUpdateLeadStatus,
   useListLeadNotes,
   useAddLeadNote,
+  useConvertLeadToCustomer,
   getListLeadsQueryKey,
   getListLeadNotesQueryKey,
   LeadStatusUpdateStatus,
@@ -77,10 +81,128 @@ const FILTER_TABS: { key: "all" | StatusKey; label: string }[] = [
   { key: "lost", label: "Perse" },
 ];
 
+function splitName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
+function ConvertToCustomerModal({
+  lead,
+  onClose,
+  onConverted,
+}: {
+  lead: Lead;
+  onClose: () => void;
+  onConverted: (customerId: string) => void;
+}) {
+  const { firstName: defaultFirst, lastName: defaultLast } = splitName(lead.customerName);
+  const [firstName, setFirstName] = useState(defaultFirst);
+  const [lastName, setLastName] = useState(defaultLast);
+  const [email, setEmail] = useState(lead.email ?? "");
+  const [phone, setPhone] = useState(lead.phone ?? "");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { mutateAsync, isPending } = useConvertLeadToCustomer();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    try {
+      const customer = await mutateAsync({
+        id: lead.id,
+        data: { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), phone: phone.trim() || null },
+      });
+      onConverted(customer.id);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErrorMsg(msg ?? "Errore durante la conversione. Riprova.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-primary" />
+            Converti in cliente
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Nome *</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Cognome *</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Email *</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Telefono</label>
+            <input
+              type="text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          {errorMsg && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">{errorMsg}</p>
+          )}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 disabled:opacity-60"
+            >
+              {isPending ? "Creazione..." : "Crea cliente"}
+            </button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
+              Annulla
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function LeadRow({ lead, defaultExpanded = false }: { lead: Lead; defaultExpanded?: boolean }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [convertedCustomerId, setConvertedCustomerId] = useState<string | null>(
+    lead.customerId ?? null
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
@@ -194,6 +316,18 @@ function LeadRow({ lead, defaultExpanded = false }: { lead: Lead; defaultExpande
         </div>
       </button>
 
+      {showConvertModal && (
+        <ConvertToCustomerModal
+          lead={lead}
+          onClose={() => setShowConvertModal(false)}
+          onConverted={(customerId) => {
+            setConvertedCustomerId(customerId);
+            setShowConvertModal(false);
+            void qc.invalidateQueries({ queryKey: getListLeadsQueryKey() });
+          }}
+        />
+      )}
+
       {expanded && (
         <div className="px-4 md:px-6 pb-6 pt-2 bg-muted/10 border-t border-border">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -286,6 +420,34 @@ function LeadRow({ lead, defaultExpanded = false }: { lead: Lead; defaultExpande
                   ))}
                 </select>
               </div>
+
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Cliente
+                </h3>
+                {convertedCustomerId ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Collegato
+                    </span>
+                    <button
+                      onClick={() => navigate(`~/admin/customers`)}
+                      className="text-xs text-primary hover:underline font-medium"
+                    >
+                      Vai ai clienti →
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowConvertModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Converti in cliente
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -362,17 +524,29 @@ export function LeadsPage() {
   const [activeFilter, setActiveFilter] = useState<"all" | StatusKey>("all");
   const { data: leads = [], isLoading } = useListLeads();
   const search = useSearch();
-  const focusedLeadId = new URLSearchParams(search).get("lead");
+  const searchParams = new URLSearchParams(search);
+  const focusedLeadId = searchParams.get("lead");
+  const filterOfferId = searchParams.get("offerId");
+
+  const [, navigate] = useLocation();
 
   const newCount = leads.filter((l) => l.status === "new").length;
 
-  const filtered =
+  let filtered =
     activeFilter === "all" ? leads : leads.filter((l) => l.status === activeFilter);
+  
+  if (filterOfferId) {
+    filtered = filtered.filter(l => l.offerId === filterOfferId);
+  }
 
   const counts: Record<string, number> = {};
   for (const l of leads) {
-    counts[l.status] = (counts[l.status] ?? 0) + 1;
+    if (!filterOfferId || l.offerId === filterOfferId) {
+      counts[l.status] = (counts[l.status] ?? 0) + 1;
+    }
   }
+
+  const offerNameFilter = filterOfferId ? leads.find(l => l.offerId === filterOfferId)?.offerName : null;
 
   return (
     <div className="space-y-6">
@@ -380,7 +554,7 @@ export function LeadsPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold text-foreground">Richieste</h1>
-            {newCount > 0 && (
+            {newCount > 0 && !filterOfferId && (
               <span className="bg-accent text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">
                 {newCount} nuove
               </span>
@@ -392,9 +566,26 @@ export function LeadsPage() {
         </div>
       </div>
 
+      {filterOfferId && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Ticket className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              Filtro attivo: Offerta <strong className="font-bold">{offerNameFilter || "selezionata"}</strong>
+            </span>
+          </div>
+          <button 
+            onClick={() => navigate("~/admin/leads")}
+            className="text-xs bg-amber-200/50 hover:bg-amber-200 px-2.5 py-1.5 rounded-md font-semibold transition-colors"
+          >
+            Rimuovi filtro
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-2 overflow-x-auto pb-1">
         {FILTER_TABS.map((tab) => {
-          const count = tab.key === "all" ? leads.length : (counts[tab.key] ?? 0);
+          const count = tab.key === "all" ? (filterOfferId ? filtered.length : leads.length) : (counts[tab.key] ?? 0);
           const isActive = activeFilter === tab.key;
           return (
             <button
