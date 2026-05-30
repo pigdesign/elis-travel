@@ -96,8 +96,11 @@ export type BookingPaymentStatusUpdatePaymentStatus =
 
 export const BookingPaymentStatusUpdatePaymentStatus = {
   pending: "pending",
+  deposit_requested: "deposit_requested",
   deposit: "deposit",
+  full_requested: "full_requested",
   paid: "paid",
+  refunded: "refunded",
 } as const;
 
 export interface BookingPaymentStatusUpdate {
