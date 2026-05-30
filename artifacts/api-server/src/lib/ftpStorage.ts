@@ -4,13 +4,13 @@ import { randomUUID } from "crypto";
 import path from "path";
 
 export class FtpStorageService {
-  private host = "ftp.rivieratransfer.com";
-  private user = "ftp-image@elis-travel.it";
-  private password = "VBnh?Fj!{u@#57!E";
-  private port = 21;
+  private host = process.env.FTP_HOST || "ftp.rivieratransfer.com";
+  private user = process.env.FTP_USER || "ftp-image@elis-travel.it";
+  private password = process.env.FTP_PASSWORD || "VBnh?Fj!{u@#57!E";
+  private port = Number(process.env.FTP_PORT) || 21;
   // L'utente FTP è già confinato nella cartella corretta, quindi carichiamo nella root dell'FTP "/"
-  private destFolder = "/";
-  private baseUrl = "https://elis-travel.it/ftp-image";
+  private destFolder = process.env.FTP_DEST_FOLDER || "/";
+  private baseUrl = process.env.FTP_BASE_URL || "https://elis-travel.it/ftp-image";
 
   async uploadFile(fileStream: Readable, originalName: string): Promise<string> {
     const client = new Client();
