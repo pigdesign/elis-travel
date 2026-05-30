@@ -26,7 +26,7 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "https://elis-travel.it", "http://elis-travel.it", "https://*.elis-travel.it", "http://*.elis-travel.it", "blob:", "https://storage.googleapis.com"],
         connectSrc: ["'self'", "https://storage.googleapis.com"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
