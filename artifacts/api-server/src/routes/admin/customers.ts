@@ -604,6 +604,7 @@ router.post("/customers/:id/pull", async (req, res) => {
     
     // Fallback: se RMS ha l'email vuota, manteniamo quella che abbiamo già su ElisTravel
     const newEmail = rmsData.email ? rmsData.email.toLowerCase() : customer.email;
+    const newPhone = rmsData.phone || customer.phone || null;
 
     const [updated] = await db
       .update(customersTable)
@@ -611,7 +612,7 @@ router.post("/customers/:id/pull", async (req, res) => {
         firstName: rmsData.firstName,
         lastName: rmsData.lastName,
         email: newEmail,
-        phone: rmsData.phone || null,
+        phone: newPhone,
         updatedAt: new Date(),
       })
       .where(eq(customersTable.id, id))

@@ -395,35 +395,37 @@ function CustomerDetailPanel({
       )}
 
       <div className="bg-white border border-border rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Link2 className="w-4 h-4" />
-            RivieraTransferRMS
-          </h3>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Link2 className="w-4 h-4" />
+              RivieraTransferRMS
+            </h3>
+          </div>
           {c.rmsLinked && (
-            <div className="flex gap-2">
+            <div className="flex flex-col xl:flex-row gap-2">
               <Button
                 onClick={handlePull}
                 disabled={syncing || pulling}
-                className="text-xs bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1.5 h-auto"
+                className="flex-1 text-xs bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-2 h-auto whitespace-normal text-center"
                 title="Scarica i dati da RMS e sovrascrivi quelli locali"
               >
                 {pulling ? (
-                  <><Loader2 className="w-3 h-3 animate-spin mr-1" />Scaricamento...</>
+                  <><Loader2 className="w-3 h-3 animate-spin mr-1 inline" />Scaricamento...</>
                 ) : (
-                  <><Download className="w-3 h-3 mr-1" />Scarica aggiornamenti da RMS</>
+                  <><Download className="w-3 h-3 mr-1 inline" />Scarica aggiornamenti</>
                 )}
               </Button>
               <Button
                 onClick={handleSync}
                 disabled={syncing || pulling}
-                className="text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 h-auto"
+                className="flex-1 text-xs bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 h-auto whitespace-normal text-center"
                 title="Invia i dati locali a RMS"
               >
                 {syncing ? (
-                  <><Loader2 className="w-3 h-3 animate-spin mr-1" />Invio in corso...</>
+                  <><Loader2 className="w-3 h-3 animate-spin mr-1 inline" />Invio in corso...</>
                 ) : (
-                  <><RefreshCw className="w-3 h-3 mr-1" />Invia modifiche a RMS</>
+                  <><RefreshCw className="w-3 h-3 mr-1 inline" />Invia modifiche a RMS</>
                 )}
               </Button>
             </div>
@@ -433,11 +435,11 @@ function CustomerDetailPanel({
         {c.rmsLinked ? (
           <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
             <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />
-            <div>
-              <div className="font-medium text-blue-900">Collegato a RMS</div>
-              <div className="text-blue-700 text-xs font-mono">ID esterno: {c.rmsExternalId}</div>
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-blue-900 truncate">Collegato a RMS</div>
+              <div className="text-blue-700 text-xs font-mono truncate">ID esterno: {c.rmsExternalId}</div>
               {c.rmsLastSyncAt && (
-                <div className="text-blue-600 text-xs">Ultima sync: {formatDateTime(c.rmsLastSyncAt)}</div>
+                <div className="text-blue-600 text-xs truncate">Ultima sync: {formatDateTime(c.rmsLastSyncAt)}</div>
               )}
             </div>
           </div>

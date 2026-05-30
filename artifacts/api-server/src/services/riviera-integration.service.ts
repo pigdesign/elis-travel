@@ -15,6 +15,7 @@ export interface RmsCustomerRaw {
   email?: string;
   phone?: string;
   mobile?: string;
+  cell?: string;
   [key: string]: unknown;
 }
 
@@ -31,12 +32,16 @@ function mapRmsCustomer(raw: RmsCustomerRaw): RmsSearchResult {
   const lastName = (raw.lastName ?? "").trim();
   const companyName = (raw.companyName ?? "").trim();
   const hasName = firstName || lastName;
+  
+  // Try mobile first, then phone, then cell
+  const phoneVal = (raw.mobile ?? raw.phone ?? raw.cell ?? "").trim();
+  
   return {
     id: String(raw.rmsId),
     firstName: firstName || (companyName || "?"),
     lastName: lastName || (hasName ? "" : ""),
     email: (raw.email ?? "").trim(),
-    phone: (raw.mobile ?? raw.phone ?? "").trim() || null,
+    phone: phoneVal || null,
   };
 }
 
