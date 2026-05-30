@@ -7,7 +7,7 @@ export function AdventureHero() {
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 mix-blend-multiply z-10 bg-[#00000017]" />
         <img
-          src="/images/adventure-bg-elis.jpg"
+          src="/images/adventure-bg-elis.webp"
           alt="Adventure Travel"
           className="w-full h-full object-cover"
         />

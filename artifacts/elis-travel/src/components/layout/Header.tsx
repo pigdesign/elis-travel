@@ -3,8 +3,8 @@ import { Button } from "@/components/shared/Button";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.png";
-import stickyLogoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.png";
+import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.webp";
+import stickyLogoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.webp";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -23,7 +23,6 @@ export function Header() {
     { name: "Home", href: "/" },
     { name: "Offerte", href: "/offerte" },
     { name: "Gite", href: "/gite" },
-    { name: "Chi siamo", href: "#about" },
     { name: "Contatti", href: "/contatti" },
   ];
 

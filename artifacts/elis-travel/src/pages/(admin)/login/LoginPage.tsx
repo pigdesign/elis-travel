@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import logoImg from "@assets/logo2.png";
+import logoImg from "@assets/logo2.webp";
 
 export function LoginPage() {
   const { login } = useAuth();

@@ -21,7 +21,7 @@ export const MOCK_EXCURSIONS: ExcursionDTO[] = [
     estimatedMargin: (16 * 85) - 350 - (16 * 25), // 1360 - 350 - 400 = 610€
     
     status: 'open_for_payments',
-    imageUrl: '/images/tour-1.png'
+    imageUrl: '/images/tour-1.webp'
   },
   {
     id: 'exc-002',
@@ -43,7 +43,7 @@ export const MOCK_EXCURSIONS: ExcursionDTO[] = [
     estimatedMargin: (50 * 120) - 800 - (50 * 45), // 6000 - 800 - 2250 = 2950€
     
     status: 'closed',
-    imageUrl: '/images/tour-2.png'
+    imageUrl: '/images/tour-2.webp'
   },
   {
     id: 'exc-003',
@@ -86,6 +86,6 @@ export const MOCK_EXCURSIONS: ExcursionDTO[] = [
     estimatedMargin: (35 * 150) - 900 - (35 * 55), // 5250 - 900 - 1925 = 2425€
     
     status: 'confirmed',
-    imageUrl: '/images/tour-3.png'
+    imageUrl: '/images/tour-3.webp'
   }
 ];

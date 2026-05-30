@@ -350,6 +350,18 @@ router.post("/leads", async (req, res) => {
       })
       .returning();
 
+    if (resolvedOfferId) {
+      await db
+        .update(offersTable)
+        .set({
+          leadsCount: sql`${offersTable.leadsCount} + 1`,
+          lastInterestAt: new Date(),
+          mainSource: "website",
+          updatedAt: new Date(),
+        })
+        .where(eq(offersTable.id, resolvedOfferId));
+    }
+
     if (message?.trim()) {
       await db.insert(leadNotesTable).values({
         leadId: lead.id,

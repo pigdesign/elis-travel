@@ -154,7 +154,7 @@ export function ContactsPage() {
       <section
         className="relative min-h-screen flex flex-col overflow-hidden"
         style={{
-          backgroundImage: 'url("/images/hero-bg.png")',
+          backgroundImage: 'url("/images/hero-bg.webp")',
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",

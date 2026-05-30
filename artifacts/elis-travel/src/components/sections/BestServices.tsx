@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Sailboat, Calendar, UserCheck } from "lucide-react";
-import travelerImg from "@assets/elis_travel_offerte.png_1776682556019.jpg";
+import travelerImg from "@assets/elis_travel_offerte.png_1776682556019.webp";
 
 const SERVICES = [
   {

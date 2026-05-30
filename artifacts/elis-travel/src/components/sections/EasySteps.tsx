@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import bgImg from "@assets/Gemini_Generated_Image_madap7madap7mada_1777289660530.png";
+import bgImg from "@assets/Gemini_Generated_Image_madap7madap7mada_1777289660530.webp";
 import { MapPin, CalendarCheck, PlaneTakeoff } from "lucide-react";
 const STEPS = [
   {

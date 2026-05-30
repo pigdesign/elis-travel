@@ -6,28 +6,28 @@ const DESTINATIONS = [
     id: 1,
     name: "Cinque Terre",
     country: "Italy",
-    image: "/images/dest-italy.png",
+    image: "/images/dest-italy.webp",
     placesCount: 15
   },
   {
     id: 2,
     name: "Santorini",
     country: "Greece",
-    image: "/images/dest-greece.png",
+    image: "/images/dest-greece.webp",
     placesCount: 22
   },
   {
     id: 3,
     name: "Kyoto",
     country: "Japan",
-    image: "/images/dest-japan.png",
+    image: "/images/dest-japan.webp",
     placesCount: 18
   },
   {
     id: 4,
     name: "Swiss Alps",
     country: "Switzerland",
-    image: "/images/dest-swiss.png",
+    image: "/images/dest-swiss.webp",
     placesCount: 12
   }
 ];

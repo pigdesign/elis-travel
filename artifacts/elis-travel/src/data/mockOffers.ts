@@ -10,7 +10,7 @@ export const MOCK_OFFERS: OfferDTO[] = [
     priceFrom: 2450.00,
     status: 'published',
     createdAt: '2026-03-15T10:00:00Z',
-    imageUrl: '/images/dest-greece.png' // Using an existing image just for visual
+    imageUrl: '/images/dest-greece.webp' // Using an existing image just for visual
   },
   {
     id: 'off-102',
@@ -21,7 +21,7 @@ export const MOCK_OFFERS: OfferDTO[] = [
     priceFrom: 3200.00,
     status: 'published',
     createdAt: '2026-04-01T09:30:00Z',
-    imageUrl: '/images/dest-japan.png'
+    imageUrl: '/images/dest-japan.webp'
   },
   {
     id: 'off-103',
@@ -32,7 +32,7 @@ export const MOCK_OFFERS: OfferDTO[] = [
     priceFrom: 850.00,
     status: 'draft',
     createdAt: '2026-04-18T14:15:00Z',
-    imageUrl: '/images/dest-swiss.png'
+    imageUrl: '/images/dest-swiss.webp'
   },
   {
     id: 'off-104',

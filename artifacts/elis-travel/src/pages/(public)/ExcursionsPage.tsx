@@ -322,7 +322,7 @@ export function ExcursionsPage() {
       <section
         className="relative pt-60 pb-32 text-white overflow-hidden"
         style={{
-          backgroundImage: 'url("/images/adventure-bg-elis.jpg")',
+          backgroundImage: 'url("/images/adventure-bg-elis.webp")',
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",

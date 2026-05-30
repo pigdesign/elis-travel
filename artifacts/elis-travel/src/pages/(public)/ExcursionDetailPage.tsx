@@ -51,8 +51,12 @@ function formatPrice(value?: string | null) {
 
 export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPageProps) {
   const excursionId = extractIdFromSlug(excursionIdOrSlug);
-  const { data: excursion, isLoading, isError } = useGetPublicExcursion(excursionId);
+  const { data: excursion, isLoading, isError, error } = useGetPublicExcursion(excursionId);
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const dateForSeo = (() => {
     if (!excursion?.date) return null;

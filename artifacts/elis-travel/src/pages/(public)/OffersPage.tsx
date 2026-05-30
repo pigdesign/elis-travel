@@ -204,7 +204,7 @@ export function OffersPage() {
       <section
         className="relative pt-60 pb-32 text-white overflow-hidden"
         style={{
-          backgroundImage: 'url("/images/offerte-hero.jpg")',
+          backgroundImage: 'url("/images/offerte-hero.webp")',
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",

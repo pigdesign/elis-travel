@@ -12,7 +12,7 @@ export interface SeoOptions {
 const SITE_NAME = "Elis Travel";
 const DEFAULT_DESCRIPTION =
   "Elis Travel: agenzia viaggi con offerte, pacchetti vacanza e gite organizzate. Richiedi informazioni e prenota la tua prossima esperienza.";
-const DEFAULT_IMAGE = "/opengraph.jpg";
+const DEFAULT_IMAGE = "/opengraph.webp";
 
 function setMetaByName(name: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);

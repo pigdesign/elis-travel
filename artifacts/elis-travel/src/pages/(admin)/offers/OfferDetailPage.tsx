@@ -306,7 +306,17 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
             )}
 
             <Section title="Performance Leads" icon={Users}>
-              <div className="flex items-center gap-3">
+              <div 
+                className={cn(
+                  "flex items-center gap-3",
+                  offer.leadsCount > 0 && "cursor-pointer hover:bg-amber-100/50 p-2 -m-2 rounded-xl transition-colors"
+                )}
+                onClick={() => {
+                  if (offer.leadsCount > 0) {
+                    navigate(`~/admin/leads?offerId=${offer.id}`);
+                  }
+                }}
+              >
                 <div className="w-12 h-12 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center">
                   <span className="text-xl font-bold text-amber-700">{offer.leadsCount}</span>
                 </div>

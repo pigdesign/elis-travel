@@ -65,11 +65,11 @@ export function FeatureSection() {
             <div className="absolute bottom-10 left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
             
             <div className="absolute top-0 right-0 w-[70%] h-[70%] rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white z-10">
-              <img src="/images/dest-italy.png" alt="Travel" className="w-full h-full object-cover" />
+              <img src="/images/dest-italy.webp" alt="Travel" className="w-full h-full object-cover" />
             </div>
             
             <div className="absolute bottom-0 left-0 w-[60%] h-[60%] rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white z-20">
-              <img src="/images/tour-3.png" alt="Travel" className="w-full h-full object-cover" />
+              <img src="/images/tour-3.webp" alt="Travel" className="w-full h-full object-cover" />
             </div>
           </motion.div>
 

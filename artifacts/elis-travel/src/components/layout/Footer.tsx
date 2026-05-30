@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Map, Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { Button } from "../shared/Button";
-import logoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.png";
+import logoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.webp";
 
 export function Footer() {
   return (
@@ -30,10 +30,9 @@ export function Footer() {
             <h4 className="text-lg font-bold mb-6 font-serif">Link rapidi</h4>
             <ul className="space-y-3">
               {[
-                { label: 'Chi siamo', href: '#' },
-                { label: 'Destinazioni', href: '#' },
-                { label: 'Tour', href: '#' },
-                { label: 'Blog', href: '#' },
+                { label: 'Chi siamo', href: '/contatti' },
+                { label: 'Offerte & Pacchetti', href: '/offerte' },
+                { label: 'Gite di Gruppo', href: '/gite' },
                 { label: 'Contattaci', href: '/contatti' },
               ].map((link) => (
                 <li key={link.label}>
@@ -48,14 +47,19 @@ export function Footer() {
 
           {/* Top Destinations */}
           <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Mete top</h4>
+            <h4 className="text-lg font-bold mb-6 font-serif">Tipologie di viaggio</h4>
             <ul className="space-y-3">
-              {['Vietnam', 'Italy', 'Greece', 'Japan', 'Switzerland'].map((link) => (
-                <li key={link}>
-                  <a href="#" className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
+              {[
+                { label: 'Tutte le Offerte', href: '/offerte' },
+                { label: 'Crociere', href: '/offerte?category=crociera' },
+                { label: 'Vacanze', href: '/offerte?category=vacanza' },
+                { label: 'Gite in Giornata', href: '/gite' },
+              ].map((link) => (
+                <li key={link.label}>
+                  <Link href={link.href} className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
-                    {link}
-                  </a>
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
