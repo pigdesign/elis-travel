@@ -376,6 +376,12 @@ export type PublicCatalogExcursionsItem = {
   location?: string | null;
   date?: string | null;
   coverImageUrl?: string | null;
+  pricePerPerson?: string | null;
+  currentCapacity?: number | null;
+  adherentsCount?: number | null;
+  minThreshold?: number | null;
+  status?: string | null;
+  notes?: string | null;
 };
 
 export interface PublicCatalog {

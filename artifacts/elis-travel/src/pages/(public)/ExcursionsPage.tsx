@@ -2,10 +2,202 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog, useListPublicExcursionLocations, useListPublicExcursionMonths } from "@workspace/api-client-react";
-import { MapPin, Send, Loader2, Mountain, CalendarDays, ArrowRight, Tag, ChevronDown, Search, X } from "lucide-react";
+import type { PublicCatalogExcursionsItem } from "@workspace/api-client-react";
+import { MapPin, Loader2, Mountain, CalendarDays, ArrowRight, Tag, ChevronDown, Search, X, Users, CheckCircle2, Clock, AlertCircle, Euro, BookOpen } from "lucide-react";
 import { useSeo, buildSlugUrl } from "@/lib/seo";
+
+function formatPrice(value?: string | null): string | null {
+  if (!value) return null;
+  const n = parseFloat(value);
+  if (Number.isNaN(n)) return null;
+  return n % 1 === 0 ? `${n.toFixed(0)}` : `${n.toFixed(2)}`;
+}
+
+type StatusBadge = {
+  label: string;
+  icon: React.ReactNode;
+  className: string;
+};
+
+function getStatusBadge(ex: PublicCatalogExcursionsItem): StatusBadge | null {
+  const capacity = ex.currentCapacity ?? 0;
+  const adherents = ex.adherentsCount ?? 0;
+  const threshold = ex.minThreshold ?? 1;
+  const remaining = capacity > 0 ? capacity - adherents : null;
+
+  if (ex.status === "confirmed" || (ex.status === "open" && adherents >= threshold)) {
+    return {
+      label: "Partenza confermata",
+      icon: <CheckCircle2 className="w-3 h-3" />,
+      className: "bg-emerald-500 text-white",
+    };
+  }
+  if (ex.status === "open" && remaining !== null && remaining <= 5 && remaining > 0) {
+    return {
+      label: "Ultimi posti",
+      icon: <AlertCircle className="w-3 h-3" />,
+      className: "bg-accent text-white",
+    };
+  }
+  if (ex.status === "open" && adherents < threshold) {
+    return {
+      label: "In raccolta adesioni",
+      icon: <Clock className="w-3 h-3" />,
+      className: "bg-sky-500 text-white",
+    };
+  }
+  return null;
+}
+
+function isBookable(ex: PublicCatalogExcursionsItem): boolean {
+  if (ex.status !== "open" && ex.status !== "confirmed") return false;
+  const capacity = ex.currentCapacity ?? 0;
+  const adherents = ex.adherentsCount ?? 0;
+  if (capacity > 0 && adherents >= capacity) return false;
+  return true;
+}
+
+function ExcursionCard({ ex }: { ex: PublicCatalogExcursionsItem }) {
+  const dateLabel = formatDate(ex.date);
+  const price = formatPrice(ex.pricePerPerson);
+  const statusBadge = getStatusBadge(ex);
+  const bookable = isBookable(ex);
+  const capacity = ex.currentCapacity ?? 0;
+  const adherents = ex.adherentsCount ?? 0;
+  const remaining = capacity > 0 ? capacity - adherents : null;
+  const fillPct = capacity > 0 ? Math.min(100, Math.round((adherents / capacity) * 100)) : null;
+  const detailUrl = buildSlugUrl("gite", ex.id, ex.name);
+
+  return (
+    <article className="bg-white border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden group transition-shadow hover:shadow-md">
+      {/* Immagine */}
+      <Link
+        href={detailUrl}
+        className="block relative aspect-[16/10] bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden shrink-0"
+      >
+        {ex.coverImageUrl ? (
+          <img
+            src={ex.coverImageUrl}
+            alt={ex.name}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-accent/40">
+            <Mountain className="w-14 h-14" />
+          </div>
+        )}
+
+        {/* Badge stato — in alto a destra */}
+        {statusBadge && (
+          <span className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shadow ${statusBadge.className}`}>
+            {statusBadge.icon}
+            {statusBadge.label}
+          </span>
+        )}
+
+        {/* Badge categoria — in alto a sinistra */}
+        <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/50 text-white backdrop-blur-sm">
+          <Mountain className="w-3 h-3" />
+          Gita di gruppo
+        </span>
+      </Link>
+
+      {/* Corpo card */}
+      <div className="p-5 flex flex-col flex-1">
+        {/* Titolo */}
+        <Link href={detailUrl} className="block mb-2">
+          <h2 className="text-[17px] font-serif font-bold text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+            {ex.name}
+          </h2>
+        </Link>
+
+        {/* Descrizione breve */}
+        {ex.notes && (
+          <p className="text-sm text-muted-foreground leading-snug line-clamp-2 mb-3">
+            {ex.notes}
+          </p>
+        )}
+
+        {/* Info: location + data */}
+        <div className="space-y-1.5 mb-4">
+          {ex.location && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span className="truncate">{ex.location}</span>
+            </div>
+          )}
+          {dateLabel && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <CalendarDays className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span>{dateLabel}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Disponibilità */}
+        {capacity > 0 && remaining !== null && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Users className="w-3 h-3" />
+                {remaining <= 0
+                  ? "Posti esauriti"
+                  : remaining <= 5
+                  ? <span className="font-semibold text-accent">Ultimi {remaining} {remaining === 1 ? "posto" : "posti"}!</span>
+                  : `${remaining} posti disponibili`}
+              </span>
+              <span className="text-xs text-muted-foreground">{adherents}/{capacity}</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${fillPct! >= 90 ? "bg-accent" : fillPct! >= 70 ? "bg-amber-400" : "bg-emerald-500"}`}
+                style={{ width: `${fillPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Prezzo */}
+        {price && (
+          <div className="flex items-center gap-1 mb-5">
+            <Euro className="w-4 h-4 text-accent" />
+            <span className="text-lg font-bold text-foreground">da {price} €</span>
+            <span className="text-xs text-muted-foreground">a persona</span>
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="mt-auto space-y-2">
+          <Link href={detailUrl} className="block">
+            <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-primary hover:text-primary transition-colors">
+              <BookOpen className="w-4 h-4" />
+              Vedi programma
+            </button>
+          </Link>
+          {bookable ? (
+            <Link href={detailUrl} className="block">
+              <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm transition-colors shadow-sm shadow-accent/20">
+                <Users className="w-4 h-4" />
+                Prenota un posto
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          ) : (
+            <Link href={`/contatti?excursionId=${encodeURIComponent(ex.id)}`} className="block">
+              <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm transition-colors shadow-sm shadow-accent/20">
+                <Tag className="w-4 h-4" />
+                Richiedi informazioni
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
 
 function formatDate(value?: string | null) {
   if (!value) return null;
@@ -436,88 +628,9 @@ export function ExcursionsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {filtered.map((ex) => {
-                const dateLabel = formatDate(ex.date);
-                return (
-                  <article
-                    key={ex.id}
-                    className="bg-white border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden"
-                    data-testid={`card-excursion-${ex.id}`}
-                  >
-                    <Link
-                      href={buildSlugUrl("gite", ex.id, ex.name)}
-                      className="block aspect-[16/10] bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden relative"
-                      data-testid={`link-excursion-cover-${ex.id}`}
-                    >
-                      {ex.coverImageUrl ? (
-                        <img
-                          src={ex.coverImageUrl}
-                          alt={ex.name}
-                          loading="lazy"
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                          data-testid={`img-excursion-${ex.id}`}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-accent/50">
-                          <Mountain className="w-12 h-12" />
-                        </div>
-                      )}
-                    </Link>
-                    <div className="p-6 flex flex-col flex-1 bg-[#f9fafb]">
-                      <Link
-                        href={buildSlugUrl("gite", ex.id, ex.name)}
-                        className="block group"
-                        data-testid={`link-excursion-detail-${ex.id}`}
-                      >
-                        <h2 className="text-xl font-serif font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                          {ex.name}
-                        </h2>
-                      </Link>
-                      {ex.location && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-                          <MapPin className="w-4 h-4" />
-                          <span>{ex.location}</span>
-                        </div>
-                      )}
-                      {dateLabel && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
-                          <CalendarDays className="w-4 h-4" />
-                          <span>{dateLabel}</span>
-                        </div>
-                      )}
-                      <div className="mt-auto pt-4 space-y-2">
-                        <Link href={buildSlugUrl("gite", ex.id, ex.name)}>
-                          <Button
-                            variant="outline"
-                            className="w-full inline-flex items-center justify-center gap-2"
-                            style={{
-                              marginTop: "21px",
-                              marginBottom: "21px",
-                              paddingTop: "15px",
-                              paddingBottom: "15px",
-                              border: "3px solid #00000026",
-                            }}
-                            data-testid={`button-view-excursion-${ex.id}`}
-                          >
-                            Vedi dettagli
-                            <ArrowRight className="w-4 h-4" />
-                          </Button>
-                        </Link>
-                        <Link href={`/contatti?excursionId=${encodeURIComponent(ex.id)}`}>
-                          <Button
-                            className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2 font-bold text-[16px] pt-[15px] pb-[15px]"
-                            style={{ borderColor: "#ea812b" }}
-                            data-testid={`button-request-info-excursion-${ex.id}`}
-                          >
-                            <Send className="w-4 h-4" />
-                            Richiedi informazioni
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+              {filtered.map((ex) => (
+                <ExcursionCard key={ex.id} ex={ex} />
+              ))}
             </div>
           )}
         </div>

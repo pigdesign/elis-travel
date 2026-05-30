@@ -108,7 +108,7 @@ router.get("/catalog/excursions/locations", async (_req, res) => {
     const rows = await db
       .selectDistinct({ location: excursionsTable.location })
       .from(excursionsTable)
-      .where(eq(excursionsTable.status, "confirmed"))
+      .where(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")))
       .orderBy(excursionsTable.location);
     const locations = rows
       .map((r) => r.location)
@@ -125,7 +125,7 @@ router.get("/catalog/excursions/months", async (_req, res) => {
     const rows = await db
       .select({ date: excursionsTable.date })
       .from(excursionsTable)
-      .where(eq(excursionsTable.status, "confirmed"))
+      .where(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")))
       .orderBy(excursionsTable.date);
     const monthSet = new Set<string>();
     for (const r of rows) {
@@ -162,10 +162,22 @@ router.get("/catalog/products", async (_req, res) => {
       .orderBy(desc(offersTable.createdAt));
 
     const excursions = await db
-      .select({ id: excursionsTable.id, name: excursionsTable.name, location: excursionsTable.location, date: excursionsTable.date, coverImageUrl: excursionsTable.coverImageUrl })
+      .select({
+        id: excursionsTable.id,
+        name: excursionsTable.name,
+        location: excursionsTable.location,
+        date: excursionsTable.date,
+        coverImageUrl: excursionsTable.coverImageUrl,
+        pricePerPerson: excursionsTable.pricePerPerson,
+        currentCapacity: excursionsTable.currentCapacity,
+        adherentsCount: excursionsTable.adherentsCount,
+        minThreshold: excursionsTable.minThreshold,
+        status: excursionsTable.status,
+        notes: excursionsTable.notes,
+      })
       .from(excursionsTable)
-      .where(eq(excursionsTable.status, "confirmed"))
-      .orderBy(desc(excursionsTable.date));
+      .where(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")))
+      .orderBy(excursionsTable.date);
 
     res.json({ offers, excursions });
   } catch (err) {
