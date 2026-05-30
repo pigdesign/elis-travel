@@ -16,6 +16,8 @@ export interface RmsCustomerRaw {
   phone?: string;
   mobile?: string;
   cell?: string;
+  telefono?: string;
+  cellulare?: string;
   [key: string]: unknown;
 }
 
@@ -25,6 +27,7 @@ export interface RmsSearchResult {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
 }
 
 function mapRmsCustomer(raw: RmsCustomerRaw): RmsSearchResult {
@@ -33,15 +36,13 @@ function mapRmsCustomer(raw: RmsCustomerRaw): RmsSearchResult {
   const companyName = (raw.companyName ?? "").trim();
   const hasName = firstName || lastName;
   
-  // Try mobile first, then phone, then cell
-  const phoneVal = (raw.mobile ?? raw.phone ?? raw.cell ?? "").trim();
-  
   return {
     id: String(raw.rmsId),
     firstName: firstName || (companyName || "?"),
     lastName: lastName || (hasName ? "" : ""),
     email: (raw.email ?? "").trim(),
-    phone: phoneVal || null,
+    phone: (raw.phone ?? raw.telefono ?? "").trim() || null,
+    mobile: (raw.mobile ?? raw.cellulare ?? raw.cell ?? "").trim() || null,
   };
 }
 
@@ -125,7 +126,7 @@ export class RivieraIntegrationService {
   }
 
   async syncCustomerToRms(
-    customer: RmsCustomer,
+    customer: RmsCustomer & { mobile?: string | null },
     lastUpdatedAt: Date,
   ): Promise<ServiceResult<{ rmsId: string }>> {
     if (!this.isConfigured()) {
@@ -134,12 +135,13 @@ export class RivieraIntegrationService {
     if (!customer.externalRef) {
       return { success: false, error: "externalRef mancante: il cliente non ha un ID RMS valido per la sincronizzazione." };
     }
-    const payload: RmsSyncPayload = {
+    const payload = {
       externalRef: customer.externalRef,
       firstName: customer.firstName,
       lastName: customer.lastName,
       email: customer.email,
       phone: customer.phone ?? null,
+      mobile: customer.mobile ?? null,
       lastUpdatedAt: lastUpdatedAt.toISOString(),
     };
     try {

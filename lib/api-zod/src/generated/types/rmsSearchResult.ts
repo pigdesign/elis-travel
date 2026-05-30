@@ -12,4 +12,5 @@ export interface RmsSearchResult {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
 }

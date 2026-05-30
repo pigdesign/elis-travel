@@ -412,6 +412,7 @@ export interface CustomerSummary {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
   rmsLinked: boolean;
   rmsExternalId?: string | null;
   rmsLastSyncAt?: string | null;
@@ -446,6 +447,7 @@ export interface CustomerCreate {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
 }
 
 export interface CustomerUpdate {
@@ -453,6 +455,7 @@ export interface CustomerUpdate {
   lastName?: string;
   email?: string;
   phone?: string | null;
+  mobile?: string | null;
 }
 
 export interface CustomerRmsLinkInput {
@@ -466,6 +469,7 @@ export interface CustomerRmsImportInput {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
 }
 
 export interface RmsSearchResult {
@@ -474,6 +478,7 @@ export interface RmsSearchResult {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
 }
 
 export interface PublicLeadResponse {

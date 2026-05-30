@@ -173,11 +173,12 @@ function CustomerDetailPanel({
   const { data: customer, isLoading } = useGetCustomer(customerId);
 
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<{ firstName: string; lastName: string; email: string; phone: string }>({
+  const [form, setForm] = useState<{ firstName: string; lastName: string; email: string; phone: string; mobile: string }>({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
+    mobile: "",
   });
 
   const [rmsSearchQuery, setRmsSearchQuery] = useState("");
@@ -248,6 +249,7 @@ function CustomerDetailPanel({
       lastName: customer.lastName,
       email: customer.email,
       phone: customer.phone ?? "",
+      mobile: (customer as any).mobile ?? "",
     });
     setEditing(true);
   };
@@ -260,6 +262,7 @@ function CustomerDetailPanel({
         lastName: form.lastName,
         email: form.email,
         phone: form.phone || null,
+        mobile: form.mobile || null,
       },
     });
   };
@@ -276,6 +279,7 @@ function CustomerDetailPanel({
         lastName: r.lastName,
         email: r.email,
         phone: r.phone ?? null,
+        mobile: (r as any).mobile ?? null,
       },
     });
   };
@@ -337,8 +341,12 @@ function CustomerDetailPanel({
               <div className="font-medium">{c.email}</div>
             </div>
             <div>
-              <div className="text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Telefono</div>
+              <div className="text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Fisso</div>
               <div className="font-medium">{c.phone ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Cellulare</div>
+              <div className="font-medium">{(c as any).mobile ?? "—"}</div>
             </div>
           </div>
           <div className="text-xs text-muted-foreground">Cliente dal {formatDate(c.createdAt)}</div>
@@ -370,11 +378,20 @@ function CustomerDetailPanel({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Telefono</label>
+              <label className="block text-xs font-medium text-foreground mb-1">Fisso</label>
               <input
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Cellulare</label>
+              <input
+                type="tel"
+                value={form.mobile}
+                onChange={(e) => setForm((p) => ({ ...p, mobile: e.target.value }))}
                 className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
@@ -554,7 +571,7 @@ function CustomerDetailPanel({
 
 function NewCustomerModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", mobile: "" });
   const [error, setError] = useState<string | null>(null);
 
   const { mutate: createCustomer, isPending } = useCreateCustomer({
@@ -573,7 +590,7 @@ function NewCustomerModal({ onClose }: { onClose: () => void }) {
   const handleSubmit = (ev: React.FormEvent) => {
     ev.preventDefault();
     setError(null);
-    createCustomer({ data: { firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone || null } });
+    createCustomer({ data: { firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone || null, mobile: form.mobile || null } });
   };
 
   return (
@@ -597,13 +614,19 @@ function NewCustomerModal({ onClose }: { onClose: () => void }) {
               <input type="text" value={form.lastName} onChange={(e) => setForm(p => ({ ...p, lastName: e.target.value }))} required className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Rossi" />
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Email *</label>
-            <input type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} required className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="mario@email.it" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Email *</label>
+              <input type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} required className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="mario@email.it" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Fisso</label>
+              <input type="tel" value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="0183 123456" />
+            </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Telefono</label>
-            <input type="tel" value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="+39 333 1234567" />
+            <label className="block text-xs font-medium text-foreground mb-1">Cellulare</label>
+            <input type="tel" value={form.mobile} onChange={(e) => setForm(p => ({ ...p, mobile: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="+39 333 1234567" />
           </div>
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
@@ -749,7 +772,8 @@ export function CustomersPage() {
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-3">
                             <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>
-                            {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
+                            {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />F: {c.phone}</span>}
+                            {(c as any).mobile && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />C: {(c as any).mobile}</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">

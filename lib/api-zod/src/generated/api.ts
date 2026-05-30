@@ -68,6 +68,7 @@ export const ListCustomersResponse = zod.object({
       lastName: zod.string(),
       email: zod.string().email(),
       phone: zod.string().nullish(),
+      mobile: zod.string().nullish(),
       rmsLinked: zod.boolean(),
       rmsExternalId: zod.string().nullish(),
       rmsLastSyncAt: zod.coerce.date().nullish(),
@@ -89,6 +90,7 @@ export const CreateCustomerBody = zod.object({
   lastName: zod.string(),
   email: zod.string().email(),
   phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
 });
 
 /**
@@ -102,6 +104,7 @@ export const ImportCustomerFromRmsBody = zod.object({
   lastName: zod.string(),
   email: zod.string().email(),
   phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
 });
 
 /**
@@ -117,6 +120,7 @@ export const SearchRmsCustomersResponseItem = zod.object({
   lastName: zod.string(),
   email: zod.string().email(),
   phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
 });
 export const SearchRmsCustomersResponse = zod.array(
   SearchRmsCustomersResponseItem,
@@ -136,6 +140,7 @@ export const GetCustomerResponse = zod
     lastName: zod.string(),
     email: zod.string().email(),
     phone: zod.string().nullish(),
+    mobile: zod.string().nullish(),
     rmsLinked: zod.boolean(),
     rmsExternalId: zod.string().nullish(),
     rmsLastSyncAt: zod.coerce.date().nullish(),
@@ -168,6 +173,7 @@ export const UpdateCustomerBody = zod.object({
   lastName: zod.string().optional(),
   email: zod.string().email().optional(),
   phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
 });
 
 export const UpdateCustomerResponse = zod.object({
@@ -176,6 +182,7 @@ export const UpdateCustomerResponse = zod.object({
   lastName: zod.string(),
   email: zod.string().email(),
   phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
   rmsLinked: zod.boolean(),
   rmsExternalId: zod.string().nullish(),
   rmsLastSyncAt: zod.coerce.date().nullish(),
@@ -200,6 +207,7 @@ export const LinkCustomerToRmsResponse = zod.object({
   lastName: zod.string(),
   email: zod.string().email(),
   phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
   rmsLinked: zod.boolean(),
   rmsExternalId: zod.string().nullish(),
   rmsLastSyncAt: zod.coerce.date().nullish(),
@@ -220,6 +228,7 @@ export const PullCustomerFromRmsResponse = zod.object({
   lastName: zod.string(),
   email: zod.string().email(),
   phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
   rmsLinked: zod.boolean(),
   rmsExternalId: zod.string().nullish(),
   rmsLastSyncAt: zod.coerce.date().nullish(),

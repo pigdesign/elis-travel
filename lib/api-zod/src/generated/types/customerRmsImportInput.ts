@@ -13,4 +13,5 @@ export interface CustomerRmsImportInput {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
 }

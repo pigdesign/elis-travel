@@ -70,6 +70,7 @@ router.get("/customers", async (req, res) => {
             lastName: customersTable.lastName,
             email: customersTable.email,
             phone: customersTable.phone,
+            mobile: customersTable.mobile,
             createdAt: customersTable.createdAt,
             updatedAt: customersTable.updatedAt,
           })
@@ -85,6 +86,7 @@ router.get("/customers", async (req, res) => {
             lastName: customersTable.lastName,
             email: customersTable.email,
             phone: customersTable.phone,
+            mobile: customersTable.mobile,
             createdAt: customersTable.createdAt,
             updatedAt: customersTable.updatedAt,
           })
@@ -129,11 +131,12 @@ router.get("/customers", async (req, res) => {
 
 router.post("/customers", async (req, res) => {
   try {
-    const { firstName, lastName, email, phone } = req.body as {
+    const { firstName, lastName, email, phone, mobile } = req.body as {
       firstName?: string;
       lastName?: string;
       email?: string;
       phone?: string;
+      mobile?: string;
     };
 
     if (!firstName?.trim() || !lastName?.trim() || !email?.trim()) {
@@ -154,6 +157,7 @@ router.post("/customers", async (req, res) => {
         lastName: lastName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone?.trim() || null,
+        mobile: mobile?.trim() || null,
       })
       .returning();
 
@@ -187,12 +191,13 @@ router.get("/customers/rms/search", async (req, res) => {
 
 router.post("/customers/rms/import", async (req, res) => {
   try {
-    const { rmsExternalId, firstName, lastName, email, phone } = req.body as {
+    const { rmsExternalId, firstName, lastName, email, phone, mobile } = req.body as {
       rmsExternalId?: string;
       firstName?: string;
       lastName?: string;
       email?: string;
       phone?: string | null;
+      mobile?: string | null;
     };
 
     if (!rmsExternalId?.trim() || !firstName?.trim()) {
@@ -231,6 +236,7 @@ router.post("/customers/rms/import", async (req, res) => {
           lastName: (lastName ?? "").trim(),
           email: resolvedEmail.toLowerCase(),
           phone: phone?.trim() || null,
+          mobile: mobile?.trim() || null,
         })
         .returning({ id: customersTable.id });
       customerId = newCustomer.id;
@@ -343,11 +349,12 @@ router.get("/customers/:id", async (req, res) => {
 router.patch("/customers/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, phone } = req.body as {
+    const { firstName, lastName, email, phone, mobile } = req.body as {
       firstName?: string;
       lastName?: string;
       email?: string;
       phone?: string | null;
+      mobile?: string | null;
     };
 
     const allowed: Record<string, unknown> = {};
@@ -362,6 +369,7 @@ router.patch("/customers/:id", async (req, res) => {
       allowed.email = email.trim().toLowerCase();
     }
     if (phone !== undefined) allowed.phone = phone?.trim() || null;
+    if (mobile !== undefined) allowed.mobile = mobile?.trim() || null;
 
     if (Object.keys(allowed).length === 0) {
       res.status(400).json({ error: "Nessun campo valido da aggiornare." });
@@ -410,6 +418,7 @@ router.patch("/customers/:id", async (req, res) => {
           lastName: updated.lastName,
           email: updated.email,
           phone: updated.phone,
+          mobile: updated.mobile,
           lastUpdatedAt: updated.updatedAt.toISOString(),
           error: syncResult.success ? undefined : syncResult.error,
         });
@@ -532,10 +541,11 @@ router.post("/customers/:id/sync", async (req, res) => {
         {
           id: customer.id,
           firstName: customer.firstName,
-          lastName: customer.lastName,
-          email: customer.email,
-          phone: customer.phone,
-          externalRef: link.externalId,
+        lastName: customer.lastName,
+        email: customer.email,
+        phone: customer.phone,
+        mobile: customer.mobile,
+        externalRef: link.externalId,
         },
         customer.updatedAt,
       );
@@ -545,6 +555,7 @@ router.post("/customers/:id/sync", async (req, res) => {
         lastName: customer.lastName,
         email: customer.email,
         phone: customer.phone,
+        mobile: customer.mobile,
         lastUpdatedAt: customer.updatedAt.toISOString(),
         error: syncResult.success ? undefined : syncResult.error,
       });
@@ -605,6 +616,7 @@ router.post("/customers/:id/pull", async (req, res) => {
     // Fallback: se RMS ha l'email vuota, manteniamo quella che abbiamo già su ElisTravel
     const newEmail = rmsData.email ? rmsData.email.toLowerCase() : customer.email;
     const newPhone = rmsData.phone || customer.phone || null;
+    const newMobile = rmsData.mobile || customer.mobile || null;
 
     const [updated] = await db
       .update(customersTable)
@@ -613,6 +625,7 @@ router.post("/customers/:id/pull", async (req, res) => {
         lastName: rmsData.lastName,
         email: newEmail,
         phone: newPhone,
+        mobile: newMobile,
         updatedAt: new Date(),
       })
       .where(eq(customersTable.id, id))
@@ -628,6 +641,7 @@ router.post("/customers/:id/pull", async (req, res) => {
       lastName: updated.lastName,
       email: updated.email,
       phone: updated.phone,
+      mobile: updated.mobile,
       source: "manual_pull",
     });
 

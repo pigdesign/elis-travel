@@ -11,4 +11,5 @@ export interface CustomerCreate {
   lastName: string;
   email: string;
   phone?: string | null;
+  mobile?: string | null;
 }
