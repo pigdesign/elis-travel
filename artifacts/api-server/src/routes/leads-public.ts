@@ -252,7 +252,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         status: excursionsTable.status,
       })
       .from(excursionsTable)
-      .where(and(eq(excursionsTable.id, id), eq(excursionsTable.status, "confirmed")))
+      .where(and(eq(excursionsTable.id, id), or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed"))))
       .limit(1);
 
     if (!excursion) {
