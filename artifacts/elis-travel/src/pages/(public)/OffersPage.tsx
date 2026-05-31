@@ -4,7 +4,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useListPublicCatalog, useListPublicOfferDestinations } from "@workspace/api-client-react";
-import { MapPin, Send, Loader2, Ticket, ArrowRight, Star, Clock, ChevronDown, Search, X } from "lucide-react";
+import type { PublicCatalogOffersItem } from "@workspace/api-client-react";
+import { MapPin, Send, Loader2, Ticket, ArrowRight, Star, Clock, ChevronDown, Search, X, CalendarDays, Moon, Euro } from "lucide-react";
 import { useSeo, buildSlugUrl } from "@/lib/seo";
 
 const CATEGORIES = [
@@ -149,6 +150,178 @@ function DestinationCombobox({
         </div>
       )}
     </div>
+  );
+}
+
+const CATEGORY_LABELS: Record<string, { label: string; className: string }> = {
+  crociera: { label: "Crociera", className: "bg-sky-500 text-white" },
+  vacanza:  { label: "Vacanza",  className: "bg-emerald-500 text-white" },
+};
+
+function formatDuration(days?: number | null, nights?: number | null): string | null {
+  if (days && nights) return `${days}g / ${nights}n`;
+  if (days) return `${days} giorni`;
+  if (nights) return `${nights} notti`;
+  return null;
+}
+
+function formatDateShort(iso?: string | null): string | null {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
+  } catch {
+    return null;
+  }
+}
+
+function formatPrice(value?: number | null): string | null {
+  if (value == null || value <= 0) return null;
+  return value.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function OfferCard({ offer }: { offer: PublicCatalogOffersItem }) {
+  const detailUrl = buildSlugUrl("offerte", offer.id, offer.name);
+  const contactUrl = `/contatti?offerId=${encodeURIComponent(offer.id)}`;
+  const catMeta = offer.category ? CATEGORY_LABELS[offer.category] ?? { label: offer.category, className: "bg-muted text-foreground" } : null;
+  const duration = formatDuration(offer.durationDays, offer.durationNights);
+  const price = formatPrice(offer.publicPrice);
+
+  const periodLabel = (() => {
+    if (offer.period?.trim()) return offer.period.trim();
+    const from = formatDateShort(offer.validFrom);
+    const to = formatDateShort(offer.validTo);
+    if (from && to) return `${from} – ${to}`;
+    if (from) return `Dal ${from}`;
+    if (to) return `Fino al ${to}`;
+    return null;
+  })();
+
+  return (
+    <article
+      className="bg-white border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden hover:shadow-md transition-shadow"
+      data-testid={`card-offer-${offer.id}`}
+    >
+      {/* Image */}
+      <Link
+        href={detailUrl}
+        className="block relative aspect-[3/2] bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden shrink-0"
+        data-testid={`link-offer-cover-${offer.id}`}
+      >
+        {offer.coverImageUrl ? (
+          <img
+            src={offer.coverImageUrl}
+            alt={offer.name}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+            data-testid={`img-offer-${offer.id}`}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-accent/30">
+            <Ticket className="w-14 h-14" />
+          </div>
+        )}
+
+        {/* Top-left: promo badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          {offer.featured && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-sm">
+              <Star className="w-3 h-3 fill-white" />
+              In Evidenza
+            </span>
+          )}
+          {offer.lastMinute && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-500 text-white shadow-sm">
+              <Clock className="w-3 h-3" />
+              Last Minute
+            </span>
+          )}
+        </div>
+
+        {/* Top-right: category */}
+        {catMeta && (
+          <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm capitalize ${catMeta.className}`}>
+            {catMeta.label}
+          </span>
+        )}
+
+        {/* Bottom gradient scrim for legibility */}
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
+      </Link>
+
+      {/* Body */}
+      <div className="flex flex-col flex-1 p-5 gap-3">
+        {/* Title */}
+        <Link href={detailUrl} className="group" data-testid={`link-offer-detail-${offer.id}`}>
+          <h2 className="text-lg font-serif font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+            {offer.name}
+          </h2>
+        </Link>
+
+        {/* Meta info */}
+        <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+          {offer.destination && (
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span className="font-medium text-foreground/80">{offer.destination}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            {duration && (
+              <div className="flex items-center gap-1.5">
+                <Moon className="w-3.5 h-3.5 text-primary/70 shrink-0" />
+                <span>{duration}</span>
+              </div>
+            )}
+            {periodLabel && (
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5 text-primary/70 shrink-0" />
+                <span>{periodLabel}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Price strip */}
+        {price && (
+          <div className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl bg-accent/8 border border-accent/20">
+            <Euro className="w-4 h-4 text-accent shrink-0" />
+            <span className="text-sm text-muted-foreground">da</span>
+            <span className="text-xl font-bold text-accent">{price} €</span>
+            <span className="text-xs text-muted-foreground ml-0.5">a persona</span>
+          </div>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* CTA buttons */}
+        <div className="flex flex-col gap-2 pt-1">
+          <Link href={detailUrl}>
+            <Button
+              variant="outline"
+              className="w-full inline-flex items-center justify-center gap-2 py-3 font-semibold"
+              style={{ border: "2px solid #00000020" }}
+              data-testid={`button-view-offer-${offer.id}`}
+            >
+              Scopri l'offerta
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
+          <Link href={contactUrl}>
+            <Button
+              className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2 py-3 font-bold"
+              style={{ borderColor: "#ea812b" }}
+              data-testid={`button-request-info-offer-${offer.id}`}
+            >
+              <Send className="w-4 h-4" />
+              Richiedi preventivo
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -331,97 +504,7 @@ export function OffersPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {filtered.map((offer) => (
-                <article
-                  key={offer.id}
-                  className="bg-white border border-border rounded-2xl shadow-sm flex flex-col overflow-hidden"
-                  data-testid={`card-offer-${offer.id}`}
-                >
-                  <Link
-                    href={buildSlugUrl("offerte", offer.id, offer.name)}
-                    className="block aspect-[16/10] bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden relative"
-                    data-testid={`link-offer-cover-${offer.id}`}
-                  >
-                    {offer.coverImageUrl ? (
-                      <img
-                        src={offer.coverImageUrl}
-                        alt={offer.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                        data-testid={`img-offer-${offer.id}`}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-accent/50">
-                        <Ticket className="w-12 h-12" />
-                      </div>
-                    )}
-                    {/* Badges */}
-                    <div className="absolute top-3 left-3 flex gap-1.5">
-                      {offer.featured && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-white shadow">
-                          <Star className="w-3 h-3" />
-                          In Evidenza
-                        </span>
-                      )}
-                      {offer.lastMinute && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white shadow">
-                          <Clock className="w-3 h-3" />
-                          Last Minute
-                        </span>
-                      )}
-                    </div>
-                    {offer.category && (
-                      <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-semibold bg-white/90 text-foreground shadow capitalize">
-                        {offer.category === "crociera" ? "Crociera" : offer.category === "vacanza" ? "Vacanza" : offer.category}
-                      </span>
-                    )}
-                  </Link>
-                  <div className="p-6 flex flex-col flex-1 bg-[#f9fafb]">
-                    <Link
-                      href={buildSlugUrl("offerte", offer.id, offer.name)}
-                      className="block group"
-                      data-testid={`link-offer-detail-${offer.id}`}
-                    >
-                      <h2 className="text-xl font-serif font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                        {offer.name}
-                      </h2>
-                    </Link>
-                    {offer.destination && (
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
-                        <MapPin className="w-4 h-4" />
-                        <span>{offer.destination}</span>
-                      </div>
-                    )}
-                    <div className="mt-auto pt-4 space-y-2">
-                      <Link href={buildSlugUrl("offerte", offer.id, offer.name)}>
-                        <Button
-                          variant="outline"
-                          className="w-full inline-flex items-center justify-center gap-2"
-                          style={{
-                            marginTop: "21px",
-                            marginBottom: "21px",
-                            paddingTop: "15px",
-                            paddingBottom: "15px",
-                            border: "3px solid #00000026",
-                          }}
-                          data-testid={`button-view-offer-${offer.id}`}
-                        >
-                          Vedi dettagli
-                          <ArrowRight className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      <Link href={`/contatti?offerId=${encodeURIComponent(offer.id)}`}>
-                        <Button
-                          className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2 font-bold text-[16px] pt-[15px] pb-[15px]"
-                          style={{ borderColor: "#ea812b" }}
-                          data-testid={`button-request-info-offer-${offer.id}`}
-                        >
-                          <Send className="w-4 h-4" />
-                          Richiedi informazioni
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </article>
+                <OfferCard key={offer.id} offer={offer} />
               ))}
             </div>
           )}
