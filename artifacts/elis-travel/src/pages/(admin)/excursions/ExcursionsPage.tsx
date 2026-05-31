@@ -18,6 +18,7 @@ import type { ExcursionSummary } from "@workspace/api-client-react";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: "Bozza", className: "bg-muted text-muted-foreground" },
+  open: { label: "Aperta", className: "bg-sky-100 text-sky-700" },
   confirmed: { label: "Confermata", className: "bg-primary/10 text-primary" },
   completed: { label: "Completata", className: "bg-emerald-100 text-emerald-700" },
   cancelled: { label: "Annullata", className: "bg-destructive/10 text-destructive" },

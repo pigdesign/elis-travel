@@ -17,6 +17,7 @@ import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 
 const STATUS_OPTIONS = [
   { value: "draft", label: "Bozza" },
+  { value: "open", label: "Aperta (raccolta adesioni)" },
   { value: "confirmed", label: "Confermata" },
   { value: "completed", label: "Completata" },
   { value: "cancelled", label: "Annullata" },
