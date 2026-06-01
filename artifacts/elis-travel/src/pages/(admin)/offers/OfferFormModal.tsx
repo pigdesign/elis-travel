@@ -199,6 +199,8 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
     const errs: Partial<Record<keyof OfferFormData, string>> = {};
     if (!form.name.trim()) errs.name = "Il nome è obbligatorio";
     if (!form.destination.trim()) errs.destination = "La destinazione è obbligatoria";
+    if (form.validFrom && form.validTo && form.validFrom > form.validTo)
+      errs.validTo = "La data di fine deve essere uguale o successiva alla data di inizio";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -407,6 +409,7 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                 <input
                   type="date"
                   value={form.validFrom}
+                  max={form.validTo || undefined}
                   onChange={set("validFrom")}
                   className={inputCls}
                 />
@@ -416,9 +419,14 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                 <input
                   type="date"
                   value={form.validTo}
-                  onChange={set("validTo")}
-                  className={inputCls}
+                  min={form.validFrom || undefined}
+                  onChange={(e) => {
+                    set("validTo")(e);
+                    if (errors.validTo) setErrors((prev) => ({ ...prev, validTo: undefined }));
+                  }}
+                  className={`${inputCls} ${errors.validTo ? "border-red-400 focus:border-red-400 focus:ring-red-200" : ""}`}
                 />
+                {errors.validTo && <p className="text-xs text-red-500 mt-1">{errors.validTo}</p>}
               </Field>
             </div>
           </div>
