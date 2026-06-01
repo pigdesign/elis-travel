@@ -6,7 +6,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { pool } from "@workspace/db";
+import { sessionPool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -76,7 +76,7 @@ if (!process.env.SESSION_SECRET) {
 app.use(
   session({
     store: new PgSession({
-      pool,
+      pool: sessionPool,
       tableName: "admin_sessions",
     }),
     name: "elis.sid",
