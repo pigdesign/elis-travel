@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { useListPublicCatalog, useListPublicExcursionLocations, useListPublicExcursionMonths } from "@workspace/api-client-react";
+import { useListPublicCatalog, useListPublicExcursionLocations, useListPublicExcursionMonths, useGetPublicExcursion } from "@workspace/api-client-react";
 import type { PublicCatalogExcursionsItem } from "@workspace/api-client-react";
 import { MapPin, Loader2, Mountain, CalendarDays, ArrowRight, Tag, ChevronDown, Search, X, Users, CheckCircle2, Clock, AlertCircle, Euro, BookOpen } from "lucide-react";
 import { useSeo, buildSlugUrl } from "@/lib/seo";
@@ -58,7 +58,138 @@ function isBookable(ex: PublicCatalogExcursionsItem): boolean {
   return true;
 }
 
-function ExcursionCard({ ex }: { ex: PublicCatalogExcursionsItem }) {
+function ProgrammaModal({ excursionId, onClose }: { excursionId: string; onClose: () => void }) {
+  const { data: excursion, isLoading } = useGetPublicExcursion(excursionId);
+  const detailUrl = excursion ? buildSlugUrl("gite", excursion.id, excursion.name) : "#";
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  const days = excursion?.schedule ?? [];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      {/* Panel */}
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-border shrink-0">
+          <div>
+            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Programma</p>
+            <h2 className="text-lg font-serif font-bold text-foreground leading-snug pr-6">
+              {excursion?.name ?? "…"}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl hover:bg-muted/50 text-muted-foreground shrink-0 -mt-0.5"
+            aria-label="Chiudi"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : days.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              Il programma dettagliato non è ancora disponibile.<br />
+              Contattaci per maggiori informazioni.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {days.map((day) => (
+                <div key={day.dayNumber}>
+                  {/* Badge giorno + titolo */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-bold text-white bg-primary rounded-full px-3 py-1 shrink-0">
+                      Giorno {day.dayNumber}
+                    </span>
+                    {day.title && (
+                      <span className="text-sm font-semibold text-foreground">{day.title}</span>
+                    )}
+                  </div>
+
+                  {/* Immagine giorno */}
+                  {(day as { imageUrl?: string }).imageUrl && (
+                    <img
+                      src={(day as { imageUrl?: string }).imageUrl}
+                      alt={day.title ?? `Giorno ${day.dayNumber}`}
+                      className="w-full rounded-xl object-cover aspect-[16/7] mb-3"
+                      loading="lazy"
+                    />
+                  )}
+
+                  {/* Attività */}
+                  {day.activities.length > 0 && (
+                    <ol className="space-y-2 pl-2 border-l-2 border-primary/20 ml-2">
+                      {day.activities.map((act, i) => (
+                        <li key={i} className="flex gap-3 pl-4 relative">
+                          <div className="absolute -left-[9px] top-1.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-primary/40" />
+                          {act.time && (
+                            <span className="text-xs font-mono text-primary shrink-0 mt-0.5 w-10">{act.time}</span>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-foreground">{act.title}</div>
+                            {act.description && (
+                              <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{act.description}</div>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-4 border-t border-border shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-muted-foreground transition-colors"
+          >
+            Chiudi
+          </button>
+          <Link href={detailUrl} className="flex-1" onClick={onClose}>
+            <button
+              type="button"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              Prenota un posto
+            </button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExcursionCard({ ex, onViewProgram }: { ex: PublicCatalogExcursionsItem; onViewProgram: (id: string) => void }) {
   const dateLabel = formatDate(ex.date);
   const price = formatPrice(ex.pricePerPerson);
   const statusBadge = getStatusBadge(ex);
@@ -163,12 +294,14 @@ function ExcursionCard({ ex }: { ex: PublicCatalogExcursionsItem }) {
 
         {/* CTA */}
         <div className="mt-auto space-y-2">
-          <Link href={detailUrl} className="block">
-            <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-primary hover:text-primary transition-colors">
-              <BookOpen className="w-4 h-4" />
-              Vedi programma
-            </button>
-          </Link>
+          <button
+            type="button"
+            onClick={() => onViewProgram(ex.id)}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-primary hover:text-primary transition-colors"
+          >
+            <BookOpen className="w-4 h-4" />
+            Vedi programma
+          </button>
           {bookable ? (
             <Link href={detailUrl} className="block">
               <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm transition-colors shadow-sm shadow-accent/20">
@@ -461,6 +594,7 @@ export function ExcursionsPage() {
   const { data: locations = [] } = useListPublicExcursionLocations();
   const { data: months = [] } = useListPublicExcursionMonths();
   const excursions = data?.excursions ?? [];
+  const [programmaId, setProgrammaId] = useState<string | null>(null);
 
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -622,7 +756,7 @@ export function ExcursionsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {filtered.map((ex) => (
-                <ExcursionCard key={ex.id} ex={ex} />
+                <ExcursionCard key={ex.id} ex={ex} onViewProgram={setProgrammaId} />
               ))}
             </div>
           )}
@@ -630,6 +764,10 @@ export function ExcursionsPage() {
       </section>
 
       <Footer />
+
+      {programmaId && (
+        <ProgrammaModal excursionId={programmaId} onClose={() => setProgrammaId(null)} />
+      )}
     </div>
   );
 }
