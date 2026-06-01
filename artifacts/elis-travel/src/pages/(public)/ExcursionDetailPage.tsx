@@ -20,6 +20,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Ticket,
+  Clock,
+  Bus,
+  Info,
+  Check,
+  X as XIcon,
 } from "lucide-react";
 
 interface ExcursionDetailPageProps {
@@ -261,6 +266,132 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                       </div>
                     )}
                   </div>
+
+                  {/* Programma */}
+                  {excursion.schedule && excursion.schedule.length > 0 && (
+                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
+                      <h2 className="text-xl font-serif font-bold text-foreground mb-5 flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-primary" />
+                        Programma della giornata
+                      </h2>
+                      <div className="space-y-6">
+                        {excursion.schedule.map((day) => (
+                          <div key={day.dayNumber}>
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="text-xs font-bold text-white bg-primary rounded-full px-2.5 py-0.5">
+                                Giorno {day.dayNumber}
+                              </span>
+                              {day.title && (
+                                <span className="text-sm font-semibold text-foreground">{day.title}</span>
+                              )}
+                            </div>
+                            <ol className="space-y-2 pl-2 border-l-2 border-primary/20 ml-2">
+                              {day.activities.map((act, i) => (
+                                <li key={i} className="flex gap-3 pl-4 relative">
+                                  <div className="absolute -left-[9px] top-1 w-3.5 h-3.5 rounded-full bg-white border-2 border-primary/40" />
+                                  {act.time && (
+                                    <span className="text-xs font-mono text-primary shrink-0 mt-0.5 w-10">{act.time}</span>
+                                  )}
+                                  <div>
+                                    <div className="text-sm font-semibold text-foreground">{act.title}</div>
+                                    {act.description && (
+                                      <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{act.description}</div>
+                                    )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Include / non include */}
+                  {(excursion.included || excursion.excluded) && (
+                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
+                      <h2 className="text-xl font-serif font-bold text-foreground mb-5">
+                        La quota
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-6">
+                        {excursion.included && (
+                          <div>
+                            <h3 className="text-sm font-semibold text-emerald-700 mb-2 flex items-center gap-1.5">
+                              <Check className="w-4 h-4" /> Include
+                            </h3>
+                            <ul className="space-y-1.5">
+                              {excursion.included.split("\n").filter(Boolean).map((item, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                                  {item.trim()}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {excursion.excluded && (
+                          <div>
+                            <h3 className="text-sm font-semibold text-red-600 mb-2 flex items-center gap-1.5">
+                              <XIcon className="w-4 h-4" /> Non include
+                            </h3>
+                            <ul className="space-y-1.5">
+                              {excursion.excluded.split("\n").filter(Boolean).map((item, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                                  <XIcon className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                                  {item.trim()}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Punti di raccolta */}
+                  {excursion.pickupPoints && excursion.pickupPoints.length > 0 && (
+                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
+                      <h2 className="text-xl font-serif font-bold text-foreground mb-4 flex items-center gap-2">
+                        <Bus className="w-5 h-5 text-primary" />
+                        Punti di raccolta
+                      </h2>
+                      <ul className="space-y-2 mb-4">
+                        {excursion.pickupPoints.map((pp) => (
+                          <li key={pp.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-muted/20">
+                            <MapPin className="w-4 h-4 text-accent shrink-0" />
+                            <div className="flex-1">
+                              <span className="text-sm font-semibold text-foreground">{pp.name}</span>
+                              <span className="text-xs text-muted-foreground ml-1.5">{pp.city}</span>
+                              {pp.address && <span className="text-xs text-muted-foreground ml-1">· {pp.address}</span>}
+                            </div>
+                            {pp.pickupTime && (
+                              <div className="flex items-center gap-1 text-sm font-mono text-primary">
+                                <Clock className="w-3.5 h-3.5" />
+                                {pp.pickupTime}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 rounded-xl px-3 py-2.5">
+                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        Servizio "sotto casa" disponibile su richiesta — contattaci per organizzare il trasferimento dal tuo indirizzo al punto di partenza.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info utili */}
+                  {excursion.generalInfo && (
+                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
+                      <h2 className="text-xl font-serif font-bold text-foreground mb-4 flex items-center gap-2">
+                        <Info className="w-5 h-5 text-primary" />
+                        Informazioni utili
+                      </h2>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
+                        {excursion.generalInfo}
+                      </p>
+                    </div>
+                  )}
 
                   <BookingCard
                     excursionId={excursion.id}

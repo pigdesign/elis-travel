@@ -6,10 +6,12 @@ import {
   numeric,
   uuid,
   date,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { customersTable } from "./customers";
+import { pickupLocationsTable } from "./pickup-locations";
 
 export const excursionVehiclesTable = pgTable("excursion_vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -66,6 +68,10 @@ export const excursionsTable = pgTable("excursions", {
   }),
   operationalNotes: text("operational_notes"),
   coverImageUrl: text("cover_image_url"),
+  schedule:     jsonb("schedule"),
+  included:     text("included"),
+  excluded:     text("excluded"),
+  generalInfo:  text("general_info"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -90,6 +96,17 @@ export const excursionBookingsTable = pgTable("excursion_bookings", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const excursionPickupPointsTable = pgTable("excursion_pickup_points", {
+  id:               uuid("id").primaryKey().defaultRandom(),
+  excursionId:      uuid("excursion_id").notNull().references(() => excursionsTable.id, { onDelete: "cascade" }),
+  pickupLocationId: uuid("pickup_location_id").notNull().references(() => pickupLocationsTable.id, { onDelete: "cascade" }),
+  pickupTime:       text("pickup_time"),
+  sortOrder:        integer("sort_order").notNull().default(0),
+  createdAt:        timestamp("created_at").notNull().defaultNow(),
+});
+
+export type ExcursionPickupPoint = typeof excursionPickupPointsTable.$inferSelect;
 
 export const insertExcursionSchema = createInsertSchema(excursionsTable).omit({
   id: true,

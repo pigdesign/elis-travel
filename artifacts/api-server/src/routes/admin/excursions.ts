@@ -4,8 +4,10 @@ import {
   excursionsTable,
   excursionBookingsTable,
   excursionVehiclesTable,
+  excursionPickupPointsTable,
+  pickupLocationsTable,
 } from "@workspace/db/schema";
-import { eq, desc, sql, and, inArray, isNull } from "drizzle-orm";
+import { eq, desc, sql, and, inArray, isNull, asc } from "drizzle-orm";
 
 const VALID_PAYMENT_STATUSES = [
   "pending",
@@ -153,11 +155,33 @@ router.get("/excursions/:id", async (req, res) => {
       return;
     }
 
-    const bookings = await db
-      .select()
-      .from(excursionBookingsTable)
-      .where(eq(excursionBookingsTable.excursionId, id))
-      .orderBy(desc(excursionBookingsTable.bookedAt));
+    const [bookings, pickupPoints] = await Promise.all([
+      db
+        .select()
+        .from(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.excursionId, id))
+        .orderBy(desc(excursionBookingsTable.bookedAt)),
+      db
+        .select({
+          id: excursionPickupPointsTable.id,
+          excursionId: excursionPickupPointsTable.excursionId,
+          pickupLocationId: excursionPickupPointsTable.pickupLocationId,
+          pickupTime: excursionPickupPointsTable.pickupTime,
+          sortOrder: excursionPickupPointsTable.sortOrder,
+          createdAt: excursionPickupPointsTable.createdAt,
+          location: {
+            id: pickupLocationsTable.id,
+            name: pickupLocationsTable.name,
+            city: pickupLocationsTable.city,
+            address: pickupLocationsTable.address,
+            sortOrder: pickupLocationsTable.sortOrder,
+          },
+        })
+        .from(excursionPickupPointsTable)
+        .innerJoin(pickupLocationsTable, eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id))
+        .where(eq(excursionPickupPointsTable.excursionId, id))
+        .orderBy(asc(excursionPickupPointsTable.sortOrder)),
+    ]);
 
     const pendingRequestsCount = bookings.filter(
       (b) =>
@@ -170,6 +194,7 @@ router.get("/excursions/:id", async (req, res) => {
       ...calcFinancials(excursion),
       pendingRequestsCount,
       bookings,
+      pickupPoints,
     });
   } catch (err) {
     console.error(err);
@@ -190,6 +215,7 @@ router.patch("/excursions/:id", async (req, res) => {
       "mealCostPerPerson", "entranceCostPerPerson", "extraCostPerPerson",
       "pricePerPerson", "switchThreshold", "switchVehicleId",
       "switchVehicleAdditionalCost", "operationalNotes", "coverImageUrl",
+      "schedule", "included", "excluded", "generalInfo",
     ] as const;
     for (const field of mutableFields) {
       if (field in body) {
@@ -682,6 +708,120 @@ router.delete("/vehicles/:id", async (req, res) => {
       return;
     }
 
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// --- Pickup points per gita ---
+
+router.get("/excursions/:id/pickup-points", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rows = await db
+      .select({
+        id: excursionPickupPointsTable.id,
+        excursionId: excursionPickupPointsTable.excursionId,
+        pickupLocationId: excursionPickupPointsTable.pickupLocationId,
+        pickupTime: excursionPickupPointsTable.pickupTime,
+        sortOrder: excursionPickupPointsTable.sortOrder,
+        createdAt: excursionPickupPointsTable.createdAt,
+        location: {
+          id: pickupLocationsTable.id,
+          name: pickupLocationsTable.name,
+          city: pickupLocationsTable.city,
+          address: pickupLocationsTable.address,
+          sortOrder: pickupLocationsTable.sortOrder,
+        },
+      })
+      .from(excursionPickupPointsTable)
+      .innerJoin(pickupLocationsTable, eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id))
+      .where(eq(excursionPickupPointsTable.excursionId, id))
+      .orderBy(asc(excursionPickupPointsTable.sortOrder));
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.post("/excursions/:id/pickup-points", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pickupLocationId, pickupTime, sortOrder } = req.body as {
+      pickupLocationId?: string;
+      pickupTime?: string;
+      sortOrder?: number;
+    };
+    if (!pickupLocationId) {
+      res.status(400).json({ error: "pickupLocationId è obbligatorio." });
+      return;
+    }
+    const [loc] = await db
+      .select({ id: pickupLocationsTable.id })
+      .from(pickupLocationsTable)
+      .where(eq(pickupLocationsTable.id, pickupLocationId))
+      .limit(1);
+    if (!loc) {
+      res.status(404).json({ error: "Punto di raccolta non trovato." });
+      return;
+    }
+    const [row] = await db
+      .insert(excursionPickupPointsTable)
+      .values({
+        excursionId: id,
+        pickupLocationId,
+        pickupTime: pickupTime?.trim() || null,
+        sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+      })
+      .returning();
+    res.status(201).json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.patch("/excursions/:id/pickup-points/:ppId", async (req, res) => {
+  try {
+    const { id, ppId } = req.params;
+    const { pickupTime, sortOrder } = req.body as {
+      pickupTime?: string | null;
+      sortOrder?: number;
+    };
+    const updates: Partial<typeof excursionPickupPointsTable.$inferInsert> = {};
+    if (pickupTime !== undefined) updates.pickupTime = pickupTime?.trim() || null;
+    if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+
+    const [row] = await db
+      .update(excursionPickupPointsTable)
+      .set(updates)
+      .where(and(eq(excursionPickupPointsTable.id, ppId), eq(excursionPickupPointsTable.excursionId, id)))
+      .returning();
+    if (!row) {
+      res.status(404).json({ error: "Punto di raccolta non trovato." });
+      return;
+    }
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.delete("/excursions/:id/pickup-points/:ppId", async (req, res) => {
+  try {
+    const { id, ppId } = req.params;
+    const [deleted] = await db
+      .delete(excursionPickupPointsTable)
+      .where(and(eq(excursionPickupPointsTable.id, ppId), eq(excursionPickupPointsTable.excursionId, id)))
+      .returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Punto di raccolta non trovato." });
+      return;
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

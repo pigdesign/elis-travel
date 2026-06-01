@@ -29,6 +29,60 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface ScheduleActivity {
+  time?: string;
+  title: string;
+  description?: string;
+}
+
+export interface ScheduleDay {
+  dayNumber: number;
+  title?: string;
+  activities: ScheduleActivity[];
+}
+
+export interface PickupLocation {
+  id: string;
+  name: string;
+  city: string;
+  address?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PickupLocationInput {
+  name: string;
+  city: string;
+  address?: string | null;
+  sortOrder?: number;
+}
+
+export interface ExcursionPickupPoint {
+  id: string;
+  excursionId: string;
+  pickupLocationId: string;
+  pickupTime?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  location: Pick<PickupLocation, "id" | "name" | "city" | "address" | "sortOrder">;
+}
+
+export interface ExcursionPickupPointInput {
+  pickupLocationId: string;
+  pickupTime?: string | null;
+  sortOrder?: number;
+}
+
+export interface PublicPickupPoint {
+  id: string;
+  name: string;
+  city: string;
+  address?: string | null;
+  pickupTime?: string | null;
+  sortOrder: number;
+}
+
 export interface ExcursionSummary {
   id: string;
   name: string;
@@ -51,6 +105,10 @@ export interface ExcursionSummary {
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
   coverImageUrl?: string | null;
+  schedule?: ScheduleDay[] | null;
+  included?: string | null;
+  excluded?: string | null;
+  generalInfo?: string | null;
   ricaviStimati: number;
   costiVariabili: number;
   costiTotali: number;
@@ -78,6 +136,7 @@ export interface Booking {
 
 export type ExcursionDetail = ExcursionSummary & {
   bookings: Booking[];
+  pickupPoints: ExcursionPickupPoint[];
 };
 
 export interface BookingInput {
@@ -162,6 +221,10 @@ export interface ExcursionInput {
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
   coverImageUrl?: string | null;
+  schedule?: ScheduleDay[] | null;
+  included?: string | null;
+  excluded?: string | null;
+  generalInfo?: string | null;
 }
 
 export interface VehicleUpdateInput {
@@ -427,6 +490,11 @@ export interface PublicExcursionDetail {
   minThreshold?: number | null;
   adherentsCount?: number | null;
   coverImageUrl?: string | null;
+  schedule?: ScheduleDay[] | null;
+  included?: string | null;
+  excluded?: string | null;
+  generalInfo?: string | null;
+  pickupPoints?: PublicPickupPoint[];
 }
 
 export interface UploadUrlRequest {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, leadNotesTable, offersTable, excursionsTable, excursionBookingsTable, customersTable } from "@workspace/db/schema";
-import { eq, and, ne, desc, sql, or } from "drizzle-orm";
+import { leadsTable, leadNotesTable, offersTable, excursionsTable, excursionBookingsTable, customersTable, excursionPickupPointsTable, pickupLocationsTable } from "@workspace/db/schema";
+import { eq, and, ne, desc, sql, or, asc } from "drizzle-orm";
 import {
   dispatchExcursionBookingEmails,
   dispatchExcursionBookingCancellationEmails,
@@ -250,6 +250,10 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         adherentsCount: excursionsTable.adherentsCount,
         coverImageUrl: excursionsTable.coverImageUrl,
         status: excursionsTable.status,
+        schedule: excursionsTable.schedule,
+        included: excursionsTable.included,
+        excluded: excursionsTable.excluded,
+        generalInfo: excursionsTable.generalInfo,
       })
       .from(excursionsTable)
       .where(and(eq(excursionsTable.id, id), or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed"))))
@@ -260,8 +264,22 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       return;
     }
 
+    const pickupPoints = await db
+      .select({
+        id: excursionPickupPointsTable.id,
+        pickupTime: excursionPickupPointsTable.pickupTime,
+        sortOrder: excursionPickupPointsTable.sortOrder,
+        name: pickupLocationsTable.name,
+        city: pickupLocationsTable.city,
+        address: pickupLocationsTable.address,
+      })
+      .from(excursionPickupPointsTable)
+      .innerJoin(pickupLocationsTable, eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id))
+      .where(eq(excursionPickupPointsTable.excursionId, id))
+      .orderBy(asc(excursionPickupPointsTable.sortOrder));
+
     const { status: _status, ...publicExcursion } = excursion;
-    res.json(publicExcursion);
+    res.json({ ...publicExcursion, pickupPoints });
   } catch (err) {
     console.error("Public excursion detail fetch failed:", err);
     res.status(500).json({ error: "Errore interno del server." });

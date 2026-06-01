@@ -1,16 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Loader2, Save, X } from "lucide-react";
+import { AlertCircle, Loader2, Save, X, Plus, Trash2, MapPin, Clock } from "lucide-react";
 import {
   useCreateExcursion,
   useUpdateExcursion,
   useListVehicles,
+  useListPickupLocations,
+  useListExcursionPickupPoints,
+  useAddExcursionPickupPoint,
+  useDeleteExcursionPickupPoint,
+  useUpdateExcursionPickupPoint,
   getGetExcursionQueryKey,
   getListExcursionsQueryKey,
+  getListExcursionPickupPointsQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ExcursionDetail,
   ExcursionInput,
   ExcursionSummary,
+  ScheduleDay,
+  ScheduleActivity,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
@@ -41,6 +49,10 @@ type FormState = {
   switchVehicleAdditionalCost: string;
   operationalNotes: string;
   coverImageUrl: string | null;
+  schedule: ScheduleDay[];
+  included: string;
+  excluded: string;
+  generalInfo: string;
 };
 
 function todayISO() {
@@ -66,6 +78,10 @@ function emptyState(): FormState {
     switchVehicleAdditionalCost: "",
     operationalNotes: "",
     coverImageUrl: null,
+    schedule: [],
+    included: "",
+    excluded: "",
+    generalInfo: "",
   };
 }
 
@@ -91,6 +107,10 @@ function fromExcursion(
     switchVehicleAdditionalCost: exc.switchVehicleAdditionalCost ?? "",
     operationalNotes: exc.operationalNotes ?? "",
     coverImageUrl: exc.coverImageUrl ?? null,
+    schedule: (exc.schedule as ScheduleDay[] | null) ?? [],
+    included: exc.included ?? "",
+    excluded: exc.excluded ?? "",
+    generalInfo: exc.generalInfo ?? "",
   };
 }
 
@@ -126,7 +146,137 @@ function toPayload(s: FormState): ExcursionInput {
         : null,
     operationalNotes: s.operationalNotes.trim() === "" ? null : s.operationalNotes.trim(),
     coverImageUrl: s.coverImageUrl,
+    schedule: s.schedule.length > 0 ? s.schedule : null,
+    included: s.included.trim() || null,
+    excluded: s.excluded.trim() || null,
+    generalInfo: s.generalInfo.trim() || null,
   };
+}
+
+// ---- Pickup points section (edit mode only) ----
+
+function PickupPointsSection({ excursionId }: { excursionId: string }) {
+  const queryClient = useQueryClient();
+  const { data: allLocations = [] } = useListPickupLocations();
+  const { data: points = [], isLoading } = useListExcursionPickupPoints(excursionId);
+
+  const [selectedLocationId, setSelectedLocationId] = useState("");
+  const [newTime, setNewTime] = useState("");
+
+  const invalidate = () =>
+    void queryClient.invalidateQueries({ queryKey: getListExcursionPickupPointsQueryKey(excursionId) });
+
+  const { mutate: addPoint, isPending: isAdding } = useAddExcursionPickupPoint({
+    mutation: {
+      onSuccess: () => { setSelectedLocationId(""); setNewTime(""); invalidate(); },
+    },
+  });
+
+  const { mutate: removePoint } = useDeleteExcursionPickupPoint({
+    mutation: { onSuccess: invalidate },
+  });
+
+  const { mutate: updateTime } = useUpdateExcursionPickupPoint({
+    mutation: { onSuccess: invalidate },
+  });
+
+  const usedLocationIds = new Set(points.map((p) => p.pickupLocationId));
+  const availableLocations = allLocations.filter((l) => !usedLocationIds.has(l.id));
+
+  return (
+    <section className="space-y-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Punti di raccolta
+      </h4>
+      {isLoading ? (
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      ) : (
+        <ul className="space-y-2">
+          {points.length === 0 && (
+            <li className="text-xs text-muted-foreground">Nessun punto aggiunto.</li>
+          )}
+          {points.map((pp) => (
+            <li key={pp.id} className="flex items-center gap-2 px-3 py-2 border border-border rounded-xl">
+              <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span className="flex-1 text-sm font-medium text-foreground">
+                {pp.location.name}
+                <span className="text-xs text-muted-foreground ml-1">({pp.location.city})</span>
+              </span>
+              <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <input
+                type="text"
+                defaultValue={pp.pickupTime ?? ""}
+                onBlur={(e) => {
+                  const t = e.target.value.trim();
+                  if (t !== (pp.pickupTime ?? "")) {
+                    updateTime({ excursionId, ppId: pp.id, data: { pickupTime: t || null } });
+                  }
+                }}
+                placeholder="Orario"
+                className="w-20 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+              <button
+                type="button"
+                onClick={() => removePoint({ excursionId, ppId: pp.id })}
+                className="p-1 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {availableLocations.length > 0 && (
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <label className="block text-xs text-muted-foreground mb-1">Aggiungi punto</label>
+            <select
+              value={selectedLocationId}
+              onChange={(e) => setSelectedLocationId(e.target.value)}
+              className="w-full px-2 py-1.5 border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">— Seleziona —</option>
+              {availableLocations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name} ({l.city})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">Orario</label>
+            <input
+              type="text"
+              value={newTime}
+              onChange={(e) => setNewTime(e.target.value)}
+              placeholder="es. 05:30"
+              className="w-24 px-2 py-1.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={!selectedLocationId || isAdding}
+            onClick={() =>
+              addPoint({
+                excursionId,
+                data: { pickupLocationId: selectedLocationId, pickupTime: newTime.trim() || null },
+              })
+            }
+            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-white disabled:opacity-50 mb-0.5"
+          >
+            {isAdding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            Aggiungi
+          </button>
+        </div>
+      )}
+      {allLocations.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Configura prima i punti di raccolta in Impostazioni.
+        </p>
+      )}
+    </section>
+  );
 }
 
 export interface ExcursionFormModalProps {
@@ -607,6 +757,181 @@ export function ExcursionFormModal({
               </p>
             </div>
           </section>
+
+          {/* Sezione: Programma */}
+          <section className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Programma
+            </h4>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Struttura la giornata per step. Ogni giorno può avere più attività.
+            </p>
+            {form.schedule.map((day, di) => (
+              <div key={di} className="border border-border rounded-xl p-3 space-y-2 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-primary shrink-0">Giorno {day.dayNumber}</span>
+                  <input
+                    type="text"
+                    value={day.title ?? ""}
+                    onChange={(e) => {
+                      const s = [...form.schedule];
+                      s[di] = { ...s[di], title: e.target.value };
+                      setField("schedule", s);
+                    }}
+                    placeholder="Titolo giornata (opzionale)"
+                    className="flex-1 px-2 py-1 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setField("schedule", form.schedule.filter((_, i) => i !== di))}
+                    className="p-1 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {day.activities.map((act, ai) => (
+                  <div key={ai} className="flex gap-2 items-start pl-3">
+                    <input
+                      type="text"
+                      value={act.time ?? ""}
+                      onChange={(e) => {
+                        const s = [...form.schedule];
+                        const acts = [...s[di].activities];
+                        acts[ai] = { ...acts[ai], time: e.target.value };
+                        s[di] = { ...s[di], activities: acts };
+                        setField("schedule", s);
+                      }}
+                      placeholder="Ora"
+                      className="w-16 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30 shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={act.title}
+                      onChange={(e) => {
+                        const s = [...form.schedule];
+                        const acts = [...s[di].activities];
+                        acts[ai] = { ...acts[ai], title: e.target.value };
+                        s[di] = { ...s[di], activities: acts };
+                        setField("schedule", s);
+                      }}
+                      placeholder="Titolo attività *"
+                      className="flex-1 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                    <input
+                      type="text"
+                      value={act.description ?? ""}
+                      onChange={(e) => {
+                        const s = [...form.schedule];
+                        const acts = [...s[di].activities];
+                        acts[ai] = { ...acts[ai], description: e.target.value };
+                        s[di] = { ...s[di], activities: acts };
+                        setField("schedule", s);
+                      }}
+                      placeholder="Descrizione"
+                      className="flex-1 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const s = [...form.schedule];
+                        s[di] = { ...s[di], activities: s[di].activities.filter((_, i) => i !== ai) };
+                        setField("schedule", s);
+                      }}
+                      className="p-1 text-muted-foreground hover:text-destructive shrink-0"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s = [...form.schedule];
+                    const newAct: ScheduleActivity = { title: "" };
+                    s[di] = { ...s[di], activities: [...s[di].activities, newAct] };
+                    setField("schedule", s);
+                  }}
+                  className="ml-3 text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Aggiungi attività
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const newDay: ScheduleDay = {
+                  dayNumber: form.schedule.length + 1,
+                  title: "",
+                  activities: [],
+                };
+                setField("schedule", [...form.schedule, newDay]);
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-border rounded-xl text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Aggiungi giorno
+            </button>
+          </section>
+
+          {/* Sezione: Quota */}
+          <section className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Quota include / non include
+            </h4>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">La quota include</label>
+                <textarea
+                  value={form.included}
+                  onChange={(e) => setField("included", e.target.value)}
+                  rows={5}
+                  placeholder={"Viaggio in Bus GT\nAccompagnatore\nNavigazione Isole Borromee"}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Una voce per riga.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">La quota non include</label>
+                <textarea
+                  value={form.excluded}
+                  onChange={(e) => setField("excluded", e.target.value)}
+                  rows={5}
+                  placeholder={"Pranzi e bevande\nIngressi a musei\nTassa di soggiorno"}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Una voce per riga.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Sezione: Info utili */}
+          <section className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Informazioni utili
+            </h4>
+            <textarea
+              value={form.generalInfo}
+              onChange={(e) => setField("generalInfo", e.target.value)}
+              rows={4}
+              placeholder={"Documenti: carta d'identità valida per l'espatrio.\nCondizioni: il viaggio si effettua al raggiungimento del numero minimo di partecipanti."}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            />
+          </section>
+
+          {/* Sezione: Punti di raccolta */}
+          {mode === "edit" && initial?.id ? (
+            <PickupPointsSection excursionId={initial.id} />
+          ) : (
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Punti di raccolta
+              </h4>
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded-xl px-3 py-2">
+                Salva prima la gita per aggiungere i punti di raccolta.
+              </p>
+            </section>
+          )}
 
           {mode === "edit" && initial && "adherentsCount" in initial && (
             <section className="space-y-3">
