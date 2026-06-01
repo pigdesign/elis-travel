@@ -211,10 +211,17 @@ function BookingRow({
         </div>
       </td>
       <td className="py-2.5 px-2 text-center">
-        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground" title={`${booking.adults} adult${booking.adults === 1 ? "o" : "i"}${booking.children > 0 ? ` + ${booking.children} bambin${booking.children === 1 ? "o" : "i"}` : ""}`}>
-          <Users className="w-3.5 h-3.5 text-muted-foreground" />
-          {booking.children > 0 ? `${booking.adults}A+${booking.children}B` : booking.adults}
-        </span>
+        <div className="inline-flex flex-col items-center gap-1">
+          <span className="inline-flex items-center gap-1 text-sm text-muted-foreground" title={`${booking.adults} adult${booking.adults === 1 ? "o" : "i"}${booking.children > 0 ? ` + ${booking.children} bambin${booking.children === 1 ? "o" : "i"}` : ""}`}>
+            <Users className="w-3.5 h-3.5 text-muted-foreground" />
+            {booking.children > 0 ? `${booking.adults}A+${booking.children}B` : booking.adults}
+          </span>
+          {booking.servizioCasa && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Richiesto servizio sotto casa">
+              🏠 Casa
+            </span>
+          )}
+        </div>
       </td>
       <td className="py-2.5 px-2">
         {isCancelled ? (
@@ -356,6 +363,13 @@ function BookingEmailPanel({
           "",
         ]
       : [`[INSERIRE QUI LE COORDINATE DI PAGAMENTO]`, ""]),
+    ...(booking.servizioCasa
+      ? [
+          `— SERVIZIO SOTTO CASA —`,
+          `Ha richiesto il servizio di trasporto da casa al punto di raccolta. La preghiamo di comunicarci l'indirizzo di partenza e un recapito telefonico per organizzare il ritiro.`,
+          "",
+        ]
+      : []),
     `Per confermare la prenotazione, le chiediamo inoltre di comunicarci i nominativi e i recapiti di tutti i partecipanti.`,
     "",
     `Rimaniamo a disposizione per qualsiasi informazione.`,
@@ -429,6 +443,7 @@ function AddParticipantModal({
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "deposit_requested" | "full_requested" | "deposit" | "paid">("pending");
+  const [servizioCasa, setServizioCasa] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { mutateAsync, isPending } = useAddExcursionBooking({
@@ -456,6 +471,7 @@ function AddParticipantModal({
           adults,
           children,
           paymentStatus,
+          servizioCasa,
         },
       });
       onClose();
@@ -543,6 +559,16 @@ function AddParticipantModal({
               </select>
             </div>
           </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={servizioCasa}
+              onChange={(e) => setServizioCasa(e.target.checked)}
+              className="w-4 h-4 accent-accent"
+              data-testid="checkbox-add-servizio-casa"
+            />
+            <span className="text-sm text-foreground">Servizio sotto casa richiesto</span>
+          </label>
           {errorMsg && (
             <div className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />

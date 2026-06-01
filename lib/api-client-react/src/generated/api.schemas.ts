@@ -38,6 +38,7 @@ export interface ScheduleActivity {
 export interface ScheduleDay {
   dayNumber: number;
   title?: string;
+  imageUrl?: string;
   activities: ScheduleActivity[];
 }
 
@@ -128,6 +129,7 @@ export interface Booking {
   adults: number;
   children: number;
   paymentStatus: string;
+  servizioCasa: boolean;
   bookedAt: string;
   cancelledAt?: string | null;
   createdAt: string;
@@ -148,6 +150,7 @@ export interface BookingInput {
   children?: number;
   seats?: number;
   paymentStatus?: string;
+  servizioCasa?: boolean;
 }
 
 export type BookingPaymentStatusUpdatePaymentStatus =
@@ -183,6 +186,7 @@ export interface PublicBookingInput {
   /** @minimum 0 */
   children?: number;
   paymentType: PublicBookingInputPaymentType;
+  servizioCasa?: boolean;
 }
 
 export interface PublicBookingResponse {

@@ -285,6 +285,15 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                                 <span className="text-sm font-semibold text-foreground">{day.title}</span>
                               )}
                             </div>
+                            {day.imageUrl && (
+                              <div className="mb-4 rounded-xl overflow-hidden">
+                                <img
+                                  src={day.imageUrl}
+                                  alt={day.title ?? `Giorno ${day.dayNumber}`}
+                                  className="w-full h-48 object-cover"
+                                />
+                              </div>
+                            )}
                             <ol className="space-y-2 pl-2 border-l-2 border-primary/20 ml-2">
                               {day.activities.map((act, i) => (
                                 <li key={i} className="flex gap-3 pl-4 relative">
@@ -402,6 +411,7 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                         : undefined
                     }
                     priceLabel={priceLabel}
+                    hasPickupPoints={!!(excursion.pickupPoints && excursion.pickupPoints.length > 0)}
                   />
                 </div>
 
@@ -452,9 +462,10 @@ interface BookingCardProps {
   seatsAvailable: boolean;
   remainingSeats?: number;
   priceLabel: string | null;
+  hasPickupPoints?: boolean;
 }
 
-function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel }: BookingCardProps) {
+function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, hasPickupPoints }: BookingCardProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -462,6 +473,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel }
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [paymentType, setPaymentType] = useState<"deposit" | "full">("deposit");
+  const [servizioCasa, setServizioCasa] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
     adults: number;
@@ -562,6 +574,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel }
           adults,
           children: children || undefined,
           paymentType,
+          servizioCasa: servizioCasa || undefined,
         },
       });
       setConfirmation({
@@ -739,6 +752,26 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel }
             </label>
           </div>
         </div>
+
+        {hasPickupPoints && (
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={servizioCasa}
+              onChange={(e) => setServizioCasa(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-accent shrink-0"
+              data-testid="checkbox-servizio-casa"
+            />
+            <div>
+              <span className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
+                Richiedo il servizio di trasporto da casa
+              </span>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Disponibile su richiesta. Ti contatteremo per organizzare il ritiro e comunicarti eventuali costi aggiuntivi.
+              </p>
+            </div>
+          </label>
+        )}
 
         {errorMsg && (
           <div

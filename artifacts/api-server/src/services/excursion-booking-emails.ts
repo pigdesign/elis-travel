@@ -14,6 +14,7 @@ export type ExcursionBookingEmailData = {
   seats: number;
   adults: number;
   children: number;
+  servizioCasa?: boolean;
   paymentType: "deposit" | "full";
   excursion: {
     id: string;
@@ -119,6 +120,11 @@ export function buildCustomerEmail(
   if (paymentInstructions) {
     lines.push("Istruzioni per il pagamento:");
     lines.push(paymentInstructions);
+    lines.push("");
+  }
+  if (data.servizioCasa) {
+    lines.push("Servizio sotto casa:");
+    lines.push("Hai richiesto il servizio di trasporto da casa al punto di raccolta. Ti chiediamo di comunicarci il tuo indirizzo di partenza e un recapito telefonico per organizzare il ritiro.");
     lines.push("");
   }
   lines.push("Prossimi passi:");
@@ -284,6 +290,7 @@ export function buildAdminEmail(
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Partecipanti</td><td style="padding:4px 0;">${escapeHtml(participantsLabel)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Pagamento</td><td style="padding:4px 0;">${escapeHtml(paymentLabel)}</td></tr>
     ${totalPrice ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Totale</td><td style="padding:4px 0;">${escapeHtml(totalPrice)}</td></tr>` : ""}
+    ${data.servizioCasa ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Servizio sotto casa</td><td style="padding:4px 0;color:#e07b00;font-weight:600;">Richiesto</td></tr>` : ""}
     <tr><td style="padding:4px 12px 4px 0;color:#555;">ID prenotazione</td><td style="padding:4px 0;">${escapeHtml(data.bookingId)}</td></tr>
   </table>
 </body>

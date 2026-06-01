@@ -417,13 +417,14 @@ router.post("/leads", async (req, res) => {
 router.post("/excursions/:id/book", async (req, res) => {
   try {
     const { id } = req.params;
-    const { customerName, email, phone, adults, children, paymentType } = req.body as {
+    const { customerName, email, phone, adults, children, paymentType, servizioCasa } = req.body as {
       customerName?: string;
       email?: string;
       phone?: string;
       adults?: number;
       children?: number;
       paymentType?: string;
+      servizioCasa?: boolean;
     };
 
     if (!customerName?.trim() || !email?.trim()) {
@@ -525,6 +526,7 @@ router.post("/excursions/:id/book", async (req, res) => {
           adults: adultsNum,
           children: childrenNum,
           paymentStatus,
+          servizioCasa: servizioCasa === true,
         })
         .returning();
 
@@ -570,6 +572,7 @@ router.post("/excursions/:id/book", async (req, res) => {
         seats: seatsNum,
         adults: adultsNum,
         children: childrenNum,
+        servizioCasa: result.booking.servizioCasa,
         paymentType: paymentType as "deposit" | "full",
         excursion: {
           id: result.excursion.id,

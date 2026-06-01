@@ -789,6 +789,18 @@ export function ExcursionFormModal({
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
+                <div className="pl-1">
+                  <p className="text-xs text-muted-foreground mb-1">Immagine giornata</p>
+                  <CoverImageUploader
+                    value={day.imageUrl ?? null}
+                    onChange={(url) => {
+                      const s = [...form.schedule];
+                      s[di] = { ...s[di], imageUrl: url ?? undefined };
+                      setField("schedule", s);
+                    }}
+                    testIdPrefix={`schedule-day-${di}-image`}
+                  />
+                </div>
                 {day.activities.map((act, ai) => (
                   <div key={ai} className="flex gap-2 items-start pl-3">
                     <input

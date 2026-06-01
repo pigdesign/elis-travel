@@ -299,6 +299,7 @@ router.post("/excursions/:id/bookings", async (req, res) => {
       children?: number;
       seats?: number;
       paymentStatus?: string;
+      servizioCasa?: boolean;
     };
 
     if (!body.customerName?.trim()) {
@@ -338,6 +339,7 @@ router.post("/excursions/:id/bookings", async (req, res) => {
           adults,
           children,
           paymentStatus,
+          servizioCasa: body.servizioCasa === true,
         })
         .returning();
 
