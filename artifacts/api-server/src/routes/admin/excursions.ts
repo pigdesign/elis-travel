@@ -22,7 +22,7 @@ function isValidPaymentStatus(s: unknown): s is PaymentStatus {
   return typeof s === "string" && (VALID_PAYMENT_STATUSES as readonly string[]).includes(s);
 }
 
-const ADMIN_CREATABLE_STATUSES = ["pending", "deposit", "paid"] as const;
+const ADMIN_CREATABLE_STATUSES = ["pending", "deposit_requested", "full_requested", "deposit", "paid"] as const;
 type AdminCreatableStatus = (typeof ADMIN_CREATABLE_STATUSES)[number];
 function isAdminCreatableStatus(s: unknown): s is AdminCreatableStatus {
   return typeof s === "string" && (ADMIN_CREATABLE_STATUSES as readonly string[]).includes(s);

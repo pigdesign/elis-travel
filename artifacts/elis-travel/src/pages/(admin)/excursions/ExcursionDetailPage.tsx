@@ -428,7 +428,7 @@ function AddParticipantModal({
   const [email, setEmail] = useState("");
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
-  const [paymentStatus, setPaymentStatus] = useState<"pending" | "deposit" | "paid">("pending");
+  const [paymentStatus, setPaymentStatus] = useState<"pending" | "deposit_requested" | "full_requested" | "deposit" | "paid">("pending");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { mutateAsync, isPending } = useAddExcursionBooking({
@@ -531,11 +531,13 @@ function AddParticipantModal({
               <label className="block text-xs font-medium text-foreground mb-1">Stato pagamento</label>
               <select
                 value={paymentStatus}
-                onChange={(e) => setPaymentStatus(e.target.value as "pending" | "deposit" | "paid")}
+                onChange={(e) => setPaymentStatus(e.target.value as "pending" | "deposit_requested" | "full_requested" | "deposit" | "paid")}
                 className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 data-testid="select-add-payment"
               >
                 <option value="pending">In attesa</option>
+                <option value="deposit_requested">Richiesta acconto</option>
+                <option value="full_requested">Richiesta saldo</option>
                 <option value="deposit">Acconto versato</option>
                 <option value="paid">Saldato</option>
               </select>
