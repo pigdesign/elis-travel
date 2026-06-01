@@ -1,14 +1,16 @@
 import { Link } from "wouter";
 import { Button } from "@/components/shared/Button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.webp";
 import stickyLogoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.webp";
+import { useAuthUser } from "@/contexts/AuthContext";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const authUser = useAuthUser();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,8 +64,21 @@ export function Header() {
             ))}
           </nav>
 
-          <div className="hidden md:block">
-            <Link href="/admin">
+          <div className="hidden md:flex items-center gap-3">
+            {authUser && (
+              <Link href="/admin">
+                <button
+                  className={cn(
+                    "inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-accent",
+                    isScrolled ? "text-foreground" : "text-white/90"
+                  )}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Amministrazione
+                </button>
+              </Link>
+            )}
+            <Link href="/gite">
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 border-none">
                 Prenota ora
               </Button>
@@ -96,7 +111,15 @@ export function Header() {
               {link.name}
             </a>
           ))}
-          <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+          {authUser && (
+            <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+              <button className="flex items-center gap-2 text-foreground font-medium py-2 border-b border-muted/20 w-full">
+                <LayoutDashboard className="w-4 h-4" />
+                Amministrazione
+              </button>
+            </Link>
+          )}
+          <Link href="/gite" onClick={() => setMobileMenuOpen(false)}>
             <Button className="w-full bg-accent text-accent-foreground mt-4">Prenota ora</Button>
           </Link>
         </div>
