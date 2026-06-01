@@ -31,8 +31,7 @@ export function HeroSection() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
             className="text-white drop-shadow-2xl font-black text-left mb-[30px] text-6xl md:text-8xl lg:text-[100px] xl:text-[130px] leading-tight md:leading-[1.1] lg:leading-[126px]"
-          >Scopri il tuo
-          prossimo viaggio</motion.h1>
+          >Parti. Scopri. Ricorda.</motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -40,7 +39,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
             className="text-lg md:text-xl mb-10 max-w-2xl mx-0 leading-relaxed text-left font-bold bg-[transparent] text-[#ffffff]"
           >
-            Scopri la straordinaria bellezza della baia di Ha Long, la cultura vibrante e i paesaggi indimenticabili. La tua prossima grande avventura inizia qui con le nostre guide locali selezionate.
+            Esperienze di viaggio organizzate con cura, per trasformare ogni partenza in un ricordo da portare con te.
           </motion.p>
 
           <motion.div
