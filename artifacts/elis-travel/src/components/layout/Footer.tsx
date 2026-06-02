@@ -71,11 +71,11 @@ export function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-white/70 text-sm">
                 <MapPin className="w-5 h-5 text-accent shrink-0" />
-                <span>via Cavour 59c, 17051 Andora (SV)</span>
+                <span>Via Cavour 59C - Andora SV</span>
               </li>
               <li className="flex items-center gap-3 text-white/70 text-sm">
                 <Phone className="w-5 h-5 text-accent shrink-0" />
-                <span>+39 06 1234 5678</span>
+                <span>0182 64 64 47 - 391 17 17 007</span>
               </li>
               <li className="flex items-center gap-3 text-white/70 text-sm">
                 <Mail className="w-5 h-5 text-accent shrink-0" />

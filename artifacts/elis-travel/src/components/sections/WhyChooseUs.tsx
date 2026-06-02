@@ -100,8 +100,8 @@ export function WhyChooseUs() {
               <p className="mb-6" style={{ color: "#ffffff" }}>
                 Chiama i nostri esperti di viaggio in qualsiasi momento. Siamo qui per aiutarti a organizzare tutto.
               </p>
-              <div className="text-3xl font-bold mb-8 tracking-wide" style={{ color: "#ffffff" }}>
-                +39 06 1234 5678
+              <div className="text-2xl md:text-3xl font-bold mb-8 tracking-wide" style={{ color: "#ffffff" }}>
+                0182 64 64 47<br/>391 17 17 007
               </div>
               <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 text-[20px] font-bold">
                 Chiamaci ora

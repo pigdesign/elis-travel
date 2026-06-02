@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { sessionPool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { globalLimiter } from "./middlewares/rateLimiter";
 
 if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET must be set in production");
@@ -93,7 +94,7 @@ app.use(
   }),
 );
 
-app.use("/api", router);
+app.use("/api", globalLimiter, router);
 
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.resolve(

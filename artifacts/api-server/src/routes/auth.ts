@@ -4,10 +4,11 @@ import { db } from "@workspace/db";
 import { adminUsersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { loginLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
 
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body as { email: string; password: string };
 

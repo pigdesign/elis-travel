@@ -7,6 +7,7 @@ import {
   dispatchExcursionBookingCancellationEmails,
 } from "../services/excursion-booking-emails";
 import { verifyBookingCancellationToken } from "../services/booking-cancellation-token";
+import { publicFormsLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
 
@@ -192,7 +193,7 @@ router.get("/catalog/products", async (_req, res) => {
 
 router.get("/catalog/products/offers/:id", async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const [offer] = await db
       .select({
         id: offersTable.id,
@@ -237,7 +238,7 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
 
 router.get("/catalog/products/excursions/:id", async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const [excursion] = await db
       .select({
         id: excursionsTable.id,
@@ -286,7 +287,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
   }
 });
 
-router.post("/leads", async (req, res) => {
+router.post("/leads", publicFormsLimiter, async (req, res) => {
   try {
     const {
       customerName,
@@ -414,9 +415,9 @@ router.post("/leads", async (req, res) => {
   }
 });
 
-router.post("/excursions/:id/book", async (req, res) => {
+router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { customerName, email, phone, adults, children, paymentType, servizioCasa } = req.body as {
       customerName?: string;
       email?: string;
@@ -636,7 +637,7 @@ function renderCancellationPage(opts: {
 
 router.get("/excursions/bookings/:id/cancel", async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const token = (req.query.token as string) || "";
     if (!verifyBookingCancellationToken(id, token)) {
       const page = renderCancellationPage({
@@ -727,7 +728,7 @@ router.get("/excursions/bookings/:id/cancel", async (req, res) => {
 
 router.post("/excursions/bookings/:id/cancel", async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const token = ((req.query.token as string) || (req.body?.token as string) || "");
     if (!verifyBookingCancellationToken(id, token)) {
       const page = renderCancellationPage({

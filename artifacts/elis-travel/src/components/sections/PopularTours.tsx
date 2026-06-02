@@ -213,7 +213,7 @@ export function PopularTours() {
             </button>
           )}
 
-          <div className="overflow-hidden flex-1 min-w-0">
+          <div className="overflow-hidden flex-1 min-w-0 -my-6 py-6">
             {/*
               Il transform iniziale viene calcolato una volta sola al mount.
               Dopodiché tutto è controllato via ref/DOM direttamente,

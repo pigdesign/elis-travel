@@ -192,7 +192,7 @@ export function ContactsPage() {
                     <div>
                       <div className="font-semibold text-white">Sede</div>
                       <div className="text-white/75 text-sm">
-                        via Cavour 59c<br />17051 Andora (SV)
+                        Via Cavour 59C<br />Andora SV
                       </div>
                     </div>
                   </div>
@@ -203,7 +203,7 @@ export function ContactsPage() {
                     </div>
                     <div>
                       <div className="font-semibold text-white">Telefono</div>
-                      <div className="text-white/75 text-sm">+39 06 1234 5678</div>
+                      <div className="text-white/75 text-sm">0182 64 64 47 - 391 17 17 007</div>
                     </div>
                   </div>
 
