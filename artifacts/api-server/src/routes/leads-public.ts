@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, leadNotesTable, offersTable, excursionsTable, excursionBookingsTable, customersTable, excursionPickupPointsTable, pickupLocationsTable } from "@workspace/db/schema";
+import { leadsTable, leadNotesTable, offersTable, offerImagesTable, excursionsTable, excursionBookingsTable, customersTable, excursionPickupPointsTable, pickupLocationsTable } from "@workspace/db/schema";
 import { eq, and, ne, desc, sql, or, asc } from "drizzle-orm";
 import {
   dispatchExcursionBookingEmails,
@@ -228,8 +228,14 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
       return;
     }
 
+    const images = await db
+      .select({ id: offerImagesTable.id, imageUrl: offerImagesTable.imageUrl, sortOrder: offerImagesTable.sortOrder })
+      .from(offerImagesTable)
+      .where(eq(offerImagesTable.offerId, id))
+      .orderBy(asc(offerImagesTable.sortOrder), asc(offerImagesTable.createdAt));
+
     const { status: _status, ...publicOffer } = offer;
-    res.json(publicOffer);
+    res.json({ ...publicOffer, images });
   } catch (err) {
     console.error("Public offer detail fetch failed:", err);
     res.status(500).json({ error: "Errore interno del server." });

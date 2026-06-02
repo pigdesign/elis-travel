@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { offersTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { offersTable, offerImagesTable } from "@workspace/db/schema";
+import { eq, desc, asc } from "drizzle-orm";
 
 const router = Router();
 
@@ -181,6 +181,106 @@ router.post("/offers/:id/duplicate", async (req, res) => {
       .returning();
 
     res.status(201).json(duplicated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// --- Gallery immagini offerta ---
+
+router.get("/offers/:id/images", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const images = await db
+      .select()
+      .from(offerImagesTable)
+      .where(eq(offerImagesTable.offerId, id))
+      .orderBy(asc(offerImagesTable.sortOrder), asc(offerImagesTable.createdAt));
+    res.json(images);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.post("/offers/:id/images", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body as { imageUrl?: string; sortOrder?: number };
+
+    if (!body.imageUrl || typeof body.imageUrl !== "string") {
+      res.status(400).json({ error: "imageUrl è obbligatorio." });
+      return;
+    }
+
+    const existing = await db
+      .select({ count: offerImagesTable.id })
+      .from(offerImagesTable)
+      .where(eq(offerImagesTable.offerId, id));
+
+    const [created] = await db
+      .insert(offerImagesTable)
+      .values({
+        offerId: id,
+        imageUrl: body.imageUrl,
+        sortOrder: body.sortOrder ?? existing.length,
+      })
+      .returning();
+
+    res.status(201).json(created);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.delete("/offers/:id/images/:imageId", async (req, res) => {
+  try {
+    const { id, imageId } = req.params;
+    const [deleted] = await db
+      .delete(offerImagesTable)
+      .where(eq(offerImagesTable.id, imageId))
+      .returning();
+
+    if (!deleted || deleted.offerId !== id) {
+      res.status(404).json({ error: "Immagine non trovata." });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.patch("/offers/:id/images/reorder", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body as { order?: string[] };
+
+    if (!Array.isArray(body.order)) {
+      res.status(400).json({ error: "order deve essere un array di ID." });
+      return;
+    }
+
+    await Promise.all(
+      body.order.map((imageId, idx) =>
+        db
+          .update(offerImagesTable)
+          .set({ sortOrder: idx })
+          .where(eq(offerImagesTable.id, imageId))
+      )
+    );
+
+    const images = await db
+      .select()
+      .from(offerImagesTable)
+      .where(eq(offerImagesTable.offerId, id))
+      .orderBy(asc(offerImagesTable.sortOrder), asc(offerImagesTable.createdAt));
+
+    res.json(images);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });

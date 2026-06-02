@@ -12,6 +12,7 @@
     "migrate:sessions": "tsx src/migrate-sessions.ts",
     "migrate:last-sync-at": "tsx src/migrate-last-sync-at.ts",
     "migrate:offer-filters": "tsx src/migrate-offer-filters.ts",
+    "migrate:offer-images": "tsx src/migrate-offer-images.ts",
     "seed:demo": "tsx src/seed-demo.ts"
   },
   "dependencies": {

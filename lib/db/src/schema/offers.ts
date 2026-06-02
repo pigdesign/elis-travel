@@ -1,6 +1,7 @@
 import { pgTable, text, timestamp, integer, numeric, uuid, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { relations } from "drizzle-orm";
 
 export const offersTable = pgTable("offers", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -34,12 +35,31 @@ export const offersTable = pgTable("offers", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const offerImagesTable = pgTable("offer_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  offerId: uuid("offer_id").notNull().references(() => offersTable.id, { onDelete: "cascade" }),
+  imageUrl: text("image_url").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const offersRelations = relations(offersTable, ({ many }) => ({
+  images: many(offerImagesTable),
+}));
+
+export const offerImagesRelations = relations(offerImagesTable, ({ one }) => ({
+  offer: one(offersTable, { fields: [offerImagesTable.offerId], references: [offersTable.id] }),
+}));
+
 export const insertOfferSchema = createInsertSchema(offersTable).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 export const selectOfferSchema = createSelectSchema(offersTable);
+export const insertOfferImageSchema = createInsertSchema(offerImagesTable).omit({ id: true, createdAt: true });
+export const selectOfferImageSchema = createSelectSchema(offerImagesTable);
 
 export type InsertOffer = z.infer<typeof insertOfferSchema>;
 export type Offer = typeof offersTable.$inferSelect;
+export type OfferImage = typeof offerImagesTable.$inferSelect;

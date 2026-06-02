@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useGetPublicOffer } from "@workspace/api-client-react";
 import { useSeo, extractIdFromSlug, buildSlugUrl, truncate } from "@/lib/seo";
@@ -20,7 +20,82 @@ import {
   XCircle,
   Sparkles,
   ExternalLink,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+
+interface GalleryImage {
+  id: string;
+  imageUrl: string;
+  sortOrder: number;
+}
+
+function OfferGalleryCarousel({ images }: { images: GalleryImage[] }) {
+  const [current, setCurrent] = useState(0);
+
+  if (images.length === 0) return null;
+
+  const prev = () => setCurrent((i) => (i === 0 ? images.length - 1 : i - 1));
+  const next = () => setCurrent((i) => (i === images.length - 1 ? 0 : i + 1));
+
+  return (
+    <section className="py-8 bg-muted/20">
+      <div className="container mx-auto px-4 md:px-8 max-w-5xl">
+        <div className="relative rounded-2xl overflow-hidden bg-black aspect-[16/9] shadow-md">
+          <img
+            key={images[current].id}
+            src={images[current].imageUrl}
+            alt={`Foto ${current + 1}`}
+            className="w-full h-full object-cover transition-opacity duration-300"
+          />
+
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={prev}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                aria-label="Foto precedente"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={next}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                aria-label="Foto successiva"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrent(i)}
+                    className={`w-2 h-2 rounded-full transition-colors ${i === current ? "bg-white" : "bg-white/40"}`}
+                    aria-label={`Vai alla foto ${i + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {images.length > 1 && (
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+            {images.map((img, i) => (
+              <button
+                key={img.id}
+                onClick={() => setCurrent(i)}
+                className={`flex-none w-16 h-12 rounded-lg overflow-hidden border-2 transition-colors ${i === current ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"}`}
+              >
+                <img src={img.imageUrl} alt={`Miniatura ${i + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 interface OfferDetailPageProps {
   offerIdOrSlug: string;
@@ -52,7 +127,9 @@ function MultilineText({ text }: { text: string }) {
 
 export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
   const offerId = extractIdFromSlug(offerIdOrSlug);
-  const { data: offer, isLoading, isError } = useGetPublicOffer(offerId);
+  const { data: rawOffer, isLoading, isError } = useGetPublicOffer(offerId);
+  const offer = rawOffer as (typeof rawOffer & { images?: GalleryImage[] }) | undefined;
+  const galleryImages = offer?.images ?? [];
   const [, setLocation] = useLocation();
 
   const seoTitle = offer?.name
@@ -167,6 +244,10 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
               )}
             </div>
           </section>
+
+          {galleryImages.length > 0 && (
+            <OfferGalleryCarousel images={galleryImages} />
+          )}
 
           <section className="py-12 md:py-16">
             <div className="container mx-auto px-4 md:px-8 max-w-5xl">

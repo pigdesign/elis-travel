@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { OfferFormModal } from "./OfferFormModal";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
+import { OfferGalleryUploader } from "@/components/shared/OfferGalleryUploader";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   draft: { label: "Bozza", className: "bg-gray-100 text-gray-700", icon: AlertCircle },
@@ -190,6 +191,10 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
                 }}
                 testIdPrefix="offer-cover"
               />
+            </Section>
+
+            <Section title="Galleria immagini">
+              <OfferGalleryUploader offerId={offerId} />
             </Section>
 
             <div className="flex items-start justify-between">
