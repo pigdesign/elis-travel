@@ -70,6 +70,8 @@ export function ContactsPage() {
     reset: resetMutation,
   } = useSubmitContactRequest();
 
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+
   const search = useSearch();
   const prefilledRef = useMemo(() => {
     const params = new URLSearchParams(search);
@@ -112,6 +114,13 @@ export function ContactsPage() {
 
   const onSubmit = (values: ContactFormValues) => {
     clearErrors("root");
+    if (!privacyAccepted) {
+      setError("root", {
+        type: "manual",
+        message: "Devi accettare l'Informativa sulla Privacy per poter inviare il messaggio.",
+      });
+      return;
+    }
     submit(
       {
         data: {
@@ -203,7 +212,10 @@ export function ContactsPage() {
                     </div>
                     <div>
                       <div className="font-semibold text-white">Telefono</div>
-                      <div className="text-white/75 text-sm">0182 64 64 47 - 391 17 17 007</div>
+                      <div className="text-white/75 text-sm flex flex-col gap-1 mt-1">
+                        <a href="tel:+390182646447" className="hover:text-white transition-colors">0182 64 64 47</a>
+                        <a href="tel:+393911717007" className="hover:text-white transition-colors">391 17 17 007</a>
+                      </div>
                     </div>
                   </div>
 
@@ -213,7 +225,9 @@ export function ContactsPage() {
                     </div>
                     <div>
                       <div className="font-semibold text-white">Email</div>
-                      <div className="text-white/75 text-sm">info@elis-travel.it</div>
+                      <div className="text-white/75 text-sm mt-1">
+                        <a href="mailto:info@elis-travel.it" className="hover:text-white transition-colors">info@elis-travel.it</a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -361,6 +375,20 @@ export function ContactsPage() {
                       {errors.message && (
                         <p className="text-xs text-red-600 mt-1">{errors.message.message}</p>
                       )}
+                    </div>
+
+                    <div className="pt-2">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={privacyAccepted}
+                          onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                          className="mt-1 shrink-0 accent-primary" 
+                        />
+                        <span className="text-xs text-muted-foreground leading-snug">
+                          Ho letto e accetto l'<Link href="/privacy-policy" className="text-primary hover:underline" target="_blank">Informativa sulla Privacy</Link>. Acconsento al trattamento dei dati personali per la gestione della richiesta. *
+                        </span>
+                      </label>
                     </div>
 
                     {rootError && (

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/shared/Button";
 import {
@@ -84,6 +85,7 @@ export function SearchBar() {
   const [childrenAges, setChildrenAges] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const [dateOpen, setDateOpen] = useState(false);
   const [personaOpen, setPersonaOpen] = useState(false);
@@ -105,6 +107,10 @@ export function SearchBar() {
   }, []);
 
   async function handleSubmit() {
+    if (!privacyAccepted) {
+      setError("Devi accettare l'Informativa sulla Privacy per poter inviare la richiesta.");
+      return;
+    }
     if (!email.trim()) {
       setError("L'email è obbligatoria.");
       return;
@@ -342,7 +348,7 @@ export function SearchBar() {
             </div>
           </label>
 
-          {/* Bottone */}
+          {/* Bottone Invio */}
           <div className="px-4 md:px-0 shrink-0">
             <Button
               size="lg"
@@ -358,6 +364,21 @@ export function SearchBar() {
               Richiedi preventivo
             </Button>
           </div>
+        </div>
+
+        {/* Checkbox Privacy */}
+        <div className="px-4 pb-2 md:px-0 mt-3 md:mt-4">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={privacyAccepted}
+              onChange={(e) => setPrivacyAccepted(e.target.checked)}
+              className="mt-1 shrink-0 accent-primary" 
+            />
+            <span className="text-xs text-muted-foreground/80 leading-snug">
+              Accetto l'<Link href="/privacy-policy" className="text-primary hover:underline" target="_blank">Informativa sulla Privacy</Link>
+            </span>
+          </label>
         </div>
 
         {/* Messaggio errore */}

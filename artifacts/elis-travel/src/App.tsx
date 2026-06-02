@@ -11,8 +11,12 @@ import { OffersPage as PublicOffersPage } from "@/pages/(public)/OffersPage";
 import { OfferDetailPage as PublicOfferDetailPage } from "@/pages/(public)/OfferDetailPage";
 import { ExcursionsPage as PublicExcursionsPage } from "@/pages/(public)/ExcursionsPage";
 import { ExcursionDetailPage as PublicExcursionDetailPage } from "@/pages/(public)/ExcursionDetailPage";
+import { PrivacyPolicyPage } from "@/pages/(public)/PrivacyPolicyPage";
+import { CookiePolicyPage } from "@/pages/(public)/CookiePolicyPage";
+import { TermsConditionsPage } from "@/pages/(public)/TermsConditionsPage";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
+import { CookieBanner } from "@/components/layout/CookieBanner";
 import { DashboardPage } from "@/pages/(admin)/dashboard/DashboardPage";
 import { ExcursionsPage } from "@/pages/(admin)/excursions/ExcursionsPage";
 import { ExcursionDetailPage } from "@/pages/(admin)/excursions/ExcursionDetailPage";
@@ -38,6 +42,9 @@ function Router() {
         {(params) => <PublicExcursionDetailPage excursionIdOrSlug={params.slug} />}
       </Route>
       <Route path="/contatti" component={ContactsPage} />
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/cookie-policy" component={CookiePolicyPage} />
+      <Route path="/termini-e-condizioni" component={TermsConditionsPage} />
 
       <Route path="/admin/login" component={LoginPage} />
 
@@ -77,6 +84,7 @@ function App() {
             <Router />
           </WouterRouter>
           <Toaster />
+          <CookieBanner />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

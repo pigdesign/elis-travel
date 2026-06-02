@@ -7,7 +7,7 @@ export function Footer() {
   return (
     <footer className="bg-foreground text-white pt-20 pb-10">
       <div className="container mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           {/* Brand Col */}
           <div className="space-y-6">
             <Link href="/" className="flex items-center">
@@ -75,11 +75,14 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-3 text-white/70 text-sm">
                 <Phone className="w-5 h-5 text-accent shrink-0" />
-                <span>0182 64 64 47 - 391 17 17 007</span>
+                <div className="flex flex-col gap-1">
+                  <a href="tel:+390182646447" className="hover:text-accent transition-colors">0182 64 64 47</a>
+                  <a href="tel:+393911717007" className="hover:text-accent transition-colors">391 17 17 007</a>
+                </div>
               </li>
               <li className="flex items-center gap-3 text-white/70 text-sm">
                 <Mail className="w-5 h-5 text-accent shrink-0" />
-                <span>info@elis-travel.it</span>
+                <a href="mailto:info@elis-travel.it" className="hover:text-accent transition-colors">info@elis-travel.it</a>
               </li>
             </ul>
             <div className="mt-6">
@@ -96,9 +99,28 @@ export function Footer() {
               </div>
             </div>
           </div>
+
+          {/* Note Legali */}
+          <div>
+            <h4 className="text-lg font-bold mb-6 font-serif">Note Legali</h4>
+            <ul className="space-y-3">
+              {[
+                { label: 'Termini e Condizioni', href: '/termini-e-condizioni' },
+                { label: 'Privacy Policy', href: '/privacy-policy' },
+                { label: 'Cookie Policy', href: '/cookie-policy' },
+              ].map((link) => (
+                <li key={link.label}>
+                  <Link href={link.href} className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        <div className="pt-8 border-t border-white/10 text-center text-white/50 text-sm">
+        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-white/50 text-sm">
           <p>&copy; {new Date().getFullYear()} Elis Travel. Tutti i diritti riservati.</p>
         </div>
       </div>

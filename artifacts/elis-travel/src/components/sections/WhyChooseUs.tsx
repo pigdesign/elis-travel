@@ -100,12 +100,15 @@ export function WhyChooseUs() {
               <p className="mb-6" style={{ color: "#ffffff" }}>
                 Chiama i nostri esperti di viaggio in qualsiasi momento. Siamo qui per aiutarti a organizzare tutto.
               </p>
-              <div className="text-2xl md:text-3xl font-bold mb-8 tracking-wide" style={{ color: "#ffffff" }}>
-                0182 64 64 47<br/>391 17 17 007
+              <div className="text-2xl md:text-3xl font-bold mb-8 tracking-wide flex flex-col gap-2" style={{ color: "#ffffff" }}>
+                <a href="tel:+390182646447" className="hover:underline transition-all hover:text-white/90">0182 64 64 47</a>
+                <a href="tel:+393911717007" className="hover:underline transition-all hover:text-white/90">391 17 17 007</a>
               </div>
-              <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 text-[20px] font-bold">
-                Chiamaci ora
-              </Button>
+              <a href="tel:+390182646447">
+                <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 text-[20px] font-bold">
+                  Chiamaci ora
+                </Button>
+              </a>
             </motion.div>
 
           </div>

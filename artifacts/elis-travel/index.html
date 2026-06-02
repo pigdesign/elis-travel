@@ -24,9 +24,329 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Playball&display=swap" rel="stylesheet">
+
+    <script>
+      if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+        document.documentElement.classList.add('not-home');
+      }
+    </script>
+    <style>
+    /* ── Loader overlay ── */
+    #elistravel-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 44px;
+      transition: opacity 0.9s ease, visibility 0.9s ease;
+    }
+    #elistravel-loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    
+    /* ── Contenitore logo ── */
+    #elistravel-loader .logo-wrap {
+      position: relative;
+      width: 480px;
+      max-width: 88vw;
+    }
+    #elistravel-loader .logo-svg {
+      display: block;
+      width: 100%;
+      overflow: visible;
+    }
+    
+    /* ── Aereo: animato via JS ── */
+    #elistravel-loader .airplane-group {
+      will-change: transform, filter;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    #elistravel-loader .airplane-group.hovering {
+      will-change: auto;
+      animation: plane-hover 4s ease-in-out infinite;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    @keyframes plane-hover {
+      0%,100% { transform: translate(0,0)      rotate(0deg);    }
+      35%     { transform: translate(2px,-4px) rotate(-1.5deg); }
+      70%     { transform: translate(3px,2px)  rotate(1deg);    }
+    }
+    
+    /* ── Comparsa progressiva del logo ── */
+    #elistravel-loader .letters-group  { opacity: 0; animation: et-reveal 0.38s cubic-bezier(0.22,1,0.36,1) 1.20s forwards; }
+    #elistravel-loader .travel-group   { opacity: 0; animation: et-reveal 0.24s cubic-bezier(0.22,1,0.36,1) 1.58s forwards; }
+    #elistravel-loader .birds-group    { opacity: 0; animation: et-reveal 0.22s cubic-bezier(0.22,1,0.36,1) 1.64s forwards; }
+    #elistravel-loader .subtitle-group { opacity: 0; animation: et-reveal 0.30s cubic-bezier(0.22,1,0.36,1) 1.83s forwards; }
+    
+    @keyframes et-reveal {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+    @keyframes et-logo-float {
+      0%,100% { transform: translateY(0);   }
+      50%     { transform: translateY(-7px);}
+    }
+    
+    /* ── Shimmer sul logo ── */
+    #elistravel-loader .shimmer-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    #elistravel-loader .shimmer-overlay::after {
+      content: '';
+      position: absolute;
+      top: -20%; left: -60%;
+      width: 38%; height: 140%;
+      background: linear-gradient(108deg, transparent 30%, rgba(255,255,255,0.62) 50%, transparent 70%);
+      opacity: 0;
+      animation: et-shimmer-in 0.1s ease 2.2s forwards,
+                 et-shimmer    3.2s ease-in-out 2.3s infinite;
+    }
+    @keyframes et-shimmer-in { to { opacity: 1; } }
+    @keyframes et-shimmer    { 0%{transform:translateX(0)} 100%{transform:translateX(520%)} }
+    
+    
+    /* ── Regola per nascondere il loader se non siamo in home-page ── */
+    html.not-home #elistravel-loader {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    </style>
   </head>
   <body>
+    <div id="elistravel-loader">
+    
+      <div class="logo-wrap">
+        <div class="shimmer-overlay"></div>
+    
+        <svg class="logo-svg" viewBox="0 0 484.18 222.57"
+             xmlns="http://www.w3.org/2000/svg"
+             xmlns:xlink="http://www.w3.org/1999/xlink"
+             style="overflow:visible">
+          <defs>
+            <clipPath id="clip-path" transform="translate(-25.68 -146.65)">
+              <rect x="-166.95" y="-41.64" width="841.89" height="595.28" fill="none"/>
+            </clipPath>
+          </defs>
+    
+          <g class="letters-group">
+            <path d="M44.22,306.72c0,10.67-6.46,14.32-18.54,16v7.86h137a4.15,4.15,0,0,0,4.49-3.93c1.68-14.6,4.21-23.87,8.42-32h-6.18L162.71,305c-5.34,8.14-11.8,15.44-31.45,15.44H99.81C83,320.48,77.63,316,77.63,305.6V279.37c-11.72-.65-22.89-1.48-33.41-2.43Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M202.57,308.41c0,16.56,9.55,23.86,22.74,23.86,8.15,0,16.85-2.8,20.22-9.26V318.8c-8.14,2-13.48-.84-13.48-10.67V275.35q-14.94,1.66-29.48,2.77Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M279.78,306.16c0,11.8-4.77,15.44-18,16.85v7.58h65.42V323c-13.2-1.41-18-5.05-18-16.85V263q-14.83,3.14-29.48,5.62Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M396.3,252.81c-6.77-2.3-12.77-4.78-17.32-8.11q-16.1,5.09-32.13,9.3c6.95,13.18,22.9,20.5,39.34,25.77,17.41,5.62,31.17,9.55,31.17,24.15,0,10.38-6.74,19.37-25,19.37-17.69,0-29.49-8.42-36.22-28.36-1.41-3.93-3.65-5.89-7.3-5.89-10.11,0-9.27,16.56-2.53,30.6,9.27,7.3,24.71,12.63,43.24,12.63,30.89,0,56.16-13.75,56.16-38.74,0-27-29.21-34.26-49.42-40.72" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M77.63,181.5c0-10.95,5.61-15.16,17.41-15.16h31.73c18.24,0,27.79,9,35.65,26.11h5.9a235.07,235.07,0,0,1-5.62-33.13c-.28-2.25-1.68-3.09-4.21-3.09H25.68v7.86c12.08,1.68,18.54,5.33,18.54,15.72v29.33c10.45,2.75,21.61,5.49,33.41,8.15Z" transform="translate(-25.68 -146.65)" fill="#f29103"/>
+            <path d="M232.05,156c0-7-3.93-10.39-11.23-9l-36.22,7v7.58c13.76-1.4,18,2.81,18,15.45v59.64q14.55,1.2,29.48,1.87V156Z" transform="translate(-25.68 -146.65)" fill="#f29103"/>
+            <path d="M309.26,211.26c0-7.3-3.93-10.67-11.23-9.27l-35.94,7.3v7.3c13.48-1.12,17.69,2.81,17.69,15.73v6.76q14.66-.32,29.48-1.27Z" transform="translate(-25.68 -146.65)" fill="#f29103"/>
+            <path d="M379.24,212.3a11.09,11.09,0,0,1,6-3c2.93-.42,6.22-4.24,9.55-7.81-.35,0-.7,0-1.06,0-27.16,0-47.88,12.14-50.3,33.16q13.44-1.64,26.89-3.93a25.77,25.77,0,0,1-.17-2.83c0-7.16,3.05-12.59,9.05-15.53" transform="translate(-25.68 -146.65)" fill="#f29103"/>
+          </g>
+    
+          <g class="travel-group">
+            <path d="M47.16,253.71V241.29c0-1.4-.39-1.69-1.26-1.69H43.68v-1.21a10.32,10.32,0,0,0,6.37-5.22.87.87,0,0,1,.87-.53h.58a.7.7,0,0,1,.78.72l-.05,3.19c0,1,.39,1.31,2.61,1.31h3.53v2l-3.53-.19c-2.22-.1-2.61.29-2.61,1.69v11.84c0,2.8.43,4.59,2.8,4.59a3.77,3.77,0,0,0,2.56-.92c.63.63.68,1.16.29,1.45a6.65,6.65,0,0,1-4.59,1.55c-3.72,0-6.13-2-6.13-6.19" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M64.12,255.45V242.74c0-2.22-.73-2.9-3.09-2.71v-1.25l6.23-1.26c1.26-.24,1.93.34,1.93,1.5v1.11c0,.77.63.92,1.21.29a7.9,7.9,0,0,1,5.95-3c3.19,0,4.78,2.08,4.78,4.26A3,3,0,0,1,78,244.91c-3.67,0-1.11-4.73-4.35-4.73-2.42,0-4.45,2.66-4.45,8.7v6.57c0,2,.83,2.66,3.29,2.9v1.3H61v-1.3c2.27-.24,3.09-.87,3.09-2.9" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M82.82,254.63c0-3.87,3.14-6.38,13.1-7.69,1.11-.14,1.5-.48,1.5-1.64v-.87c0-3.48-1.26-5.46-4.35-5.46-5.75,0-1.55,6.28-6.28,6.28a2.32,2.32,0,0,1-2.56-2.51c0-3.72,5.17-5.32,10.19-5.32,5.7,0,8.07,2.27,8.07,8.46v9.91c0,1.69.78,2.17,2.08,1.69v.77a3.53,3.53,0,0,1-3.29,1.69,3.5,3.5,0,0,1-3.81-3.38c0-.53-.39-.63-.78-.1a10,10,0,0,1-7.54,3.48c-3.28,0-6.33-1.54-6.33-5.31m9,2.46a5.4,5.4,0,0,0,5.56-5.51V250c0-1.11-.34-1.69-1.94-1.55-6,.63-7.39,3.09-7.39,5.12s1.16,3.53,3.77,3.53" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M105.3,239.16v-1.3H116v1.3c-2.61.78-2.66,1.45-1.55,4.35l3.87,9.67c.67,1.79,1.2,1.79,1.88,0l1.89-4.88c2.85-7.54,2-8.36-.92-9.14v-1.3h9.13v1.3c-2.85.78-3.62,1.55-4.69,4.35l-6.38,16.14h-3.72l-6.33-16.14c-1.11-2.8-1.83-3.57-3.91-4.35" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M130.82,248.73c0-7.44,5.6-11.31,11.64-11.31,5,0,8.41,2.61,8.41,6.48,0,3.57-3,4.44-8.94,4.73l-4.11.25c-.91,0-1.25.48-1.25,1.54,0,3.58,3.62,6.48,8.12,6.48a7.39,7.39,0,0,0,6-2.61l1,.87c-.92,1.74-4.15,4.78-9.42,4.78-6,0-11.45-4-11.45-11.21m7.05-1.3,2.9-.1c4.16-.24,5.27-1,5.27-3.38,0-2.56-1.26-4.88-4.4-4.88-3.82,0-5.36,3.57-5.36,6.47,0,1.55.48,1.93,1.59,1.89" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M156.72,255.84V233.22c0-2.18-.72-2.9-3.09-2.66v-1.3l6.23-1.21c1.26-.24,1.94.34,1.94,1.55v26.19c0,1.69.91,2.17,2.32,1.83v.73c-.58,1.11-2.08,1.59-3.48,1.59-2.28,0-3.92-1.25-3.92-4.1" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+          </g>
+    
+          <g class="birds-group">
+            <path d="M321.26,181.3c1,2.48-1.32,1.83-2.55,2.07-5.21,1-9.73-.17-16,1.68-5.28,1.56-15.74,9.67-18.73,8.81-3.95-1.15-6-10.25-8.14-13.79a41.24,41.24,0,0,0-22.27-18.28c15.08-15.78,25.93,7.79,34.65,11.72,5.41,2.44,15.27-2.65,22.06-.55,2.05.64,10.49,7.16,11,8.34" transform="translate(-25.68 -146.65)" fill="#f29103"/>
+          </g>
+    
+          <g class="subtitle-group">
+            <path d="M74.21,369l-1.42-3.76H68.2L66.78,369h-2l4.85-12.78h1.68L76.19,369Zm-3.68-10.36h0l-1.64,4.89h3.3Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M83,364.34v-1.71h8.09a6.8,6.8,0,1,1-.88-3.22H88a4.45,4.45,0,0,0-3.59-1.74,4.93,4.93,0,0,0,.07,9.84,4.64,4.64,0,0,0,4.45-3.17Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <polygon points="68.79 222.33 68.79 209.55 75.68 209.55 75.68 211.26 70.65 211.26 70.65 215.03 75.68 215.03 75.68 216.74 70.65 216.74 70.65 220.62 75.68 220.62 75.68 222.33 68.79 222.33" fill="#3287c8"/>
+            <polygon points="87.89 222.33 81.57 212.45 81.53 212.45 81.53 222.33 79.67 222.33 79.67 209.55 81.71 209.55 87.93 219.28 87.96 219.28 87.96 209.55 89.83 209.55 89.83 222.33 87.89 222.33" fill="#3287c8"/>
+            <polygon points="92.92 222.33 92.92 220.62 98.46 211.26 93.21 211.26 93.21 209.55 100.55 209.55 100.55 211.26 95.04 220.62 100.78 220.62 100.78 222.33 92.92 222.33" fill="#3287c8"/>
+            <rect x="103.85" y="209.55" width="1.87" height="12.78" fill="#3287c8"/>
+            <path d="M144,369l-1.42-3.76H138L136.6,369h-2l4.86-12.78h1.67L146,369Zm-3.68-10.36h0l-1.64,4.89H142Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <polygon points="133.06 222.33 127.92 209.55 129.92 209.55 133.63 219.14 137.35 209.55 139.31 209.55 134.19 222.33 133.06 222.33" fill="#3287c8"/>
+            <rect x="142.55" y="209.55" width="1.87" height="12.78" fill="#3287c8"/>
+            <path d="M182.72,369l-1.41-3.76h-4.6L175.3,369h-2l4.85-12.78h1.68L184.71,369ZM179,358.62h0l-1.64,4.89h3.3Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M191.5,364.34v-1.71h8.08a6.8,6.8,0,1,1-.88-3.22h-2.18a4.43,4.43,0,0,0-3.59-1.74,4.93,4.93,0,0,0,.07,9.84,4.66,4.66,0,0,0,4.46-3.17Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M207.58,364.34v-1.71h8.08a6.8,6.8,0,1,1-.88-3.22h-2.17a4.46,4.46,0,0,0-3.6-1.74,4.93,4.93,0,0,0,.07,9.84,4.65,4.65,0,0,0,4.46-3.17Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <rect x="193.56" y="209.55" width="1.87" height="12.78" fill="#3287c8"/>
+            <path d="M239.14,367a4.32,4.32,0,0,1-3.71,2.24,3.83,3.83,0,0,1-3.91-3.81,3.92,3.92,0,0,1,2.45-3.65,3.31,3.31,0,0,1-1.22-2.54,3.21,3.21,0,1,1,6.41,0,3.32,3.32,0,0,1-2.15,3.07l1.7,1.66,1.4-2.82h2L240,365.34l2.57,2.62-1.24,1.26Zm-3.94-4a2.42,2.42,0,0,0-1.81,2.37,2,2,0,0,0,2,2.12,2.75,2.75,0,0,0,2.46-1.83Zm2.09-3.87a1.35,1.35,0,1,0-2.68.07A2.56,2.56,0,0,0,235.7,361c1.23-.63,1.59-1.13,1.59-1.89" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <polygon points="227.76 222.33 227.76 211.26 225.31 211.26 225.31 209.55 232.08 209.55 232.08 211.26 229.62 211.26 229.62 222.33 227.76 222.33" fill="#3287c8"/>
+            <path d="M266.57,369.22a6.63,6.63,0,1,1,6.75-6.72,6.66,6.66,0,0,1-6.75,6.72m4.89-6.59a4.79,4.79,0,1,0-4.79,4.88,4.83,4.83,0,0,0,4.79-4.88" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M283.67,356.2h1.87v8.74a4.29,4.29,0,0,1-8.57,0V356.2h1.86v8.6a2.44,2.44,0,1,0,4.84,0Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M295.78,369l-4.21-5.92h0V369h-1.86V356.2h4.09c3.07,0,4.44,1.62,4.44,4.25a3.66,3.66,0,0,1-3.66,3.76l3.57,4.77Zm-2.88-6.18c2.17,0,3.43-.85,3.43-2.51,0-1.46-1.17-2.38-2.83-2.38h-2v4.89Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M314.56,369.22a6.63,6.63,0,1,1,6.75-6.72,6.66,6.66,0,0,1-6.75,6.72m4.89-6.59a4.79,4.79,0,1,0-4.79,4.88,4.83,4.83,0,0,0,4.79-4.88" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M324.82,369V356.2h3.71c2.75,0,4.49,1.36,4.49,3.87s-1.71,3.87-4.47,3.87h-1.87v5Zm3.71-6.75c1.64,0,2.63-.78,2.63-2.16s-1-2.16-2.65-2.16h-1.83v4.32Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <polygon points="310.52 222.33 310.52 209.55 317.41 209.55 317.41 211.26 312.38 211.26 312.38 215.03 317.41 215.03 317.41 216.74 312.38 216.74 312.38 220.62 317.41 220.62 317.41 222.33 310.52 222.33" fill="#3287c8"/>
+            <path d="M353,369l-4.22-5.92h0V369h-1.87V356.2H351c3.07,0,4.43,1.62,4.43,4.25a3.66,3.66,0,0,1-3.66,3.76l3.58,4.77Zm-2.89-6.18c2.18,0,3.44-.85,3.44-2.51,0-1.46-1.18-2.38-2.83-2.38h-2v4.89Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M367.4,369,366,365.22h-4.59L360,369h-2l4.85-12.78h1.68L369.38,369Zm-3.68-10.36h0L362,363.51h3.3Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <polygon points="347.78 222.33 347.78 211.26 345.32 211.26 345.32 209.55 352.1 209.55 352.1 211.26 349.64 211.26 349.64 222.33 347.78 222.33" fill="#3287c8"/>
+            <path d="M386.59,369.22a6.63,6.63,0,1,1,6.75-6.72,6.66,6.66,0,0,1-6.75,6.72m4.89-6.59a4.79,4.79,0,1,0-4.79,4.88,4.83,4.83,0,0,0,4.79-4.88" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+            <path d="M403,369l-4.21-5.92h0V369h-1.87V356.2h4.09c3.08,0,4.44,1.62,4.44,4.25a3.66,3.66,0,0,1-3.66,3.76L405.3,369Zm-2.88-6.18c2.18,0,3.44-.85,3.44-2.51,0-1.46-1.18-2.38-2.84-2.38h-2v4.89Z" transform="translate(-25.68 -146.65)" fill="#3287c8"/>
+          </g>
+    
+          <g class="airplane-group">
+            <path d="M491,176.63c1.53-.49,3.35-1,4.91-1.36.23-.05.47-.15.7-.19l.18.1c.09,0,.19-.07.28-.08a25,25,0,0,1,3-.07c0,.1.05.19.08.28-.17.26-.58.39-.41.72l-.14,0c-.28.13-.79.22-.58.61-.12.06-.33,0-.43.12a16.49,16.49,0,0,1-3.34,2.13c-.18.34,1.54,1.31,1.91,1.43a1.84,1.84,0,0,0,.46,0,.52.52,0,0,0,.18.1,1.18,1.18,0,0,0,.46,0,7.38,7.38,0,0,0,2-.72,2.67,2.67,0,0,0,.84-.65,2.58,2.58,0,0,0,.42-.11,14.79,14.79,0,0,0,2.71-2.26s.11,0,.14,0c.2-.06.34-.17.34-.39,0,0,.1,0,.14,0a.4.4,0,0,0,.1-.18c.53-.72,1.24-.11,2-.26.38.07,1.71.85,1.9.84.09.5.56.61.75,1.06a5.82,5.82,0,0,1,.24,2,12.83,12.83,0,0,1-1.33,2.33A20.82,20.82,0,0,1,507,183.7c-.24.24-.64.84-.79,1-.59.52-1.91,1.38-2.64,1.93l-.1.18s-.11,0-.14,0a14.09,14.09,0,0,0-2.26,1.68c-.09,0-.19,0-.28.08a27.23,27.23,0,0,0-2.92,2c-.12.08-.27.2-.38.26-.29.15-.71,0-.49.43-.58.31-1.13.59-1.7.92-1,.56-1.91,1.13-2.86,1.7l-.38.25-2.34,1.4c-1,.59-2,1.16-3,1.73-1.18.68-2.36,1.34-3.52,2-.14.08-.27.19-.39.25-.28.16-.71,0-.48.44-.14.05-.28.07-.42.11a4.85,4.85,0,0,1-.09-.87c.41-.07.28-1.15.31-1.6,0-.2,0-.4,0-.6a21.38,21.38,0,0,0,.21-2.43c-.08-.65-.66-.21-.82.07s-.5,1.63-.59,2-.19.45-.07.73c0,0-.12,0-.14,0l-.06.32s0,.1,0,.14c-.37,0-.23.27-.29.48-.28.94-.5,1.89-.76,2.83,0,0,0,.1,0,.14l-.11.18c-.16.64-.4,1.06-.55,1.82l-.07.32a4.6,4.6,0,0,0,0,.46c-.57.16-.38.69-.47,1-.22.86-.41,1.77-.65,2.6s-.63,1.6-.82,2.49a2.31,2.31,0,0,0-.13.64c0,.2-.23.31-.29.51a23.65,23.65,0,0,0-.91,3.89,1.26,1.26,0,0,0,0,.46c-.36.08-.3.32-.38.56a16.4,16.4,0,0,0-.55,2.11,2.39,2.39,0,0,0-.13.64c-.27,0-.31.12-.2.36-.24.4-.11.68-.19,1l-.1.18a6.79,6.79,0,0,0-.19,1c-.41,0-.3.55-.37.85a14.91,14.91,0,0,0-.73,3.38c-.31.17-.44,1-.39,1.31l-.75,1.68c-.08.14,0,.38,0,.49a31.75,31.75,0,0,0-1.12,3.63,1.72,1.72,0,0,0,.08.28,6.54,6.54,0,0,0-.85,3s-.12,0-.14,0l-.06.32a8.94,8.94,0,0,0-.55,3c-.77.48-1.54,1-2.29,1.48-.16.11-.27.42-.33.46-.68.43-1.87.92-2.66,1.34s-1.25.95-2,.86a6.23,6.23,0,0,0-.11-1.48,7.23,7.23,0,0,0,0-2.45c-.21-5.65-.37-11.72-1-17.34,0-.09-.06-.19-.08-.28a7.44,7.44,0,0,0-.05-2.4c0-.09-.07-.19-.08-.28,0-.87,0-1.79,0-2.68-.09-1.33-.35-2.67-.32-4-.24-.13-2.36,1.29-2.75,1.51-.22.12-.45.21-.66.33-1.57.88-3.17,1.72-4.71,2.66l-.28.07a1.84,1.84,0,0,0-.9.56l-.29.07c-1.81.62-3.89,2-5.84,2.67-.26.09-.6,0-.41.41l-.7.2-.25-.09,0,.16-.42.12c-.22.06-.61.08-.66.33-.14,0-.29.08-.42.12-1.52.45-3.19,1.25-4.66,1.73-.28.09-.57.15-.84.24-1.16.37-2.3.75-3.47,1.1-.93.28-1.88.54-2.81.78a29.37,29.37,0,0,1-4.38.92c-.28,0-.52.27-.55-.17,0-.08,0-.26.06-.32.47-.67,1-1.31,1.4-2.05a5.88,5.88,0,0,0,1.08-2.11c.63-.18.3-.3.56-.69a15.52,15.52,0,0,0,1.47-2.36c.09-.19.28-.32.15-.56s-1.09,1-1.28,1.22a19.49,19.49,0,0,0-1.92,2.52c-.51.19-.57.71-.79,1-2.19,2.64-5.78,6.87-7.43,9.74a1.62,1.62,0,0,0-.1.18.38.38,0,0,0-.31.54s-.11,0-.14,0l-.24.22c-.08.08-.15.39-.31.53a10.5,10.5,0,0,1-1,.87c-.3.19-1.06.49-1.47.71s-.67.11-.77.51c-.08,0-.2,0-.28.08a6.89,6.89,0,0,1-2,1c-.23-.11.54-1.43.6-1.67s0-.21.06-.32c.33-.2.22-.45.27-.68,0,0-.05-.1,0-.14l.1-.18a2.31,2.31,0,0,0,.06-.32c.27-.59.57-1.21.84-1.89.53-1.31,1.21-2.61,1.7-3.95.1-.29.43-1.11.33-1.35a8.25,8.25,0,0,1-.87-.38c-1.14-.82-1-2.17-1.16-2.32-.4-.37-4.16-1-4.91-1.07l-.18-.1s-.1,0-.14,0l-.12-.42s.11,0,.15,0l.38-.26a2.29,2.29,0,0,0,.28-.07c1-.5,2.11-1.52,3.22-2,0-.7-.7-.68-1-.92-1.54-1.26-3.53-3.3-5.12-4.33-.11-.34-.23-.34-.54-.3-.08-.11-.08-.37-.26-.47l-1.72-1.25s0-.1,0-.14c-.39-.8-2.45-1.81-2.48-2.4l1.9-1.37.14,0c1-.32,1.53-.78,2.41-1.11.09,0,.19,0,.28-.08.43-.15.95-.28,1.4-.39l.28-.08a.23.23,0,0,0,.18.11l.88-.1a.61.61,0,0,0,.46,0c0,.39.26.23.49.27.41.07,2.28.24,2.39.3s0,.24.08.27a32.13,32.13,0,0,0,3.33.6,1.23,1.23,0,0,0,.46,0c.07.38.33.28.57.35.8.23,1.58.32,2.38.5.11,0,.29,0,.46,0l.18.1c2.15.49,4.38,1.33,6.57,1.36a5,5,0,0,0,3,.07,10.54,10.54,0,0,0,3.19-1c.93-.42,1.75-.87,2.65-1.33.53-.28,1-.6,1.57-.89,1.36-.74,2.71-1.47,4-2.32.07-.05.21,0,.28-.08l.1-.18a4.91,4.91,0,0,0,1-.73,7.68,7.68,0,0,0,1.29-.81c.73-.41,1.5-.8,2.23-1.21,1.27-.73,2.54-1.45,3.76-2.25.29-.19.59-.32.91-.55a11.14,11.14,0,0,0,1.74-.94c.15-.11,0-.29,0-.3s.42-.09.56-.16a.17.17,0,0,0,.1-.18,3.25,3.25,0,0,0,.91-.55,30,30,0,0,0,3.9-2.28c1.84-1.13,3.73-2.22,5.57-3.35,1.21-.73,2.47-1.38,3.62-2.2.12-.08.18-.17.25-.22,2.65-1.31,5.1-3.05,7.66-4.52.08,0,.21,0,.28-.08.29-.17.67-.2.73-.65.35-.17.68-.24,1.08-.45,1.14-.61,2.25-1.35,3.38-2,.57-.33,1.22-.81,1.67-1.07.22-.12.45-.21.67-.33.38-.22.89-.43,1.32-.67l.1-.18c.15-.08.41-.07.57-.15l.38-.26s.1,0,.14,0l.1-.17c.12-.06.3-.06.42-.12.87-.43,1.77-.95,2.65-1.33.17-.08.39-.09.57-.16l.38-.26c.26-.1.57-.13.84-.23l.28-.07c.35-.13.66-.32,1.09-.45" transform="translate(-25.68 -146.65)" fill="#f29103"/>
+            <path d="M435.69,176.46c.45.11,1,.35,1.5.49.66.19,1.33.46,2,.66a30.57,30.57,0,0,0,3.63,1.12c.08,0,.19-.07.28-.08,0,.33.26.25.46.32.9.32,1.8.51,2.71.77a7,7,0,0,0,2.14.62c.17.5.93.41,1.35.53,1.22.35,2.58.6,3.73.94a1.79,1.79,0,0,0,.36.2L457,183c.9.27,1.81.65,2.67.93l.5.16c1.33.42,2.43.75,3.77,1.08.41.1.68.47,1.32.39,0,.33.25.25.46.32a11.53,11.53,0,0,0,2.07.64,1.21,1.21,0,0,1,0,.6,48,48,0,0,0-5.47,3.17c-.95.57-1.91,1.12-2.85,1.69s-1.82,1.1-2.72,1.66a16.21,16.21,0,0,0-1.67,1.06c-.73.2-1.06.73-1.53,1-.14.09-.33.17-.52.29s-.31.22-.39.26c-.51.29-.95.68-1.54.42-.38-.17-.41-.57-.9-.51A68.52,68.52,0,0,0,443,191c-1.84-1.32-3.64-2.67-5.48-4-.83-.6-1.5-1.05-2.4-1.6-.14-.08-.15-.25-.58-.44-.07-.37-.38-.33-.57-.45l-.36-.2c-.9-.6-1.67-1.34-2.62-1.85l-.18-.1c-.1-.34-.24-.34-.54-.3-.94-.92-2.15-1.53-3.1-2.47,0,0-.08-.19,0-.25s.2-.09.23-.11c.33-.14,1.09-.29.86-.69.23-.13.63-.24.95-.41l.1-.18c.08,0,.2,0,.28-.08.87-.49,1.86-1.12,2.75-1.51a2.65,2.65,0,0,1,.58-.3,12.55,12.55,0,0,1,2.78.43" transform="translate(-25.68 -146.65)" fill="#f29103"/>
+          </g>
+        </svg>
+      </div>
+    
+    
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+    (function () {
+      'use strict';
+    
+      // ── Elementi DOM ──────────────────────────────────────────
+      const loader  = document.getElementById('elistravel-loader');
+      const plane   = document.querySelector('.airplane-group');
+      const logoSvg = document.querySelector('.logo-svg');
+    
+      // ── Parametri configurabili ───────────────────────────────
+      const MIN_MS      = 2500;   // tempo minimo loader visibile (ms)
+      const DURATION_MS = 1100;   // durata volo aereo (ms)
+      const DELAY_MS    = 100;    // ritardo iniziale prima del volo (ms)
+      const SCALE_START = 1.45;   // scala aereo all'ingresso (es. 1.45 = 145%)
+      const SCALE_END   = 1.0;    // scala aereo alla posizione finale
+      const TRAIL_MAX   = 40;     // lunghezza scia in frame (~0.67s a 60fps)
+    
+      // ── Traiettoria bezier cubica (offset CSS px dalla posizione naturale) ──
+      // P0 = partenza (fuori schermo sinistra-alto)
+      // P1 = controllo 1 (direzione quasi orizzontale in uscita)
+      // P2 = controllo 2 (fondo della curva, punto più basso)
+      // P3 = arrivo (posizione naturale nel logo = 0,0)
+      const P0 = [-1400, -50];
+      const P1 = [-1000, -52];
+      const P2 = [-250,   110];
+      const P3 = [0,        0];
+    
+      // ── Calcoli derivati ──────────────────────────────────────
+      const SVG_OFFSET_DEG = Math.atan2(P3[1]-P2[1], P3[0]-P2[0]) * 180 / Math.PI;
+    
+      function easeOutQuint(t) { return 1 - Math.pow(1-t, 5); }
+    
+      function bezierPt(t) {
+        const u = 1-t;
+        return [
+          u*u*u*P0[0] + 3*u*u*t*P1[0] + 3*u*t*t*P2[0] + t*t*t*P3[0],
+          u*u*u*P0[1] + 3*u*u*t*P1[1] + 3*u*t*t*P2[1] + t*t*t*P3[1]
+        ];
+      }
+    
+      function bezierTan(t) {
+        const u = 1-t;
+        return [
+          3*u*u*(P1[0]-P0[0]) + 6*u*t*(P2[0]-P1[0]) + 3*t*t*(P3[0]-P2[0]),
+          3*u*u*(P1[1]-P0[1]) + 6*u*t*(P2[1]-P1[1]) + 3*t*t*(P3[1]-P2[1])
+        ];
+      }
+    
+      // ── Canvas scia ───────────────────────────────────────────
+      const wrap = plane.closest('.logo-wrap');
+      const trailCanvas = document.createElement('canvas');
+      trailCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;';
+      wrap.appendChild(trailCanvas);
+      const tCtx = trailCanvas.getContext('2d');
+      trailCanvas.width  = wrap.offsetWidth;
+      trailCanvas.height = wrap.offsetHeight;
+    
+      const wrapRect  = wrap.getBoundingClientRect();
+      const planeRect = plane.getBoundingClientRect();
+      const NAT_CX = planeRect.left + planeRect.width  / 2 - wrapRect.left;
+      const NAT_CY = planeRect.top  + planeRect.height / 2 - wrapRect.top;
+      const trailPts = [];
+    
+      // ── Posizione iniziale (aereo fuori schermo) ──────────────
+      const [ix, iy]   = bezierPt(0);
+      const [idx, idy] = bezierTan(0);
+      const initAngle  = Math.atan2(idy, idx) * 180/Math.PI - SVG_OFFSET_DEG;
+      plane.style.transform = `translate3d(${ix}px,${iy}px,0) rotate(${initAngle}deg) scale(${SCALE_START})`;
+      plane.style.filter    = 'blur(5px)';
+    
+      // ── Loop animazione ───────────────────────────────────────
+      let flyStart = null;
+    
+      function flyFrame(ts) {
+        if (!flyStart) flyStart = ts;
+        const rawT   = Math.min((ts - flyStart) / DURATION_MS, 1);
+        const easedT = easeOutQuint(rawT);
+    
+        const [x, y]   = bezierPt(easedT);
+        const [dx, dy] = bezierTan(easedT);
+        const angle    = Math.atan2(dy, dx) * 180/Math.PI - SVG_OFFSET_DEG;
+        const scale    = SCALE_START + (SCALE_END - SCALE_START) * easedT;
+        const blurPx   = rawT < 0.4 ? (4 * (1 - rawT/0.4)).toFixed(2) : 0;
+    
+        plane.style.transform = `translate3d(${x}px,${y}px,0) rotate(${angle}deg) scale(${scale.toFixed(4)})`;
+        plane.style.filter    = blurPx > 0.1 ? `blur(${blurPx}px)` : 'none';
+    
+        // Scia
+        trailPts.push([NAT_CX + x, NAT_CY + y]);
+        if (trailPts.length > TRAIL_MAX) trailPts.shift();
+        tCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+        const vis = Math.max(0, Math.pow(1 - rawT/0.82, 2));
+        if (trailPts.length >= 2 && vis > 0.01) {
+          const n = trailPts.length;
+          for (let i = 1; i < n; i++) {
+            const seg = i / n;
+            tCtx.beginPath();
+            tCtx.strokeStyle = `rgba(242,145,3,${(seg*seg*vis*0.55).toFixed(3)})`;
+            tCtx.lineWidth   = 1.0 + seg * 4.5;
+            tCtx.lineCap     = 'round';
+            tCtx.lineJoin    = 'round';
+            tCtx.moveTo(trailPts[i-1][0], trailPts[i-1][1]);
+            tCtx.lineTo(trailPts[i][0],   trailPts[i][1]);
+            tCtx.stroke();
+          }
+        }
+    
+        if (rawT < 1) {
+          requestAnimationFrame(flyFrame);
+        } else {
+          tCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+          plane.style.transform  = '';
+          plane.style.filter     = 'none';
+          plane.style.willChange = 'auto';
+          plane.classList.add('hovering');
+          logoSvg.style.animation = 'et-logo-float 4s ease-in-out 0.5s infinite';
+        }
+      }
+    
+      setTimeout(() => requestAnimationFrame(flyFrame), DELAY_MS);
+    
+      // ── Chiusura loader ───────────────────────────────────────
+      const pageStart = Date.now();
+    
+      function hideLoader() {
+        const wait = Math.max(0, MIN_MS - (Date.now() - pageStart));
+        setTimeout(() => {
+          loader.classList.add('hidden');
+        }, wait);
+      }
+    
+      if (document.readyState === 'complete') {
+        hideLoader();
+      } else {
+        window.addEventListener('load', hideLoader);
+      }
+      // Fallback di sicurezza
+      setTimeout(() => loader.classList.add('hidden'), 7000);
+    
+    }());
+    }
+    </script>
   </body>
 </html>

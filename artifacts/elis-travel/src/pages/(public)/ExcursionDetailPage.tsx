@@ -474,6 +474,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
   const [children, setChildren] = useState(0);
   const [paymentType, setPaymentType] = useState<"deposit" | "full">("deposit");
   const [servizioCasa, setServizioCasa] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
     adults: number;
@@ -562,6 +563,10 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
     setErrorMsg(null);
     if (!name.trim() || !email.trim()) {
       setErrorMsg("Nome ed email sono obbligatori.");
+      return;
+    }
+    if (!privacyAccepted) {
+      setErrorMsg("Devi accettare l'Informativa sulla Privacy per poter inviare la richiesta.");
       return;
     }
     try {
@@ -781,9 +786,23 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <span>{errorMsg}</span>
           </div>
-        )}
+          )}
 
-        <Button
+          <div className="pt-2">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={privacyAccepted}
+                onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                className="mt-1 shrink-0 accent-primary" 
+              />
+              <span className="text-xs text-muted-foreground leading-snug">
+                Ho letto e accetto l'<Link href="/privacy-policy" className="text-primary hover:underline" target="_blank">Informativa sulla Privacy</Link>. Acconsento al trattamento dei dati personali. *
+              </span>
+            </label>
+          </div>
+
+          <Button
           type="submit"
           disabled={isPending}
           className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2"
