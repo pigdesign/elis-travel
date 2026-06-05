@@ -10,21 +10,8 @@ const REASONS = [
   "Conoscenza locale e guide esperte"
 ];
 
-const REASON_ICON_COLORS = [
-  "#ffffff",
-  "#ffe0b2",
-  "#fff3e0",
-  "#ffffff",
-  "#ffe0b2",
-];
-
-const REASON_TEXT_COLORS = [
-  "#ffffff",
-  "#fff3e0",
-  "#ffe0b2",
-  "#ffffff",
-  "#fff3e0",
-];
+const REASON_TEXT_COLORS = ["#ffffff", "#fffafa", "#ffffff", "#ffffff", "#ffffff"];
+const REASON_ICON_COLORS = ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#f5f5f5"];
 
 export function WhyChooseUs() {
   return (
@@ -61,9 +48,9 @@ export function WhyChooseUs() {
                   <li key={i} className="flex items-center gap-3">
                     <CheckCircle2
                       className="w-8 h-8 shrink-0"
-                      style={{ color: REASON_ICON_COLORS[i] }}
+                      style={{ color: REASON_ICON_COLORS[i] ?? "#ffffff" }}
                     />
-                    <span className="font-semibold text-lg" style={{ color: REASON_TEXT_COLORS[i] }}>
+                    <span className="font-semibold text-lg" style={{ color: REASON_TEXT_COLORS[i] ?? "#ffffff" }}>
                       {reason}
                     </span>
                   </li>
@@ -75,7 +62,7 @@ export function WhyChooseUs() {
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="rounded-3xl p-10 text-center max-w-md mx-auto lg:ml-auto"
+              className="rounded-3xl p-10 text-center shadow-xl max-w-md mx-auto lg:ml-auto"
               style={{
                 backgroundColor: "transparent",
                 borderWidth: 4,

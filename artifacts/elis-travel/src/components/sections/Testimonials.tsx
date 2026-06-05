@@ -31,7 +31,6 @@ const TESTIMONIALS = [
 export function Testimonials() {
   return (
     <section className="py-32 bg-muted/20 relative overflow-hidden">
-
       <div className="container relative z-10 mx-auto px-4 md:px-8">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
