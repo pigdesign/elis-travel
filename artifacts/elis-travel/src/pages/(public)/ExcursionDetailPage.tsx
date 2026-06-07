@@ -130,8 +130,99 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
     return `Servono almeno ${min} partecipanti per confermare la gita.`;
   })();
 
+  const scheduleDays = excursion?.schedule ?? [];
+  const includedItems = excursion?.included?.split("\n").map((item) => item.trim()).filter(Boolean) ?? [];
+  const excludedItems = excursion?.excluded?.split("\n").map((item) => item.trim()).filter(Boolean) ?? [];
+  const durationLabel =
+    scheduleDays.length > 1 ? `${scheduleDays.length} giorni` : "1 giorno";
+  const participantRangeLabel = excursion?.currentCapacity
+    ? `Min. ${excursion.minThreshold ?? 1} - Max. ${excursion.currentCapacity} persone`
+    : excursion?.minThreshold
+      ? `Minimo ${excursion.minThreshold} partecipanti`
+      : "Gruppo organizzato";
+  const heroBadgeLabel =
+    scheduleDays.length > 1 ? `GITA DI ${scheduleDays.length} GIORNI` : "GITA DI 1 GIORNO";
+  const heroDescription = excursion?.generalInfo
+    ? truncate(excursion.generalInfo.replace(/\s+/g, " "), 180)
+    : `Scopri ${excursion?.name ?? "questa gita"}${excursion?.location ? ` a ${excursion.location}` : ""}. Un'esperienza organizzata da Elis Travel tra natura, tappe curate e panorami da ricordare.`;
+  const mainVisual =
+    scheduleDays.find((day) => day.imageUrl)?.imageUrl ?? excursion?.coverImageUrl ?? null;
+  const remainingSeats = excursion?.currentCapacity
+    ? Math.max(0, (excursion.currentCapacity ?? 0) - (excursion.adherentsCount ?? 0))
+    : undefined;
+  const availabilityClass =
+    !seatsInfo?.available
+      ? "text-red-600"
+      : seatsInfo?.urgent
+        ? "text-accent"
+        : "text-[#14242b]";
+  const quickFacts = [
+    { icon: Clock, label: "Durata", value: durationLabel },
+    { icon: Users, label: "Disponibilita", value: seatsInfo?.label ?? "Su richiesta" },
+    { icon: Bus, label: "Partecipanti", value: participantRangeLabel },
+    { icon: MapPin, label: "Destinazione", value: excursion?.location ?? "Da definire" },
+  ];
+  const priceCard = (
+    <div className="rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_18px_55px_rgba(20,36,43,0.16)] md:p-8">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d7e85]">
+        Quota di partecipazione
+      </div>
+      {priceLabel ? (
+        <>
+          <div
+            className="mt-3 text-4xl font-serif font-bold leading-none text-accent md:text-5xl"
+            data-testid="text-excursion-price"
+          >
+            {priceLabel}
+          </div>
+          <div className="mt-2 text-sm text-muted-foreground">a persona</div>
+        </>
+      ) : (
+        <div className="mt-3 text-base font-medium text-foreground">
+          Quota su richiesta
+        </div>
+      )}
+
+      <div className="my-5 h-px bg-slate-200" />
+
+      <div className="space-y-3 text-sm">
+        <div className="flex items-start gap-3">
+          <Users className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div>
+            <div className="text-xs text-muted-foreground">Disponibilita</div>
+            <div className={`font-semibold ${availabilityClass}`} data-testid="text-excursion-availability">
+              {seatsInfo?.label ?? "Posti su richiesta"}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <Bus className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div>
+            <div className="text-xs text-muted-foreground">Partecipanti</div>
+            <div className="font-semibold text-foreground">{participantRangeLabel}</div>
+          </div>
+        </div>
+      </div>
+
+      {minThresholdLabel && (
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+          {minThresholdLabel}
+        </div>
+      )}
+
+      <a
+        href="#prenota"
+        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
+        data-testid="button-scroll-to-booking"
+      >
+        <Ticket className="h-4 w-4" />
+        Prenota un posto
+      </a>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#f7faf9]">
       <Header />
 
       {isLoading ? (
@@ -157,154 +248,172 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
         </section>
       ) : (
         <>
-          <section className="relative pt-40 pb-16 bg-gradient-to-br from-primary to-primary/80 text-white overflow-hidden">
-            {excursion.coverImageUrl && (
-              <>
-                <div className="absolute inset-0">
-                  <img
-                    src={excursion.coverImageUrl}
-                    alt={excursion.name}
-                    className="w-full h-full object-cover"
-                    data-testid="img-excursion-cover"
-                  />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/85 to-primary/70" />
-              </>
-            )}
-            <div className="relative container mx-auto px-4 md:px-8 max-w-5xl">
-              <Link
-                href="/gite"
-                className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-6"
-                data-testid="link-back-to-excursions"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Torna alle gite
-              </Link>
-              <h1
-                className="text-4xl md:text-5xl font-serif font-bold mb-4"
-                data-testid="text-excursion-name"
-              >
-                {excursion.name}
-              </h1>
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-white/90 text-base">
-                {excursion.location && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
-                    <span data-testid="text-excursion-location">{excursion.location}</span>
-                  </div>
-                )}
-                {dateLabel && (
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="w-5 h-5" />
-                    <span data-testid="text-excursion-date" className="capitalize">
-                      {dateLabel}
-                    </span>
-                  </div>
-                )}
-              </div>
+          <section className="relative overflow-hidden bg-[#f7faf9] pt-32 text-white md:pt-40 lg:pb-16">
+            <div className="absolute inset-0">
+              {excursion.coverImageUrl ? (
+                <img
+                  src={excursion.coverImageUrl}
+                  alt={excursion.name}
+                  className="h-full w-full object-cover"
+                  data-testid="img-excursion-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-[#0b4f54] via-[#007f86] to-[#2bb7c6]" />
+              )}
             </div>
-          </section>
+            <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(8,34,39,0.92)_0%,rgba(0,111,115,0.70)_46%,rgba(0,111,115,0.34)_100%)]" />
+            <div className="absolute inset-x-0 bottom-[-1px] z-10 overflow-hidden leading-none">
+              <svg
+                viewBox="0 0 1440 270"
+                preserveAspectRatio="none"
+                className="h-[220px] w-full md:h-[270px] lg:h-[330px]"
+                aria-hidden="true"
+              >
+                <path
+                  d="M0,120 C220,244 432,238 654,198 C894,154 1077,74 1220,54 C1312,42 1388,50 1440,78 L1440,270 L0,270 Z"
+                  fill="#f7faf9"
+                />
+              </svg>
+            </div>
 
-          <section className="py-12 md:py-16">
-            <div className="container mx-auto px-4 md:px-8 max-w-5xl">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-                    <h2 className="text-xl font-serif font-bold text-foreground mb-4">
-                      La gita in breve
-                    </h2>
-                    <ul className="space-y-3 text-sm">
-                      {dateLabel && (
-                        <li className="flex items-start gap-2.5">
-                          <CalendarDays className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                          <div>
-                            <div className="text-muted-foreground text-xs">Data</div>
-                            <div className="font-medium text-foreground capitalize">
-                              {dateLabel}
-                            </div>
-                          </div>
-                        </li>
-                      )}
-                      {excursion.location && (
-                        <li className="flex items-start gap-2.5">
-                          <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                          <div>
-                            <div className="text-muted-foreground text-xs">Destinazione</div>
-                            <div className="font-medium text-foreground">
-                              {excursion.location}
-                            </div>
-                          </div>
-                        </li>
-                      )}
-                      {seatsInfo && (
-                        <li className="flex items-start gap-2.5">
-                          <Users className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                          <div>
-                            <div className="text-muted-foreground text-xs">Disponibilità</div>
-                            <div
-                              className={
-                                "font-medium " +
-                                (!seatsInfo.available
-                                  ? "text-red-600"
-                                  : seatsInfo.urgent
-                                    ? "text-amber-600"
-                                    : "text-foreground")
-                              }
-                              data-testid="text-excursion-availability"
-                            >
-                              {seatsInfo.label}
-                            </div>
-                          </div>
-                        </li>
-                      )}
-                    </ul>
+            <div className="relative container mx-auto max-w-6xl px-4 md:px-8">
+              <div className="relative grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)] lg:pb-24">
+                <div className="max-w-3xl pb-24 md:pb-28 lg:pb-36">
+                  <Link
+                    href="/gite"
+                    className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white"
+                    data-testid="link-back-to-excursions"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Torna alle gite
+                  </Link>
 
-                    {minThresholdLabel && (
-                      <div className="mt-5 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <span>{minThresholdLabel}</span>
+                  <div className="mb-5 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#dff7f9] backdrop-blur-sm">
+                    {heroBadgeLabel}
+                  </div>
+
+                  <h1
+                    className="max-w-2xl text-4xl font-serif font-bold leading-[0.95] tracking-[-0.03em] md:text-6xl lg:text-7xl"
+                    data-testid="text-excursion-name"
+                  >
+                    {excursion.name}
+                  </h1>
+
+                  <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-white/92 md:text-base">
+                    {excursion.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-[#dff7f9]" />
+                        <span data-testid="text-excursion-location">{excursion.location}</span>
+                      </div>
+                    )}
+                    {dateLabel && (
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-[#dff7f9]" />
+                        <span data-testid="text-excursion-date" className="capitalize">
+                          {dateLabel}
+                        </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Programma */}
-                  {excursion.schedule && excursion.schedule.length > 0 && (
-                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-                      <h2 className="text-xl font-serif font-bold text-foreground mb-5 flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
+                  <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/84 md:text-base">
+                    {heroDescription}
+                  </p>
+                </div>
+
+                <div className="relative z-20 hidden self-end lg:block lg:translate-y-24">
+                  {priceCard}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="relative z-20 pb-10 pt-2 md:pt-4 lg:pt-0">
+            <div className="container mx-auto max-w-6xl px-4 md:px-8">
+              <div className="mx-auto mb-6 max-w-xl lg:hidden">
+                {priceCard}
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)]">
+                <div className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_14px_40px_rgba(20,36,43,0.08)] backdrop-blur-sm md:p-6">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {quickFacts.map((fact) => {
+                      const Icon = fact.icon;
+                      return (
+                        <div key={fact.label} className="flex items-start gap-3 rounded-2xl px-2 py-2">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium uppercase tracking-wide text-[#6d7e85]">
+                              {fact.label}
+                            </div>
+                            <div className="mt-1 text-sm font-semibold text-[#14242b]">
+                              {fact.value}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="hidden lg:block" />
+              </div>
+            </div>
+          </section>
+
+          <section className="pb-20 md:pb-24">
+            <div className="container mx-auto max-w-6xl px-4 md:px-8">
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)]">
+                <div className="space-y-8">
+                  {scheduleDays.length > 0 && (
+                    <div className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8">
+                      <h2 className="mb-5 flex items-center gap-2 text-xl font-serif font-bold text-foreground">
+                        <Clock className="h-5 w-5 text-primary" />
                         Programma della giornata
                       </h2>
-                      <div className="space-y-6">
-                        {excursion.schedule.map((day) => (
+
+                      {mainVisual && (
+                        <div className="mb-6 overflow-hidden rounded-[24px]">
+                          <img
+                            src={mainVisual}
+                            alt={excursion.name}
+                            className="h-56 w-full object-cover md:h-72"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-8">
+                        {scheduleDays.map((day) => (
                           <div key={day.dayNumber}>
-                            <div className="flex items-center gap-2 mb-3">
-                              <span className="text-xs font-bold text-white bg-primary rounded-full px-2.5 py-0.5">
+                            <div className="mb-4 flex flex-wrap items-center gap-3">
+                              <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
                                 Giorno {day.dayNumber}
                               </span>
                               {day.title && (
-                                <span className="text-sm font-semibold text-foreground">{day.title}</span>
+                                <span className="text-base font-semibold text-foreground">
+                                  {day.title}
+                                </span>
                               )}
                             </div>
-                            {day.imageUrl && (
-                              <div className="mb-4 rounded-xl overflow-hidden">
-                                <img
-                                  src={day.imageUrl}
-                                  alt={day.title ?? `Giorno ${day.dayNumber}`}
-                                  className="w-full h-48 object-cover"
-                                />
-                              </div>
-                            )}
-                            <ol className="space-y-2 pl-2 border-l-2 border-primary/20 ml-2">
+
+                            <ol className="relative space-y-6 before:absolute before:bottom-2 before:left-[9px] before:top-2 before:w-px before:bg-accent/35 before:content-['']">
                               {day.activities.map((act, i) => (
-                                <li key={i} className="flex gap-3 pl-4 relative">
-                                  <div className="absolute -left-[9px] top-1 w-3.5 h-3.5 rounded-full bg-white border-2 border-primary/40" />
+                                <li key={i} className="relative flex gap-4 pl-10">
+                                  <div className="absolute left-0 top-1.5 z-10 h-[18px] w-[18px] rounded-full border-4 border-white bg-accent shadow-[0_0_0_1px_rgba(255,122,26,0.22)]" />
                                   {act.time && (
-                                    <span className="text-xs font-mono text-primary shrink-0 mt-0.5 w-10">{act.time}</span>
+                                    <span className="mt-0.5 w-14 shrink-0 text-xs font-bold tracking-[0.12em] text-primary md:text-sm">
+                                      {act.time}
+                                    </span>
                                   )}
-                                  <div>
-                                    <div className="text-sm font-semibold text-foreground">{act.title}</div>
+                                  <div className="min-w-0">
+                                    <div className="text-base font-semibold text-[#14242b]">
+                                      {act.title}
+                                    </div>
                                     {act.description && (
-                                      <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{act.description}</div>
+                                      <div className="mt-1 text-sm leading-relaxed text-[#63757c]">
+                                        {act.description}
+                                      </div>
                                     )}
                                   </div>
                                 </li>
@@ -316,135 +425,108 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                     </div>
                   )}
 
-                  {/* Include / non include */}
-                  {(excursion.included || excursion.excluded) && (
-                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-                      <h2 className="text-xl font-serif font-bold text-foreground mb-5">
-                        La quota
-                      </h2>
-                      <div className="grid sm:grid-cols-2 gap-6">
-                        {excursion.included && (
-                          <div>
-                            <h3 className="text-sm font-semibold text-emerald-700 mb-2 flex items-center gap-1.5">
-                              <Check className="w-4 h-4" /> Include
-                            </h3>
-                            <ul className="space-y-1.5">
-                              {excursion.included.split("\n").filter(Boolean).map((item, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                                  {item.trim()}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {excursion.excluded && (
-                          <div>
-                            <h3 className="text-sm font-semibold text-red-600 mb-2 flex items-center gap-1.5">
-                              <XIcon className="w-4 h-4" /> Non include
-                            </h3>
-                            <ul className="space-y-1.5">
-                              {excursion.excluded.split("\n").filter(Boolean).map((item, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                                  <XIcon className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                                  {item.trim()}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Punti di raccolta */}
                   {excursion.pickupPoints && excursion.pickupPoints.length > 0 && (
-                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-                      <h2 className="text-xl font-serif font-bold text-foreground mb-4 flex items-center gap-2">
-                        <Bus className="w-5 h-5 text-primary" />
+                    <div className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8">
+                      <h2 className="mb-4 flex items-center gap-2 text-xl font-serif font-bold text-foreground">
+                        <Bus className="h-5 w-5 text-primary" />
                         Punti di raccolta
                       </h2>
-                      <ul className="space-y-2 mb-4">
+                      <ul className="mb-4 space-y-3">
                         {excursion.pickupPoints.map((pp) => (
-                          <li key={pp.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-muted/20">
-                            <MapPin className="w-4 h-4 text-accent shrink-0" />
+                          <li
+                            key={pp.id}
+                            className="flex flex-col gap-3 rounded-[22px] border border-slate-200 bg-[#f7faf9] px-4 py-4 md:flex-row md:items-center"
+                          >
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                              <MapPin className="h-5 w-5" />
+                            </div>
                             <div className="flex-1">
-                              <span className="text-sm font-semibold text-foreground">{pp.name}</span>
-                              <span className="text-xs text-muted-foreground ml-1.5">{pp.city}</span>
-                              {pp.address && <span className="text-xs text-muted-foreground ml-1">· {pp.address}</span>}
+                              <div className="text-sm font-semibold text-foreground">
+                                {pp.name}
+                              </div>
+                              <div className="text-xs leading-relaxed text-muted-foreground">
+                                {[pp.city, pp.address].filter(Boolean).join(" · ")}
+                              </div>
                             </div>
                             {pp.pickupTime && (
-                              <div className="flex items-center gap-1 text-sm font-mono text-primary">
-                                <Clock className="w-3.5 h-3.5" />
+                              <div className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm font-semibold text-primary">
+                                <Clock className="h-3.5 w-3.5" />
                                 {pp.pickupTime}
                               </div>
                             )}
                           </li>
                         ))}
                       </ul>
-                      <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 rounded-xl px-3 py-2.5">
-                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        Servizio "sotto casa" disponibile su richiesta — contattaci per organizzare il trasferimento dal tuo indirizzo al punto di partenza.
+                      <div className="flex items-start gap-2 rounded-[20px] bg-primary/5 px-4 py-3 text-xs leading-relaxed text-[#54656c]">
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        Servizio "sotto casa" disponibile su richiesta: contattaci per organizzare il trasferimento dal tuo indirizzo al punto di partenza.
                       </div>
-                    </div>
-                  )}
-
-                  {/* Info utili */}
-                  {excursion.generalInfo && (
-                    <div className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-                      <h2 className="text-xl font-serif font-bold text-foreground mb-4 flex items-center gap-2">
-                        <Info className="w-5 h-5 text-primary" />
-                        Informazioni utili
-                      </h2>
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-                        {excursion.generalInfo}
-                      </p>
                     </div>
                   )}
 
                   <BookingCard
                     excursionId={excursion.id}
                     seatsAvailable={seatsInfo?.available ?? true}
-                    remainingSeats={
-                      excursion.currentCapacity
-                        ? Math.max(0, (excursion.currentCapacity ?? 0) - (excursion.adherentsCount ?? 0))
-                        : undefined
-                    }
+                    remainingSeats={remainingSeats}
                     priceLabel={priceLabel}
                     hasPickupPoints={!!(excursion.pickupPoints && excursion.pickupPoints.length > 0)}
                   />
                 </div>
 
-                <aside className="lg:col-span-1">
-                  <div className="bg-white border border-border rounded-2xl p-6 shadow-sm sticky top-24 space-y-5">
-                    {priceLabel ? (
-                      <div>
-                        <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                          Quota di partecipazione
-                        </div>
-                        <div
-                          className="text-3xl font-serif font-bold text-accent"
-                          data-testid="text-excursion-price"
-                        >
-                          {priceLabel}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">a persona</div>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">
-                        Quota su richiesta — contattaci per il dettaglio.
-                      </div>
-                    )}
+                <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+                  {includedItems.length > 0 && (
+                    <div className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)]">
+                      <h2 className="mb-4 text-xl font-serif font-bold text-foreground">
+                        La quota include
+                      </h2>
+                      <ul className="space-y-3">
+                        {includedItems.map((item, i) => (
+                          <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-[#394b52]">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-                    <a
-                      href="#prenota"
-                      className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-md bg-accent text-accent-foreground hover:bg-accent/90 font-medium text-sm"
-                      data-testid="button-scroll-to-booking"
-                    >
-                      <Ticket className="w-4 h-4" />
-                      Prenota un posto
-                    </a>
-                  </div>
+                  {excludedItems.length > 0 && (
+                    <div className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)]">
+                      <h2 className="mb-4 text-xl font-serif font-bold text-foreground">
+                        La quota non include
+                      </h2>
+                      <ul className="space-y-3">
+                        {excludedItems.map((item, i) => (
+                          <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-[#394b52]">
+                            <XIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#ff7a1a]" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {excursion.generalInfo && (
+                    <div className="overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#0b5b60_0%,#006f73_100%)] p-6 text-white shadow-[0_18px_50px_rgba(20,36,43,0.16)]">
+                      <h2 className="mb-4 flex items-center gap-2 text-xl font-serif font-bold">
+                        <Info className="h-5 w-5 text-[#dff7f9]" />
+                        Informazioni utili
+                      </h2>
+                      <p className="text-sm leading-relaxed text-white/88 whitespace-pre-line">
+                        {excursion.generalInfo}
+                      </p>
+
+                      {mainVisual && (
+                        <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10">
+                          <img
+                            src={mainVisual}
+                            alt={`Panorama di ${excursion.name}`}
+                            className="h-52 w-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </aside>
               </div>
             </div>
@@ -497,16 +579,16 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
     return (
       <div
         id="prenota"
-        className="bg-red-50 border border-red-200 rounded-2xl p-6 md:p-8"
+        className="rounded-[30px] border border-red-200 bg-red-50 p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8"
         data-testid="card-booking-soldout"
       >
-        <h2 className="text-xl font-serif font-bold text-red-800 mb-2 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
+        <h2 className="mb-2 flex items-center gap-2 text-xl font-serif font-bold text-red-800">
+          <AlertCircle className="h-5 w-5" />
           Posti esauriti
         </h2>
-        <p className="text-red-700 text-sm leading-relaxed">
-          Tutti i posti per questa gita sono già stati prenotati. Contattaci per essere
-          inserito nella lista d'attesa.
+        <p className="text-sm leading-relaxed text-red-700">
+          Tutti i posti per questa gita sono gia stati prenotati. Contattaci per essere
+          inserito in lista d'attesa o verificare eventuali nuove disponibilita.
         </p>
       </div>
     );
@@ -516,15 +598,15 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
     return (
       <div
         id="prenota"
-        className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 md:p-8"
+        className="rounded-[30px] border border-emerald-200 bg-emerald-50 p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8"
         data-testid="card-booking-success"
       >
-        <h2 className="text-xl font-serif font-bold text-emerald-800 mb-3 flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5" />
+        <h2 className="mb-3 flex items-center gap-2 text-xl font-serif font-bold text-emerald-800">
+          <CheckCircle2 className="h-5 w-5" />
           Prenotazione registrata
         </h2>
-        <p className="text-emerald-900 text-sm mb-3">{confirmation.message}</p>
-        <ul className="text-sm text-emerald-900 space-y-1 mb-4">
+        <p className="mb-3 text-sm text-emerald-900">{confirmation.message}</p>
+        <ul className="mb-4 space-y-1 text-sm text-emerald-900">
           <li>
             <strong>Adulti:</strong> {confirmation.adults}
           </li>
@@ -549,7 +631,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
             setChildren(0);
             setPaymentType("deposit");
           }}
-          className="text-sm text-emerald-800 underline hover:text-emerald-900"
+          className="text-sm font-medium text-emerald-800 underline hover:text-emerald-900"
           data-testid="button-new-booking"
         >
           Effettua una nuova prenotazione
@@ -599,21 +681,21 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
   return (
     <div
       id="prenota"
-      className="bg-white border border-border rounded-2xl p-6 md:p-8 shadow-sm"
+      className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8"
       data-testid="card-booking-form"
     >
-      <h2 className="text-xl font-serif font-bold text-foreground mb-1 flex items-center gap-2">
-        <Ticket className="w-5 h-5 text-accent" />
+      <h2 className="mb-1 flex items-center gap-2 text-xl font-serif font-bold text-foreground">
+        <Ticket className="h-5 w-5 text-accent" />
         Prenota un posto
       </h2>
-      <p className="text-muted-foreground text-sm mb-5">
+      <p className="mb-6 text-sm text-muted-foreground">
         Compila il form per riservare il tuo posto. Scegli se versare un acconto o pagare
         l'intero importo.
       </p>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label htmlFor="bk-name" className="block text-xs font-medium text-foreground mb-1">
+            <label htmlFor="bk-name" className="mb-1.5 block text-xs font-semibold text-foreground">
               Nome e cognome *
             </label>
             <input
@@ -622,12 +704,12 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
               data-testid="input-booking-name"
             />
           </div>
           <div>
-            <label htmlFor="bk-email" className="block text-xs font-medium text-foreground mb-1">
+            <label htmlFor="bk-email" className="mb-1.5 block text-xs font-semibold text-foreground">
               Email *
             </label>
             <input
@@ -636,12 +718,12 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
               data-testid="input-booking-email"
             />
           </div>
           <div>
-            <label htmlFor="bk-phone" className="block text-xs font-medium text-foreground mb-1">
+            <label htmlFor="bk-phone" className="mb-1.5 block text-xs font-semibold text-foreground">
               Telefono
             </label>
             <input
@@ -649,12 +731,12 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
               data-testid="input-booking-phone"
             />
           </div>
           <div>
-            <label htmlFor="bk-adults" className="block text-xs font-medium text-foreground mb-1">
+            <label htmlFor="bk-adults" className="mb-1.5 block text-xs font-semibold text-foreground">
               Adulti (≥12 anni) *
             </label>
             <input
@@ -673,12 +755,12 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
                   setAdults(v);
                 }
               }}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
               data-testid="input-booking-adults"
             />
           </div>
           <div>
-            <label htmlFor="bk-children" className="block text-xs font-medium text-foreground mb-1">
+            <label htmlFor="bk-children" className="mb-1.5 block text-xs font-semibold text-foreground">
               Bambini (&lt;12 anni)
             </label>
             <input
@@ -696,23 +778,23 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
                   setChildren(v);
                 }
               }}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
               data-testid="input-booking-children"
             />
           </div>
         </div>
 
         <div>
-          <div className="block text-xs font-medium text-foreground mb-2">
+          <div className="mb-2 block text-xs font-semibold text-foreground">
             Modalità di pagamento *
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label
               className={
-                "flex items-start gap-2 p-3 border rounded-md cursor-pointer transition-colors " +
+                "flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors " +
                 (paymentType === "deposit"
-                  ? "border-accent bg-accent/5"
-                  : "border-border hover:bg-muted/30")
+                  ? "border-accent bg-accent/5 shadow-[0_8px_24px_rgba(255,122,26,0.10)]"
+                  : "border-slate-200 hover:bg-[#f7faf9]")
               }
               data-testid="radio-payment-deposit"
             >
@@ -722,10 +804,10 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
                 value="deposit"
                 checked={paymentType === "deposit"}
                 onChange={() => setPaymentType("deposit")}
-                className="mt-1"
+                className="mt-1 accent-accent"
               />
               <div>
-                <div className="font-medium text-sm text-foreground">Acconto</div>
+                <div className="text-sm font-semibold text-foreground">Acconto</div>
                 <div className="text-xs text-muted-foreground">
                   Versa un acconto e salda alla partenza
                 </div>
@@ -733,10 +815,10 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
             </label>
             <label
               className={
-                "flex items-start gap-2 p-3 border rounded-md cursor-pointer transition-colors " +
+                "flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors " +
                 (paymentType === "full"
-                  ? "border-accent bg-accent/5"
-                  : "border-border hover:bg-muted/30")
+                  ? "border-accent bg-accent/5 shadow-[0_8px_24px_rgba(255,122,26,0.10)]"
+                  : "border-slate-200 hover:bg-[#f7faf9]")
               }
               data-testid="radio-payment-full"
             >
@@ -746,10 +828,10 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
                 value="full"
                 checked={paymentType === "full"}
                 onChange={() => setPaymentType("full")}
-                className="mt-1"
+                className="mt-1 accent-accent"
               />
               <div>
-                <div className="font-medium text-sm text-foreground">Importo completo</div>
+                <div className="text-sm font-semibold text-foreground">Importo completo</div>
                 <div className="text-xs text-muted-foreground">
                   {priceLabel ? `Paghi subito ${priceLabel} a persona` : "Paghi subito l'intera quota"}
                 </div>
@@ -759,7 +841,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
         </div>
 
         {hasPickupPoints && (
-          <label className="flex items-start gap-3 cursor-pointer group">
+          <label className="group flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-[#f7faf9] px-4 py-4">
             <input
               type="checkbox"
               checked={servizioCasa}
@@ -768,7 +850,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
               data-testid="checkbox-servizio-casa"
             />
             <div>
-              <span className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
+              <span className="text-sm font-semibold text-foreground transition-colors group-hover:text-accent">
                 Richiedo il servizio di trasporto da casa
               </span>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -780,32 +862,32 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
 
         {errorMsg && (
           <div
-            className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700"
+            className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
             data-testid="text-booking-error"
           >
-            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <span>{errorMsg}</span>
           </div>
-          )}
+        )}
 
-          <div className="pt-2">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
+        <div className="pt-1">
+          <label className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
                 checked={privacyAccepted}
                 onChange={(e) => setPrivacyAccepted(e.target.checked)}
-                className="mt-1 shrink-0 accent-primary" 
+                className="mt-1 shrink-0 accent-accent"
               />
               <span className="text-xs text-muted-foreground leading-snug">
                 Ho letto e accetto l'<Link href="/privacy-policy" className="text-primary hover:underline" target="_blank">Informativa sulla Privacy</Link>. Acconsento al trattamento dei dati personali. *
               </span>
-            </label>
-          </div>
+          </label>
+        </div>
 
-          <Button
+        <Button
           type="submit"
           disabled={isPending}
-          className="w-full bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center justify-center gap-2"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-accent-foreground hover:bg-accent/90"
           data-testid="button-submit-booking"
         >
           {isPending ? (
@@ -820,7 +902,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
             </>
           )}
         </Button>
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-center text-xs text-muted-foreground">
           Il pagamento avverrà offline: ti contatteremo per perfezionarlo.
         </p>
       </form>
