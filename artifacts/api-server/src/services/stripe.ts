@@ -1,9 +1,11 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY environment variable is required.");
+const key = process.env.STRIPE_SECRET_KEY;
+
+if (!key) {
+  console.warn("[stripe] STRIPE_SECRET_KEY non impostata — pagamenti disabilitati.");
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-05-27.dahlia",
-});
+export const stripe = key
+  ? new Stripe(key, { apiVersion: "2026-05-27.dahlia" })
+  : null;

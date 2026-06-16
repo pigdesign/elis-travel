@@ -580,6 +580,18 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     }
 
     // Create or retrieve Stripe Customer, then SetupIntent
+    if (!stripe) {
+      // Stripe not configured — return booking confirmed without card step
+      res.status(201).json({
+        id: result.booking.id,
+        seats: result.booking.seats,
+        adults: result.booking.adults,
+        children: result.booking.children,
+        paymentStatus: result.booking.paymentStatus,
+        message: "Prenotazione registrata.",
+      });
+      return;
+    }
     let stripeCustomerId: string;
     try {
       const existingCustomers = await stripe.customers.list({ email: normalizedEmail, limit: 1 });
@@ -680,6 +692,11 @@ router.post("/excursions/:id/book/:bookingId/card-confirmed", async (req, res) =
     // Already confirmed (idempotent)
     if (booking.paymentStatus === "card_saved") {
       res.json({ ok: true });
+      return;
+    }
+
+    if (!stripe) {
+      res.status(503).json({ error: "Pagamenti non configurati." });
       return;
     }
 
@@ -950,7 +967,7 @@ router.post("/excursions/bookings/:id/cancel", async (req, res) => {
     });
 
     // Detach Stripe PaymentMethod if card was saved (fire-and-forget)
-    if (result.kind === "ok" && result.booking.stripePaymentMethodId) {
+    if (result.kind === "ok" && result.booking.stripePaymentMethodId && stripe) {
       stripe.paymentMethods.detach(result.booking.stripePaymentMethodId).catch((err) => {
         logger.warn({ err, bookingId: result.booking.id }, "Failed to detach Stripe PaymentMethod on cancellation");
       });

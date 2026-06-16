@@ -290,6 +290,11 @@ async function processConfirmedExcursion(excursion: typeof excursionsTable.$infe
       ),
     );
 
+  if (!stripe) {
+    console.warn("[stripe] Addebiti saltati — STRIPE_SECRET_KEY non configurata.");
+    return;
+  }
+
   for (const booking of bookings) {
     if (!booking.stripeCustomerId || !booking.stripePaymentMethodId || !booking.amountDueCents) {
       continue;
@@ -392,7 +397,7 @@ async function processCancelledExcursion(excursion: typeof excursionsTable.$infe
     );
 
   for (const booking of bookings) {
-    if (booking.stripePaymentMethodId) {
+    if (booking.stripePaymentMethodId && stripe) {
       stripe.paymentMethods.detach(booking.stripePaymentMethodId).catch((err) => {
         logger.warn({ err, bookingId: booking.id }, "Failed to detach PaymentMethod on excursion cancellation");
       });

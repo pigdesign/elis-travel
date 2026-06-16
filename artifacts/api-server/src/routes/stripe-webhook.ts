@@ -9,6 +9,10 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
   const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  if (!stripe) {
+    res.status(503).send("Stripe not configured");
+    return;
+  }
   if (!webhookSecret) {
     logger.error("STRIPE_WEBHOOK_SECRET not set");
     res.status(500).send("Webhook secret not configured");
