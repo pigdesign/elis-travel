@@ -4,6 +4,7 @@ import { leadsTable, leadNotesTable, offersTable, offerImagesTable, excursionsTa
 import { eq, and, ne, desc, sql, or, asc } from "drizzle-orm";
 import {
   dispatchExcursionBookingCancellationEmails,
+  dispatchExcursionBookingEmails,
   dispatchCardSavedEmail,
   buildCardSavedCustomerEmail,
 } from "../services/excursion-booking-emails";
@@ -13,6 +14,12 @@ import { stripe } from "../services/stripe";
 import { logger } from "../lib/logger";
 
 const router = Router();
+
+const CARD_PAYMENTS_SETTING_KEY = "excursion_card_payments_enabled";
+
+function isCardPaymentEnabled(value: string | null | undefined): boolean {
+  return value !== "false";
+}
 
 function slugify(input: string): string {
   return input
@@ -472,12 +479,22 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Load deposit_percentage setting
+    // Load booking payment settings
     const settingRows = await db
       .select({ key: settingsTable.key, value: settingsTable.value })
       .from(settingsTable)
-      .where(eq(settingsTable.key, "deposit_percentage"));
-    const depositPct = settingRows[0]?.value ? Number(settingRows[0].value) : null;
+      .where(
+        sql`${settingsTable.key} IN ('deposit_percentage', ${CARD_PAYMENTS_SETTING_KEY})`,
+      );
+    const settingMap = Object.fromEntries(settingRows.map((row) => [row.key, row.value]));
+    const depositPct = settingMap.deposit_percentage ? Number(settingMap.deposit_percentage) : null;
+    const cardPaymentsEnabled = isCardPaymentEnabled(settingMap[CARD_PAYMENTS_SETTING_KEY]);
+    const useCardPayment = cardPaymentsEnabled && Boolean(stripe);
+    const paymentStatus = useCardPayment
+      ? "pending_card"
+      : paymentType === "full"
+        ? "full_requested"
+        : "deposit_requested";
 
     const result = await db.transaction(async (tx) => {
       const updated = await tx
@@ -552,13 +569,27 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
           seats: seatsNum,
           adults: adultsNum,
           children: childrenNum,
-          paymentStatus: "pending_card",
+          paymentStatus,
           servizioCasa: servizioCasa === true,
-          amountDueCents,
+          amountDueCents: useCardPayment ? amountDueCents : null,
         })
         .returning();
 
-      return { kind: "ok" as const, booking, excursion, amountDueCents };
+      const [excursionDetails] = useCardPayment
+        ? [excursion]
+        : await tx
+            .select({
+              id: excursionsTable.id,
+              name: excursionsTable.name,
+              location: excursionsTable.location,
+              date: excursionsTable.date,
+              pricePerPerson: excursionsTable.pricePerPerson,
+            })
+            .from(excursionsTable)
+            .where(eq(excursionsTable.id, id))
+            .limit(1);
+
+      return { kind: "ok" as const, booking, excursion: excursionDetails, amountDueCents };
     });
 
     if (result.kind === "notfound") {
@@ -579,26 +610,56 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       return;
     }
 
-    // Create or retrieve Stripe Customer, then SetupIntent
-    if (!stripe) {
-      // Stripe not configured — return booking confirmed without card step
+    if (!useCardPayment) {
+      if (result.excursion) {
+        dispatchExcursionBookingEmails({
+          bookingId: result.booking.id,
+          customerName: customerName.trim(),
+          customerEmail: normalizedEmail,
+          customerPhone: phone?.trim() || null,
+          seats: seatsNum,
+          adults: adultsNum,
+          children: childrenNum,
+          servizioCasa: result.booking.servizioCasa,
+          paymentType: paymentType as "deposit" | "full",
+          excursion: {
+            id: result.excursion.id,
+            name: result.excursion.name,
+            location: result.excursion.location,
+            date: result.excursion.date,
+            pricePerPerson: result.excursion.pricePerPerson,
+          },
+        });
+      }
+
       res.status(201).json({
         id: result.booking.id,
         seats: result.booking.seats,
         adults: result.booking.adults,
         children: result.booking.children,
         paymentStatus: result.booking.paymentStatus,
-        message: "Prenotazione registrata.",
+        message:
+          paymentStatus === "full_requested"
+            ? "Richiesta ricevuta. Ti contatteremo a breve con gli estremi per il pagamento completo."
+            : "Richiesta ricevuta. Ti contatteremo a breve con gli estremi per versare l'acconto.",
       });
       return;
     }
+
+    // Create or retrieve Stripe Customer, then SetupIntent
+    const stripeClient = stripe;
+    if (!stripeClient) {
+      res.status(503).json({ error: "Pagamenti non configurati." });
+      return;
+    }
+
     let stripeCustomerId: string;
     try {
-      const existingCustomers = await stripe.customers.list({ email: normalizedEmail, limit: 1 });
+      const existingCustomers = await stripeClient.customers.list({ email: normalizedEmail, limit: 1 });
       if (existingCustomers.data.length > 0) {
         stripeCustomerId = existingCustomers.data[0].id;
       } else {
-        const customer = await stripe.customers.create({
+        const customer = await stripeClient.customers.create({
           email: normalizedEmail,
           name: customerName.trim(),
           metadata: { source: "elis-travel" },
@@ -606,7 +667,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         stripeCustomerId = customer.id;
       }
 
-      const setupIntent = await stripe.setupIntents.create({
+      const setupIntent = await stripeClient.setupIntents.create({
         customer: stripeCustomerId,
         usage: "off_session",
         metadata: { bookingId: result.booking.id },

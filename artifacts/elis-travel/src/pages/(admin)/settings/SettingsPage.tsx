@@ -225,6 +225,7 @@ export function SettingsPage() {
   const [bank, setBank] = useState("");
   const [notes, setNotes] = useState("");
   const [depositPercentage, setDepositPercentage] = useState("");
+  const [cardPaymentsEnabled, setCardPaymentsEnabled] = useState(true);
   const [saved, setSaved] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -235,6 +236,7 @@ export function SettingsPage() {
       setBank(settings.payment_bank ?? "");
       setNotes(settings.payment_notes ?? "");
       setDepositPercentage(settings.deposit_percentage ?? "");
+      setCardPaymentsEnabled(settings.excursion_card_payments_enabled !== "false");
     }
   }, [settings]);
 
@@ -254,6 +256,7 @@ export function SettingsPage() {
           payment_bank: bank.trim(),
           payment_notes: notes.trim(),
           deposit_percentage: pct,
+          excursion_card_payments_enabled: cardPaymentsEnabled ? "true" : "false",
         },
       });
     } catch {
@@ -342,6 +345,26 @@ export function SettingsPage() {
             </p>
           </div>
           <div>
+            <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+              <input
+                type="checkbox"
+                checked={cardPaymentsEnabled}
+                onChange={(e) => setCardPaymentsEnabled(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+                data-testid="checkbox-settings-card-payments"
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Richiedi carta per le prenotazioni gite
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Se disattivato, le prenotazioni vengono registrate offline e il cliente riceve le istruzioni di pagamento come prima.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-foreground mb-1">
               Percentuale acconto gite (%)
             </label>
@@ -357,7 +380,7 @@ export function SettingsPage() {
               data-testid="input-settings-deposit-percentage"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Se impostata, i clienti che scelgono "Acconto" pagano questa percentuale del totale con carta. Il saldo si salda il giorno della gita.
+              Se i pagamenti con carta sono attivi, questa percentuale viene addebitata alla conferma della gita. Se sono disattivati, resta solo un riferimento per le istruzioni offline.
             </p>
           </div>
 

@@ -11,6 +11,7 @@ const SETTING_KEYS = [
   "payment_bank",
   "payment_notes",
   "deposit_percentage",
+  "excursion_card_payments_enabled",
 ] as const;
 
 type SettingKey = (typeof SETTING_KEYS)[number];

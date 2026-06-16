@@ -12,4 +12,5 @@ export interface SettingsInput {
   payment_bank?: string;
   payment_notes?: string;
   deposit_percentage?: string;
+  excursion_card_payments_enabled?: string;
 }

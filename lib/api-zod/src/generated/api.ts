@@ -1416,6 +1416,7 @@ export const GetAdminSettingsResponse = zod.object({
   payment_bank: zod.string().nullish(),
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
+  excursion_card_payments_enabled: zod.string().nullish(),
 });
 
 /**
@@ -1427,6 +1428,7 @@ export const UpdateAdminSettingsBody = zod.object({
   payment_bank: zod.string().optional(),
   payment_notes: zod.string().optional(),
   deposit_percentage: zod.string().optional(),
+  excursion_card_payments_enabled: zod.string().optional(),
 });
 
 export const UpdateAdminSettingsResponse = zod.object({
@@ -1435,4 +1437,5 @@ export const UpdateAdminSettingsResponse = zod.object({
   payment_bank: zod.string().nullish(),
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
+  excursion_card_payments_enabled: zod.string().nullish(),
 });

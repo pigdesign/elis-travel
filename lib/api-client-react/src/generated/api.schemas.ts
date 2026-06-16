@@ -562,6 +562,7 @@ export interface SettingsResponse {
   payment_bank?: string | null;
   payment_notes?: string | null;
   deposit_percentage?: string | null;
+  excursion_card_payments_enabled?: string | null;
 }
 
 export interface SettingsInput {
@@ -570,6 +571,7 @@ export interface SettingsInput {
   payment_bank?: string;
   payment_notes?: string;
   deposit_percentage?: string;
+  excursion_card_payments_enabled?: string;
 }
 
 export interface PickupLocation {

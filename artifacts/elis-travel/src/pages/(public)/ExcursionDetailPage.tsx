@@ -682,6 +682,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "stripe" | "done">("form");
+  const [successMode, setSuccessMode] = useState<"card" | "offline">("card");
   const [stripeData, setStripeData] = useState<{
     bookingId: string;
     clientSecret: string;
@@ -728,9 +729,15 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
     setPaymentType("deposit");
     setPrivacyAccepted(false);
     setErrorMsg(null);
+    setSuccessMode("card");
   };
 
   if (step === "done") {
+    const successText =
+      successMode === "card"
+        ? "La tua carta è stata salvata. Riceverai una email di conferma. Verrai addebitato solo quando la gita raggiunge il numero minimo e viene confermata."
+        : "La tua richiesta è stata registrata. Riceverai una email con le istruzioni per completare il pagamento offline.";
+
     return (
       <div
         id="prenota"
@@ -742,7 +749,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
           Prenotazione confermata!
         </h2>
         <p className="mb-4 text-sm text-emerald-900">
-          La tua carta è stata salvata. Riceverai una email di conferma. Verrai addebitato solo quando la gita raggiunge il numero minimo e viene confermata.
+          {successText}
         </p>
         <button
           type="button"
@@ -781,6 +788,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
           onBack={() => setStep("form")}
           onSuccess={() => {
             void queryClient.invalidateQueries({ queryKey: getGetPublicExcursionQueryKey(excursionId) });
+            setSuccessMode("card");
             setStep("done");
           }}
         />
@@ -827,6 +835,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
         setStep("stripe");
       } else {
         // Fallback: no Stripe configured
+        setSuccessMode("offline");
         setStep("done");
       }
     } catch (err: unknown) {
@@ -968,7 +977,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
               <div>
                 <div className="text-sm font-semibold text-foreground">Acconto</div>
                 <div className="text-xs text-muted-foreground">
-                  Paga solo l'acconto ora, il saldo si salda il giorno della gita
+                  Prenota con acconto; il saldo si salda il giorno della gita
                 </div>
               </div>
             </label>
@@ -992,7 +1001,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
               <div>
                 <div className="text-sm font-semibold text-foreground">Importo completo</div>
                 <div className="text-xs text-muted-foreground">
-                  {priceLabel ? `Paghi subito ${priceLabel} a persona` : "Paghi subito l'intera quota"}
+                  {priceLabel ? `Quota completa: ${priceLabel} a persona` : "Prenota con quota completa"}
                 </div>
               </div>
             </label>

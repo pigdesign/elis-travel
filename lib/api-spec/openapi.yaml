@@ -2779,6 +2779,9 @@ components:
         deposit_percentage:
           type: string
           nullable: true
+        excursion_card_payments_enabled:
+          type: string
+          nullable: true
     SettingsInput:
       type: object
       properties:
@@ -2791,6 +2794,8 @@ components:
         payment_notes:
           type: string
         deposit_percentage:
+          type: string
+        excursion_card_payments_enabled:
           type: string
     ScheduleActivity:
       type: object
