@@ -23,4 +23,5 @@ export interface PublicExcursionDetail {
   excluded?: string | null;
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
+  cardPaymentsEnabled?: boolean;
 }

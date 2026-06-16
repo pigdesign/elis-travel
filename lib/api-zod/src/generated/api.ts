@@ -1386,6 +1386,7 @@ export const GetPublicExcursionResponse = zod.object({
       }),
     )
     .nullish(),
+  cardPaymentsEnabled: zod.boolean().optional(),
 });
 
 /**

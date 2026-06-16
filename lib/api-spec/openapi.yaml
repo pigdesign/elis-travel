@@ -2502,6 +2502,8 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/PublicPickupPoint"
+        cardPaymentsEnabled:
+          type: boolean
       required: [id, name]
     PublicPickupPoint:
       type: object

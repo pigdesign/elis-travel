@@ -476,6 +476,7 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                     remainingSeats={remainingSeats}
                     priceLabel={priceLabel}
                     hasPickupPoints={!!(excursion.pickupPoints && excursion.pickupPoints.length > 0)}
+                    cardPaymentsEnabled={excursion.cardPaymentsEnabled === true}
                   />
                 </div>
 
@@ -551,6 +552,7 @@ interface BookingCardProps {
   remainingSeats?: number;
   priceLabel: string | null;
   hasPickupPoints?: boolean;
+  cardPaymentsEnabled: boolean;
 }
 
 // Inner component that uses Stripe hooks (must be inside Elements)
@@ -670,7 +672,14 @@ function StripeCardStep({
   );
 }
 
-function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, hasPickupPoints }: BookingCardProps) {
+function BookingCard({
+  excursionId,
+  seatsAvailable,
+  remainingSeats,
+  priceLabel,
+  hasPickupPoints,
+  cardPaymentsEnabled,
+}: BookingCardProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -1066,12 +1075,14 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
           ) : (
             <>
               <Ticket className="w-4 h-4" />
-              Avanti: inserisci carta
+              {cardPaymentsEnabled ? "Avanti: inserisci carta" : "Invia prenotazione"}
             </>
           )}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          La carta verrà addebitata solo se la gita raggiunge il numero minimo e viene confermata. Se non parte, nessun addebito.
+          {cardPaymentsEnabled
+            ? "La carta verrà addebitata solo se la gita raggiunge il numero minimo e viene confermata. Se non parte, nessun addebito."
+            : "Riceverai una email con le istruzioni per completare il pagamento offline."}
         </p>
       </form>
     </div>

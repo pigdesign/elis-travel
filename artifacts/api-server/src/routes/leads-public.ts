@@ -295,8 +295,18 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       .where(eq(excursionPickupPointsTable.excursionId, id))
       .orderBy(asc(excursionPickupPointsTable.sortOrder));
 
+    const [cardPaymentSetting] = await db
+      .select({ value: settingsTable.value })
+      .from(settingsTable)
+      .where(eq(settingsTable.key, CARD_PAYMENTS_SETTING_KEY))
+      .limit(1);
+
     const { status: _status, ...publicExcursion } = excursion;
-    res.json({ ...publicExcursion, pickupPoints });
+    res.json({
+      ...publicExcursion,
+      pickupPoints,
+      cardPaymentsEnabled: isCardPaymentEnabled(cardPaymentSetting?.value) && Boolean(stripe),
+    });
   } catch (err) {
     console.error("Public excursion detail fetch failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
