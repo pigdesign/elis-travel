@@ -65,6 +65,25 @@ export function Footer() {
             </ul>
           </div>
 
+          {/* Note Legali */}
+          <div>
+            <h4 className="text-lg font-bold mb-6 font-serif">Note Legali</h4>
+            <ul className="space-y-3">
+              {[
+                { label: 'Termini e Condizioni', href: '/termini-e-condizioni' },
+                { label: 'Privacy Policy', href: '/privacy-policy' },
+                { label: 'Cookie Policy', href: '/cookie-policy' },
+              ].map((link) => (
+                <li key={link.label}>
+                  <Link href={link.href} className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {/* Contact */}
           <div>
             <h4 className="text-lg font-bold mb-6 font-serif">Contatti</h4>
@@ -98,25 +117,6 @@ export function Footer() {
                 </Button>
               </div>
             </div>
-          </div>
-
-          {/* Note Legali */}
-          <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Note Legali</h4>
-            <ul className="space-y-3">
-              {[
-                { label: 'Termini e Condizioni', href: '/termini-e-condizioni' },
-                { label: 'Privacy Policy', href: '/privacy-policy' },
-                { label: 'Cookie Policy', href: '/cookie-policy' },
-              ].map((link) => (
-                <li key={link.label}>
-                  <Link href={link.href} className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
 

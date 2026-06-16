@@ -7,9 +7,15 @@ import { useLocation } from "wouter";
 import {
   useGetPublicExcursion,
   useCreatePublicExcursionBooking,
+  confirmPublicExcursionBookingCard,
   getGetPublicExcursionQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 import { useSeo, extractIdFromSlug, buildSlugUrl, truncate } from "@/lib/seo";
 import {
   MapPin,
@@ -547,6 +553,123 @@ interface BookingCardProps {
   hasPickupPoints?: boolean;
 }
 
+// Inner component that uses Stripe hooks (must be inside Elements)
+function StripeCardStep({
+  excursionId,
+  bookingId,
+  clientSecret,
+  amountLabel,
+  onBack,
+  onSuccess,
+}: {
+  excursionId: string;
+  bookingId: string;
+  clientSecret: string;
+  amountLabel: string | null;
+  onBack: () => void;
+  onSuccess: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const handleCardSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setCardError(null);
+    setIsConfirming(true);
+
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setCardError("Elemento carta non trovato. Ricarica la pagina.");
+      setIsConfirming(false);
+      return;
+    }
+
+    const { setupIntent, error } = await stripe.confirmCardSetup(clientSecret, {
+      payment_method: { card: cardElement },
+    });
+
+    if (error || !setupIntent) {
+      setCardError(error?.message ?? "Errore durante la verifica della carta.");
+      setIsConfirming(false);
+      return;
+    }
+
+    try {
+      await confirmPublicExcursionBookingCard(excursionId, bookingId, {
+        setupIntentId: setupIntent.id,
+      });
+      onSuccess();
+    } catch {
+      setCardError("Carta verificata ma si è verificato un errore. Contattaci per assistenza.");
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  return (
+    <div id="prenota" className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8">
+      <h2 className="mb-1 flex items-center gap-2 text-xl font-serif font-bold text-foreground">
+        <Ticket className="h-5 w-5 text-accent" />
+        Inserisci i dati della carta
+      </h2>
+      <p className="mb-1 text-sm text-muted-foreground">
+        La carta verrà salvata in modo sicuro e addebitata <strong>solo se la gita viene confermata</strong>.
+      </p>
+      {amountLabel && (
+        <p className="mb-5 text-sm font-semibold text-foreground">
+          Importo che verrà addebitato alla conferma: {amountLabel}
+        </p>
+      )}
+      <form onSubmit={handleCardSubmit} className="space-y-5">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: "14px",
+                  color: "#1a1a1a",
+                  "::placeholder": { color: "#94a3b8" },
+                },
+              },
+            }}
+          />
+        </div>
+        {cardError && (
+          <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>{cardError}</span>
+          </div>
+        )}
+        <Button
+          type="submit"
+          disabled={isConfirming || !stripe}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-accent-foreground hover:bg-accent/90"
+        >
+          {isConfirming ? (
+            <><Loader2 className="w-4 h-4 animate-spin" />Verifica in corso…</>
+          ) : (
+            <><Check className="w-4 h-4" />Conferma prenotazione</>
+          )}
+        </Button>
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={isConfirming}
+          className="w-full text-center text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          ← Torna al modulo
+        </button>
+        <p className="text-center text-xs text-muted-foreground">
+          Pagamento sicuro gestito da Stripe. I tuoi dati non vengono mai condivisi con noi.
+        </p>
+      </form>
+    </div>
+  );
+}
+
 function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, hasPickupPoints }: BookingCardProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -558,11 +681,11 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
   const [servizioCasa, setServizioCasa] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<{
-    adults: number;
-    children: number;
-    paymentStatus: string;
-    message: string;
+  const [step, setStep] = useState<"form" | "stripe" | "done">("form");
+  const [stripeData, setStripeData] = useState<{
+    bookingId: string;
+    clientSecret: string;
+    amountLabel: string | null;
   } | null>(null);
 
   const { mutateAsync, isPending } = useCreatePublicExcursionBooking({
@@ -594,7 +717,20 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
     );
   }
 
-  if (confirmation) {
+  const resetForm = () => {
+    setStep("form");
+    setStripeData(null);
+    setName("");
+    setEmail("");
+    setPhone("");
+    setAdults(1);
+    setChildren(0);
+    setPaymentType("deposit");
+    setPrivacyAccepted(false);
+    setErrorMsg(null);
+  };
+
+  if (step === "done") {
     return (
       <div
         id="prenota"
@@ -603,40 +739,52 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
       >
         <h2 className="mb-3 flex items-center gap-2 text-xl font-serif font-bold text-emerald-800">
           <CheckCircle2 className="h-5 w-5" />
-          Prenotazione registrata
+          Prenotazione confermata!
         </h2>
-        <p className="mb-3 text-sm text-emerald-900">{confirmation.message}</p>
-        <ul className="mb-4 space-y-1 text-sm text-emerald-900">
-          <li>
-            <strong>Adulti:</strong> {confirmation.adults}
-          </li>
-          {confirmation.children > 0 && (
-            <li>
-              <strong>Bambini ({"<"}12 anni):</strong> {confirmation.children}
-            </li>
-          )}
-          <li>
-            <strong>Modalità di pagamento:</strong>{" "}
-            {confirmation.paymentStatus === "full_requested" ? "Importo completo" : "Acconto"}
-          </li>
-        </ul>
+        <p className="mb-4 text-sm text-emerald-900">
+          La tua carta è stata salvata. Riceverai una email di conferma. Verrai addebitato solo quando la gita raggiunge il numero minimo e viene confermata.
+        </p>
         <button
           type="button"
-          onClick={() => {
-            setConfirmation(null);
-            setName("");
-            setEmail("");
-            setPhone("");
-            setAdults(1);
-            setChildren(0);
-            setPaymentType("deposit");
-          }}
+          onClick={resetForm}
           className="text-sm font-medium text-emerald-800 underline hover:text-emerald-900"
           data-testid="button-new-booking"
         >
           Effettua una nuova prenotazione
         </button>
       </div>
+    );
+  }
+
+  if (step === "stripe" && stripeData) {
+    if (!stripePromise) {
+      return (
+        <div id="prenota" className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8">
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold mb-1">Pagamento non configurato</p>
+              <p>La chiave Stripe pubblica non è impostata (<code>VITE_STRIPE_PUBLISHABLE_KEY</code>). Configura le variabili d'ambiente e riavvia il server.</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setStep("form")} className="mt-4 w-full text-center text-xs text-muted-foreground hover:text-foreground">← Torna al modulo</button>
+        </div>
+      );
+    }
+    return (
+      <Elements stripe={stripePromise}>
+        <StripeCardStep
+          excursionId={excursionId}
+          bookingId={stripeData.bookingId}
+          clientSecret={stripeData.clientSecret}
+          amountLabel={stripeData.amountLabel}
+          onBack={() => setStep("form")}
+          onSuccess={() => {
+            void queryClient.invalidateQueries({ queryKey: getGetPublicExcursionQueryKey(excursionId) });
+            setStep("done");
+          }}
+        />
+      </Elements>
     );
   }
 
@@ -664,12 +812,23 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
           servizioCasa: servizioCasa || undefined,
         },
       });
-      setConfirmation({
-        adults: res.adults,
-        children: res.children,
-        paymentStatus: res.paymentStatus,
-        message: res.message,
-      });
+      if (res.setupIntentClientSecret) {
+        const pct = res.depositPercentage;
+        const priceNum = priceLabel ? Number(priceLabel.replace(/[^0-9.,]/g, "").replace(",", ".")) : null;
+        let amountLabel: string | null = null;
+        if (priceNum && pct && paymentType === "deposit") {
+          const amt = priceNum * (adults + children) * (pct / 100);
+          amountLabel = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(amt);
+        } else if (priceNum && paymentType === "full") {
+          const amt = priceNum * (adults + children);
+          amountLabel = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(amt);
+        }
+        setStripeData({ bookingId: res.id, clientSecret: res.setupIntentClientSecret, amountLabel });
+        setStep("stripe");
+      } else {
+        // Fallback: no Stripe configured
+        setStep("done");
+      }
     } catch (err: unknown) {
       const e = err as { data?: { error?: string }; message?: string };
       setErrorMsg(
@@ -809,7 +968,7 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
               <div>
                 <div className="text-sm font-semibold text-foreground">Acconto</div>
                 <div className="text-xs text-muted-foreground">
-                  Versa un acconto e salda alla partenza
+                  Paga solo l'acconto ora, il saldo si salda il giorno della gita
                 </div>
               </div>
             </label>
@@ -898,12 +1057,12 @@ function BookingCard({ excursionId, seatsAvailable, remainingSeats, priceLabel, 
           ) : (
             <>
               <Ticket className="w-4 h-4" />
-              Prenota ora
+              Avanti: inserisci carta
             </>
           )}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          Il pagamento avverrà offline: ti contatteremo per perfezionarlo.
+          La carta verrà addebitata solo se la gita raggiunge il numero minimo e viene confermata. Se non parte, nessun addebito.
         </p>
       </form>
     </div>

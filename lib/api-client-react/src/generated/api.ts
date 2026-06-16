@@ -21,6 +21,9 @@ import type {
   Booking,
   BookingInput,
   BookingPaymentStatusUpdate,
+  CardConfirmedInput,
+  CardConfirmedResponse,
+  ConvertLeadToCustomerBody,
   CustomerCreate,
   CustomerDetail,
   CustomerListPage,
@@ -35,11 +38,11 @@ import type {
   ExcursionInput,
   ExcursionPickupPoint,
   ExcursionPickupPointInput,
+  ExcursionPickupPointUpdate,
   ExcursionSummary,
   HealthStatus,
   Lead,
   LeadNote,
-  LeadConvertToCustomerInput,
   LeadNoteInput,
   LeadStatusUpdate,
   ListCustomersParams,
@@ -52,8 +55,6 @@ import type {
   PickupLocationInput,
   PublicBookingInput,
   PublicBookingResponse,
-  Settings,
-  SettingsInput,
   PublicCatalog,
   PublicExcursionDetail,
   PublicLeadInput,
@@ -61,6 +62,8 @@ import type {
   PublicOfferDetail,
   RmsSearchResult,
   SearchRmsCustomersParams,
+  SettingsInput,
+  SettingsResponse,
   UploadUrlRequest,
   UploadUrlResponse,
   Vehicle,
@@ -973,6 +976,7 @@ export const getDeleteCustomerMutationOptions = <
     { id: string }
   > = (props) => {
     const { id } = props ?? {};
+
     return deleteCustomer(id, requestOptions);
   };
 
@@ -982,6 +986,7 @@ export const getDeleteCustomerMutationOptions = <
 export type DeleteCustomerMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteCustomer>>
 >;
+
 export type DeleteCustomerMutationError = ErrorType<ErrorResponse>;
 
 /**
@@ -2129,6 +2134,109 @@ export const useCreatePublicExcursionBooking = <
 };
 
 /**
+ * @summary Conferma carta salvata dopo SetupIntent (chiamato dopo 3DS)
+ */
+export const getConfirmPublicExcursionBookingCardUrl = (
+  id: string,
+  bookingId: string,
+) => {
+  return `/api/excursions/${id}/book/${bookingId}/card-confirmed`;
+};
+
+export const confirmPublicExcursionBookingCard = async (
+  id: string,
+  bookingId: string,
+  cardConfirmedInput: CardConfirmedInput,
+  options?: RequestInit,
+): Promise<CardConfirmedResponse> => {
+  return customFetch<CardConfirmedResponse>(
+    getConfirmPublicExcursionBookingCardUrl(id, bookingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(cardConfirmedInput),
+    },
+  );
+};
+
+export const getConfirmPublicExcursionBookingCardMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmPublicExcursionBookingCard>>,
+    TError,
+    { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmPublicExcursionBookingCard>>,
+  TError,
+  { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+  TContext
+> => {
+  const mutationKey = ["confirmPublicExcursionBookingCard"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmPublicExcursionBookingCard>>,
+    { id: string; bookingId: string; data: BodyType<CardConfirmedInput> }
+  > = (props) => {
+    const { id, bookingId, data } = props ?? {};
+
+    return confirmPublicExcursionBookingCard(
+      id,
+      bookingId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmPublicExcursionBookingCardMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmPublicExcursionBookingCard>>
+>;
+export type ConfirmPublicExcursionBookingCardMutationBody =
+  BodyType<CardConfirmedInput>;
+export type ConfirmPublicExcursionBookingCardMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Conferma carta salvata dopo SetupIntent (chiamato dopo 3DS)
+ */
+export const useConfirmPublicExcursionBookingCard = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmPublicExcursionBookingCard>>,
+    TError,
+    { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmPublicExcursionBookingCard>>,
+  TError,
+  { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+  TContext
+> => {
+  return useMutation(
+    getConfirmPublicExcursionBookingCardMutationOptions(options),
+  );
+};
+
+/**
  * @summary Cambia veicolo gita
  */
 export const getUpdateExcursionVehicleUrl = (id: string) => {
@@ -2213,6 +2321,695 @@ export const useUpdateExcursionVehicle = <
   TContext
 > => {
   return useMutation(getUpdateExcursionVehicleMutationOptions(options));
+};
+
+/**
+ * @summary Lista punti di raccolta
+ */
+export const getListPickupLocationsUrl = () => {
+  return `/api/admin/pickup-locations`;
+};
+
+export const listPickupLocations = async (
+  options?: RequestInit,
+): Promise<PickupLocation[]> => {
+  return customFetch<PickupLocation[]>(getListPickupLocationsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPickupLocationsQueryKey = () => {
+  return [`/api/admin/pickup-locations`] as const;
+};
+
+export const getListPickupLocationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPickupLocations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPickupLocations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPickupLocationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPickupLocations>>
+  > = ({ signal }) => listPickupLocations({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPickupLocations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPickupLocationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPickupLocations>>
+>;
+export type ListPickupLocationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista punti di raccolta
+ */
+
+export function useListPickupLocations<
+  TData = Awaited<ReturnType<typeof listPickupLocations>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPickupLocations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPickupLocationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Crea punto di raccolta
+ */
+export const getCreatePickupLocationUrl = () => {
+  return `/api/admin/pickup-locations`;
+};
+
+export const createPickupLocation = async (
+  pickupLocationInput: PickupLocationInput,
+  options?: RequestInit,
+): Promise<PickupLocation> => {
+  return customFetch<PickupLocation>(getCreatePickupLocationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(pickupLocationInput),
+  });
+};
+
+export const getCreatePickupLocationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPickupLocation>>,
+    TError,
+    { data: BodyType<PickupLocationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPickupLocation>>,
+  TError,
+  { data: BodyType<PickupLocationInput> },
+  TContext
+> => {
+  const mutationKey = ["createPickupLocation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPickupLocation>>,
+    { data: BodyType<PickupLocationInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPickupLocation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePickupLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPickupLocation>>
+>;
+export type CreatePickupLocationMutationBody = BodyType<PickupLocationInput>;
+export type CreatePickupLocationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Crea punto di raccolta
+ */
+export const useCreatePickupLocation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPickupLocation>>,
+    TError,
+    { data: BodyType<PickupLocationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPickupLocation>>,
+  TError,
+  { data: BodyType<PickupLocationInput> },
+  TContext
+> => {
+  return useMutation(getCreatePickupLocationMutationOptions(options));
+};
+
+/**
+ * @summary Aggiorna punto di raccolta
+ */
+export const getUpdatePickupLocationUrl = (id: string) => {
+  return `/api/admin/pickup-locations/${id}`;
+};
+
+export const updatePickupLocation = async (
+  id: string,
+  pickupLocationInput: PickupLocationInput,
+  options?: RequestInit,
+): Promise<PickupLocation> => {
+  return customFetch<PickupLocation>(getUpdatePickupLocationUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(pickupLocationInput),
+  });
+};
+
+export const getUpdatePickupLocationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePickupLocation>>,
+    TError,
+    { id: string; data: BodyType<PickupLocationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePickupLocation>>,
+  TError,
+  { id: string; data: BodyType<PickupLocationInput> },
+  TContext
+> => {
+  const mutationKey = ["updatePickupLocation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePickupLocation>>,
+    { id: string; data: BodyType<PickupLocationInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePickupLocation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePickupLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePickupLocation>>
+>;
+export type UpdatePickupLocationMutationBody = BodyType<PickupLocationInput>;
+export type UpdatePickupLocationMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Aggiorna punto di raccolta
+ */
+export const useUpdatePickupLocation = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePickupLocation>>,
+    TError,
+    { id: string; data: BodyType<PickupLocationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePickupLocation>>,
+  TError,
+  { id: string; data: BodyType<PickupLocationInput> },
+  TContext
+> => {
+  return useMutation(getUpdatePickupLocationMutationOptions(options));
+};
+
+/**
+ * @summary Elimina punto di raccolta
+ */
+export const getDeletePickupLocationUrl = (id: string) => {
+  return `/api/admin/pickup-locations/${id}`;
+};
+
+export const deletePickupLocation = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeletePickupLocationUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePickupLocationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePickupLocation>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePickupLocation>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deletePickupLocation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePickupLocation>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePickupLocation(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePickupLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePickupLocation>>
+>;
+
+export type DeletePickupLocationMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Elimina punto di raccolta
+ */
+export const useDeletePickupLocation = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePickupLocation>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePickupLocation>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeletePickupLocationMutationOptions(options));
+};
+
+/**
+ * @summary Lista punti di raccolta di una gita
+ */
+export const getListExcursionPickupPointsUrl = (id: string) => {
+  return `/api/admin/excursions/${id}/pickup-points`;
+};
+
+export const listExcursionPickupPoints = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ExcursionPickupPoint[]> => {
+  return customFetch<ExcursionPickupPoint[]>(
+    getListExcursionPickupPointsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListExcursionPickupPointsQueryKey = (id: string) => {
+  return [`/api/admin/excursions/${id}/pickup-points`] as const;
+};
+
+export const getListExcursionPickupPointsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExcursionPickupPoints>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExcursionPickupPoints>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListExcursionPickupPointsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listExcursionPickupPoints>>
+  > = ({ signal }) =>
+    listExcursionPickupPoints(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExcursionPickupPoints>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExcursionPickupPointsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExcursionPickupPoints>>
+>;
+export type ListExcursionPickupPointsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista punti di raccolta di una gita
+ */
+
+export function useListExcursionPickupPoints<
+  TData = Awaited<ReturnType<typeof listExcursionPickupPoints>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExcursionPickupPoints>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExcursionPickupPointsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Aggiungi punto di raccolta a gita
+ */
+export const getAddExcursionPickupPointUrl = (id: string) => {
+  return `/api/admin/excursions/${id}/pickup-points`;
+};
+
+export const addExcursionPickupPoint = async (
+  id: string,
+  excursionPickupPointInput: ExcursionPickupPointInput,
+  options?: RequestInit,
+): Promise<ExcursionPickupPoint> => {
+  return customFetch<ExcursionPickupPoint>(getAddExcursionPickupPointUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(excursionPickupPointInput),
+  });
+};
+
+export const getAddExcursionPickupPointMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addExcursionPickupPoint>>,
+    TError,
+    { id: string; data: BodyType<ExcursionPickupPointInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addExcursionPickupPoint>>,
+  TError,
+  { id: string; data: BodyType<ExcursionPickupPointInput> },
+  TContext
+> => {
+  const mutationKey = ["addExcursionPickupPoint"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addExcursionPickupPoint>>,
+    { id: string; data: BodyType<ExcursionPickupPointInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return addExcursionPickupPoint(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddExcursionPickupPointMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addExcursionPickupPoint>>
+>;
+export type AddExcursionPickupPointMutationBody =
+  BodyType<ExcursionPickupPointInput>;
+export type AddExcursionPickupPointMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Aggiungi punto di raccolta a gita
+ */
+export const useAddExcursionPickupPoint = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addExcursionPickupPoint>>,
+    TError,
+    { id: string; data: BodyType<ExcursionPickupPointInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addExcursionPickupPoint>>,
+  TError,
+  { id: string; data: BodyType<ExcursionPickupPointInput> },
+  TContext
+> => {
+  return useMutation(getAddExcursionPickupPointMutationOptions(options));
+};
+
+/**
+ * @summary Aggiorna orario punto di raccolta
+ */
+export const getUpdateExcursionPickupPointUrl = (id: string, ppId: string) => {
+  return `/api/admin/excursions/${id}/pickup-points/${ppId}`;
+};
+
+export const updateExcursionPickupPoint = async (
+  id: string,
+  ppId: string,
+  excursionPickupPointUpdate: ExcursionPickupPointUpdate,
+  options?: RequestInit,
+): Promise<ExcursionPickupPoint> => {
+  return customFetch<ExcursionPickupPoint>(
+    getUpdateExcursionPickupPointUrl(id, ppId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(excursionPickupPointUpdate),
+    },
+  );
+};
+
+export const getUpdateExcursionPickupPointMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExcursionPickupPoint>>,
+    TError,
+    { id: string; ppId: string; data: BodyType<ExcursionPickupPointUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateExcursionPickupPoint>>,
+  TError,
+  { id: string; ppId: string; data: BodyType<ExcursionPickupPointUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateExcursionPickupPoint"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateExcursionPickupPoint>>,
+    { id: string; ppId: string; data: BodyType<ExcursionPickupPointUpdate> }
+  > = (props) => {
+    const { id, ppId, data } = props ?? {};
+
+    return updateExcursionPickupPoint(id, ppId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateExcursionPickupPointMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateExcursionPickupPoint>>
+>;
+export type UpdateExcursionPickupPointMutationBody =
+  BodyType<ExcursionPickupPointUpdate>;
+export type UpdateExcursionPickupPointMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Aggiorna orario punto di raccolta
+ */
+export const useUpdateExcursionPickupPoint = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExcursionPickupPoint>>,
+    TError,
+    { id: string; ppId: string; data: BodyType<ExcursionPickupPointUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateExcursionPickupPoint>>,
+  TError,
+  { id: string; ppId: string; data: BodyType<ExcursionPickupPointUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateExcursionPickupPointMutationOptions(options));
+};
+
+/**
+ * @summary Rimuovi punto di raccolta da gita
+ */
+export const getDeleteExcursionPickupPointUrl = (id: string, ppId: string) => {
+  return `/api/admin/excursions/${id}/pickup-points/${ppId}`;
+};
+
+export const deleteExcursionPickupPoint = async (
+  id: string,
+  ppId: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteExcursionPickupPointUrl(id, ppId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteExcursionPickupPointMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExcursionPickupPoint>>,
+    TError,
+    { id: string; ppId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteExcursionPickupPoint>>,
+  TError,
+  { id: string; ppId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteExcursionPickupPoint"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteExcursionPickupPoint>>,
+    { id: string; ppId: string }
+  > = (props) => {
+    const { id, ppId } = props ?? {};
+
+    return deleteExcursionPickupPoint(id, ppId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteExcursionPickupPointMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteExcursionPickupPoint>>
+>;
+
+export type DeleteExcursionPickupPointMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Rimuovi punto di raccolta da gita
+ */
+export const useDeleteExcursionPickupPoint = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExcursionPickupPoint>>,
+    TError,
+    { id: string; ppId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteExcursionPickupPoint>>,
+  TError,
+  { id: string; ppId: string },
+  TContext
+> => {
+  return useMutation(getDeleteExcursionPickupPointMutationOptions(options));
 };
 
 /**
@@ -3374,20 +4171,23 @@ export const useAddLeadNote = <
   return useMutation(getAddLeadNoteMutationOptions(options));
 };
 
+/**
+ * @summary Converti lead in cliente
+ */
 export const getConvertLeadToCustomerUrl = (id: string) => {
   return `/api/admin/leads/${id}/convert-to-customer`;
 };
 
 export const convertLeadToCustomer = async (
   id: string,
-  leadConvertToCustomerInput: LeadConvertToCustomerInput,
+  convertLeadToCustomerBody: ConvertLeadToCustomerBody,
   options?: RequestInit,
 ): Promise<CustomerSummary> => {
   return customFetch<CustomerSummary>(getConvertLeadToCustomerUrl(id), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(leadConvertToCustomerInput),
+    body: JSON.stringify(convertLeadToCustomerBody),
   });
 };
 
@@ -3398,30 +4198,47 @@ export const getConvertLeadToCustomerMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof convertLeadToCustomer>>,
     TError,
-    { id: string; data: BodyType<LeadConvertToCustomerInput> },
+    { id: string; data: BodyType<ConvertLeadToCustomerBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof convertLeadToCustomer>>,
   TError,
-  { id: string; data: BodyType<LeadConvertToCustomerInput> },
+  { id: string; data: BodyType<ConvertLeadToCustomerBody> },
   TContext
 > => {
   const mutationKey = ["convertLeadToCustomer"];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof convertLeadToCustomer>>,
-    { id: string; data: BodyType<LeadConvertToCustomerInput> }
-  > = ({ id, data }) => {
+    { id: string; data: BodyType<ConvertLeadToCustomerBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
     return convertLeadToCustomer(id, data, requestOptions);
   };
-  return { mutationKey, mutationFn, ...mutationOptions };
+
+  return { mutationFn, ...mutationOptions };
 };
 
-export type ConvertLeadToCustomerMutationBody = BodyType<LeadConvertToCustomerInput>;
+export type ConvertLeadToCustomerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof convertLeadToCustomer>>
+>;
+export type ConvertLeadToCustomerMutationBody =
+  BodyType<ConvertLeadToCustomerBody>;
 export type ConvertLeadToCustomerMutationError = ErrorType<ErrorResponse>;
 
+/**
+ * @summary Converti lead in cliente
+ */
 export const useConvertLeadToCustomer = <
   TError = ErrorType<ErrorResponse>,
   TContext = unknown,
@@ -3429,14 +4246,14 @@ export const useConvertLeadToCustomer = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof convertLeadToCustomer>>,
     TError,
-    { id: string; data: BodyType<LeadConvertToCustomerInput> },
+    { id: string; data: BodyType<ConvertLeadToCustomerBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof convertLeadToCustomer>>,
   TError,
-  { id: string; data: BodyType<LeadConvertToCustomerInput> },
+  { id: string; data: BodyType<ConvertLeadToCustomerBody> },
   TContext
 > => {
   return useMutation(getConvertLeadToCustomerMutationOptions(options));
@@ -4093,61 +4910,93 @@ export const useRequestUploadUrl = <
   return useMutation(getRequestUploadUrlMutationOptions(options));
 };
 
-// ─── Settings ───────────────────────────────────────────────────────────────
-
-export const getAdminSettingsUrl = () => `/api/admin/settings`;
-export const getGetAdminSettingsQueryKey = () => [getAdminSettingsUrl()] as const;
+/**
+ * @summary Leggi impostazioni
+ */
+export const getGetAdminSettingsUrl = () => {
+  return `/api/admin/settings`;
+};
 
 export const getAdminSettings = async (
   options?: RequestInit,
-): Promise<Settings> => {
-  return customFetch<Settings>(getAdminSettingsUrl(), {
+): Promise<SettingsResponse> => {
+  return customFetch<SettingsResponse>(getGetAdminSettingsUrl(), {
     ...options,
     method: "GET",
   });
 };
 
+export const getGetAdminSettingsQueryKey = () => {
+  return [`/api/admin/settings`] as const;
+};
+
 export const getGetAdminSettingsQueryOptions = <
   TData = Awaited<ReturnType<typeof getAdminSettings>>,
-  TError = ErrorType<ErrorResponse>,
+  TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof getAdminSettings>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getGetAdminSettingsQueryKey();
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSettings>>> = () =>
-    getAdminSettings(requestOptions);
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof getAdminSettings>>,
     TError,
     TData
   >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminSettingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminSettings>>
+  > = ({ signal }) => getAdminSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
 };
 
 export type GetAdminSettingsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getAdminSettings>>
 >;
-export type GetAdminSettingsQueryError = ErrorType<ErrorResponse>;
+export type GetAdminSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Leggi impostazioni
+ */
 
 export function useGetAdminSettings<
   TData = Awaited<ReturnType<typeof getAdminSettings>>,
-  TError = ErrorType<ErrorResponse>,
+  TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof getAdminSettings>>, TError, TData>;
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminSettings>>,
+    TError,
+    TData
+  >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAdminSettingsQueryOptions(options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  query.queryKey = queryOptions.queryKey;
-  return query;
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
+/**
+ * @summary Aggiorna impostazioni
+ */
+export const getUpdateAdminSettingsUrl = () => {
+  return `/api/admin/settings`;
+};
+
 export const updateAdminSettings = async (
-  settingsInput: BodyType<SettingsInput>,
+  settingsInput: SettingsInput,
   options?: RequestInit,
-): Promise<Settings> => {
-  return customFetch<Settings>(getAdminSettingsUrl(), {
+): Promise<SettingsResponse> => {
+  return customFetch<SettingsResponse>(getUpdateAdminSettingsUrl(), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -4156,7 +5005,7 @@ export const updateAdminSettings = async (
 };
 
 export const getUpdateAdminSettingsMutationOptions = <
-  TError = ErrorType<ErrorResponse>,
+  TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4172,14 +5021,24 @@ export const getUpdateAdminSettingsMutationOptions = <
   { data: BodyType<SettingsInput> },
   TContext
 > => {
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationKey = ["updateAdminSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateAdminSettings>>,
     { data: BodyType<SettingsInput> }
   > = (props) => {
     const { data } = props ?? {};
+
     return updateAdminSettings(data, requestOptions);
   };
+
   return { mutationFn, ...mutationOptions };
 };
 
@@ -4187,10 +5046,13 @@ export type UpdateAdminSettingsMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateAdminSettings>>
 >;
 export type UpdateAdminSettingsMutationBody = BodyType<SettingsInput>;
-export type UpdateAdminSettingsMutationError = ErrorType<ErrorResponse>;
+export type UpdateAdminSettingsMutationError = ErrorType<unknown>;
 
+/**
+ * @summary Aggiorna impostazioni
+ */
 export const useUpdateAdminSettings = <
-  TError = ErrorType<ErrorResponse>,
+  TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4207,302 +5069,4 @@ export const useUpdateAdminSettings = <
   TContext
 > => {
   return useMutation(getUpdateAdminSettingsMutationOptions(options));
-};
-
-// ---- Pickup Locations ----
-
-export const getListPickupLocationsUrl = () => `/api/admin/pickup-locations`;
-
-export const listPickupLocations = async (options?: RequestInit): Promise<PickupLocation[]> =>
-  customFetch<PickupLocation[]>(getListPickupLocationsUrl(), { ...options, method: "GET" });
-
-export const getListPickupLocationsQueryKey = () => [`/api/admin/pickup-locations`] as const;
-
-export const getListPickupLocationsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listPickupLocations>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listPickupLocations>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getListPickupLocationsQueryKey();
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPickupLocations>>> = ({ signal }) =>
-    listPickupLocations({ signal, ...requestOptions });
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listPickupLocations>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export function useListPickupLocations<
-  TData = Awaited<ReturnType<typeof listPickupLocations>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listPickupLocations>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListPickupLocationsQueryOptions(options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-export const createPickupLocation = async (
-  data: PickupLocationInput,
-  options?: RequestInit,
-): Promise<PickupLocation> =>
-  customFetch<PickupLocation>(getListPickupLocationsUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const useCreatePickupLocation = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof createPickupLocation>>,
-      TError,
-      { data: BodyType<PickupLocationInput> },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseMutationResult<
-  Awaited<ReturnType<typeof createPickupLocation>>,
-  TError,
-  { data: BodyType<PickupLocationInput> },
-  TContext
-> => {
-  const mutationFn = ({ data }: { data: BodyType<PickupLocationInput> }) =>
-    createPickupLocation(data);
-  return useMutation({ mutationFn, ...options?.mutation });
-};
-
-export const getUpdatePickupLocationUrl = (id: string) => `/api/admin/pickup-locations/${id}`;
-
-export const updatePickupLocation = async (
-  id: string,
-  data: Partial<PickupLocationInput>,
-  options?: RequestInit,
-): Promise<PickupLocation> =>
-  customFetch<PickupLocation>(getUpdatePickupLocationUrl(id), {
-    ...options,
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const useUpdatePickupLocation = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof updatePickupLocation>>,
-      TError,
-      { id: string; data: Partial<PickupLocationInput> },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseMutationResult<
-  Awaited<ReturnType<typeof updatePickupLocation>>,
-  TError,
-  { id: string; data: Partial<PickupLocationInput> },
-  TContext
-> => {
-  const mutationFn = ({ id, data }: { id: string; data: Partial<PickupLocationInput> }) =>
-    updatePickupLocation(id, data);
-  return useMutation({ mutationFn, ...options?.mutation });
-};
-
-export const getDeletePickupLocationUrl = (id: string) => `/api/admin/pickup-locations/${id}`;
-
-export const deletePickupLocation = async (id: string, options?: RequestInit): Promise<OkResponse> =>
-  customFetch<OkResponse>(getDeletePickupLocationUrl(id), { ...options, method: "DELETE" });
-
-export const useDeletePickupLocation = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof deletePickupLocation>>,
-      TError,
-      { id: string },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseMutationResult<
-  Awaited<ReturnType<typeof deletePickupLocation>>,
-  TError,
-  { id: string },
-  TContext
-> => {
-  const mutationFn = ({ id }: { id: string }) => deletePickupLocation(id);
-  return useMutation({ mutationFn, ...options?.mutation });
-};
-
-// ---- Excursion Pickup Points ----
-
-export const getListExcursionPickupPointsUrl = (excursionId: string) =>
-  `/api/admin/excursions/${excursionId}/pickup-points`;
-
-export const listExcursionPickupPoints = async (
-  excursionId: string,
-  options?: RequestInit,
-): Promise<ExcursionPickupPoint[]> =>
-  customFetch<ExcursionPickupPoint[]>(getListExcursionPickupPointsUrl(excursionId), {
-    ...options,
-    method: "GET",
-  });
-
-export const getListExcursionPickupPointsQueryKey = (excursionId: string) =>
-  [`/api/admin/excursions/${excursionId}/pickup-points`] as const;
-
-export const getListExcursionPickupPointsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listExcursionPickupPoints>>,
-  TError = ErrorType<unknown>,
->(
-  excursionId: string,
-  options?: {
-    query?: UseQueryOptions<Awaited<ReturnType<typeof listExcursionPickupPoints>>, TError, TData>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getListExcursionPickupPointsQueryKey(excursionId);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listExcursionPickupPoints>>> = ({
-    signal,
-  }) => listExcursionPickupPoints(excursionId, { signal, ...requestOptions });
-  return { queryKey, queryFn, enabled: !!excursionId, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listExcursionPickupPoints>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export function useListExcursionPickupPoints<
-  TData = Awaited<ReturnType<typeof listExcursionPickupPoints>>,
-  TError = ErrorType<unknown>,
->(
-  excursionId: string,
-  options?: {
-    query?: UseQueryOptions<Awaited<ReturnType<typeof listExcursionPickupPoints>>, TError, TData>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListExcursionPickupPointsQueryOptions(excursionId, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-export const addExcursionPickupPoint = async (
-  excursionId: string,
-  data: ExcursionPickupPointInput,
-  options?: RequestInit,
-): Promise<ExcursionPickupPoint> =>
-  customFetch<ExcursionPickupPoint>(getListExcursionPickupPointsUrl(excursionId), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const useAddExcursionPickupPoint = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof addExcursionPickupPoint>>,
-      TError,
-      { excursionId: string; data: ExcursionPickupPointInput },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseMutationResult<
-  Awaited<ReturnType<typeof addExcursionPickupPoint>>,
-  TError,
-  { excursionId: string; data: ExcursionPickupPointInput },
-  TContext
-> => {
-  const mutationFn = ({
-    excursionId,
-    data,
-  }: {
-    excursionId: string;
-    data: ExcursionPickupPointInput;
-  }) => addExcursionPickupPoint(excursionId, data);
-  return useMutation({ mutationFn, ...options?.mutation });
-};
-
-export const updateExcursionPickupPoint = async (
-  excursionId: string,
-  ppId: string,
-  data: { pickupTime?: string | null; sortOrder?: number },
-  options?: RequestInit,
-): Promise<ExcursionPickupPoint> =>
-  customFetch<ExcursionPickupPoint>(
-    `/api/admin/excursions/${excursionId}/pickup-points/${ppId}`,
-    {
-      ...options,
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(data),
-    },
-  );
-
-export const useUpdateExcursionPickupPoint = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof updateExcursionPickupPoint>>,
-      TError,
-      { excursionId: string; ppId: string; data: { pickupTime?: string | null; sortOrder?: number } },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseMutationResult<
-  Awaited<ReturnType<typeof updateExcursionPickupPoint>>,
-  TError,
-  { excursionId: string; ppId: string; data: { pickupTime?: string | null; sortOrder?: number } },
-  TContext
-> => {
-  const mutationFn = ({
-    excursionId,
-    ppId,
-    data,
-  }: {
-    excursionId: string;
-    ppId: string;
-    data: { pickupTime?: string | null; sortOrder?: number };
-  }) => updateExcursionPickupPoint(excursionId, ppId, data);
-  return useMutation({ mutationFn, ...options?.mutation });
-};
-
-export const deleteExcursionPickupPoint = async (
-  excursionId: string,
-  ppId: string,
-  options?: RequestInit,
-): Promise<OkResponse> =>
-  customFetch<OkResponse>(
-    `/api/admin/excursions/${excursionId}/pickup-points/${ppId}`,
-    { ...options, method: "DELETE" },
-  );
-
-export const useDeleteExcursionPickupPoint = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof deleteExcursionPickupPoint>>,
-      TError,
-      { excursionId: string; ppId: string },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseMutationResult<
-  Awaited<ReturnType<typeof deleteExcursionPickupPoint>>,
-  TError,
-  { excursionId: string; ppId: string },
-  TContext
-> => {
-  const mutationFn = ({ excursionId, ppId }: { excursionId: string; ppId: string }) =>
-    deleteExcursionPickupPoint(excursionId, ppId);
-  return useMutation({ mutationFn, ...options?.mutation });
 };

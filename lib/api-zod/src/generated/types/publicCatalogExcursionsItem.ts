@@ -12,4 +12,9 @@ export type PublicCatalogExcursionsItem = {
   location?: string | null;
   date?: string | null;
   coverImageUrl?: string | null;
+  status?: string | null;
+  currentCapacity?: number | null;
+  minThreshold?: number | null;
+  adherentsCount?: number | null;
+  pricePerPerson?: string | null;
 };

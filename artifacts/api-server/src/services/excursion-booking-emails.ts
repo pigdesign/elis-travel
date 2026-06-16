@@ -439,3 +439,251 @@ export function dispatchExcursionBookingEmails(
     }
   });
 }
+
+// ── Stripe payment emails ──────────────────────────────────────────────────
+
+export type CardSavedEmailData = {
+  bookingId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string | null;
+  seats: number;
+  adults: number;
+  children: number;
+  servizioCasa?: boolean;
+  amountDueCents: number;
+  excursion: {
+    id: string;
+    name: string;
+    location: string;
+    date: string;
+    pricePerPerson: string | number | null;
+  };
+};
+
+export type ChargedEmailData = CardSavedEmailData;
+
+export type ChargeFailedEmailData = {
+  bookingId: string;
+  customerName: string;
+  customerEmail: string;
+  seats: number;
+  excursion: {
+    id: string;
+    name: string;
+    location: string;
+    date: string;
+  };
+};
+
+export type ExcursionCancelledEmailData = {
+  bookingId: string;
+  customerName: string;
+  customerEmail: string;
+  seats: number;
+  excursion: {
+    id: string;
+    name: string;
+    location: string;
+    date: string;
+  };
+};
+
+function formatCents(cents: number): string {
+  return (cents / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+}
+
+export function buildCardSavedCustomerEmail(data: CardSavedEmailData): EmailMessage {
+  const agency = getAgencyContacts();
+  const dateLabel = formatDateIt(data.excursion.date);
+  const amountLabel = formatCents(data.amountDueCents);
+  const subject = `Prenotazione ricevuta: ${data.excursion.name}`;
+
+  const text = [
+    `Ciao ${data.customerName},`,
+    "",
+    `abbiamo ricevuto la tua prenotazione per "${data.excursion.name}" (${data.excursion.location}, ${dateLabel}).`,
+    "",
+    `Posti riservati: ${data.seats}`,
+    `Importo da addebitare alla conferma: ${amountLabel}`,
+    "",
+    "La tua carta è stata salvata in modo sicuro. Verrà addebitata SOLO se la gita raggiungerà il numero minimo di partecipanti e verrà confermata.",
+    "Se la gita non parte, non verrà effettuato nessun addebito.",
+    "",
+    `Per informazioni: ${agency.email}`,
+    `${agency.name} — ${agency.website}`,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html lang="it"><body style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;">
+    <h2 style="margin:0 0 16px;">Prenotazione ricevuta</h2>
+    <p>Ciao ${escapeHtml(data.customerName)},</p>
+    <p>abbiamo ricevuto la tua prenotazione per <strong>${escapeHtml(data.excursion.name)}</strong> (${escapeHtml(data.excursion.location)}, ${escapeHtml(dateLabel)}).</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr><td style="padding:6px 0;color:#555;">Posti riservati</td><td style="padding:6px 0;font-weight:600;">${data.seats}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Importo alla conferma</td><td style="padding:6px 0;font-weight:600;">${escapeHtml(amountLabel)}</td></tr>
+    </table>
+    <div style="margin:20px 0;padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
+      <p style="margin:0;color:#166534;">La tua carta è stata salvata in modo sicuro. Verrà addebitata <strong>solo se la gita verrà confermata</strong>. Se la gita non parte, non verrà effettuato nessun addebito.</p>
+    </div>
+    <p style="color:#666;font-size:14px;">${escapeHtml(agency.name)} — <a href="${escapeHtml(agency.website)}">${escapeHtml(agency.website)}</a></p>
+  </div>
+</body></html>`;
+
+  return { to: data.customerEmail, subject, text, html, replyTo: agency.email };
+}
+
+export function dispatchCardSavedEmail(data: CardSavedEmailData): void {
+  void sendEmail(buildCardSavedCustomerEmail(data)).catch((err) => {
+    logger.error({ err, bookingId: data.bookingId }, "Errore invio email carta salvata");
+  });
+}
+
+export function buildChargedCustomerEmail(data: ChargedEmailData): EmailMessage {
+  const agency = getAgencyContacts();
+  const dateLabel = formatDateIt(data.excursion.date);
+  const amountLabel = formatCents(data.amountDueCents);
+  const subject = `Pagamento confermato: ${data.excursion.name}`;
+
+  const text = [
+    `Ciao ${data.customerName},`,
+    "",
+    `La gita "${data.excursion.name}" è confermata! È stato addebitato ${amountLabel} sulla tua carta.`,
+    "",
+    `Data: ${dateLabel}`,
+    `Luogo: ${data.excursion.location}`,
+    `Posti: ${data.seats}`,
+    "",
+    "Ti contatteremo con tutti i dettagli operativi (orari, punto di partenza, ecc.).",
+    "",
+    `${agency.name} — ${agency.website}`,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html lang="it"><body style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;">
+    <h2 style="margin:0 0 16px;">Gita confermata — Pagamento ricevuto</h2>
+    <p>Ciao ${escapeHtml(data.customerName)},</p>
+    <p>La gita <strong>${escapeHtml(data.excursion.name)}</strong> è confermata! È stato addebitato <strong>${escapeHtml(amountLabel)}</strong> sulla tua carta.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr><td style="padding:6px 0;color:#555;">Gita</td><td style="padding:6px 0;font-weight:600;">${escapeHtml(data.excursion.name)}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Data</td><td style="padding:6px 0;">${escapeHtml(dateLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Luogo</td><td style="padding:6px 0;">${escapeHtml(data.excursion.location)}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Posti</td><td style="padding:6px 0;">${data.seats}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Importo addebitato</td><td style="padding:6px 0;font-weight:600;">${escapeHtml(amountLabel)}</td></tr>
+    </table>
+    <p>Ti contatteremo a breve con tutti i dettagli operativi della gita.</p>
+    <p style="color:#666;font-size:14px;">${escapeHtml(agency.name)} — <a href="${escapeHtml(agency.website)}">${escapeHtml(agency.website)}</a></p>
+  </div>
+</body></html>`;
+
+  return { to: data.customerEmail, subject, text, html, replyTo: agency.email };
+}
+
+export function dispatchChargedEmail(data: ChargedEmailData): void {
+  void sendEmail(buildChargedCustomerEmail(data)).catch((err) => {
+    logger.error({ err, bookingId: data.bookingId }, "Errore invio email addebito confermato");
+  });
+}
+
+export function buildChargeFailedCustomerEmail(data: ChargeFailedEmailData): EmailMessage {
+  const agency = getAgencyContacts();
+  const dateLabel = formatDateIt(data.excursion.date);
+  const subject = `Azione richiesta: pagamento fallito per ${data.excursion.name}`;
+
+  const text = [
+    `Ciao ${data.customerName},`,
+    "",
+    `La gita "${data.excursion.name}" (${dateLabel}) è confermata, ma non siamo riusciti ad addebitare la tua carta.`,
+    "",
+    "Per favore contattaci il prima possibile per regolarizzare il pagamento:",
+    `• Email: ${agency.email}`,
+    agency.phone ? `• Telefono: ${agency.phone}` : "",
+    "",
+    `${agency.name} — ${agency.website}`,
+  ].filter(Boolean).join("\n");
+
+  const html = `<!doctype html>
+<html lang="it"><body style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;">
+    <h2 style="margin:0 0 16px;color:#b91c1c;">Pagamento non riuscito</h2>
+    <p>Ciao ${escapeHtml(data.customerName)},</p>
+    <p>La gita <strong>${escapeHtml(data.excursion.name)}</strong> (${escapeHtml(dateLabel)}) è confermata, ma non siamo riusciti ad addebitare la tua carta.</p>
+    <div style="margin:20px 0;padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
+      <p style="margin:0;color:#991b1b;">Per favore contattaci il prima possibile per regolarizzare il pagamento.</p>
+    </div>
+    <p>Email: <a href="mailto:${escapeHtml(agency.email)}">${escapeHtml(agency.email)}</a>${agency.phone ? `<br/>Telefono: ${escapeHtml(agency.phone)}` : ""}</p>
+    <p style="color:#666;font-size:14px;">${escapeHtml(agency.name)}</p>
+  </div>
+</body></html>`;
+
+  return { to: data.customerEmail, subject, text, html, replyTo: agency.email };
+}
+
+export function buildChargeFailedAdminEmail(data: ChargeFailedEmailData): EmailMessage | null {
+  const recipients = getAdminNotificationEmails();
+  if (recipients.length === 0) return null;
+  const dateLabel = formatDateIt(data.excursion.date);
+  const subject = `⚠️ Addebito fallito: ${data.customerName} — ${data.excursion.name}`;
+  const text = [
+    `Addebito Stripe fallito per la prenotazione ${data.bookingId}.`,
+    `Cliente: ${data.customerName} (${data.customerEmail})`,
+    `Gita: ${data.excursion.name} — ${dateLabel}`,
+    `Posti: ${data.seats}`,
+    "Verificare manualmente e contattare il cliente.",
+  ].join("\n");
+  return { to: recipients, subject, text, html: `<pre>${text}</pre>`, replyTo: data.customerEmail };
+}
+
+export function dispatchChargeFailedEmail(data: ChargeFailedEmailData): void {
+  void sendEmail(buildChargeFailedCustomerEmail(data)).catch((err) => {
+    logger.error({ err, bookingId: data.bookingId }, "Errore invio email addebito fallito al cliente");
+  });
+  const adminMsg = buildChargeFailedAdminEmail(data);
+  if (adminMsg) {
+    void sendEmail(adminMsg).catch((err) => {
+      logger.error({ err, bookingId: data.bookingId }, "Errore invio email addebito fallito all'admin");
+    });
+  }
+}
+
+export function buildExcursionCancelledCustomerEmail(data: ExcursionCancelledEmailData): EmailMessage {
+  const agency = getAgencyContacts();
+  const dateLabel = formatDateIt(data.excursion.date);
+  const subject = `Gita annullata: ${data.excursion.name}`;
+
+  const text = [
+    `Ciao ${data.customerName},`,
+    "",
+    `La gita "${data.excursion.name}" (${dateLabel}) è stata purtroppo annullata per numero insufficiente di partecipanti.`,
+    "",
+    "Non è stato effettuato nessun addebito sulla tua carta.",
+    "",
+    `Per informazioni: ${agency.email}`,
+    `${agency.name} — ${agency.website}`,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html lang="it"><body style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;">
+    <h2 style="margin:0 0 16px;">Gita annullata</h2>
+    <p>Ciao ${escapeHtml(data.customerName)},</p>
+    <p>La gita <strong>${escapeHtml(data.excursion.name)}</strong> (${escapeHtml(dateLabel)}) è stata purtroppo annullata per numero insufficiente di partecipanti.</p>
+    <div style="margin:20px 0;padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
+      <p style="margin:0;color:#166534;font-weight:600;">Non è stato effettuato nessun addebito sulla tua carta.</p>
+    </div>
+    <p>Ci scusiamo per l'inconveniente. Speriamo di poterti accogliere nella prossima gita!</p>
+    <p>Per informazioni: <a href="mailto:${escapeHtml(agency.email)}">${escapeHtml(agency.email)}</a></p>
+    <p style="color:#666;font-size:14px;">${escapeHtml(agency.name)} — <a href="${escapeHtml(agency.website)}">${escapeHtml(agency.website)}</a></p>
+  </div>
+</body></html>`;
+
+  return { to: data.customerEmail, subject, text, html, replyTo: agency.email };
+}
+
+export function dispatchExcursionCancelledEmail(data: ExcursionCancelledEmailData): void {
+  void sendEmail(buildExcursionCancelledCustomerEmail(data)).catch((err) => {
+    logger.error({ err, bookingId: data.bookingId }, "Errore invio email gita annullata");
+  });
+}

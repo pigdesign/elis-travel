@@ -11,6 +11,11 @@ export interface BookingInput {
   customerId?: string;
   email?: string | null;
   phone?: string | null;
+  /** @minimum 1 */
+  adults?: number;
+  /** @minimum 0 */
+  children?: number;
   seats?: number;
   paymentStatus?: string;
+  servizioCasa?: boolean | null;
 }

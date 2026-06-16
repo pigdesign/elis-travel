@@ -9,6 +9,10 @@
 export interface PublicBookingResponse {
   id: string;
   seats: number;
+  adults: number;
+  children: number;
   paymentStatus: string;
   message: string;
+  setupIntentClientSecret?: string | null;
+  depositPercentage?: number | null;
 }

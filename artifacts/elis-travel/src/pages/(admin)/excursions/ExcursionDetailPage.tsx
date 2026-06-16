@@ -47,12 +47,16 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   cancelled: { label: "Annullata", className: "bg-destructive/10 text-destructive" },
 };
 
-const PAYMENT_STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string }> = {
-  pending:           { label: "In attesa",        icon: Clock,       className: "text-muted-foreground" },
+const PAYMENT_STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string; rowCls?: string }> = {
+  pending:           { label: "In attesa",        icon: Clock,        className: "text-muted-foreground" },
+  pending_card:      { label: "Carta in attesa",  icon: Clock,        className: "text-amber-600" },
   deposit_requested: { label: "Richiesta acconto", icon: Clock,       className: "text-amber-600" },
   deposit:           { label: "Acconto",           icon: CreditCard,  className: "text-accent" },
+  card_saved:        { label: "Carta salvata",     icon: CreditCard,  className: "text-sky-600" },
   full_requested:    { label: "Richiesta totale",  icon: Clock,       className: "text-amber-600" },
   paid:              { label: "Saldato",           icon: CheckCircle, className: "text-primary" },
+  charge_failed:     { label: "Addebito fallito",  icon: AlertCircle, className: "text-red-600",  rowCls: "bg-red-50/60" },
+  charge_skipped:    { label: "Nessun addebito",   icon: RotateCcw,   className: "text-slate-400" },
   refunded:          { label: "Rimborsato",        icon: RotateCcw,   className: "text-slate-500" },
 };
 
@@ -142,6 +146,7 @@ function BookingRow({
   const paymentCfg = PAYMENT_STATUS_CONFIG[booking.paymentStatus] ?? PAYMENT_STATUS_CONFIG["pending"];
   const PayIcon = paymentCfg.icon;
   const allowedNextStates = ALLOWED_TRANSITIONS[booking.paymentStatus] ?? [];
+  const isChargeFailed = booking.paymentStatus === "charge_failed";
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getGetExcursionQueryKey(excursionId) });
@@ -187,7 +192,12 @@ function BookingRow({
 
   return (
     <>
-    <tr className={`border-b ${isRequest ? "" : "border-border/50"} transition-colors ${isCancelled ? "bg-gray-50/80 opacity-70" : "hover:bg-muted/20"}`}
+    <tr
+      className={`border-b ${isRequest ? "" : "border-border/50"} transition-colors ${
+        isCancelled ? "bg-gray-50/80 opacity-70" :
+        isChargeFailed ? `${paymentCfg.rowCls ?? ""} hover:brightness-95` :
+        "hover:bg-muted/20"
+      }`}
       data-testid={`booking-row-${booking.id}`}
     >
       <td className="py-2.5 pl-4 pr-2">
@@ -687,6 +697,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const allBookings = exc.bookings ?? [];
   const activeBookings = allBookings.filter((b) => !b.cancelledAt);
   const cancelledBookings = allBookings.filter((b) => !!b.cancelledAt);
+  const chargeFailedBookings = activeBookings.filter((b) => b.paymentStatus === "charge_failed");
   const bookings = showCancelled ? allBookings : activeBookings;
 
   return (
@@ -804,6 +815,18 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </div>
 
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+            {chargeFailedBookings.length > 0 && (
+              <div className="px-5 py-3 bg-red-50 border-b border-red-200 flex items-start gap-2 text-sm text-red-800">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+                <span>
+                  <strong>{chargeFailedBookings.length} prenotazion{chargeFailedBookings.length === 1 ? "e" : "i"} con addebito fallito</strong>
+                  {" "}— contattare i clienti per aggiornare il metodo di pagamento.
+                  {chargeFailedBookings.map((b) => (
+                    <span key={b.id} className="block text-xs text-red-700 mt-0.5 ml-0.5">· {b.customerName}{b.email ? ` (${b.email})` : ""}</span>
+                  ))}
+                </span>
+              </div>
+            )}
             <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">

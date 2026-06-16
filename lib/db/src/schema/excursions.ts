@@ -95,6 +95,11 @@ export const excursionBookingsTable = pgTable("excursion_bookings", {
   servizioCasa: boolean("servizio_casa").notNull().default(false),
   bookedAt: timestamp("booked_at").notNull().defaultNow(),
   cancelledAt: timestamp("cancelled_at"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripePaymentMethodId: text("stripe_payment_method_id"),
+  stripeSetupIntentId: text("stripe_setup_intent_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  amountDueCents: integer("amount_due_cents"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

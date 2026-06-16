@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ScheduleDay } from "./scheduleDay";
 
 export interface ExcursionSummary {
   id: string;
@@ -17,6 +18,7 @@ export interface ExcursionSummary {
   adherentsCount: number;
   depositsCount: number;
   balancesCount: number;
+  pendingRequestsCount: number;
   vehicleFixedCost?: string;
   mealCostPerPerson?: string;
   entranceCostPerPerson?: string;
@@ -28,6 +30,10 @@ export interface ExcursionSummary {
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
   coverImageUrl?: string | null;
+  schedule?: ScheduleDay[] | null;
+  included?: string | null;
+  excluded?: string | null;
+  generalInfo?: string | null;
   ricaviStimati: number;
   costiVariabili: number;
   costiTotali: number;

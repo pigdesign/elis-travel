@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sessionPool } from "@workspace/db";
 import router from "./routes";
+import { stripeWebhookHandler } from "./routes/stripe-webhook";
 import { logger } from "./lib/logger";
 import { globalLimiter } from "./middlewares/rateLimiter";
 
@@ -26,14 +27,14 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "https://elis-travel.it", "http://elis-travel.it", "https://*.elis-travel.it", "http://*.elis-travel.it", "blob:", "https://storage.googleapis.com"],
-        connectSrc: ["'self'", "https://storage.googleapis.com"],
+        connectSrc: ["'self'", "https://storage.googleapis.com", "https://api.stripe.com"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
-        frameSrc: ["'none'"],
+        frameSrc: ["'none'", "https://js.stripe.com", "https://hooks.stripe.com"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -65,6 +66,13 @@ app.use(
     origin: true,
     credentials: true,
   }),
+);
+
+// Stripe webhook needs raw body — must be registered before express.json()
+app.post(
+  "/api/webhooks/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebhookHandler,
 );
 
 app.use(express.json());

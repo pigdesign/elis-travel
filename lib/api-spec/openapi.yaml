@@ -623,6 +623,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /excursions/{id}/book/{bookingId}/card-confirmed:
+    post:
+      operationId: confirmPublicExcursionBookingCard
+      tags: [public]
+      summary: Conferma carta salvata dopo SetupIntent (chiamato dopo 3DS)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardConfirmedInput"
+      responses:
+        "200":
+          description: Carta confermata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardConfirmedResponse"
+        "400":
+          description: Errore
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/excursions/{id}/vehicle:
     patch:
       operationId: updateExcursionVehicle
@@ -648,6 +691,192 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExcursionSummary"
+  /admin/pickup-locations:
+    get:
+      operationId: listPickupLocations
+      tags: [excursions]
+      summary: Lista punti di raccolta
+      responses:
+        "200":
+          description: Lista punti di raccolta
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PickupLocation"
+    post:
+      operationId: createPickupLocation
+      tags: [excursions]
+      summary: Crea punto di raccolta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PickupLocationInput"
+      responses:
+        "201":
+          description: Punto di raccolta creato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PickupLocation"
+  /admin/pickup-locations/{id}:
+    patch:
+      operationId: updatePickupLocation
+      tags: [excursions]
+      summary: Aggiorna punto di raccolta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PickupLocationInput"
+      responses:
+        "200":
+          description: Punto di raccolta aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PickupLocation"
+        "404":
+          description: Non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePickupLocation
+      tags: [excursions]
+      summary: Elimina punto di raccolta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Eliminato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "409":
+          description: In uso in una o più gite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/pickup-points:
+    get:
+      operationId: listExcursionPickupPoints
+      tags: [excursions]
+      summary: Lista punti di raccolta di una gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lista pickup points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExcursionPickupPoint"
+    post:
+      operationId: addExcursionPickupPoint
+      tags: [excursions]
+      summary: Aggiungi punto di raccolta a gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExcursionPickupPointInput"
+      responses:
+        "201":
+          description: Punto aggiunto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionPickupPoint"
+  /admin/excursions/{id}/pickup-points/{ppId}:
+    patch:
+      operationId: updateExcursionPickupPoint
+      tags: [excursions]
+      summary: Aggiorna orario punto di raccolta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: ppId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExcursionPickupPointUpdate"
+      responses:
+        "200":
+          description: Aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionPickupPoint"
+    delete:
+      operationId: deleteExcursionPickupPoint
+      tags: [excursions]
+      summary: Rimuovi punto di raccolta da gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: ppId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Rimosso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
   /admin/vehicles:
     get:
       operationId: listVehicles
@@ -994,6 +1223,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/leads/{id}/convert-to-customer:
+    post:
+      operationId: convertLeadToCustomer
+      tags: [leads]
+      summary: Converti lead in cliente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                  nullable: true
+                mobile:
+                  type: string
+                  nullable: true
+              required: [firstName, lastName, email]
+      responses:
+        "201":
+          description: Cliente creato e lead aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSummary"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Lead non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Lead già collegato a un cliente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /leads:
     post:
       operationId: submitContactRequest
@@ -1286,6 +1573,20 @@ components:
         coverImageUrl:
           type: string
           nullable: true
+        schedule:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ScheduleDay"
+        included:
+          type: string
+          nullable: true
+        excluded:
+          type: string
+          nullable: true
+        generalInfo:
+          type: string
+          nullable: true
         ricaviStimati:
           type: number
         costiVariabili:
@@ -1361,6 +1662,9 @@ components:
         bookedAt:
           type: string
           format: date-time
+        servizioCasa:
+          type: boolean
+          nullable: true
         cancelledAt:
           type: string
           format: date-time
@@ -1405,6 +1709,9 @@ components:
           type: integer
         paymentStatus:
           type: string
+        servizioCasa:
+          type: boolean
+          nullable: true
       required:
         - customerName
     BookingPaymentStatusUpdate:
@@ -1433,6 +1740,9 @@ components:
         paymentType:
           type: string
           enum: [deposit, full]
+        servizioCasa:
+          type: boolean
+          nullable: true
       required:
         - customerName
         - email
@@ -1454,6 +1764,12 @@ components:
           type: string
         message:
           type: string
+        setupIntentClientSecret:
+          type: string
+          nullable: true
+        depositPercentage:
+          type: number
+          nullable: true
       required: [id, seats, adults, children, paymentStatus, message]
     ExcursionInput:
       type: object
@@ -1496,6 +1812,20 @@ components:
           type: string
           nullable: true
         coverImageUrl:
+          type: string
+          nullable: true
+        schedule:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ScheduleDay"
+        included:
+          type: string
+          nullable: true
+        excluded:
+          type: string
+          nullable: true
+        generalInfo:
           type: string
           nullable: true
     VehicleUpdateInput:
@@ -2006,6 +2336,21 @@ components:
               publicPrice:
                 type: number
                 nullable: true
+              durationDays:
+                type: integer
+                nullable: true
+              durationNights:
+                type: integer
+                nullable: true
+              period:
+                type: string
+                nullable: true
+              validFrom:
+                type: string
+                nullable: true
+              validTo:
+                type: string
+                nullable: true
             required: [id, name, featured, lastMinute]
         excursions:
           type: array
@@ -2024,6 +2369,21 @@ components:
                 type: string
                 nullable: true
               coverImageUrl:
+                type: string
+                nullable: true
+              status:
+                type: string
+                nullable: true
+              currentCapacity:
+                type: integer
+                nullable: true
+              minThreshold:
+                type: integer
+                nullable: true
+              adherentsCount:
+                type: integer
+                nullable: true
+              pricePerPerson:
                 type: string
                 nullable: true
             required: [id, name]
@@ -2123,7 +2483,49 @@ components:
         coverImageUrl:
           type: string
           nullable: true
+        schedule:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ScheduleDay"
+        included:
+          type: string
+          nullable: true
+        excluded:
+          type: string
+          nullable: true
+        generalInfo:
+          type: string
+          nullable: true
+        pickupPoints:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/PublicPickupPoint"
       required: [id, name]
+    PublicPickupPoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+          nullable: true
+        pickupTime:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - id
+        - name
+        - city
+        - sortOrder
     UploadUrlRequest:
       type: object
       properties:
@@ -2347,6 +2749,18 @@ components:
       required:
         - id
         - message
+    CardConfirmedInput:
+      type: object
+      properties:
+        setupIntentId:
+          type: string
+      required: [setupIntentId]
+    CardConfirmedResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
     SettingsResponse:
       type: object
       properties:
@@ -2362,6 +2776,9 @@ components:
         payment_notes:
           type: string
           nullable: true
+        deposit_percentage:
+          type: string
+          nullable: true
     SettingsInput:
       type: object
       properties:
@@ -2373,3 +2790,149 @@ components:
           type: string
         payment_notes:
           type: string
+        deposit_percentage:
+          type: string
+    ScheduleActivity:
+      type: object
+      properties:
+        time:
+          type: string
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+      required:
+        - title
+    ScheduleDay:
+      type: object
+      properties:
+        dayNumber:
+          type: integer
+        title:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleActivity"
+      required:
+        - dayNumber
+        - activities
+    PickupLocation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - city
+        - sortOrder
+        - createdAt
+        - updatedAt
+    PickupLocationInput:
+      type: object
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - name
+        - city
+    ExcursionPickupPointLocation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - id
+        - name
+        - city
+        - sortOrder
+    ExcursionPickupPoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        excursionId:
+          type: string
+          format: uuid
+        pickupLocationId:
+          type: string
+          format: uuid
+        pickupTime:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        location:
+          $ref: "#/components/schemas/ExcursionPickupPointLocation"
+      required:
+        - id
+        - excursionId
+        - pickupLocationId
+        - sortOrder
+        - createdAt
+        - location
+    ExcursionPickupPointInput:
+      type: object
+      properties:
+        pickupLocationId:
+          type: string
+          format: uuid
+        pickupTime:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - pickupLocationId
+    ExcursionPickupPointUpdate:
+      type: object
+      properties:
+        pickupTime:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer

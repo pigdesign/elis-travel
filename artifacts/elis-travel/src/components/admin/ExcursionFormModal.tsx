@@ -209,7 +209,7 @@ function PickupPointsSection({ excursionId }: { excursionId: string }) {
                 onBlur={(e) => {
                   const t = e.target.value.trim();
                   if (t !== (pp.pickupTime ?? "")) {
-                    updateTime({ excursionId, ppId: pp.id, data: { pickupTime: t || null } });
+                    updateTime({ id: excursionId, ppId: pp.id, data: { pickupTime: t || null } });
                   }
                 }}
                 placeholder="Orario"
@@ -217,7 +217,7 @@ function PickupPointsSection({ excursionId }: { excursionId: string }) {
               />
               <button
                 type="button"
-                onClick={() => removePoint({ excursionId, ppId: pp.id })}
+                onClick={() => removePoint({ id: excursionId, ppId: pp.id })}
                 className="p-1 text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -259,7 +259,7 @@ function PickupPointsSection({ excursionId }: { excursionId: string }) {
             disabled={!selectedLocationId || isAdding}
             onClick={() =>
               addPoint({
-                excursionId,
+                id: excursionId,
                 data: { pickupLocationId: selectedLocationId, pickupTime: newTime.trim() || null },
               })
             }

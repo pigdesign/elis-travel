@@ -224,6 +224,7 @@ export function SettingsPage() {
   const [beneficiary, setBeneficiary] = useState("");
   const [bank, setBank] = useState("");
   const [notes, setNotes] = useState("");
+  const [depositPercentage, setDepositPercentage] = useState("");
   const [saved, setSaved] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -233,6 +234,7 @@ export function SettingsPage() {
       setBeneficiary(settings.payment_beneficiary ?? "");
       setBank(settings.payment_bank ?? "");
       setNotes(settings.payment_notes ?? "");
+      setDepositPercentage(settings.deposit_percentage ?? "");
     }
   }, [settings]);
 
@@ -240,12 +242,18 @@ export function SettingsPage() {
     e.preventDefault();
     setErrorMsg(null);
     try {
+      const pct = depositPercentage.trim();
+      if (pct !== "" && (isNaN(Number(pct)) || Number(pct) < 0 || Number(pct) > 100)) {
+        setErrorMsg("La percentuale acconto deve essere un numero tra 0 e 100.");
+        return;
+      }
       await mutateAsync({
         data: {
           payment_iban: iban.trim(),
           payment_beneficiary: beneficiary.trim(),
           payment_bank: bank.trim(),
           payment_notes: notes.trim(),
+          deposit_percentage: pct,
         },
       });
     } catch {
@@ -331,6 +339,25 @@ export function SettingsPage() {
             />
             <p className="text-xs text-muted-foreground mt-1">
               Verrà usata come causale predefinita nell'email.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">
+              Percentuale acconto gite (%)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={depositPercentage}
+              onChange={(e) => setDepositPercentage(e.target.value)}
+              placeholder="Es. 30"
+              className={inputCls}
+              data-testid="input-settings-deposit-percentage"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Se impostata, i clienti che scelgono "Acconto" pagano questa percentuale del totale con carta. Il saldo si salda il giorno della gita.
             </p>
           </div>
 

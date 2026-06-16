@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ScheduleDay } from "./scheduleDay";
 
 export interface ExcursionInput {
   name?: string;
@@ -24,4 +25,8 @@ export interface ExcursionInput {
   switchVehicleAdditionalCost?: string | null;
   operationalNotes?: string | null;
   coverImageUrl?: string | null;
+  schedule?: ScheduleDay[] | null;
+  included?: string | null;
+  excluded?: string | null;
+  generalInfo?: string | null;
 }

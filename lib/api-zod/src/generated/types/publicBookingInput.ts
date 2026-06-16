@@ -11,10 +11,10 @@ export interface PublicBookingInput {
   customerName: string;
   email: string;
   phone?: string;
-  /**
-   * @minimum 1
-   * @maximum 10
-   */
-  seats: number;
+  /** @minimum 1 */
+  adults: number;
+  /** @minimum 0 */
+  children?: number;
   paymentType: PublicBookingInputPaymentType;
+  servizioCasa?: boolean | null;
 }

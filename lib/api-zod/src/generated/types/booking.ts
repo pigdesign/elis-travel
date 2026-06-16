@@ -14,8 +14,11 @@ export interface Booking {
   email?: string | null;
   phone?: string | null;
   seats: number;
+  adults: number;
+  children: number;
   paymentStatus: string;
   bookedAt: Date;
+  servizioCasa?: boolean | null;
   cancelledAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;

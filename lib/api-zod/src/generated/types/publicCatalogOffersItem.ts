@@ -15,4 +15,9 @@ export type PublicCatalogOffersItem = {
   featured: boolean;
   lastMinute: boolean;
   publicPrice?: number | null;
+  durationDays?: number | null;
+  durationNights?: number | null;
+  period?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
 };

@@ -6,17 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CustomerSummary {
-  id: string;
+export type ConvertLeadToCustomerBody = {
   firstName: string;
   lastName: string;
   email: string;
   phone?: string | null;
   mobile?: string | null;
-  rmsLinked: boolean;
-  rmsExternalId?: string | null;
-  rmsLastSyncAt?: Date | null;
-  rmsLinkedAt?: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+};

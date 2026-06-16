@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicPickupPoint } from "./publicPickupPoint";
+import type { ScheduleDay } from "./scheduleDay";
 
 export interface PublicExcursionDetail {
   id: string;
@@ -16,4 +18,9 @@ export interface PublicExcursionDetail {
   minThreshold?: number | null;
   adherentsCount?: number | null;
   coverImageUrl?: string | null;
+  schedule?: ScheduleDay[] | null;
+  included?: string | null;
+  excluded?: string | null;
+  generalInfo?: string | null;
+  pickupPoints?: PublicPickupPoint[] | null;
 }

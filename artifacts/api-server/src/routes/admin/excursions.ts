@@ -8,6 +8,13 @@ import {
   pickupLocationsTable,
 } from "@workspace/db/schema";
 import { eq, desc, sql, and, inArray, isNull, asc } from "drizzle-orm";
+import { stripe } from "../../services/stripe";
+import {
+  dispatchChargedEmail,
+  dispatchChargeFailedEmail,
+  dispatchExcursionCancelledEmail,
+} from "../../services/excursion-booking-emails";
+import { logger } from "../../lib/logger";
 
 const VALID_PAYMENT_STATUSES = [
   "pending",
@@ -223,6 +230,12 @@ router.patch("/excursions/:id", async (req, res) => {
       }
     }
 
+    const [previous] = await db
+      .select({ status: excursionsTable.status })
+      .from(excursionsTable)
+      .where(eq(excursionsTable.id, id))
+      .limit(1);
+
     const [updated] = await db
       .update(excursionsTable)
       .set({ ...allowed, updatedAt: new Date() })
@@ -234,6 +247,17 @@ router.patch("/excursions/:id", async (req, res) => {
       return;
     }
 
+    const newStatus = allowed.status;
+    const prevStatus = previous?.status;
+
+    if (newStatus && newStatus !== prevStatus) {
+      if (newStatus === "confirmed") {
+        void processConfirmedExcursion(updated);
+      } else if (newStatus === "cancelled") {
+        void processCancelledExcursion(updated);
+      }
+    }
+
     const pendingRequestsCount = await getPendingRequestsCount(id);
     res.json({ ...updated, ...calcFinancials(updated), pendingRequestsCount });
   } catch (err) {
@@ -241,6 +265,160 @@ router.patch("/excursions/:id", async (req, res) => {
     res.status(500).json({ error: "Errore interno del server." });
   }
 });
+
+async function processConfirmedExcursion(excursion: typeof excursionsTable.$inferSelect) {
+  const bookings = await db
+    .select({
+      id: excursionBookingsTable.id,
+      customerName: excursionBookingsTable.customerName,
+      email: excursionBookingsTable.email,
+      phone: excursionBookingsTable.phone,
+      seats: excursionBookingsTable.seats,
+      adults: excursionBookingsTable.adults,
+      children: excursionBookingsTable.children,
+      servizioCasa: excursionBookingsTable.servizioCasa,
+      stripeCustomerId: excursionBookingsTable.stripeCustomerId,
+      stripePaymentMethodId: excursionBookingsTable.stripePaymentMethodId,
+      amountDueCents: excursionBookingsTable.amountDueCents,
+    })
+    .from(excursionBookingsTable)
+    .where(
+      and(
+        eq(excursionBookingsTable.excursionId, excursion.id),
+        eq(excursionBookingsTable.paymentStatus, "card_saved"),
+        isNull(excursionBookingsTable.cancelledAt),
+      ),
+    );
+
+  for (const booking of bookings) {
+    if (!booking.stripeCustomerId || !booking.stripePaymentMethodId || !booking.amountDueCents) {
+      continue;
+    }
+    try {
+      const paymentIntent = await stripe.paymentIntents.create(
+        {
+          amount: booking.amountDueCents,
+          currency: "eur",
+          customer: booking.stripeCustomerId,
+          payment_method: booking.stripePaymentMethodId,
+          confirm: true,
+          off_session: true,
+          description: `Gita: ${excursion.name} — ${booking.customerName}`,
+          metadata: { bookingId: booking.id, excursionId: excursion.id },
+        },
+        { idempotencyKey: `confirm-${booking.id}` },
+      );
+
+      await db
+        .update(excursionBookingsTable)
+        .set({
+          paymentStatus: "paid",
+          stripePaymentIntentId: paymentIntent.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(excursionBookingsTable.id, booking.id));
+
+      // Update excursion counters
+      await db
+        .update(excursionsTable)
+        .set({
+          depositsCount: sql`${excursionsTable.depositsCount} + ${booking.seats}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(excursionsTable.id, excursion.id));
+
+      if (booking.email) {
+        dispatchChargedEmail({
+          bookingId: booking.id,
+          customerName: booking.customerName,
+          customerEmail: booking.email,
+          customerPhone: booking.phone ?? null,
+          seats: booking.seats,
+          adults: booking.adults,
+          children: booking.children,
+          servizioCasa: booking.servizioCasa,
+          amountDueCents: booking.amountDueCents,
+          excursion: {
+            id: excursion.id,
+            name: excursion.name,
+            location: excursion.location,
+            date: excursion.date,
+            pricePerPerson: excursion.pricePerPerson,
+          },
+        });
+      }
+    } catch (err) {
+      logger.error({ err, bookingId: booking.id }, "Stripe off-session charge failed");
+
+      await db
+        .update(excursionBookingsTable)
+        .set({ paymentStatus: "charge_failed", updatedAt: new Date() })
+        .where(eq(excursionBookingsTable.id, booking.id));
+
+      if (booking.email) {
+        dispatchChargeFailedEmail({
+          bookingId: booking.id,
+          customerName: booking.customerName,
+          customerEmail: booking.email,
+          seats: booking.seats,
+          excursion: {
+            id: excursion.id,
+            name: excursion.name,
+            location: excursion.location,
+            date: excursion.date,
+          },
+        });
+      }
+    }
+  }
+}
+
+async function processCancelledExcursion(excursion: typeof excursionsTable.$inferSelect) {
+  const bookings = await db
+    .select({
+      id: excursionBookingsTable.id,
+      customerName: excursionBookingsTable.customerName,
+      email: excursionBookingsTable.email,
+      seats: excursionBookingsTable.seats,
+      stripePaymentMethodId: excursionBookingsTable.stripePaymentMethodId,
+    })
+    .from(excursionBookingsTable)
+    .where(
+      and(
+        eq(excursionBookingsTable.excursionId, excursion.id),
+        eq(excursionBookingsTable.paymentStatus, "card_saved"),
+        isNull(excursionBookingsTable.cancelledAt),
+      ),
+    );
+
+  for (const booking of bookings) {
+    if (booking.stripePaymentMethodId) {
+      stripe.paymentMethods.detach(booking.stripePaymentMethodId).catch((err) => {
+        logger.warn({ err, bookingId: booking.id }, "Failed to detach PaymentMethod on excursion cancellation");
+      });
+    }
+
+    await db
+      .update(excursionBookingsTable)
+      .set({ paymentStatus: "charge_skipped", updatedAt: new Date() })
+      .where(eq(excursionBookingsTable.id, booking.id));
+
+    if (booking.email) {
+      dispatchExcursionCancelledEmail({
+        bookingId: booking.id,
+        customerName: booking.customerName,
+        customerEmail: booking.email,
+        seats: booking.seats,
+        excursion: {
+          id: excursion.id,
+          name: excursion.name,
+          location: excursion.location,
+          date: excursion.date,
+        },
+      });
+    }
+  }
+}
 
 router.delete("/excursions/:id", async (req, res) => {
   try {

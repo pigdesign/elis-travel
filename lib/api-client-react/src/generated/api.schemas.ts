@@ -30,58 +30,16 @@ export interface ErrorResponse {
 }
 
 export interface ScheduleActivity {
-  time?: string;
+  time?: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface ScheduleDay {
   dayNumber: number;
-  title?: string;
-  imageUrl?: string;
+  title?: string | null;
+  imageUrl?: string | null;
   activities: ScheduleActivity[];
-}
-
-export interface PickupLocation {
-  id: string;
-  name: string;
-  city: string;
-  address?: string | null;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PickupLocationInput {
-  name: string;
-  city: string;
-  address?: string | null;
-  sortOrder?: number;
-}
-
-export interface ExcursionPickupPoint {
-  id: string;
-  excursionId: string;
-  pickupLocationId: string;
-  pickupTime?: string | null;
-  sortOrder: number;
-  createdAt: string;
-  location: Pick<PickupLocation, "id" | "name" | "city" | "address" | "sortOrder">;
-}
-
-export interface ExcursionPickupPointInput {
-  pickupLocationId: string;
-  pickupTime?: string | null;
-  sortOrder?: number;
-}
-
-export interface PublicPickupPoint {
-  id: string;
-  name: string;
-  city: string;
-  address?: string | null;
-  pickupTime?: string | null;
-  sortOrder: number;
 }
 
 export interface ExcursionSummary {
@@ -95,6 +53,7 @@ export interface ExcursionSummary {
   adherentsCount: number;
   depositsCount: number;
   balancesCount: number;
+  pendingRequestsCount: number;
   vehicleFixedCost?: string;
   mealCostPerPerson?: string;
   entranceCostPerPerson?: string;
@@ -129,8 +88,8 @@ export interface Booking {
   adults: number;
   children: number;
   paymentStatus: string;
-  servizioCasa: boolean;
   bookedAt: string;
+  servizioCasa?: boolean | null;
   cancelledAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -138,7 +97,6 @@ export interface Booking {
 
 export type ExcursionDetail = ExcursionSummary & {
   bookings: Booking[];
-  pickupPoints: ExcursionPickupPoint[];
 };
 
 export interface BookingInput {
@@ -146,11 +104,13 @@ export interface BookingInput {
   customerId?: string;
   email?: string | null;
   phone?: string | null;
+  /** @minimum 1 */
   adults?: number;
+  /** @minimum 0 */
   children?: number;
   seats?: number;
   paymentStatus?: string;
-  servizioCasa?: boolean;
+  servizioCasa?: boolean | null;
 }
 
 export type BookingPaymentStatusUpdatePaymentStatus =
@@ -186,7 +146,7 @@ export interface PublicBookingInput {
   /** @minimum 0 */
   children?: number;
   paymentType: PublicBookingInputPaymentType;
-  servizioCasa?: boolean;
+  servizioCasa?: boolean | null;
 }
 
 export interface PublicBookingResponse {
@@ -196,16 +156,9 @@ export interface PublicBookingResponse {
   children: number;
   paymentStatus: string;
   message: string;
+  setupIntentClientSecret?: string | null;
+  depositPercentage?: number | null;
 }
-
-export interface Settings {
-  payment_iban?: string | null;
-  payment_beneficiary?: string | null;
-  payment_bank?: string | null;
-  payment_notes?: string | null;
-}
-
-export type SettingsInput = Partial<Settings>;
 
 export interface ExcursionInput {
   name?: string;
@@ -407,14 +360,6 @@ export interface LeadNoteInput {
   authorName?: string;
 }
 
-export interface LeadConvertToCustomerInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string | null;
-  mobile?: string | null;
-}
-
 export interface PublicLeadInput {
   customerName: string;
   email: string;
@@ -448,11 +393,11 @@ export type PublicCatalogExcursionsItem = {
   location?: string | null;
   date?: string | null;
   coverImageUrl?: string | null;
-  pricePerPerson?: string | null;
-  currentCapacity?: number | null;
-  adherentsCount?: number | null;
-  minThreshold?: number | null;
   status?: string | null;
+  currentCapacity?: number | null;
+  minThreshold?: number | null;
+  adherentsCount?: number | null;
+  pricePerPerson?: string | null;
 };
 
 export interface PublicCatalog {
@@ -484,6 +429,15 @@ export interface PublicOfferDetail {
   lastMinute: boolean;
 }
 
+export interface PublicPickupPoint {
+  id: string;
+  name: string;
+  city: string;
+  address?: string | null;
+  pickupTime?: string | null;
+  sortOrder: number;
+}
+
 export interface PublicExcursionDetail {
   id: string;
   name: string;
@@ -498,7 +452,7 @@ export interface PublicExcursionDetail {
   included?: string | null;
   excluded?: string | null;
   generalInfo?: string | null;
-  pickupPoints?: PublicPickupPoint[];
+  pickupPoints?: PublicPickupPoint[] | null;
 }
 
 export interface UploadUrlRequest {
@@ -594,6 +548,76 @@ export interface PublicLeadResponse {
   message: string;
 }
 
+export interface CardConfirmedInput {
+  setupIntentId: string;
+}
+
+export interface CardConfirmedResponse {
+  ok: boolean;
+}
+
+export interface SettingsResponse {
+  payment_iban?: string | null;
+  payment_beneficiary?: string | null;
+  payment_bank?: string | null;
+  payment_notes?: string | null;
+  deposit_percentage?: string | null;
+}
+
+export interface SettingsInput {
+  payment_iban?: string;
+  payment_beneficiary?: string;
+  payment_bank?: string;
+  payment_notes?: string;
+  deposit_percentage?: string;
+}
+
+export interface PickupLocation {
+  id: string;
+  name: string;
+  city: string;
+  address?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PickupLocationInput {
+  name: string;
+  city: string;
+  address?: string | null;
+  sortOrder?: number;
+}
+
+export interface ExcursionPickupPointLocation {
+  id: string;
+  name: string;
+  city: string;
+  address?: string | null;
+  sortOrder: number;
+}
+
+export interface ExcursionPickupPoint {
+  id: string;
+  excursionId: string;
+  pickupLocationId: string;
+  pickupTime?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  location: ExcursionPickupPointLocation;
+}
+
+export interface ExcursionPickupPointInput {
+  pickupLocationId: string;
+  pickupTime?: string | null;
+  sortOrder?: number;
+}
+
+export interface ExcursionPickupPointUpdate {
+  pickupTime?: string | null;
+  sortOrder?: number;
+}
+
 export type ListCustomersParams = {
   /**
    * Ricerca per nome o email
@@ -615,4 +639,12 @@ export type SearchRmsCustomersParams = {
 
 export type DeleteVehicle200 = {
   ok: boolean;
+};
+
+export type ConvertLeadToCustomerBody = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+  mobile?: string | null;
 };
