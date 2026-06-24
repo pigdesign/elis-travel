@@ -1358,6 +1358,12 @@ components:
           type: integer
         paymentStatus:
           type: string
+        servizioCasa:
+          type: boolean
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
         bookedAt:
           type: string
           format: date-time
@@ -1433,6 +1439,11 @@ components:
         paymentType:
           type: string
           enum: [deposit, full]
+        servizioCasa:
+          type: boolean
+        pickupPointId:
+          type: string
+          format: uuid
       required:
         - customerName
         - email

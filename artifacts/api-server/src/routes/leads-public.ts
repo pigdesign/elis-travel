@@ -424,7 +424,7 @@ router.post("/leads", publicFormsLimiter, async (req, res) => {
 router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
   try {
     const id = req.params.id as string;
-    const { customerName, email, phone, adults, children, paymentType, servizioCasa } = req.body as {
+    const { customerName, email, phone, adults, children, paymentType, servizioCasa, pickupPointId } = req.body as {
       customerName?: string;
       email?: string;
       phone?: string;
@@ -432,6 +432,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       children?: number;
       paymentType?: string;
       servizioCasa?: boolean;
+      pickupPointId?: string;
     };
 
     if (!customerName?.trim() || !email?.trim()) {
@@ -465,6 +466,34 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     if (paymentType !== "deposit" && paymentType !== "full") {
       res.status(400).json({ error: "Tipo di pagamento non valido." });
       return;
+    }
+
+    // Punto di raccolta facoltativo: se fornito deve appartenere a questa gita.
+    let pickupPointInfo: { id: string; name: string; pickupTime: string | null } | null = null;
+    if (pickupPointId) {
+      const [pp] = await db
+        .select({
+          id: excursionPickupPointsTable.id,
+          name: pickupLocationsTable.name,
+          pickupTime: excursionPickupPointsTable.pickupTime,
+        })
+        .from(excursionPickupPointsTable)
+        .innerJoin(
+          pickupLocationsTable,
+          eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id),
+        )
+        .where(
+          and(
+            eq(excursionPickupPointsTable.id, pickupPointId),
+            eq(excursionPickupPointsTable.excursionId, id),
+          ),
+        )
+        .limit(1);
+      if (!pp) {
+        res.status(400).json({ error: "Punto di raccolta non valido per questa gita." });
+        return;
+      }
+      pickupPointInfo = pp;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -534,6 +563,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
           children: childrenNum,
           paymentStatus,
           servizioCasa: servizioCasa === true,
+          pickupPointId: pickupPointInfo?.id ?? null,
         })
         .returning();
 
@@ -580,6 +610,9 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         adults: adultsNum,
         children: childrenNum,
         servizioCasa: result.booking.servizioCasa,
+        pickupPoint: pickupPointInfo
+          ? { name: pickupPointInfo.name, pickupTime: pickupPointInfo.pickupTime }
+          : null,
         paymentType: paymentType as "deposit" | "full",
         excursion: {
           id: result.excursion.id,

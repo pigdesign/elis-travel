@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
 import {
@@ -15,6 +15,21 @@ import {
 } from "lucide-react";
 import { useListExcursions } from "@workspace/api-client-react";
 import type { ExcursionSummary } from "@workspace/api-client-react";
+
+const MONTHS = [
+  { value: "01", label: "Gennaio" },
+  { value: "02", label: "Febbraio" },
+  { value: "03", label: "Marzo" },
+  { value: "04", label: "Aprile" },
+  { value: "05", label: "Maggio" },
+  { value: "06", label: "Giugno" },
+  { value: "07", label: "Luglio" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Settembre" },
+  { value: "10", label: "Ottobre" },
+  { value: "11", label: "Novembre" },
+  { value: "12", label: "Dicembre" },
+];
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: "Bozza", className: "bg-muted text-muted-foreground" },
@@ -297,6 +312,35 @@ export function ExcursionsPage() {
   const [, setLocation] = useLocation();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const [filterYear, setFilterYear] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    (excursions ?? []).forEach((exc) => {
+      if (exc.date) years.add(exc.date.slice(0, 4));
+    });
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [excursions]);
+
+  const filteredExcursions = useMemo(() => {
+    return (excursions ?? []).filter((exc) => {
+      const date = exc.date ?? "";
+      if (filterYear && date.slice(0, 4) !== filterYear) return false;
+      if (filterMonth && date.slice(5, 7) !== filterMonth) return false;
+      if (filterDate && date !== filterDate) return false;
+      return true;
+    });
+  }, [excursions, filterYear, filterMonth, filterDate]);
+
+  const hasActiveFilters = filterYear !== "" || filterMonth !== "" || filterDate !== "";
+  const resetFilters = () => {
+    setFilterYear("");
+    setFilterMonth("");
+    setFilterDate("");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -339,6 +383,67 @@ export function ExcursionsPage() {
       )}
 
       {!isLoading && !error && excursions && (
+        <div className="bg-white rounded-2xl border border-border/50 shadow-sm px-4 py-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="filter-year" className="text-xs font-medium text-muted-foreground">Anno</label>
+              <select
+                id="filter-year"
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="filter-excursions-year"
+              >
+                <option value="">Tutti gli anni</option>
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="filter-month" className="text-xs font-medium text-muted-foreground">Mese</label>
+              <select
+                id="filter-month"
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="filter-excursions-month"
+              >
+                <option value="">Tutti i mesi</option>
+                {MONTHS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="filter-date" className="text-xs font-medium text-muted-foreground">Data esatta</label>
+              <input
+                id="filter-date"
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="filter-excursions-date"
+              />
+            </div>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="h-9 rounded-lg border border-border bg-white px-3 text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+                data-testid="filter-excursions-reset"
+              >
+                Reset filtri
+              </button>
+            )}
+            <span className="ml-auto self-center text-xs text-muted-foreground">
+              {filteredExcursions.length} {filteredExcursions.length === 1 ? "gita" : "gite"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && !error && excursions && (
         <div className="bg-white rounded-2xl border border-border/50 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -355,13 +460,15 @@ export function ExcursionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {excursions.map((exc) => (
+                {filteredExcursions.map((exc) => (
                   <ExcursionRow key={exc.id} exc={exc} />
                 ))}
-                {excursions.length === 0 && (
+                {filteredExcursions.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-muted-foreground">
-                      Nessuna gita trovata. Crea la prima gita!
+                      {hasActiveFilters
+                        ? "Nessuna gita per i filtri selezionati."
+                        : "Nessuna gita trovata. Crea la prima gita!"}
                     </td>
                   </tr>
                 )}

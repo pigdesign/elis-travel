@@ -8,6 +8,7 @@ import {
   date,
   jsonb,
   boolean,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -93,6 +94,10 @@ export const excursionBookingsTable = pgTable("excursion_bookings", {
   children: integer("children").notNull().default(0),
   paymentStatus: text("payment_status").notNull().default("pending"),
   servizioCasa: boolean("servizio_casa").notNull().default(false),
+  pickupPointId: uuid("pickup_point_id").references(
+    (): AnyPgColumn => excursionPickupPointsTable.id,
+    { onDelete: "set null" },
+  ),
   bookedAt: timestamp("booked_at").notNull().defaultNow(),
   cancelledAt: timestamp("cancelled_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

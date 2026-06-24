@@ -130,6 +130,7 @@ export interface Booking {
   children: number;
   paymentStatus: string;
   servizioCasa: boolean;
+  pickupPointId?: string | null;
   bookedAt: string;
   cancelledAt?: string | null;
   createdAt: string;
@@ -187,6 +188,7 @@ export interface PublicBookingInput {
   children?: number;
   paymentType: PublicBookingInputPaymentType;
   servizioCasa?: boolean;
+  pickupPointId?: string;
 }
 
 export interface PublicBookingResponse {

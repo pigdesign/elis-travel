@@ -15,7 +15,6 @@ import {
   Clock,
   Plane,
   Tag,
-  Building2,
   CheckCircle2,
   XCircle,
   Sparkles,
@@ -374,17 +373,6 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
                             <div className="text-muted-foreground text-xs">Formula</div>
                             <div className="font-medium text-foreground">
                               {offer.baseFormula}
-                            </div>
-                          </div>
-                        </li>
-                      )}
-                      {offer.tourOperator && (
-                        <li className="flex items-start gap-2.5">
-                          <Building2 className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                          <div>
-                            <div className="text-muted-foreground text-xs">Tour operator</div>
-                            <div className="font-medium text-foreground">
-                              {offer.tourOperator}
                             </div>
                           </div>
                         </li>

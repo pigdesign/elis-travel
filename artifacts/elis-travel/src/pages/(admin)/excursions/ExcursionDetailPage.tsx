@@ -130,6 +130,7 @@ function BookingRow({
   excursionDate,
   excursionLocation,
   pricePerPerson,
+  pickupPointName,
 }: {
   booking: Booking;
   excursionId: string;
@@ -137,6 +138,7 @@ function BookingRow({
   excursionDate: string;
   excursionLocation: string;
   pricePerPerson: string | null;
+  pickupPointName?: string | null;
 }) {
   const queryClient = useQueryClient();
   const paymentCfg = PAYMENT_STATUS_CONFIG[booking.paymentStatus] ?? PAYMENT_STATUS_CONFIG["pending"];
@@ -200,6 +202,12 @@ function BookingRow({
             {booking.email && (
               <div className="text-xs text-muted-foreground truncate" data-testid={`text-booking-email-${booking.id}`}>
                 {booking.email}
+              </div>
+            )}
+            {pickupPointName && (
+              <div className="text-xs text-primary mt-0.5 flex items-center gap-1 truncate" title={`Punto di raccolta: ${pickupPointName}`}>
+                <MapPin className="w-3 h-3 shrink-0" />
+                <span className="truncate">{pickupPointName}</span>
               </div>
             )}
             {isCancelled && booking.cancelledAt && (
@@ -688,6 +696,12 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const activeBookings = allBookings.filter((b) => !b.cancelledAt);
   const cancelledBookings = allBookings.filter((b) => !!b.cancelledAt);
   const bookings = showCancelled ? allBookings : activeBookings;
+  const pickupPointById = new Map(
+    (exc.pickupPoints ?? []).map((p) => [
+      p.id,
+      `${p.location.name}${p.pickupTime ? ` (ore ${p.pickupTime})` : ""}`,
+    ] as const),
+  );
 
   return (
     <div className="space-y-6">
@@ -852,6 +866,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                       excursionDate={exc.date}
                       excursionLocation={exc.location}
                       pricePerPerson={exc.pricePerPerson}
+                      pickupPointName={b.pickupPointId ? pickupPointById.get(b.pickupPointId) ?? null : null}
                     />
                   ))}
                   {bookings.length === 0 && (
