@@ -22,6 +22,8 @@ import {
   Mail,
   ClipboardCopy,
   CheckCheck,
+  Printer,
+  FileText,
 } from "lucide-react";
 import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
 import {
@@ -63,6 +65,14 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; icon: React.Element
 
 function formatEur(n: number) {
   return n.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function formatDate(dateStr: string) {
@@ -716,6 +726,119 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     ] as const),
   );
 
+  const reportRows = activeBookings
+    .map((b) => ({
+      name: b.customerName,
+      phone: b.phone ?? "",
+      pickup: b.pickupPointId ? pickupPointById.get(b.pickupPointId) ?? "" : "",
+      adults: b.adults,
+      children: b.children,
+      servizioCasa: !!b.servizioCasa,
+      paymentLabel: PAYMENT_STATUS_CONFIG[b.paymentStatus]?.label ?? b.paymentStatus,
+    }))
+    .sort((a, b) => {
+      const pa = a.pickup || "￿";
+      const pb = b.pickup || "￿";
+      if (pa !== pb) return pa.localeCompare(pb, "it");
+      return a.name.localeCompare(b.name, "it");
+    });
+
+  const totalPeople = activeBookings.reduce((sum, b) => sum + b.adults + b.children, 0);
+  const paidCount = activeBookings.filter((b) => b.paymentStatus === "paid").length;
+  const depositCount = activeBookings.filter((b) => b.paymentStatus === "deposit").length;
+  const pendingCount = activeBookings.length - paidCount - depositCount;
+
+  const handlePrintReport = () => {
+    const rowsHtml = reportRows
+      .map(
+        (r, i) => `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${escapeHtml(r.name)}</td>
+          <td>${escapeHtml(r.phone) || "—"}</td>
+          <td>${escapeHtml(r.pickup) || "—"}</td>
+          <td class="center">${r.children > 0 ? `${r.adults}A+${r.children}B` : `${r.adults}A`}</td>
+          <td class="center">${r.servizioCasa ? "Sì" : "—"}</td>
+          <td>${escapeHtml(r.paymentLabel)}</td>
+          <td class="check"><span class="box"></span></td>
+        </tr>`,
+      )
+      .join("");
+
+    const printedAt = new Date().toLocaleString("it-IT", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const html = `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<title>Report gita - ${escapeHtml(exc.name)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #14242b; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { color: #5b6b72; font-size: 13px; }
+  .summary { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 18px; font-size: 12px; }
+  .summary span { background: #f1f5f7; border-radius: 6px; padding: 5px 10px; }
+  .summary b { color: #0f1f26; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #cbd5db; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #0e3a4a; color: #fff; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+  td.center { text-align: center; }
+  td.check { width: 56px; text-align: center; }
+  .box { display: inline-block; width: 15px; height: 15px; border: 1.5px solid #5b6b72; border-radius: 3px; }
+  tbody tr:nth-child(even) { background: #f7fafb; }
+  footer { margin-top: 16px; font-size: 11px; color: #5b6b72; display: flex; justify-content: space-between; }
+  @page { size: A4 landscape; margin: 12mm; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(exc.name)}</h1>
+  <div class="meta">${escapeHtml(exc.location)} · ${formatDate(exc.date)} · ${escapeHtml(statusCfg.label)}</div>
+  <div class="summary">
+    <span><b>${activeBookings.length}</b> prenotazioni · <b>${totalPeople}</b> persone</span>
+    <span>Saldati <b>${paidCount}</b> · Acconto <b>${depositCount}</b> · In attesa <b>${pendingCount}</b></span>
+    <span>Da prenotare: <b>${totalPeople}</b> pasti · <b>${totalPeople}</b> ingressi</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th class="center">#</th>
+        <th>Nome e cognome</th>
+        <th>Telefono</th>
+        <th>Punto di raccolta</th>
+        <th class="center">Posti</th>
+        <th class="center">Casa</th>
+        <th>Pagamento</th>
+        <th class="center">Presenza</th>
+      </tr>
+    </thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <footer>
+    <span>Elis Travel — Report gita</span>
+    <span>Stampato il ${printedAt}</span>
+  </footer>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank", "width=1024,height=720");
+    if (!win) {
+      alert("Per stampare il report consenti le finestre popup per questo sito.");
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -1003,6 +1126,45 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5 pb-2 border-b border-primary/10">
+              <FileText className="w-4 h-4" /> Report
+            </h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Partecipanti</span>
+                <span className="font-medium">
+                  {activeBookings.length}{" "}
+                  <span className="font-normal text-muted-foreground">({totalPeople} pers.)</span>
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground shrink-0">Pagamenti</span>
+                <span className="font-medium text-right">
+                  {paidCount} saldati · {depositCount} acconto · {pendingCount} in attesa
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Da prenotare</span>
+                <span className="font-medium">{totalPeople} pasti · {totalPeople} ingressi</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handlePrintReport}
+              disabled={activeBookings.length === 0}
+              className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              data-testid="button-print-report"
+            >
+              <Printer className="w-4 h-4" /> Stampa report
+            </button>
+            {activeBookings.length === 0 && (
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                Nessun partecipante da stampare.
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -1991,6 +1991,11 @@ components:
             internalNotes:
               type: string
               nullable: true
+            schedule:
+              type: array
+              nullable: true
+              items:
+                $ref: "#/components/schemas/ScheduleDay"
     OfferInput:
       type: object
       properties:
@@ -2063,6 +2068,11 @@ components:
           type: boolean
         lastMinute:
           type: boolean
+        schedule:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ScheduleDay"
 
     Lead:
       type: object
@@ -2460,6 +2470,11 @@ components:
           type: boolean
         lastMinute:
           type: boolean
+        schedule:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ScheduleDay"
       required: [id, name, featured, lastMinute]
     PublicExcursionDetail:
       type: object

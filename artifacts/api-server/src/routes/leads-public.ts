@@ -224,6 +224,7 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
         highlights: offersTable.highlights,
         publicLink: offersTable.publicLink,
         coverImageUrl: offersTable.coverImageUrl,
+        schedule: offersTable.schedule,
         category: offersTable.category,
         featured: offersTable.featured,
         lastMinute: offersTable.lastMinute,

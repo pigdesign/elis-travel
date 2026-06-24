@@ -17,4 +17,5 @@ export interface PublicBookingInput {
   children?: number;
   paymentType: PublicBookingInputPaymentType;
   servizioCasa?: boolean | null;
+  pickupPointId?: string;
 }

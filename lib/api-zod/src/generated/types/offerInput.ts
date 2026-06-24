@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ScheduleDay } from "./scheduleDay";
 
 export interface OfferInput {
   name?: string;
@@ -31,4 +32,5 @@ export interface OfferInput {
   category?: string | null;
   featured?: boolean;
   lastMinute?: boolean;
+  schedule?: ScheduleDay[] | null;
 }

@@ -18,7 +18,7 @@ const MUTABLE_FIELDS = [
   "durationDays", "durationNights", "period", "publicPrice",
   "advertisingText", "servicesIncluded", "servicesExcluded",
   "highlights", "pricingNotes", "internalNotes", "publicLink",
-  "mainSource", "coverImageUrl", "category", "featured", "lastMinute",
+  "mainSource", "coverImageUrl", "schedule", "category", "featured", "lastMinute",
 ] as const;
 
 function pickMutable(body: Record<string, unknown>) {
@@ -70,6 +70,7 @@ router.post("/offers", async (req, res) => {
         publicLink: (body.publicLink as string) ?? null,
         mainSource: (body.mainSource as string) ?? null,
         coverImageUrl: (body.coverImageUrl as string) ?? null,
+        schedule: body.schedule ?? null,
         category: sanitizeCategory(body.category),
         featured: typeof body.featured === "boolean" ? body.featured : false,
         lastMinute: typeof body.lastMinute === "boolean" ? body.lastMinute : false,

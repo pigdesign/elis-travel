@@ -18,10 +18,10 @@ import type {
   ExcursionInput,
   ExcursionSummary,
   ScheduleDay,
-  ScheduleActivity,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
+import { ScheduleEditor } from "@/components/shared/ScheduleEditor";
 
 const STATUS_OPTIONS = [
   { value: "draft", label: "Bozza" },
@@ -759,132 +759,10 @@ export function ExcursionFormModal({
           </section>
 
           {/* Sezione: Programma */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Programma
-            </h4>
-            <p className="text-xs text-muted-foreground -mt-1">
-              Struttura la giornata per step. Ogni giorno può avere più attività.
-            </p>
-            {form.schedule.map((day, di) => (
-              <div key={di} className="border border-border rounded-xl p-3 space-y-2 bg-muted/20">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-primary shrink-0">Giorno {day.dayNumber}</span>
-                  <input
-                    type="text"
-                    value={day.title ?? ""}
-                    onChange={(e) => {
-                      const s = [...form.schedule];
-                      s[di] = { ...s[di], title: e.target.value };
-                      setField("schedule", s);
-                    }}
-                    placeholder="Titolo giornata (opzionale)"
-                    className="flex-1 px-2 py-1 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setField("schedule", form.schedule.filter((_, i) => i !== di))}
-                    className="p-1 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="pl-1">
-                  <p className="text-xs text-muted-foreground mb-1">Immagine giornata</p>
-                  <CoverImageUploader
-                    value={day.imageUrl ?? null}
-                    onChange={(url) => {
-                      const s = [...form.schedule];
-                      s[di] = { ...s[di], imageUrl: url ?? undefined };
-                      setField("schedule", s);
-                    }}
-                    testIdPrefix={`schedule-day-${di}-image`}
-                  />
-                </div>
-                {day.activities.map((act, ai) => (
-                  <div key={ai} className="flex gap-2 items-start pl-3">
-                    <input
-                      type="text"
-                      value={act.time ?? ""}
-                      onChange={(e) => {
-                        const s = [...form.schedule];
-                        const acts = [...s[di].activities];
-                        acts[ai] = { ...acts[ai], time: e.target.value };
-                        s[di] = { ...s[di], activities: acts };
-                        setField("schedule", s);
-                      }}
-                      placeholder="Ora"
-                      className="w-16 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30 shrink-0"
-                    />
-                    <input
-                      type="text"
-                      value={act.title}
-                      onChange={(e) => {
-                        const s = [...form.schedule];
-                        const acts = [...s[di].activities];
-                        acts[ai] = { ...acts[ai], title: e.target.value };
-                        s[di] = { ...s[di], activities: acts };
-                        setField("schedule", s);
-                      }}
-                      placeholder="Titolo attività *"
-                      className="flex-1 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                    <input
-                      type="text"
-                      value={act.description ?? ""}
-                      onChange={(e) => {
-                        const s = [...form.schedule];
-                        const acts = [...s[di].activities];
-                        acts[ai] = { ...acts[ai], description: e.target.value };
-                        s[di] = { ...s[di], activities: acts };
-                        setField("schedule", s);
-                      }}
-                      placeholder="Descrizione"
-                      className="flex-1 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const s = [...form.schedule];
-                        s[di] = { ...s[di], activities: s[di].activities.filter((_, i) => i !== ai) };
-                        setField("schedule", s);
-                      }}
-                      className="p-1 text-muted-foreground hover:text-destructive shrink-0"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const s = [...form.schedule];
-                    const newAct: ScheduleActivity = { title: "" };
-                    s[di] = { ...s[di], activities: [...s[di].activities, newAct] };
-                    setField("schedule", s);
-                  }}
-                  className="ml-3 text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" /> Aggiungi attività
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                const newDay: ScheduleDay = {
-                  dayNumber: form.schedule.length + 1,
-                  title: "",
-                  activities: [],
-                };
-                setField("schedule", [...form.schedule, newDay]);
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-border rounded-xl text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Aggiungi giorno
-            </button>
-          </section>
+          <ScheduleEditor
+            value={form.schedule}
+            onChange={(days) => setField("schedule", days)}
+          />
 
           {/* Sezione: Quota */}
           <section className="space-y-3">

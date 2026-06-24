@@ -25,10 +25,10 @@ export function HomePage() {
       <main className="flex-1 w-full">
         <HeroSection />
         <SearchBar />
-        <PopularDestinations />
+        <PopularTours />
         <FeatureSection />
         <BestServices />
-        <PopularTours />
+        <PopularDestinations />
         <EasySteps />
         <WhyChooseUs />
         <Testimonials />

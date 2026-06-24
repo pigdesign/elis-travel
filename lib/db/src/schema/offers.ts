@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, numeric, uuid, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, numeric, uuid, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { relations } from "drizzle-orm";
@@ -25,6 +25,7 @@ export const offersTable = pgTable("offers", {
   internalNotes: text("internal_notes"),
   publicLink: text("public_link"),
   coverImageUrl: text("cover_image_url"),
+  schedule: jsonb("schedule"),
   category: text("category"),
   featured: boolean("featured").notNull().default(false),
   lastMinute: boolean("last_minute").notNull().default(false),

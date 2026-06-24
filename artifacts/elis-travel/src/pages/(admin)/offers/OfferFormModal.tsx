@@ -6,13 +6,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
+import { ScheduleEditor } from "@/components/shared/ScheduleEditor";
 import {
   useCreateOffer,
   useUpdateOffer,
   getListOffersQueryKey,
   getGetOfferQueryKey,
 } from "@workspace/api-client-react";
-import type { OfferDetail, OfferSummary } from "@workspace/api-client-react";
+import type { OfferDetail, OfferSummary, ScheduleDay } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 type OfferFormData = {
@@ -37,6 +38,7 @@ type OfferFormData = {
   mainSource: string;
   internalNotes: string;
   coverImageUrl: string;
+  schedule: ScheduleDay[];
   category: string;
   featured: boolean;
   lastMinute: boolean;
@@ -64,6 +66,7 @@ const emptyForm: OfferFormData = {
   mainSource: "",
   internalNotes: "",
   coverImageUrl: "",
+  schedule: [],
   category: "",
   featured: false,
   lastMinute: false,
@@ -93,6 +96,7 @@ function offerToForm(offer: OfferSummary | OfferDetail): OfferFormData {
     mainSource: offer.mainSource ?? "",
     internalNotes: detail.internalNotes ?? "",
     coverImageUrl: offer.coverImageUrl ?? "",
+    schedule: (detail.schedule as ScheduleDay[] | null) ?? [],
     category: offer.category ?? "",
     featured: offer.featured ?? false,
     lastMinute: offer.lastMinute ?? false,
@@ -122,6 +126,7 @@ function formToPayload(form: OfferFormData) {
     mainSource: form.mainSource.trim() || null,
     internalNotes: form.internalNotes.trim() || null,
     coverImageUrl: form.coverImageUrl.trim() || null,
+    schedule: form.schedule.length > 0 ? form.schedule : null,
     category: form.category || null,
     featured: form.featured,
     lastMinute: form.lastMinute,
@@ -495,6 +500,16 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                 className={inputCls}
               />
             </Field>
+          </div>
+
+          <div className={sectionCls}>
+            <ScheduleEditor
+              title="Itinerario"
+              description="Struttura il viaggio giorno per giorno. Se compilato, è mostrato al cliente nella pagina dell'offerta."
+              value={form.schedule}
+              onChange={(days) => setForm((prev) => ({ ...prev, schedule: days }))}
+              testIdPrefix="offer-schedule"
+            />
           </div>
 
           <div className={sectionCls}>

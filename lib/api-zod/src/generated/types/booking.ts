@@ -19,6 +19,7 @@ export interface Booking {
   paymentStatus: string;
   bookedAt: Date;
   servizioCasa?: boolean | null;
+  pickupPointId?: string | null;
   cancelledAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;

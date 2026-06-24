@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
+import { ScheduleTimeline } from "@/components/shared/ScheduleTimeline";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useGetPublicOffer } from "@workspace/api-client-react";
@@ -176,6 +177,9 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
     if (nights) parts.push(`${nights} ${nights === 1 ? "notte" : "notti"}`);
     return parts.join(" / ");
   })();
+
+  const scheduleDays = offer?.schedule ?? [];
+  const itineraryVisual = scheduleDays.find((day) => day.imageUrl)?.imageUrl ?? null;
 
   const heroBadgeLabel = durationLabel ? durationLabel.toUpperCase() : "OFFERTA VIAGGIO";
 
@@ -452,6 +456,13 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
                     </div>
                   )}
 
+                  <ScheduleTimeline
+                    days={scheduleDays}
+                    title="Itinerario"
+                    mainVisual={itineraryVisual}
+                    imageAlt={offer.name}
+                  />
+
                   {(offer.servicesIncluded || offer.servicesExcluded) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {offer.servicesIncluded && (
@@ -479,6 +490,7 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
                     !offer.highlights &&
                     !offer.servicesIncluded &&
                     !offer.servicesExcluded &&
+                    scheduleDays.length === 0 &&
                     galleryImages.length === 0 && (
                       <div className="rounded-[30px] border border-slate-200/70 bg-white p-8 shadow-[0_18px_50px_rgba(20,36,43,0.08)] text-center text-muted-foreground">
                         Per maggiori dettagli su questa offerta, contattaci tramite il pulsante qui a fianco.

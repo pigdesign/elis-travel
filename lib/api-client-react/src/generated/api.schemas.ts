@@ -241,6 +241,7 @@ export type OfferDetail = OfferSummary & {
   highlights?: string | null;
   pricingNotes?: string | null;
   internalNotes?: string | null;
+  schedule?: ScheduleDay[] | null;
 };
 
 export interface OfferInput {
@@ -268,6 +269,7 @@ export interface OfferInput {
   category?: string | null;
   featured?: boolean;
   lastMinute?: boolean;
+  schedule?: ScheduleDay[] | null;
 }
 
 export interface Lead {
@@ -429,6 +431,7 @@ export interface PublicOfferDetail {
   category?: string | null;
   featured: boolean;
   lastMinute: boolean;
+  schedule?: ScheduleDay[] | null;
 }
 
 export interface PublicPickupPoint {

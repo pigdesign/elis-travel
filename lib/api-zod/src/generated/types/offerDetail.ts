@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OfferSummary } from "./offerSummary";
+import type { ScheduleDay } from "./scheduleDay";
 
 export type OfferDetail = OfferSummary & {
   baseFormula?: string | null;
@@ -16,4 +17,5 @@ export type OfferDetail = OfferSummary & {
   highlights?: string | null;
   pricingNotes?: string | null;
   internalNotes?: string | null;
+  schedule?: ScheduleDay[] | null;
 };

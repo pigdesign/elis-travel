@@ -466,6 +466,7 @@ export const GetExcursionResponse = zod
           paymentStatus: zod.string(),
           bookedAt: zod.coerce.date(),
           servizioCasa: zod.boolean().nullish(),
+          pickupPointId: zod.string().uuid().nullish(),
           cancelledAt: zod.coerce.date().nullish(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date(),
@@ -634,6 +635,7 @@ export const UpdateExcursionBookingPaymentResponse = zod.object({
   paymentStatus: zod.string(),
   bookedAt: zod.coerce.date(),
   servizioCasa: zod.boolean().nullish(),
+  pickupPointId: zod.string().uuid().nullish(),
   cancelledAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -671,6 +673,7 @@ export const CreatePublicExcursionBookingBody = zod.object({
     .optional(),
   paymentType: zod.enum(["deposit", "full"]),
   servizioCasa: zod.boolean().nullish(),
+  pickupPointId: zod.string().uuid().optional(),
 });
 
 /**
@@ -1007,6 +1010,22 @@ export const CreateOfferBody = zod.object({
   category: zod.string().nullish(),
   featured: zod.boolean().optional(),
   lastMinute: zod.boolean().optional(),
+  schedule: zod
+    .array(
+      zod.object({
+        dayNumber: zod.number(),
+        title: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        activities: zod.array(
+          zod.object({
+            time: zod.string().nullish(),
+            title: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        ),
+      }),
+    )
+    .nullish(),
 });
 
 /**
@@ -1050,6 +1069,22 @@ export const GetOfferResponse = zod
       highlights: zod.string().nullish(),
       pricingNotes: zod.string().nullish(),
       internalNotes: zod.string().nullish(),
+      schedule: zod
+        .array(
+          zod.object({
+            dayNumber: zod.number(),
+            title: zod.string().nullish(),
+            imageUrl: zod.string().nullish(),
+            activities: zod.array(
+              zod.object({
+                time: zod.string().nullish(),
+                title: zod.string(),
+                description: zod.string().nullish(),
+              }),
+            ),
+          }),
+        )
+        .nullish(),
     }),
   );
 
@@ -1085,6 +1120,22 @@ export const UpdateOfferBody = zod.object({
   category: zod.string().nullish(),
   featured: zod.boolean().optional(),
   lastMinute: zod.boolean().optional(),
+  schedule: zod
+    .array(
+      zod.object({
+        dayNumber: zod.number(),
+        title: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        activities: zod.array(
+          zod.object({
+            time: zod.string().nullish(),
+            title: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        ),
+      }),
+    )
+    .nullish(),
 });
 
 export const UpdateOfferResponse = zod.object({
@@ -1336,6 +1387,22 @@ export const GetPublicOfferResponse = zod.object({
   category: zod.string().nullish(),
   featured: zod.boolean(),
   lastMinute: zod.boolean(),
+  schedule: zod
+    .array(
+      zod.object({
+        dayNumber: zod.number(),
+        title: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        activities: zod.array(
+          zod.object({
+            time: zod.string().nullish(),
+            title: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        ),
+      }),
+    )
+    .nullish(),
 });
 
 /**
