@@ -1665,6 +1665,10 @@ components:
         servizioCasa:
           type: boolean
           nullable: true
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
         cancelledAt:
           type: string
           format: date-time
@@ -1743,6 +1747,9 @@ components:
         servizioCasa:
           type: boolean
           nullable: true
+        pickupPointId:
+          type: string
+          format: uuid
       required:
         - customerName
         - email

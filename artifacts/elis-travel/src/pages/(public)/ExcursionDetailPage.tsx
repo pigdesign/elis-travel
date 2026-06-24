@@ -10,6 +10,7 @@ import {
   confirmPublicExcursionBookingCard,
   getGetPublicExcursionQueryKey,
 } from "@workspace/api-client-react";
+import type { PublicPickupPoint } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -475,7 +476,7 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                     seatsAvailable={seatsInfo?.available ?? true}
                     remainingSeats={remainingSeats}
                     priceLabel={priceLabel}
-                    hasPickupPoints={!!(excursion.pickupPoints && excursion.pickupPoints.length > 0)}
+                    pickupPoints={excursion.pickupPoints ?? []}
                     cardPaymentsEnabled={excursion.cardPaymentsEnabled === true}
                   />
                 </div>
@@ -551,7 +552,7 @@ interface BookingCardProps {
   seatsAvailable: boolean;
   remainingSeats?: number;
   priceLabel: string | null;
-  hasPickupPoints?: boolean;
+  pickupPoints?: PublicPickupPoint[];
   cardPaymentsEnabled: boolean;
 }
 
@@ -677,16 +678,19 @@ function BookingCard({
   seatsAvailable,
   remainingSeats,
   priceLabel,
-  hasPickupPoints,
+  pickupPoints,
   cardPaymentsEnabled,
 }: BookingCardProps) {
   const queryClient = useQueryClient();
+  const points = pickupPoints ?? [];
+  const hasPickupPoints = points.length > 0;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [paymentType, setPaymentType] = useState<"deposit" | "full">("deposit");
+  const [pickupPointId, setPickupPointId] = useState("");
   const [servizioCasa, setServizioCasa] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -736,6 +740,7 @@ function BookingCard({
     setAdults(1);
     setChildren(0);
     setPaymentType("deposit");
+    setPickupPointId("");
     setPrivacyAccepted(false);
     setErrorMsg(null);
     setSuccessMode("card");
@@ -808,8 +813,8 @@ function BookingCard({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!name.trim() || !email.trim()) {
-      setErrorMsg("Nome ed email sono obbligatori.");
+    if (!name.trim() || !email.trim() || !phone.trim()) {
+      setErrorMsg("Nome, email e telefono sono obbligatori.");
       return;
     }
     if (!privacyAccepted) {
@@ -822,11 +827,12 @@ function BookingCard({
         data: {
           customerName: name.trim(),
           email: email.trim(),
-          phone: phone.trim() || undefined,
+          phone: phone.trim(),
           adults,
           children: children || undefined,
           paymentType,
           servizioCasa: servizioCasa || undefined,
+          pickupPointId: pickupPointId || undefined,
         },
       });
       if (res.setupIntentClientSecret) {
@@ -901,11 +907,12 @@ function BookingCard({
           </div>
           <div>
             <label htmlFor="bk-phone" className="mb-1.5 block text-xs font-semibold text-foreground">
-              Telefono
+              Telefono *
             </label>
             <input
               id="bk-phone"
               type="tel"
+              required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
@@ -1016,6 +1023,33 @@ function BookingCard({
             </label>
           </div>
         </div>
+
+        {hasPickupPoints && (
+          <div>
+            <label htmlFor="bk-pickup" className="mb-1.5 block text-xs font-semibold text-foreground">
+              Punto di raccolta <span className="font-normal text-muted-foreground">(opzionale)</span>
+            </label>
+            <select
+              id="bk-pickup"
+              value={pickupPointId}
+              onChange={(e) => setPickupPointId(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+              data-testid="select-booking-pickup"
+            >
+              <option value="">Nessuna preferenza / decido dopo</option>
+              {points.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.city ? ` – ${p.city}` : ""}
+                  {p.pickupTime ? ` (ore ${p.pickupTime})` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Indica da quale punto di raccolta preferisci partire. Potrai modificarlo contattandoci.
+            </p>
+          </div>
+        )}
 
         {hasPickupPoints && (
           <label className="group flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-[#f7faf9] px-4 py-4">

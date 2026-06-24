@@ -15,6 +15,7 @@ export type ExcursionBookingEmailData = {
   adults: number;
   children: number;
   servizioCasa?: boolean;
+  pickupPoint?: { name: string; pickupTime: string | null } | null;
   paymentType: "deposit" | "full";
   excursion: {
     id: string;
@@ -99,6 +100,9 @@ export function buildCustomerEmail(
     data.children > 0
       ? `${data.adults} adult${data.adults === 1 ? "o" : "i"} + ${data.children} bambin${data.children === 1 ? "o" : "i"}`
       : `${data.adults} adult${data.adults === 1 ? "o" : "i"}`;
+  const pickupPointLabel = data.pickupPoint
+    ? `${data.pickupPoint.name}${data.pickupPoint.pickupTime ? ` (ore ${data.pickupPoint.pickupTime})` : ""}`
+    : null;
 
   const subject = `Conferma prenotazione: ${data.excursion.name}`;
 
@@ -113,6 +117,7 @@ export function buildCustomerEmail(
   lines.push(`• Località: ${data.excursion.location}`);
   lines.push(`• Data: ${dateLabel}`);
   lines.push(`• Partecipanti: ${participantsLabel}`);
+  if (pickupPointLabel) lines.push(`• Punto di raccolta: ${pickupPointLabel}`);
   if (pricePerPerson) lines.push(`• Prezzo per persona: ${pricePerPerson}`);
   if (totalPrice) lines.push(`• Totale: ${totalPrice}`);
   lines.push(`• Modalità di pagamento scelta: ${paymentLabel}`);
@@ -170,6 +175,10 @@ export function buildCustomerEmail(
     `<tr><td style="padding:6px 0;color:#555;">Data</td><td style="padding:6px 0;">${escapeHtml(dateLabel)}</td></tr>`,
     `<tr><td style="padding:6px 0;color:#555;">Partecipanti</td><td style="padding:6px 0;">${escapeHtml(participantsLabel)}</td></tr>`,
   ];
+  if (pickupPointLabel)
+    detailsRows.push(
+      `<tr><td style="padding:6px 0;color:#555;">Punto di raccolta</td><td style="padding:6px 0;">${escapeHtml(pickupPointLabel)}</td></tr>`,
+    );
   if (pricePerPerson)
     detailsRows.push(
       `<tr><td style="padding:6px 0;color:#555;">Prezzo per persona</td><td style="padding:6px 0;">${escapeHtml(pricePerPerson)}</td></tr>`,
@@ -257,6 +266,9 @@ export function buildAdminEmail(
     data.children > 0
       ? `${data.adults} adult${data.adults === 1 ? "o" : "i"} + ${data.children} bambin${data.children === 1 ? "o" : "i"}`
       : `${data.adults} adult${data.adults === 1 ? "o" : "i"}`;
+  const pickupPointLabel = data.pickupPoint
+    ? `${data.pickupPoint.name}${data.pickupPoint.pickupTime ? ` (ore ${data.pickupPoint.pickupTime})` : ""}`
+    : null;
 
   const subject = `Nuova prenotazione gita: ${data.excursion.name} (${data.seats} posti)`;
 
@@ -272,8 +284,10 @@ export function buildAdminEmail(
     `Telefono: ${data.customerPhone || "—"}`,
     "",
     `Partecipanti: ${participantsLabel}`,
+    pickupPointLabel ? `Punto di raccolta: ${pickupPointLabel}` : "",
     `Pagamento: ${paymentLabel}`,
     totalPrice ? `Totale: ${totalPrice}` : "",
+    data.servizioCasa ? `Servizio sotto casa: Richiesto` : "",
     "",
     `ID prenotazione: ${data.bookingId}`,
   ].filter((l) => l !== "");
@@ -288,6 +302,7 @@ export function buildAdminEmail(
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Email</td><td style="padding:4px 0;">${escapeHtml(data.customerEmail)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Telefono</td><td style="padding:4px 0;">${escapeHtml(data.customerPhone || "—")}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Partecipanti</td><td style="padding:4px 0;">${escapeHtml(participantsLabel)}</td></tr>
+    ${pickupPointLabel ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Punto di raccolta</td><td style="padding:4px 0;">${escapeHtml(pickupPointLabel)}</td></tr>` : ""}
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Pagamento</td><td style="padding:4px 0;">${escapeHtml(paymentLabel)}</td></tr>
     ${totalPrice ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Totale</td><td style="padding:4px 0;">${escapeHtml(totalPrice)}</td></tr>` : ""}
     ${data.servizioCasa ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Servizio sotto casa</td><td style="padding:4px 0;color:#e07b00;font-weight:600;">Richiesto</td></tr>` : ""}

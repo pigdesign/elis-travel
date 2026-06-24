@@ -24,6 +24,8 @@ export function Header() {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Offerte", href: "/offerte" },
+    { name: "Crociere", href: "/offerte?category=crociera" },
+    { name: "Vacanze", href: "/offerte?category=vacanza" },
     { name: "Gite", href: "/gite" },
     { name: "Contatti", href: "/contatti" },
   ];
