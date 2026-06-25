@@ -102,21 +102,41 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
       >
         <td className="py-3 pl-4 pr-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0">
-              {exc.coverImageUrl && !imgError ? (
-                <img
-                  src={exc.coverImageUrl}
-                  alt={exc.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <ImageOff className="w-4 h-4 text-muted-foreground/40" />
-              )}
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                {exc.coverImageUrl && !imgError ? (
+                  <img
+                    src={exc.coverImageUrl}
+                    alt={exc.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={() => setImgError(true)}
+                  />
+                ) : (
+                  <ImageOff className="w-4 h-4 text-muted-foreground/40" />
+                )}
+              </div>
+              <span
+                className="absolute -top-1.5 -right-1.5 inline-flex items-center gap-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold leading-none shadow-sm ring-2 ring-white"
+                title={`${exc.adherentsCount} iscritti`}
+              >
+                <Users className="w-2.5 h-2.5" />
+                {exc.adherentsCount}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-foreground text-sm truncate">{exc.name}</div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-semibold text-foreground text-sm truncate">{exc.name}</span>
+                {exc.category === "rident" && (
+                  <span
+                    className="shrink-0 inline-flex items-center rounded-md bg-purple-100 text-purple-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                    title="Gita Rident — non visibile sul sito"
+                    data-testid="badge-excursion-rident"
+                  >
+                    Rident
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
                 <MapPin className="w-3 h-3 shrink-0" />
                 <span className="truncate">{exc.location}</span>
@@ -315,6 +335,7 @@ export function ExcursionsPage() {
   const [filterYear, setFilterYear] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
 
   const availableYears = useMemo(() => {
     const years = new Set<string>();
@@ -330,15 +351,18 @@ export function ExcursionsPage() {
       if (filterYear && date.slice(0, 4) !== filterYear) return false;
       if (filterMonth && date.slice(5, 7) !== filterMonth) return false;
       if (filterDate && date !== filterDate) return false;
+      if (filterCategory && (exc.category ?? "standard") !== filterCategory) return false;
       return true;
     });
-  }, [excursions, filterYear, filterMonth, filterDate]);
+  }, [excursions, filterYear, filterMonth, filterDate, filterCategory]);
 
-  const hasActiveFilters = filterYear !== "" || filterMonth !== "" || filterDate !== "";
+  const hasActiveFilters =
+    filterYear !== "" || filterMonth !== "" || filterDate !== "" || filterCategory !== "";
   const resetFilters = () => {
     setFilterYear("");
     setFilterMonth("");
     setFilterDate("");
+    setFilterCategory("");
   };
 
   return (
@@ -425,6 +449,20 @@ export function ExcursionsPage() {
                 className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 data-testid="filter-excursions-date"
               />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="filter-category" className="text-xs font-medium text-muted-foreground">Tipo</label>
+              <select
+                id="filter-category"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="filter-excursions-category"
+              >
+                <option value="">Tutte le gite</option>
+                <option value="standard">Solo standard</option>
+                <option value="rident">Solo Rident</option>
+              </select>
             </div>
             {hasActiveFilters && (
               <button

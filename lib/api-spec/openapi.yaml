@@ -1533,6 +1533,8 @@ components:
           type: string
         status:
           type: string
+        category:
+          type: string
         currentCapacity:
           type: integer
         minThreshold:
@@ -1607,6 +1609,7 @@ components:
         - location
         - date
         - status
+        - category
         - currentCapacity
         - minThreshold
         - adherentsCount
@@ -1788,6 +1791,8 @@ components:
         date:
           type: string
         status:
+          type: string
+        category:
           type: string
         vehicleId:
           type: string

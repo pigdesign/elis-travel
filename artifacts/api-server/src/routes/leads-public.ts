@@ -50,7 +50,7 @@ router.get("/sitemap.xml", async (req, res) => {
     const excursions = await db
       .select({ id: excursionsTable.id, name: excursionsTable.name, updatedAt: excursionsTable.updatedAt })
       .from(excursionsTable)
-      .where(eq(excursionsTable.status, "confirmed"));
+      .where(and(eq(excursionsTable.status, "confirmed"), eq(excursionsTable.category, "standard")));
 
     const staticUrls = [
       { loc: "/", priority: "1.0", changefreq: "daily" },
@@ -119,7 +119,7 @@ router.get("/catalog/excursions/locations", async (_req, res) => {
     const rows = await db
       .selectDistinct({ location: excursionsTable.location })
       .from(excursionsTable)
-      .where(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")))
+      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "standard")))
       .orderBy(excursionsTable.location);
     const locations = rows
       .map((r) => r.location)
@@ -136,7 +136,7 @@ router.get("/catalog/excursions/months", async (_req, res) => {
     const rows = await db
       .select({ date: excursionsTable.date })
       .from(excursionsTable)
-      .where(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")))
+      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "standard")))
       .orderBy(excursionsTable.date);
     const monthSet = new Set<string>();
     for (const r of rows) {
@@ -191,7 +191,7 @@ router.get("/catalog/products", async (_req, res) => {
         status: excursionsTable.status,
       })
       .from(excursionsTable)
-      .where(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")))
+      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "standard")))
       .orderBy(excursionsTable.date);
 
     res.json({ offers, excursions });

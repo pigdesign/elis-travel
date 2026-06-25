@@ -121,6 +121,7 @@ router.post("/excursions", async (req, res) => {
         location: body.location ?? "",
         date: body.date ?? new Date().toISOString().split("T")[0],
         status: body.status ?? "draft",
+        category: body.category ?? "standard",
         vehicleId: body.vehicleId ?? null,
         currentCapacity: body.currentCapacity ?? 0,
         minThreshold: body.minThreshold ?? 1,
@@ -216,7 +217,7 @@ router.patch("/excursions/:id", async (req, res) => {
 
     const allowed: Partial<typeof excursionsTable.$inferInsert> = {};
     const mutableFields = [
-      "name", "location", "date", "status", "vehicleId",
+      "name", "location", "date", "status", "category", "vehicleId",
       "currentCapacity", "minThreshold", "adherentsCount",
       "depositsCount", "balancesCount", "vehicleFixedCost",
       "mealCostPerPerson", "entranceCostPerPerson", "extraCostPerPerson",

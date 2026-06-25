@@ -12,9 +12,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: leads = [] } = useListLeads();
   const { data: excursions = [] } = useListExcursions();
   const newLeadsCount = leads.filter((l) => l.status === "new").length;
-  const activeExcursionsCount = excursions.filter(
-    (e) => e.status !== "completed" && e.status !== "cancelled"
-  ).length;
+  const activeAdherentsTotal = excursions
+    .filter((e) => e.status !== "completed" && e.status !== "cancelled")
+    .reduce((sum, e) => sum + (e.adherentsCount ?? 0), 0);
 
   useEffect(() => {
     if (state.status === "unauthenticated") {
@@ -90,9 +90,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     {newLeadsCount}
                   </span>
                 )}
-                {item.matchPath === "/admin/excursions" && activeExcursionsCount > 0 && (
+                {item.matchPath === "/admin/excursions" && activeAdherentsTotal > 0 && (
                   <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-sm">
-                    {activeExcursionsCount}
+                    {activeAdherentsTotal}
                   </span>
                 )}
               </button>

@@ -269,7 +269,7 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                 <div className="h-full w-full bg-gradient-to-br from-[#0b4f54] via-[#007f86] to-[#2bb7c6]" />
               )}
             </div>
-            <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(8,34,39,0.92)_0%,rgba(0,111,115,0.70)_46%,rgba(0,111,115,0.34)_100%)]" />
+            <div className="absolute inset-0 bg-black/35" />
             <div className="absolute inset-x-0 bottom-[-1px] z-10 overflow-hidden leading-none">
               <svg
                 viewBox="0 0 1440 270"

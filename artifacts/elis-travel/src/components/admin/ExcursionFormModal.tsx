@@ -31,11 +31,17 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Annullata" },
 ] as const;
 
+const CATEGORY_OPTIONS = [
+  { value: "standard", label: "Standard — visibile sul sito" },
+  { value: "rident", label: "Rident — privata, solo via link" },
+] as const;
+
 type FormState = {
   name: string;
   location: string;
   date: string;
   status: string;
+  category: string;
   pricePerPerson: string;
   mealCostPerPerson: string;
   entranceCostPerPerson: string;
@@ -65,6 +71,7 @@ function emptyState(): FormState {
     location: "",
     date: todayISO(),
     status: "draft",
+    category: "standard",
     pricePerPerson: "0",
     mealCostPerPerson: "0",
     entranceCostPerPerson: "0",
@@ -94,6 +101,7 @@ function fromExcursion(
     location: exc.location ?? "",
     date: opts?.clearDate ? "" : exc.date ?? todayISO(),
     status: exc.status ?? "draft",
+    category: exc.category ?? "standard",
     pricePerPerson: exc.pricePerPerson ?? "0",
     mealCostPerPerson: exc.mealCostPerPerson ?? "0",
     entranceCostPerPerson: exc.entranceCostPerPerson ?? "0",
@@ -129,6 +137,7 @@ function toPayload(s: FormState): ExcursionInput {
     location: s.location.trim(),
     date: s.date,
     status: s.status,
+    category: s.category,
     pricePerPerson: normalizeDecimal(s.pricePerPerson),
     mealCostPerPerson: normalizeDecimal(s.mealCostPerPerson),
     entranceCostPerPerson: normalizeDecimal(s.entranceCostPerPerson),
@@ -511,6 +520,29 @@ export function ExcursionFormModal({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Tipo gita
+                </label>
+                <select
+                  value={form.category}
+                  onChange={(e) => setField("category", e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                  data-testid="select-excursion-category"
+                >
+                  {CATEGORY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                {form.category === "rident" && (
+                  <p className="text-[11px] text-amber-700 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    Gita Rident: non compare nell'elenco/filtri del sito né nella sitemap. Resta raggiungibile solo tramite link diretto (quando è Aperta o Confermata).
+                  </p>
+                )}
               </div>
             </div>
           </section>

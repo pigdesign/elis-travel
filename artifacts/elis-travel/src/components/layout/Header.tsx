@@ -4,7 +4,7 @@ import { Menu, X, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.webp";
-import stickyLogoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.webp";
+import stickyLogoImg from "@assets/elis_color_4k.png";
 import { useAuthUser } from "@/contexts/AuthContext";
 
 export function Header() {

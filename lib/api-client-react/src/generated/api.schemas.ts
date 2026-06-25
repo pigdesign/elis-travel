@@ -48,6 +48,7 @@ export interface ExcursionSummary {
   location: string;
   date: string;
   status: string;
+  category: string;
   currentCapacity: number;
   minThreshold: number;
   adherentsCount: number;
@@ -167,6 +168,7 @@ export interface ExcursionInput {
   location?: string;
   date?: string;
   status?: string;
+  category?: string;
   vehicleId?: string | null;
   currentCapacity?: number;
   minThreshold?: number;

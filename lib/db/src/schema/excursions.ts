@@ -31,6 +31,9 @@ export const excursionsTable = pgTable("excursions", {
   location: text("location").notNull(),
   date: date("date").notNull(),
   status: text("status").notNull().default("draft"),
+  // "standard" = gita pubblica normale; "rident" = trasferta clinica dentale,
+  // gestita come le altre ma nascosta dal sito pubblico (visibile solo via link diretto).
+  category: text("category").notNull().default("standard"),
   vehicleId: uuid("vehicle_id").references(() => excursionVehiclesTable.id, {
     onDelete: "set null",
   }),
