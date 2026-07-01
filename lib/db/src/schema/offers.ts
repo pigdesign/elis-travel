@@ -44,12 +44,26 @@ export const offerImagesTable = pgTable("offer_images", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const offerDocumentsTable = pgTable("offer_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  offerId: uuid("offer_id").notNull().references(() => offersTable.id, { onDelete: "cascade" }),
+  documentUrl: text("document_url").notNull(),
+  fileName: text("file_name"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const offersRelations = relations(offersTable, ({ many }) => ({
   images: many(offerImagesTable),
+  documents: many(offerDocumentsTable),
 }));
 
 export const offerImagesRelations = relations(offerImagesTable, ({ one }) => ({
   offer: one(offersTable, { fields: [offerImagesTable.offerId], references: [offersTable.id] }),
+}));
+
+export const offerDocumentsRelations = relations(offerDocumentsTable, ({ one }) => ({
+  offer: one(offersTable, { fields: [offerDocumentsTable.offerId], references: [offersTable.id] }),
 }));
 
 export const insertOfferSchema = createInsertSchema(offersTable).omit({
@@ -60,7 +74,10 @@ export const insertOfferSchema = createInsertSchema(offersTable).omit({
 export const selectOfferSchema = createSelectSchema(offersTable);
 export const insertOfferImageSchema = createInsertSchema(offerImagesTable).omit({ id: true, createdAt: true });
 export const selectOfferImageSchema = createSelectSchema(offerImagesTable);
+export const insertOfferDocumentSchema = createInsertSchema(offerDocumentsTable).omit({ id: true, createdAt: true });
+export const selectOfferDocumentSchema = createSelectSchema(offerDocumentsTable);
 
 export type InsertOffer = z.infer<typeof insertOfferSchema>;
 export type Offer = typeof offersTable.$inferSelect;
 export type OfferImage = typeof offerImagesTable.$inferSelect;
+export type OfferDocument = typeof offerDocumentsTable.$inferSelect;

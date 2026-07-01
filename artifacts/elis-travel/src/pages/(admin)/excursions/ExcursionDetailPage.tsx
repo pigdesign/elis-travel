@@ -24,6 +24,8 @@ import {
   CheckCheck,
   Printer,
   FileText,
+  ExternalLink,
+  Link2,
 } from "lucide-react";
 import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
 import {
@@ -41,6 +43,7 @@ import {
 import type { Booking } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
+import { buildSlugUrl } from "@/lib/seo";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: "Bozza", className: "bg-muted text-muted-foreground" },
@@ -65,6 +68,80 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; icon: React.Element
 
 function formatEur(n: number) {
   return n.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+}
+
+function CopyLinkRow({ label, url }: { label: string; url: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard non disponibile */
+    }
+  };
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</p>
+      <div className="flex items-center gap-2">
+        <div
+          className="flex-1 min-w-0 truncate text-sm text-foreground font-mono bg-muted/40 border border-border rounded-lg px-3 py-2"
+          title={url}
+        >
+          {url}
+        </div>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium px-3 py-2 rounded-xl bg-white border border-border text-foreground hover:bg-muted transition-colors"
+          title="Apri in una nuova scheda"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Apri
+        </a>
+        <button
+          type="button"
+          onClick={copy}
+          className={`inline-flex items-center gap-1.5 shrink-0 text-xs font-medium px-3 py-2 rounded-xl border transition-colors ${
+            copied
+              ? "bg-primary/10 border-primary/20 text-primary"
+              : "bg-white border-border text-foreground hover:bg-muted"
+          }`}
+        >
+          {copied ? <><CheckCheck className="w-3.5 h-3.5" />Copiato</> : <><Copy className="w-3.5 h-3.5" />Copia</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Box link condivisibili: mostrato solo per le gite Rident, che non compaiono
+// nel sito pubblico e vanno raggiunte tramite link diretto.
+function RidentLinksBox({ excursionId, excursionName }: { excursionId: string; excursionName: string }) {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const ridentPageUrl = `${origin}/rident`;
+  const excursionUrl = `${origin}${buildSlugUrl("gite", excursionId, excursionName)}`;
+  return (
+    <div className="bg-gradient-to-b from-primary/[0.06] to-transparent border border-border rounded-3xl p-4 md:p-5 shadow-sm space-y-4">
+      <div className="px-1">
+        <div className="flex items-center gap-2 text-primary mb-1">
+          <Link2 className="w-4 h-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">Gita Rident — riservata</span>
+        </div>
+        <h2 className="text-lg font-bold text-foreground">Link da condividere</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Questa gita non compare sul sito pubblico né in sitemap: condividila solo con questi link.
+        </p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-border p-4 md:p-5 space-y-4">
+        <CopyLinkRow label="Pagina Rident (elenco gite)" url={ridentPageUrl} />
+        <CopyLinkRow label="Link diretto di questa gita" url={excursionUrl} />
+      </div>
+    </div>
+  );
 }
 
 function escapeHtml(value: string) {
@@ -894,6 +971,10 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </button>
         </div>
       </div>
+
+      {exc.category === "rident" && (
+        <RidentLinksBox excursionId={exc.id} excursionName={exc.name} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">

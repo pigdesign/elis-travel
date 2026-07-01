@@ -76,6 +76,23 @@ function calcFinancials(e: typeof excursionsTable.$inferSelect) {
   return { ricaviStimati, costiVariabili, costiTotali, margineNetto };
 }
 
+// Normalizza i tag: trim, rimuove vuoti e duplicati (case-insensitive), mantiene l'ordine.
+function normalizeTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of input) {
+    if (typeof v !== "string") continue;
+    const t = v.trim();
+    if (!t) continue;
+    const key = t.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
+
 router.get("/excursions", async (_req, res) => {
   try {
     const [excursions, pendingCounts] = await Promise.all([
@@ -122,6 +139,8 @@ router.post("/excursions", async (req, res) => {
         date: body.date ?? new Date().toISOString().split("T")[0],
         status: body.status ?? "draft",
         category: body.category ?? "standard",
+        // I tag si applicano solo alle gite standard.
+        tags: (body.category ?? "standard") === "rident" ? [] : normalizeTags(body.tags),
         vehicleId: body.vehicleId ?? null,
         currentCapacity: body.currentCapacity ?? 0,
         minThreshold: body.minThreshold ?? 1,
@@ -232,10 +251,19 @@ router.patch("/excursions/:id", async (req, res) => {
     }
 
     const [previous] = await db
-      .select({ status: excursionsTable.status })
+      .select({ status: excursionsTable.status, category: excursionsTable.category })
       .from(excursionsTable)
       .where(eq(excursionsTable.id, id))
       .limit(1);
+
+    // Tag: normalizzati; azzerati se la gita (nuova o esistente) è rident.
+    if ("tags" in body) {
+      allowed.tags = normalizeTags(body.tags);
+    }
+    const effectiveCategory = (allowed.category as string | undefined) ?? previous?.category;
+    if (effectiveCategory === "rident") {
+      allowed.tags = [];
+    }
 
     const [updated] = await db
       .update(excursionsTable)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +26,6 @@ const contactSchema = z.object({
   customerName: z.string().trim().min(2, "Inserisci il tuo nome (min. 2 caratteri)."),
   email: z.string().trim().toLowerCase().email("Indirizzo email non valido."),
   phone: z.string().trim().max(40, "Numero troppo lungo.").optional().or(z.literal("")),
-  productRef: z.string().optional(),
   message: z
     .string()
     .trim()
@@ -57,7 +56,6 @@ export function ContactsPage() {
       customerName: "",
       email: "",
       phone: "",
-      productRef: "",
       message: "",
     },
   });
@@ -95,21 +93,6 @@ export function ContactsPage() {
     return ex.location ? `${ex.name} — ${ex.location}` : ex.name;
   }, [prefilledRef, catalog]);
 
-  useEffect(() => {
-    if (prefilledRef) {
-      resetForm(
-        {
-          customerName: "",
-          email: "",
-          phone: "",
-          productRef: prefilledRef.ref,
-          message: "",
-        },
-        { keepDirtyValues: true }
-      );
-    }
-  }, [prefilledRef, resetForm]);
-
   const rootError = errors.root?.message;
 
   const onSubmit = (values: ContactFormValues) => {
@@ -128,7 +111,7 @@ export function ContactsPage() {
           email: values.email,
           phone: values.phone?.trim() ? values.phone.trim() : null,
           message: values.message?.trim() ? values.message.trim() : null,
-          productRef: values.productRef ? values.productRef : null,
+          productRef: prefilledRef ? prefilledRef.ref : null,
         },
       },
       {
@@ -326,39 +309,6 @@ export function ContactsPage() {
                       {errors.phone && (
                         <p className="text-xs text-red-600 mt-1">{errors.phone.message}</p>
                       )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">
-                        Prodotto di interesse
-                      </label>
-                      <select
-                        {...register("productRef")}
-                        disabled={isPending}
-                        className="w-full px-4 py-2.5 border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-                      >
-                        <option value="">Richiesta generica</option>
-                        {catalog?.offers && catalog.offers.length > 0 && (
-                          <optgroup label="Offerte viaggio">
-                            {catalog.offers.map((o) => (
-                              <option key={`offer:${o.id}`} value={`offer:${o.id}`}>
-                                {o.name}
-                                {o.destination ? ` — ${o.destination}` : ""}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {catalog?.excursions && catalog.excursions.length > 0 && (
-                          <optgroup label="Gite ed escursioni">
-                            {catalog.excursions.map((ex) => (
-                              <option key={`excursion:${ex.id}`} value={`excursion:${ex.id}`}>
-                                {ex.name}
-                                {ex.location ? ` — ${ex.location}` : ""}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </select>
                     </div>
 
                     <div>

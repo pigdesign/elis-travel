@@ -146,7 +146,7 @@ async function main() {
       import("drizzle-orm"),
     ]);
     const { offersTable, excursionsTable } = schema;
-    const { eq } = drizzle;
+    const { eq, and } = drizzle;
     const offers = await db
       .select({
         id: offersTable.id,
@@ -186,7 +186,8 @@ async function main() {
         date: excursionsTable.date,
       })
       .from(excursionsTable)
-      .where(eq(excursionsTable.status, "confirmed"));
+      // Solo gite standard: le Rident restano fuori dal prerender/SEO (raggiungibili solo via link).
+      .where(and(eq(excursionsTable.status, "confirmed"), eq(excursionsTable.category, "standard")));
 
     for (const e of excursions) {
       const slug = slugify(e.name);

@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Plus, MapPin, Users, Clock, Star, ExternalLink, ArrowRight, Calendar, ImageOff, Filter, X } from "lucide-react";
-import { useListOffers } from "@workspace/api-client-react";
+import { useListOffers, useListLeads } from "@workspace/api-client-react";
 import type { OfferSummary } from "@workspace/api-client-react";
 import { Button } from "@/components/shared/Button";
 import { cn } from "@/lib/utils";
 import { OfferFormModal } from "./OfferFormModal";
+import {
+  LeadStatusBreakdown,
+  totalLeadCount,
+  type LeadStatusCounts,
+} from "@/components/admin/LeadStatusBreakdown";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Tutti gli stati" },
@@ -42,10 +47,19 @@ function formatPrice(p: string | null | undefined) {
   return isNaN(n) ? "–" : n.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
 }
 
-function OfferCard({ offer, onOpen }: { offer: OfferSummary; onOpen: () => void }) {
+function OfferCard({
+  offer,
+  onOpen,
+  leadCounts,
+}: {
+  offer: OfferSummary;
+  onOpen: () => void;
+  leadCounts: LeadStatusCounts;
+}) {
   const statusCfg = STATUS_CONFIG[offer.status] ?? STATUS_CONFIG["draft"];
   const isArchived = offer.status === "archived";
   const [imgError, setImgError] = useState(false);
+  const leadsTotal = totalLeadCount(leadCounts);
 
   return (
     <div
@@ -148,38 +162,42 @@ function OfferCard({ offer, onOpen }: { offer: OfferSummary; onOpen: () => void 
         )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Users className="w-4 h-4 text-primary" />
-          <span className="font-semibold text-foreground">{offer.leadsCount}</span>
-          <span className="text-muted-foreground">leads</span>
-          {offer.mainSource && (
-            <span className="ml-2 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-              via {offer.mainSource}
-            </span>
-          )}
+      <div className="mt-4 pt-4 border-t border-border space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5 text-sm">
+            <Users className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-foreground">{leadsTotal}</span>
+            <span className="text-muted-foreground">leads</span>
+            {offer.mainSource && (
+              <span className="ml-2 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                via {offer.mainSource}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {offer.publicLink && (
+              <a
+                href={offer.publicLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+            <Button
+              onClick={onOpen}
+              className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 py-2 text-sm flex items-center gap-1.5"
+            >
+              Dettagli
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {offer.publicLink && (
-            <a
-              href={offer.publicLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          )}
-          <Button
-            onClick={onOpen}
-            className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 py-2 text-sm flex items-center gap-1.5"
-          >
-            Dettagli
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+        <LeadStatusBreakdown counts={leadCounts} />
       </div>
       </div>
     </div>
@@ -190,19 +208,41 @@ export function OffersPage() {
   const [, navigate] = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data: offers, isLoading, error } = useListOffers();
+  const { data: leads = [] } = useListLeads();
+
+  // Conteggio richieste per offerta e per stato, dai dati live (nessun dato extra dal backend).
+  const leadCountsByOffer = new Map<string, LeadStatusCounts>();
+  for (const lead of leads) {
+    if (!lead.offerId) continue;
+    const entry = leadCountsByOffer.get(lead.offerId) ?? {};
+    entry[lead.status] = (entry[lead.status] ?? 0) + 1;
+    leadCountsByOffer.set(lead.offerId, entry);
+  }
 
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [filterTourOperator, setFilterTourOperator] = useState("");
   const [filterFeatured, setFilterFeatured] = useState(false);
   const [filterLastMinute, setFilterLastMinute] = useState(false);
 
-  const hasFilters = filterStatus !== "" || filterCategory !== "" || filterFeatured || filterLastMinute;
+  const hasFilters =
+    filterStatus !== "" ||
+    filterCategory !== "" ||
+    filterTourOperator !== "" ||
+    filterFeatured ||
+    filterLastMinute;
 
   const allOffers = offers ?? [];
+
+  // Tour operator esistenti (distinti) per il filtro.
+  const tourOperators = Array.from(
+    new Set(allOffers.map((o) => o.tourOperator).filter((t): t is string => !!t && t.trim() !== ""))
+  ).sort((a, b) => a.localeCompare(b, "it"));
 
   const filtered = allOffers.filter((o) => {
     if (filterStatus && o.status !== filterStatus) return false;
     if (filterCategory && o.category !== filterCategory) return false;
+    if (filterTourOperator && o.tourOperator !== filterTourOperator) return false;
     if (filterFeatured && !o.featured) return false;
     if (filterLastMinute && !o.lastMinute) return false;
     return true;
@@ -215,6 +255,7 @@ export function OffersPage() {
   function clearFilters() {
     setFilterStatus("");
     setFilterCategory("");
+    setFilterTourOperator("");
     setFilterFeatured(false);
     setFilterLastMinute(false);
   }
@@ -273,6 +314,19 @@ export function OffersPage() {
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
+
+          {tourOperators.length > 0 && (
+            <select
+              value={filterTourOperator}
+              onChange={(e) => setFilterTourOperator(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-border bg-muted/30 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+            >
+              <option value="">Tutti i tour operator</option>
+              {tourOperators.map((to) => (
+                <option key={to} value={to}>{to}</option>
+              ))}
+            </select>
+          )}
 
           <button
             onClick={() => setFilterFeatured((v) => !v)}
@@ -353,6 +407,7 @@ export function OffersPage() {
                       key={offer.id}
                       offer={offer}
                       onOpen={() => navigate(`~/admin/offers/${offer.id}`)}
+                      leadCounts={leadCountsByOffer.get(offer.id) ?? {}}
                     />
                   ))}
                 </div>
@@ -372,6 +427,7 @@ export function OffersPage() {
                         key={offer.id}
                         offer={offer}
                         onOpen={() => navigate(`~/admin/offers/${offer.id}`)}
+                        leadCounts={leadCountsByOffer.get(offer.id) ?? {}}
                       />
                     ))}
                   </div>
@@ -389,6 +445,7 @@ export function OffersPage() {
                         key={offer.id}
                         offer={offer}
                         onOpen={() => navigate(`~/admin/offers/${offer.id}`)}
+                        leadCounts={leadCountsByOffer.get(offer.id) ?? {}}
                       />
                     ))}
                   </div>
@@ -406,6 +463,7 @@ export function OffersPage() {
                         key={offer.id}
                         offer={offer}
                         onOpen={() => navigate(`~/admin/offers/${offer.id}`)}
+                        leadCounts={leadCountsByOffer.get(offer.id) ?? {}}
                       />
                     ))}
                   </div>

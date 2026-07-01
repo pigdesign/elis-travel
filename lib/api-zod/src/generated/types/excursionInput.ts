@@ -13,6 +13,7 @@ export interface ExcursionInput {
   date?: string;
   status?: string;
   category?: string;
+  tags?: string[];
   vehicleId?: string | null;
   currentCapacity?: number;
   minThreshold?: number;

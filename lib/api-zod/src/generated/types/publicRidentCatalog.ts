@@ -5,10 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { PublicCatalogOffersItem } from "./publicCatalogOffersItem";
 import type { PublicExcursionCard } from "./publicExcursionCard";
 
-export interface PublicCatalog {
-  offers: PublicCatalogOffersItem[];
+export interface PublicRidentCatalog {
   excursions: PublicExcursionCard[];
 }

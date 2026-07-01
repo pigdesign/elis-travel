@@ -18,6 +18,7 @@ export interface PublicExcursionDetail {
   minThreshold?: number | null;
   adherentsCount?: number | null;
   coverImageUrl?: string | null;
+  category?: string | null;
   schedule?: ScheduleDay[] | null;
   included?: string | null;
   excluded?: string | null;

@@ -11,6 +11,7 @@ import { OffersPage as PublicOffersPage } from "@/pages/(public)/OffersPage";
 import { OfferDetailPage as PublicOfferDetailPage } from "@/pages/(public)/OfferDetailPage";
 import { ExcursionsPage as PublicExcursionsPage } from "@/pages/(public)/ExcursionsPage";
 import { ExcursionDetailPage as PublicExcursionDetailPage } from "@/pages/(public)/ExcursionDetailPage";
+import { RidentPage } from "@/pages/(public)/RidentPage";
 import { PrivacyPolicyPage } from "@/pages/(public)/PrivacyPolicyPage";
 import { CookiePolicyPage } from "@/pages/(public)/CookiePolicyPage";
 import { TermsConditionsPage } from "@/pages/(public)/TermsConditionsPage";
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/gite/:slug">
         {(params) => <PublicExcursionDetailPage excursionIdOrSlug={params.slug} />}
       </Route>
+      <Route path="/rident" component={RidentPage} />
       <Route path="/contatti" component={ContactsPage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/cookie-policy" component={CookiePolicyPage} />

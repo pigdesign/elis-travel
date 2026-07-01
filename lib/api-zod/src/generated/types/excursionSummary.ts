@@ -14,6 +14,7 @@ export interface ExcursionSummary {
   date: string;
   status: string;
   category: string;
+  tags?: string[];
   currentCapacity: number;
   minThreshold: number;
   adherentsCount: number;

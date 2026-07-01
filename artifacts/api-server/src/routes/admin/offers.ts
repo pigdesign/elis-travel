@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { offersTable, offerImagesTable } from "@workspace/db/schema";
+import { offersTable, offerImagesTable, offerDocumentsTable } from "@workspace/db/schema";
 import { eq, desc, asc } from "drizzle-orm";
 
 const router = Router();
@@ -282,6 +282,75 @@ router.patch("/offers/:id/images/reorder", async (req, res) => {
       .orderBy(asc(offerImagesTable.sortOrder), asc(offerImagesTable.createdAt));
 
     res.json(images);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// --- Documenti PDF offerta ---
+
+router.get("/offers/:id/documents", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const documents = await db
+      .select()
+      .from(offerDocumentsTable)
+      .where(eq(offerDocumentsTable.offerId, id))
+      .orderBy(asc(offerDocumentsTable.sortOrder), asc(offerDocumentsTable.createdAt));
+    res.json(documents);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.post("/offers/:id/documents", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body as { documentUrl?: string; fileName?: string; sortOrder?: number };
+
+    if (!body.documentUrl || typeof body.documentUrl !== "string") {
+      res.status(400).json({ error: "documentUrl è obbligatorio." });
+      return;
+    }
+
+    const existing = await db
+      .select({ count: offerDocumentsTable.id })
+      .from(offerDocumentsTable)
+      .where(eq(offerDocumentsTable.offerId, id));
+
+    const [created] = await db
+      .insert(offerDocumentsTable)
+      .values({
+        offerId: id,
+        documentUrl: body.documentUrl,
+        fileName: typeof body.fileName === "string" ? body.fileName : null,
+        sortOrder: body.sortOrder ?? existing.length,
+      })
+      .returning();
+
+    res.status(201).json(created);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+router.delete("/offers/:id/documents/:documentId", async (req, res) => {
+  try {
+    const { id, documentId } = req.params;
+    const [deleted] = await db
+      .delete(offerDocumentsTable)
+      .where(eq(offerDocumentsTable.id, documentId))
+      .returning();
+
+    if (!deleted || deleted.offerId !== id) {
+      res.status(404).json({ error: "Documento non trovato." });
+      return;
+    }
+
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });

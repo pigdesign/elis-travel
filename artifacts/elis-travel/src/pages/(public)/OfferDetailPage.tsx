@@ -22,11 +22,20 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  FileText,
+  Download,
 } from "lucide-react";
 
 interface GalleryImage {
   id: string;
   imageUrl: string;
+  sortOrder: number;
+}
+
+interface OfferDocument {
+  id: string;
+  documentUrl: string;
+  fileName: string | null;
   sortOrder: number;
 }
 
@@ -126,8 +135,9 @@ function MultilineText({ text }: { text: string }) {
 export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
   const offerId = extractIdFromSlug(offerIdOrSlug);
   const { data: rawOffer, isLoading, isError } = useGetPublicOffer(offerId);
-  const offer = rawOffer as (typeof rawOffer & { images?: GalleryImage[] }) | undefined;
+  const offer = rawOffer as (typeof rawOffer & { images?: GalleryImage[]; documents?: OfferDocument[] }) | undefined;
   const galleryImages = offer?.images ?? [];
+  const documents = offer?.documents ?? [];
   const [, setLocation] = useLocation();
 
   const seoTitle = offer?.name
@@ -486,11 +496,41 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
                     </div>
                   )}
 
+                  {documents.length > 0 && (
+                    <div className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8">
+                      <h2 className="text-xl font-serif font-bold text-foreground mb-4 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-accent" />
+                        Documenti
+                      </h2>
+                      <div className="space-y-3">
+                        {documents.map((doc) => (
+                          <a
+                            key={doc.id}
+                            href={doc.documentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 transition-colors hover:border-accent hover:bg-white"
+                          >
+                            <FileText className="w-5 h-5 text-accent flex-shrink-0" />
+                            <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">
+                              {doc.fileName || "Scheda informativa (PDF)"}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+                              <Download className="w-4 h-4" />
+                              Scarica
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {!offer.advertisingText &&
                     !offer.highlights &&
                     !offer.servicesIncluded &&
                     !offer.servicesExcluded &&
                     scheduleDays.length === 0 &&
+                    documents.length === 0 &&
                     galleryImages.length === 0 && (
                       <div className="rounded-[30px] border border-slate-200/70 bg-white p-8 shadow-[0_18px_50px_rgba(20,36,43,0.08)] text-center text-muted-foreground">
                         Per maggiori dettagli su questa offerta, contattaci tramite il pulsante qui a fianco.

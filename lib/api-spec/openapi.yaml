@@ -1409,6 +1409,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /catalog/rident:
+    get:
+      operationId: listPublicRident
+      tags: [public]
+      summary: Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+      responses:
+        "200":
+          description: Elenco gite Rident attive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicRidentCatalog"
 
   /storage/uploads/request-url:
     post:
@@ -1535,6 +1547,10 @@ components:
           type: string
         category:
           type: string
+        tags:
+          type: array
+          items:
+            type: string
         currentCapacity:
           type: integer
         minThreshold:
@@ -1794,6 +1810,10 @@ components:
           type: string
         category:
           type: string
+        tags:
+          type: array
+          items:
+            type: string
         vehicleId:
           type: string
           nullable: true
@@ -2377,39 +2397,53 @@ components:
         excursions:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-              name:
-                type: string
-              location:
-                type: string
-                nullable: true
-              date:
-                type: string
-                nullable: true
-              coverImageUrl:
-                type: string
-                nullable: true
-              status:
-                type: string
-                nullable: true
-              currentCapacity:
-                type: integer
-                nullable: true
-              minThreshold:
-                type: integer
-                nullable: true
-              adherentsCount:
-                type: integer
-                nullable: true
-              pricePerPerson:
-                type: string
-                nullable: true
-            required: [id, name]
+            $ref: "#/components/schemas/PublicExcursionCard"
       required: [offers, excursions]
+    PublicExcursionCard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        location:
+          type: string
+          nullable: true
+        date:
+          type: string
+          nullable: true
+        coverImageUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        currentCapacity:
+          type: integer
+          nullable: true
+        minThreshold:
+          type: integer
+          nullable: true
+        adherentsCount:
+          type: integer
+          nullable: true
+        pricePerPerson:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+      required: [id, name]
+    PublicRidentCatalog:
+      type: object
+      properties:
+        excursions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicExcursionCard"
+      required: [excursions]
     PublicOfferDetail:
       type: object
       properties:
@@ -2508,6 +2542,9 @@ components:
           type: integer
           nullable: true
         coverImageUrl:
+          type: string
+          nullable: true
+        category:
           type: string
           nullable: true
         schedule:

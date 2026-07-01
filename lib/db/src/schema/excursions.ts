@@ -34,6 +34,9 @@ export const excursionsTable = pgTable("excursions", {
   // "standard" = gita pubblica normale; "rident" = trasferta clinica dentale,
   // gestita come le altre ma nascosta dal sito pubblico (visibile solo via link diretto).
   category: text("category").notNull().default("standard"),
+  // Tag tematici liberi (es. "weekend", "cultura"), usati dal filtro pubblico "Tipologia".
+  // Concetto distinto da category: si applicano solo alle gite standard.
+  tags: text("tags").array().notNull().default([]),
   vehicleId: uuid("vehicle_id").references(() => excursionVehiclesTable.id, {
     onDelete: "set null",
   }),

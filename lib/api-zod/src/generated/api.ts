@@ -307,6 +307,7 @@ export const ListExcursionsResponseItem = zod.object({
   date: zod.string(),
   status: zod.string(),
   category: zod.string(),
+  tags: zod.array(zod.string()).optional(),
   currentCapacity: zod.number(),
   minThreshold: zod.number(),
   adherentsCount: zod.number(),
@@ -361,6 +362,7 @@ export const CreateExcursionBody = zod.object({
   date: zod.string().optional(),
   status: zod.string().optional(),
   category: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
   vehicleId: zod.string().nullish(),
   currentCapacity: zod.number().optional(),
   minThreshold: zod.number().optional(),
@@ -410,6 +412,7 @@ export const GetExcursionResponse = zod
     date: zod.string(),
     status: zod.string(),
     category: zod.string(),
+    tags: zod.array(zod.string()).optional(),
     currentCapacity: zod.number(),
     minThreshold: zod.number(),
     adherentsCount: zod.number(),
@@ -491,6 +494,7 @@ export const UpdateExcursionBody = zod.object({
   date: zod.string().optional(),
   status: zod.string().optional(),
   category: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
   vehicleId: zod.string().nullish(),
   currentCapacity: zod.number().optional(),
   minThreshold: zod.number().optional(),
@@ -532,6 +536,7 @@ export const UpdateExcursionResponse = zod.object({
   date: zod.string(),
   status: zod.string(),
   category: zod.string(),
+  tags: zod.array(zod.string()).optional(),
   currentCapacity: zod.number(),
   minThreshold: zod.number(),
   adherentsCount: zod.number(),
@@ -716,6 +721,7 @@ export const UpdateExcursionVehicleResponse = zod.object({
   date: zod.string(),
   status: zod.string(),
   category: zod.string(),
+  tags: zod.array(zod.string()).optional(),
   currentCapacity: zod.number(),
   minThreshold: zod.number(),
   adherentsCount: zod.number(),
@@ -1360,6 +1366,7 @@ export const ListPublicCatalogResponse = zod.object({
       minThreshold: zod.number().nullish(),
       adherentsCount: zod.number().nullish(),
       pricePerPerson: zod.string().nullish(),
+      tags: zod.array(zod.string()).optional(),
     }),
   ),
 });
@@ -1428,6 +1435,7 @@ export const GetPublicExcursionResponse = zod.object({
   minThreshold: zod.number().nullish(),
   adherentsCount: zod.number().nullish(),
   coverImageUrl: zod.string().nullish(),
+  category: zod.string().nullish(),
   schedule: zod
     .array(
       zod.object({
@@ -1460,6 +1468,27 @@ export const GetPublicExcursionResponse = zod.object({
     )
     .nullish(),
   cardPaymentsEnabled: zod.boolean().optional(),
+});
+
+/**
+ * @summary Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+ */
+export const ListPublicRidentResponse = zod.object({
+  excursions: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      name: zod.string(),
+      location: zod.string().nullish(),
+      date: zod.string().nullish(),
+      coverImageUrl: zod.string().nullish(),
+      status: zod.string().nullish(),
+      currentCapacity: zod.number().nullish(),
+      minThreshold: zod.number().nullish(),
+      adherentsCount: zod.number().nullish(),
+      pricePerPerson: zod.string().nullish(),
+      tags: zod.array(zod.string()).optional(),
+    }),
+  ),
 });
 
 /**

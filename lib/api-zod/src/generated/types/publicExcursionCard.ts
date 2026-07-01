@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PublicCatalogExcursionsItem = {
+export interface PublicExcursionCard {
   id: string;
   name: string;
   location?: string | null;
@@ -17,4 +17,5 @@ export type PublicCatalogExcursionsItem = {
   minThreshold?: number | null;
   adherentsCount?: number | null;
   pricePerPerson?: string | null;
-};
+  tags?: string[];
+}

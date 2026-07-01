@@ -14,19 +14,27 @@ import {
   FileText,
   Star,
   Pencil,
+  Zap,
 } from "lucide-react";
 import {
   useGetOffer,
   useDuplicateOffer,
   useUpdateOffer,
+  useListLeads,
   getListOffersQueryKey,
   getGetOfferQueryKey,
 } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
+import {
+  LeadStatusBreakdown,
+  totalLeadCount,
+  type LeadStatusCounts,
+} from "@/components/admin/LeadStatusBreakdown";
 import { useQueryClient } from "@tanstack/react-query";
 import { OfferFormModal } from "./OfferFormModal";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 import { OfferGalleryUploader } from "@/components/shared/OfferGalleryUploader";
+import { OfferDocumentsUploader } from "@/components/shared/OfferDocumentsUploader";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   draft: { label: "Bozza", className: "bg-gray-100 text-gray-700", icon: AlertCircle },
@@ -67,6 +75,26 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex gap-3 text-sm">
       <span className="text-muted-foreground w-32 flex-shrink-0">{label}</span>
       <span className="text-foreground font-medium">{value || "–"}</span>
+    </div>
+  );
+}
+
+// Sezione dedicata alla sidebar "Dati Operativi": header con icona in chip teal.
+// Volutamente separata dal componente Section condiviso, usato anche nella colonna principale.
+function SidebarSection({ title, icon: Icon, children }: {
+  title: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="py-4 first:pt-0 last:pb-0">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+          <Icon className="w-4 h-4" />
+        </div>
+        <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">{title}</h3>
+      </div>
+      {children}
     </div>
   );
 }
@@ -124,6 +152,16 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
       },
     },
   });
+  const { data: leads = [] } = useListLeads();
+
+  // Conteggio richieste di questa offerta per stato, dai dati live.
+  const leadCounts: LeadStatusCounts = {};
+  for (const lead of leads) {
+    if (lead.offerId === offerId) {
+      leadCounts[lead.status] = (leadCounts[lead.status] ?? 0) + 1;
+    }
+  }
+  const leadsTotal = totalLeadCount(leadCounts);
 
   if (isLoading) {
     return (
@@ -195,6 +233,10 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
 
             <Section title="Galleria immagini">
               <OfferGalleryUploader offerId={offerId} />
+            </Section>
+
+            <Section title="Documenti PDF">
+              <OfferDocumentsUploader offerId={offerId} />
             </Section>
 
             <div className="flex items-start justify-between">
@@ -289,101 +331,124 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
         </div>
 
         <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-5">
-            <div>
-              <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">
-                Gestione Interna Staff
+          <div className="bg-gradient-to-b from-primary/[0.06] to-transparent border border-border rounded-3xl p-4 md:p-5 shadow-sm space-y-4">
+            <div className="px-1">
+              <div className="flex items-center gap-2 text-primary mb-1">
+                <Users className="w-4 h-4" />
+                <span className="text-xs font-semibold uppercase tracking-wide">
+                  Gestione Interna Staff
+                </span>
               </div>
-              <h2 className="font-bold text-foreground">Dati Operativi</h2>
+              <h2 className="text-lg font-bold text-foreground">Dati Operativi</h2>
             </div>
 
-            <Section title="Validità">
-              <div className="space-y-1.5">
-                <InfoRow label="Dal" value={formatDate(offer.validFrom)} />
-                <InfoRow label="Al" value={formatDate(offer.validTo)} />
-              </div>
-            </Section>
-
-            {offer.tourOperator && (
-              <Section title="Fornitore">
-                <InfoRow label="Tour Operator" value={offer.tourOperator} />
-              </Section>
-            )}
-
-            <Section title="Performance Leads" icon={Users}>
-              <div 
-                className={cn(
-                  "flex items-center gap-3",
-                  offer.leadsCount > 0 && "cursor-pointer hover:bg-amber-100/50 p-2 -m-2 rounded-xl transition-colors"
-                )}
-                onClick={() => {
-                  if (offer.leadsCount > 0) {
-                    navigate(`~/admin/leads?offerId=${offer.id}`);
-                  }
-                }}
-              >
-                <div className="w-12 h-12 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center">
-                  <span className="text-xl font-bold text-amber-700">{offer.leadsCount}</span>
+            {/* Card bianca: sezioni informative */}
+            <div className="bg-white rounded-2xl border border-border p-4 md:p-5 divide-y divide-border">
+              <SidebarSection title="Validità" icon={Calendar}>
+                <div className="space-y-1.5">
+                  <InfoRow label="Dal" value={formatDate(offer.validFrom)} />
+                  <InfoRow label="Al" value={formatDate(offer.validTo)} />
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-foreground">{offer.leadsCount} lead{offer.leadsCount !== 1 ? "s" : ""}</div>
-                  {offer.lastInterestAt && (
-                    <div className="text-xs text-muted-foreground">
-                      Ultimo: {formatDate(offer.lastInterestAt)}
-                    </div>
-                  )}
-                  {offer.mainSource && (
-                    <div className="text-xs text-muted-foreground">
-                      Fonte: {offer.mainSource}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Section>
+              </SidebarSection>
 
-            {offer.internalNotes && (
-              <Section title="Note Staff">
-                <div className="bg-amber-100 border border-amber-200 rounded-xl p-3">
-                  <p className="text-sm text-amber-900 leading-relaxed whitespace-pre-line">
-                    {offer.internalNotes}
-                  </p>
-                </div>
-              </Section>
-            )}
-
-            <div className="pt-2 border-t border-amber-200 space-y-2">
-              <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">
-                Azioni
-              </div>
-
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
-              >
-                <Pencil className="w-4 h-4" />
-                Modifica offerta
-              </button>
-
-              {offer.publicLink && (
-                <a
-                  href={offer.publicLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-amber-200 text-sm font-medium text-foreground hover:bg-amber-50 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Apri link pubblico
-                </a>
+              {offer.tourOperator && (
+                <SidebarSection title="Fornitore" icon={Building2}>
+                  <InfoRow label="Tour Operator" value={offer.tourOperator} />
+                </SidebarSection>
               )}
 
-              <button
-                onClick={() => duplicate({ id: offerId })}
-                disabled={isDuplicating}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-amber-200 text-sm font-medium text-foreground hover:bg-amber-50 transition-colors disabled:opacity-50"
-              >
-                <Copy className="w-4 h-4" />
-                {isDuplicating ? "Duplicazione…" : "Duplica offerta"}
-              </button>
+              <SidebarSection title="Performance Leads" icon={Users}>
+                <div
+                  className={cn(
+                    "flex items-center gap-3",
+                    leadsTotal > 0 && "cursor-pointer hover:bg-primary/5 p-2 -m-2 rounded-xl transition-colors"
+                  )}
+                  onClick={() => {
+                    if (leadsTotal > 0) {
+                      navigate(`~/admin/leads?offerId=${offer.id}`);
+                    }
+                  }}
+                >
+                  <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xl font-bold text-primary">{leadsTotal}</span>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">{leadsTotal} lead{leadsTotal !== 1 ? "s" : ""}</div>
+                    {offer.lastInterestAt && (
+                      <div className="text-xs text-muted-foreground">
+                        Ultimo: {formatDate(offer.lastInterestAt)}
+                      </div>
+                    )}
+                    {offer.mainSource && (
+                      <div className="text-xs text-muted-foreground">
+                        Fonte: {offer.mainSource}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {leadsTotal > 0 && (
+                  <LeadStatusBreakdown
+                    counts={leadCounts}
+                    labelStyle="full"
+                    onStatusClick={() => navigate(`~/admin/leads?offerId=${offer.id}`)}
+                    className="mt-3"
+                  />
+                )}
+              </SidebarSection>
+
+              {offer.internalNotes && (
+                <SidebarSection title="Note Staff" icon={FileText}>
+                  <div className="bg-primary/5 border border-primary/15 rounded-xl p-3">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
+                      {offer.internalNotes}
+                    </p>
+                  </div>
+                </SidebarSection>
+              )}
+            </div>
+
+            {/* Card bianca: azioni */}
+            <div className="bg-white rounded-2xl border border-border p-4 md:p-5 space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">
+                  Azioni
+                </h3>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Modifica offerta
+                </button>
+
+                {offer.publicLink && (
+                  <a
+                    href={offer.publicLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Apri link pubblico
+                  </a>
+                )}
+
+                <button
+                  onClick={() => duplicate({ id: offerId })}
+                  disabled={isDuplicating}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <Copy className="w-4 h-4" />
+                  {isDuplicating ? "Duplicazione…" : "Duplica offerta"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

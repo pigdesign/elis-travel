@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, leadNotesTable, offersTable, offerImagesTable, excursionsTable, excursionBookingsTable, customersTable, excursionPickupPointsTable, pickupLocationsTable, settingsTable } from "@workspace/db/schema";
+import { leadsTable, leadNotesTable, offersTable, offerImagesTable, offerDocumentsTable, excursionsTable, excursionBookingsTable, customersTable, excursionPickupPointsTable, pickupLocationsTable, settingsTable } from "@workspace/db/schema";
 import { eq, and, ne, desc, sql, or, asc } from "drizzle-orm";
 import {
   dispatchExcursionBookingCancellationEmails,
@@ -189,6 +189,7 @@ router.get("/catalog/products", async (_req, res) => {
         adherentsCount: excursionsTable.adherentsCount,
         minThreshold: excursionsTable.minThreshold,
         status: excursionsTable.status,
+        tags: excursionsTable.tags,
       })
       .from(excursionsTable)
       .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "standard")))
@@ -197,6 +198,35 @@ router.get("/catalog/products", async (_req, res) => {
     res.json({ offers, excursions });
   } catch (err) {
     console.error("Public catalog fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// Elenco gite Rident attive: pagina riservata, non listata nel catalogo pubblico
+// né in sitemap. Raggiungibile solo da chi conosce l'URL /rident.
+router.get("/catalog/rident", async (_req, res) => {
+  try {
+    const excursions = await db
+      .select({
+        id: excursionsTable.id,
+        name: excursionsTable.name,
+        location: excursionsTable.location,
+        date: excursionsTable.date,
+        coverImageUrl: excursionsTable.coverImageUrl,
+        pricePerPerson: excursionsTable.pricePerPerson,
+        currentCapacity: excursionsTable.currentCapacity,
+        adherentsCount: excursionsTable.adherentsCount,
+        minThreshold: excursionsTable.minThreshold,
+        status: excursionsTable.status,
+        tags: excursionsTable.tags,
+      })
+      .from(excursionsTable)
+      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "rident")))
+      .orderBy(excursionsTable.date);
+
+    res.json({ excursions });
+  } catch (err) {
+    console.error("Public rident catalog fetch failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
   }
 });
@@ -245,8 +275,14 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
       .where(eq(offerImagesTable.offerId, id))
       .orderBy(asc(offerImagesTable.sortOrder), asc(offerImagesTable.createdAt));
 
+    const documents = await db
+      .select({ id: offerDocumentsTable.id, documentUrl: offerDocumentsTable.documentUrl, fileName: offerDocumentsTable.fileName, sortOrder: offerDocumentsTable.sortOrder })
+      .from(offerDocumentsTable)
+      .where(eq(offerDocumentsTable.offerId, id))
+      .orderBy(asc(offerDocumentsTable.sortOrder), asc(offerDocumentsTable.createdAt));
+
     const { status: _status, ...publicOffer } = offer;
-    res.json({ ...publicOffer, images });
+    res.json({ ...publicOffer, images, documents });
   } catch (err) {
     console.error("Public offer detail fetch failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -268,6 +304,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         adherentsCount: excursionsTable.adherentsCount,
         coverImageUrl: excursionsTable.coverImageUrl,
         status: excursionsTable.status,
+        category: excursionsTable.category,
         schedule: excursionsTable.schedule,
         included: excursionsTable.included,
         excluded: excursionsTable.excluded,

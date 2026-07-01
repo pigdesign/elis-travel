@@ -28,8 +28,10 @@ router.post(
       return;
     }
 
-    if (!req.file.mimetype.startsWith("image/")) {
-      res.status(400).json({ error: "Only image uploads are allowed" });
+    const isImage = req.file.mimetype.startsWith("image/");
+    const isPdf = req.file.mimetype === "application/pdf";
+    if (!isImage && !isPdf) {
+      res.status(400).json({ error: "Only image or PDF uploads are allowed" });
       return;
     }
 

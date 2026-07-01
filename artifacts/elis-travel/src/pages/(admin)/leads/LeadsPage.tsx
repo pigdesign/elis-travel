@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   useListLeads,
+  useListOffers,
   useUpdateLeadStatus,
   useListLeadNotes,
   useAddLeadNote,
@@ -80,6 +81,61 @@ const FILTER_TABS: { key: "all" | StatusKey; label: string }[] = [
   { key: "won", label: "Vinte" },
   { key: "lost", label: "Perse" },
 ];
+
+type ProductKey = "all" | "offer" | "excursion" | "generic";
+
+const PRODUCT_TABS: { key: ProductKey; label: string }[] = [
+  { key: "all", label: "Tutti" },
+  { key: "offer", label: "Offerte" },
+  { key: "excursion", label: "Gite" },
+  { key: "generic", label: "Generiche" },
+];
+
+// Etichette leggibili per le categorie offerta (allineate al sito pubblico).
+// Le categorie non presenti qui mostrano il valore grezzo (fallback).
+const OFFER_CATEGORY_LABELS: Record<string, string> = {
+  crociera: "Crociere",
+  vacanza: "Vacanze",
+};
+
+function FilterChip({
+  label,
+  count,
+  active,
+  onClick,
+  icon,
+}: {
+  label: string;
+  count?: number;
+  active: boolean;
+  onClick: () => void;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors",
+        active
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "bg-white border border-border text-muted-foreground hover:bg-primary/5 hover:border-primary/30"
+      )}
+    >
+      {icon}
+      {label}
+      {count !== undefined && count > 0 && (
+        <span
+          className={cn(
+            "text-xs font-bold px-1.5 py-0.5 rounded-full",
+            active ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const parts = fullName.trim().split(/\s+/);
@@ -522,7 +578,10 @@ function LeadRow({ lead, defaultExpanded = false }: { lead: Lead; defaultExpande
 
 export function LeadsPage() {
   const [activeFilter, setActiveFilter] = useState<"all" | StatusKey>("all");
+  const [productFilter, setProductFilter] = useState<ProductKey>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const { data: leads = [], isLoading } = useListLeads();
+  const { data: offers = [] } = useListOffers();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
   const focusedLeadId = searchParams.get("lead");
@@ -530,21 +589,60 @@ export function LeadsPage() {
 
   const [, navigate] = useLocation();
 
+  // Mappa offerId -> categoria, letta dalle offerte reali (nessun dato extra dal backend).
+  const offerCategoryById = new Map<string, string | null>(
+    offers.map((o) => [o.id, o.category ?? null])
+  );
+  const leadCategory = (l: Lead): string | null =>
+    l.type === "offer" && l.offerId ? offerCategoryById.get(l.offerId) ?? null : null;
+
+  // Predicati indipendenti: stato, tipo/categoria prodotto, filtro offerta da URL.
+  const matchesOfferUrl = (l: Lead) => !filterOfferId || l.offerId === filterOfferId;
+  const matchesStatus = (l: Lead) => activeFilter === "all" || l.status === activeFilter;
+  const matchesProduct = (l: Lead) => {
+    if (productFilter === "all") return true;
+    if (l.type !== productFilter) return false;
+    if (productFilter === "offer" && categoryFilter) return leadCategory(l) === categoryFilter;
+    return true;
+  };
+
+  const handleProductChange = (key: ProductKey) => {
+    setProductFilter(key);
+    if (key !== "offer") setCategoryFilter("");
+  };
+
   const newCount = leads.filter((l) => l.status === "new").length;
 
-  let filtered =
-    activeFilter === "all" ? leads : leads.filter((l) => l.status === activeFilter);
-  
-  if (filterOfferId) {
-    filtered = filtered.filter(l => l.offerId === filterOfferId);
-  }
+  const filtered = leads.filter(
+    (l) => matchesStatus(l) && matchesProduct(l) && matchesOfferUrl(l)
+  );
 
+  // Conteggi stato: riflettono la selezione tipo/categoria attiva.
+  const statusScoped = leads.filter((l) => matchesProduct(l) && matchesOfferUrl(l));
   const counts: Record<string, number> = {};
-  for (const l of leads) {
-    if (!filterOfferId || l.offerId === filterOfferId) {
-      counts[l.status] = (counts[l.status] ?? 0) + 1;
+  for (const l of statusScoped) counts[l.status] = (counts[l.status] ?? 0) + 1;
+
+  // Conteggi tipo/categoria: riflettono lo stato attivo.
+  const productScoped = leads.filter((l) => matchesStatus(l) && matchesOfferUrl(l));
+  const productCounts: Record<ProductKey, number> = {
+    all: productScoped.length,
+    offer: 0,
+    excursion: 0,
+    generic: 0,
+  };
+  for (const l of productScoped) {
+    if (l.type === "offer" || l.type === "excursion" || l.type === "generic") {
+      productCounts[l.type] += 1;
     }
   }
+
+  const offerScoped = productScoped.filter((l) => l.type === "offer");
+  const categoryCounts: Record<string, number> = {};
+  for (const l of offerScoped) {
+    const c = leadCategory(l);
+    if (c) categoryCounts[c] = (categoryCounts[c] ?? 0) + 1;
+  }
+  const availableCategories = Object.keys(categoryCounts).sort();
 
   const offerNameFilter = filterOfferId ? leads.find(l => l.offerId === filterOfferId)?.offerName : null;
 
@@ -583,35 +681,77 @@ export function LeadsPage() {
         </div>
       )}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {FILTER_TABS.map((tab) => {
-          const count = tab.key === "all" ? (filterOfferId ? filtered.length : leads.length) : (counts[tab.key] ?? 0);
-          const isActive = activeFilter === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-white border border-border text-muted-foreground hover:bg-primary/5 hover:border-primary/30"
-              )}
-            >
-              {tab.label}
-              {count > 0 && (
-                <span
-                  className={cn(
-                    "text-xs font-bold px-1.5 py-0.5 rounded-full",
-                    isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div className="space-y-3">
+        {/* Riga 1: filtro per stato */}
+        <div>
+          <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+            Stato
+          </span>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {FILTER_TABS.map((tab) => (
+              <FilterChip
+                key={tab.key}
+                label={tab.label}
+                count={tab.key === "all" ? statusScoped.length : counts[tab.key] ?? 0}
+                active={activeFilter === tab.key}
+                onClick={() => setActiveFilter(tab.key)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Riga 2: filtro per tipo di prodotto */}
+        <div>
+          <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+            Tipo di prodotto
+          </span>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {PRODUCT_TABS.map((tab) => (
+              <FilterChip
+                key={tab.key}
+                label={tab.label}
+                count={productCounts[tab.key]}
+                active={productFilter === tab.key}
+                onClick={() => handleProductChange(tab.key)}
+                icon={
+                  tab.key === "offer" ? (
+                    <Ticket className="w-3.5 h-3.5" />
+                  ) : tab.key === "excursion" ? (
+                    <Mountain className="w-3.5 h-3.5" />
+                  ) : tab.key === "generic" ? (
+                    <Globe className="w-3.5 h-3.5" />
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Sotto-riga: categoria offerta (solo quando "Offerte" è selezionato) */}
+        {productFilter === "offer" && availableCategories.length > 0 && (
+          <div className="pl-3 border-l-2 border-primary/30">
+            <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              Categoria offerta
+            </span>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              <FilterChip
+                label="Tutte le categorie"
+                count={offerScoped.length}
+                active={categoryFilter === ""}
+                onClick={() => setCategoryFilter("")}
+              />
+              {availableCategories.map((cat) => (
+                <FilterChip
+                  key={cat}
+                  label={OFFER_CATEGORY_LABELS[cat] ?? cat}
+                  count={categoryCounts[cat] ?? 0}
+                  active={categoryFilter === cat}
+                  onClick={() => setCategoryFilter(cat)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden">

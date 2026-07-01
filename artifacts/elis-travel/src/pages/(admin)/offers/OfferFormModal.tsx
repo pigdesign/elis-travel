@@ -7,14 +7,22 @@ import {
 } from "@/components/ui/dialog";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 import { ScheduleEditor } from "@/components/shared/ScheduleEditor";
+import { OfferDocumentsUploader } from "@/components/shared/OfferDocumentsUploader";
+import {
+  PendingDocumentsUploader,
+  type PendingDocument,
+} from "@/components/shared/PendingDocumentsUploader";
 import {
   useCreateOffer,
   useUpdateOffer,
+  useListOffers,
+  addOfferDocument,
   getListOffersQueryKey,
   getGetOfferQueryKey,
 } from "@workspace/api-client-react";
 import type { OfferDetail, OfferSummary, ScheduleDay } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { TagCombobox } from "@/components/shared/TagCombobox";
 
 type OfferFormData = {
   name: string;
@@ -158,17 +166,36 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
 
   const [form, setForm] = useState<OfferFormData>(emptyForm);
   const [errors, setErrors] = useState<Partial<Record<keyof OfferFormData, string>>>({});
+  const [pendingDocs, setPendingDocs] = useState<PendingDocument[]>([]);
+
+  // Suggerimenti tour operator: valori già usati nelle offerte esistenti (nessun dato extra dal backend).
+  const { data: offersForSuggestions = [] } = useListOffers();
+  const tourOperatorOptions = offersForSuggestions
+    .map((o) => o.tourOperator)
+    .filter((t): t is string => !!t && t.trim() !== "");
 
   useEffect(() => {
     if (open) {
       setForm(offer ? offerToForm(offer) : emptyForm);
       setErrors({});
+      setPendingDocs([]);
     }
   }, [open, offer]);
 
   const { mutate: createOffer, isPending: isCreating } = useCreateOffer({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async (data) => {
+        const newId = (data as { id?: string } | undefined)?.id;
+        if (newId && pendingDocs.length > 0) {
+          for (const doc of pendingDocs) {
+            try {
+              await addOfferDocument(newId, { documentUrl: doc.documentUrl, fileName: doc.fileName });
+            } catch {
+              // il salvataggio dell'offerta è già andato a buon fine: eventuali PDF
+              // non allegati potranno essere aggiunti dalla pagina dell'offerta.
+            }
+          }
+        }
         void queryClient.invalidateQueries({ queryKey: getListOffersQueryKey() });
         onClose();
       },
@@ -263,12 +290,11 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
 
             <div className="grid sm:grid-cols-3 gap-4">
               <Field label="Tour Operator">
-                <input
-                  type="text"
+                <TagCombobox
                   value={form.tourOperator}
-                  onChange={set("tourOperator")}
+                  onChange={(v) => setForm((prev) => ({ ...prev, tourOperator: v }))}
+                  suggestions={tourOperatorOptions}
                   placeholder="es. Alpitour"
-                  className={inputCls}
                 />
               </Field>
 
@@ -447,6 +473,14 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                 }
                 testIdPrefix="offer-form-cover"
               />
+            </Field>
+
+            <Field label="Documenti PDF">
+              {isEdit && offer ? (
+                <OfferDocumentsUploader offerId={offer.id} />
+              ) : (
+                <PendingDocumentsUploader value={pendingDocs} onChange={setPendingDocs} />
+              )}
             </Field>
 
             <Field label="Testo Pubblicitario">

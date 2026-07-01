@@ -60,6 +60,7 @@ import type {
   PublicLeadInput,
   PublicLeadResponse,
   PublicOfferDetail,
+  PublicRidentCatalog,
   RmsSearchResult,
   SearchRmsCustomersParams,
   SettingsInput,
@@ -4816,6 +4817,81 @@ export function useGetPublicExcursion<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetPublicExcursionQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+ */
+export const getListPublicRidentUrl = () => {
+  return `/api/catalog/rident`;
+};
+
+export const listPublicRident = async (
+  options?: RequestInit,
+): Promise<PublicRidentCatalog> => {
+  return customFetch<PublicRidentCatalog>(getListPublicRidentUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicRidentQueryKey = () => {
+  return [`/api/catalog/rident`] as const;
+};
+
+export const getListPublicRidentQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicRident>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicRident>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPublicRidentQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicRident>>
+  > = ({ signal }) => listPublicRident({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicRident>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicRidentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicRident>>
+>;
+export type ListPublicRidentQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+ */
+
+export function useListPublicRident<
+  TData = Awaited<ReturnType<typeof listPublicRident>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicRident>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicRidentQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

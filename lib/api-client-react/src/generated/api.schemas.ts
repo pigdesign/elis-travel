@@ -49,6 +49,7 @@ export interface ExcursionSummary {
   date: string;
   status: string;
   category: string;
+  tags?: string[];
   currentCapacity: number;
   minThreshold: number;
   adherentsCount: number;
@@ -169,6 +170,7 @@ export interface ExcursionInput {
   date?: string;
   status?: string;
   category?: string;
+  tags?: string[];
   vehicleId?: string | null;
   currentCapacity?: number;
   minThreshold?: number;
@@ -393,7 +395,7 @@ export type PublicCatalogOffersItem = {
   validTo?: string | null;
 };
 
-export type PublicCatalogExcursionsItem = {
+export interface PublicExcursionCard {
   id: string;
   name: string;
   location?: string | null;
@@ -404,11 +406,16 @@ export type PublicCatalogExcursionsItem = {
   minThreshold?: number | null;
   adherentsCount?: number | null;
   pricePerPerson?: string | null;
-};
+  tags?: string[];
+}
 
 export interface PublicCatalog {
   offers: PublicCatalogOffersItem[];
-  excursions: PublicCatalogExcursionsItem[];
+  excursions: PublicExcursionCard[];
+}
+
+export interface PublicRidentCatalog {
+  excursions: PublicExcursionCard[];
 }
 
 export interface PublicOfferDetail {
@@ -455,6 +462,7 @@ export interface PublicExcursionDetail {
   minThreshold?: number | null;
   adherentsCount?: number | null;
   coverImageUrl?: string | null;
+  category?: string | null;
   schedule?: ScheduleDay[] | null;
   included?: string | null;
   excluded?: string | null;

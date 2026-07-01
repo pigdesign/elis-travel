@@ -3,6 +3,7 @@ import { AlertCircle, Loader2, Save, X, Plus, Trash2, MapPin, Clock } from "luci
 import {
   useCreateExcursion,
   useUpdateExcursion,
+  useListExcursions,
   useListVehicles,
   useListPickupLocations,
   useListExcursionPickupPoints,
@@ -22,6 +23,10 @@ import type {
 import { useQueryClient } from "@tanstack/react-query";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 import { ScheduleEditor } from "@/components/shared/ScheduleEditor";
+import { TagMultiCombobox } from "@/components/shared/TagMultiCombobox";
+
+// Suggerimenti iniziali per i tag (le voci tipologia storiche del sito).
+const DEFAULT_TAG_SUGGESTIONS = ["In giornata", "Weekend", "Mare", "Montagna", "Cultura"];
 
 const STATUS_OPTIONS = [
   { value: "draft", label: "Bozza" },
@@ -42,6 +47,7 @@ type FormState = {
   date: string;
   status: string;
   category: string;
+  tags: string[];
   pricePerPerson: string;
   mealCostPerPerson: string;
   entranceCostPerPerson: string;
@@ -72,6 +78,7 @@ function emptyState(): FormState {
     date: todayISO(),
     status: "draft",
     category: "standard",
+    tags: [],
     pricePerPerson: "0",
     mealCostPerPerson: "0",
     entranceCostPerPerson: "0",
@@ -102,6 +109,7 @@ function fromExcursion(
     date: opts?.clearDate ? "" : exc.date ?? todayISO(),
     status: exc.status ?? "draft",
     category: exc.category ?? "standard",
+    tags: exc.tags ?? [],
     pricePerPerson: exc.pricePerPerson ?? "0",
     mealCostPerPerson: exc.mealCostPerPerson ?? "0",
     entranceCostPerPerson: exc.entranceCostPerPerson ?? "0",
@@ -138,6 +146,8 @@ function toPayload(s: FormState): ExcursionInput {
     date: s.date,
     status: s.status,
     category: s.category,
+    // I tag valgono solo per le gite standard.
+    tags: s.category === "rident" ? [] : s.tags,
     pricePerPerson: normalizeDecimal(s.pricePerPerson),
     mealCostPerPerson: normalizeDecimal(s.mealCostPerPerson),
     entranceCostPerPerson: normalizeDecimal(s.entranceCostPerPerson),
@@ -319,6 +329,20 @@ export function ExcursionFormModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { data: vehicles } = useListVehicles();
+
+  // Suggerimenti tag: default storici + tag già usati sulle gite esistenti (dedup case-insensitive).
+  const { data: allExcursions = [] } = useListExcursions();
+  const tagSuggestions = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const d of DEFAULT_TAG_SUGGESTIONS) byKey.set(d.toLowerCase(), d);
+    for (const ex of allExcursions) {
+      for (const t of ex.tags ?? []) {
+        const name = t.trim();
+        if (name && !byKey.has(name.toLowerCase())) byKey.set(name.toLowerCase(), name);
+      }
+    }
+    return Array.from(byKey.values());
+  }, [allExcursions]);
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getListExcursionsQueryKey() });
@@ -544,6 +568,23 @@ export function ExcursionFormModal({
                   </p>
                 )}
               </div>
+
+              {form.category === "standard" && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Tag
+                  </label>
+                  <TagMultiCombobox
+                    values={form.tags}
+                    onChange={(v) => setField("tags", v)}
+                    suggestions={tagSuggestions}
+                    placeholder="Aggiungi tag (es. Weekend, Cultura)…"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Temi usati dal filtro “Tipologia” sul sito. Scegli tra gli esistenti o creane di nuovi.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 
