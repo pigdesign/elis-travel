@@ -15,6 +15,9 @@ import { z } from "zod/v4";
 import { customersTable } from "./customers";
 import { pickupLocationsTable } from "./pickup-locations";
 
+// Voce di costo "Extra" nominata, salvata nella colonna jsonb `extras`.
+export type ExcursionExtra = { name: string; price: number };
+
 export const excursionVehiclesTable = pgTable("excursion_vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -61,6 +64,10 @@ export const excursionsTable = pgTable("excursions", {
     precision: 10,
     scale: 2,
   }).default("0"),
+  // Scomposizione nominata del costo "Extra": voci interne { name, price }.
+  // La somma dei price viene tenuta sincronizzata in extraCostPerPerson, che
+  // resta la fonte usata da margine/conto economico/report.
+  extras: jsonb("extras").$type<ExcursionExtra[]>().notNull().default([]),
   pricePerPerson: numeric("price_per_person", {
     precision: 10,
     scale: 2,

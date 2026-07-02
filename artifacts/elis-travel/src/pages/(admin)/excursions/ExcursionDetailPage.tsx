@@ -1163,10 +1163,19 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                   <span>− Ingressi</span>
                   <span>{formatEur(entranceCost)}</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>− Extra</span>
-                  <span>{formatEur(extraCost)}</span>
-                </div>
+                {exc.extras && exc.extras.length > 0 ? (
+                  exc.extras.map((ex, i) => (
+                    <div key={i} className="flex justify-between text-muted-foreground">
+                      <span className="truncate pr-2">− {ex.name?.trim() || "Extra"}</span>
+                      <span className="shrink-0">{formatEur(Number(ex.price) || 0)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>− Extra</span>
+                    <span>{formatEur(extraCost)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-medium border-t border-border/50 pt-1.5">
                   <span>Margine/persona</span>
                   <span className={marginePerPersona >= 0 ? "text-primary" : "text-destructive"}>

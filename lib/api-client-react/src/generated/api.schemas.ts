@@ -29,6 +29,11 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface ExcursionExtra {
+  name: string;
+  price: number;
+}
+
 export interface ScheduleActivity {
   time?: string | null;
   title: string;
@@ -60,6 +65,7 @@ export interface ExcursionSummary {
   mealCostPerPerson?: string;
   entranceCostPerPerson?: string;
   extraCostPerPerson?: string;
+  extras: ExcursionExtra[];
   pricePerPerson: string;
   vehicleId?: string | null;
   switchThreshold?: number | null;
@@ -178,6 +184,7 @@ export interface ExcursionInput {
   mealCostPerPerson?: string;
   entranceCostPerPerson?: string;
   extraCostPerPerson?: string;
+  extras?: ExcursionExtra[];
   pricePerPerson?: string;
   switchThreshold?: number | null;
   switchVehicleId?: string | null;

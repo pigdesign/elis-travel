@@ -29,6 +29,7 @@ export * from "./dashboardUpcomingExcursion";
 export * from "./deleteVehicle200";
 export * from "./errorResponse";
 export * from "./excursionDetail";
+export * from "./excursionExtra";
 export * from "./excursionInput";
 export * from "./excursionPickupPoint";
 export * from "./excursionPickupPointInput";

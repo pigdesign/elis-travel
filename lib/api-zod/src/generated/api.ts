@@ -318,6 +318,12 @@ export const ListExcursionsResponseItem = zod.object({
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
   extraCostPerPerson: zod.string().optional(),
+  extras: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
   pricePerPerson: zod.string(),
   vehicleId: zod.string().nullish(),
   switchThreshold: zod.number().nullish(),
@@ -370,6 +376,14 @@ export const CreateExcursionBody = zod.object({
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
   extraCostPerPerson: zod.string().optional(),
+  extras: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    )
+    .optional(),
   pricePerPerson: zod.string().optional(),
   switchThreshold: zod.number().nullish(),
   switchVehicleId: zod.string().nullish(),
@@ -423,6 +437,12 @@ export const GetExcursionResponse = zod
     mealCostPerPerson: zod.string().optional(),
     entranceCostPerPerson: zod.string().optional(),
     extraCostPerPerson: zod.string().optional(),
+    extras: zod.array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    ),
     pricePerPerson: zod.string(),
     vehicleId: zod.string().nullish(),
     switchThreshold: zod.number().nullish(),
@@ -502,6 +522,14 @@ export const UpdateExcursionBody = zod.object({
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
   extraCostPerPerson: zod.string().optional(),
+  extras: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    )
+    .optional(),
   pricePerPerson: zod.string().optional(),
   switchThreshold: zod.number().nullish(),
   switchVehicleId: zod.string().nullish(),
@@ -547,6 +575,12 @@ export const UpdateExcursionResponse = zod.object({
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
   extraCostPerPerson: zod.string().optional(),
+  extras: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
   pricePerPerson: zod.string(),
   vehicleId: zod.string().nullish(),
   switchThreshold: zod.number().nullish(),
@@ -732,6 +766,12 @@ export const UpdateExcursionVehicleResponse = zod.object({
   mealCostPerPerson: zod.string().optional(),
   entranceCostPerPerson: zod.string().optional(),
   extraCostPerPerson: zod.string().optional(),
+  extras: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
   pricePerPerson: zod.string(),
   vehicleId: zod.string().nullish(),
   switchThreshold: zod.number().nullish(),

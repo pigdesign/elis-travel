@@ -1571,6 +1571,10 @@ components:
           type: string
         extraCostPerPerson:
           type: string
+        extras:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExcursionExtra"
         pricePerPerson:
           type: string
         vehicleId:
@@ -1633,6 +1637,7 @@ components:
         - balancesCount
         - pendingRequestsCount
         - pricePerPerson
+        - extras
         - ricaviStimati
         - costiVariabili
         - costiTotali
@@ -1829,6 +1834,10 @@ components:
           type: string
         extraCostPerPerson:
           type: string
+        extras:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExcursionExtra"
         pricePerPerson:
           type: string
         switchThreshold:
@@ -2863,6 +2872,16 @@ components:
           type: string
         excursion_card_payments_enabled:
           type: string
+    ExcursionExtra:
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: number
+      required:
+        - name
+        - price
     ScheduleActivity:
       type: object
       properties:

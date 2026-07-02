@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ExcursionExtra } from "./excursionExtra";
 import type { ScheduleDay } from "./scheduleDay";
 
 export interface ExcursionSummary {
@@ -25,6 +26,7 @@ export interface ExcursionSummary {
   mealCostPerPerson?: string;
   entranceCostPerPerson?: string;
   extraCostPerPerson?: string;
+  extras: ExcursionExtra[];
   pricePerPerson: string;
   vehicleId?: string | null;
   switchThreshold?: number | null;

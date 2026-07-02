@@ -41,6 +41,9 @@ const CATEGORY_OPTIONS = [
   { value: "rident", label: "Rident — privata, solo via link" },
 ] as const;
 
+// Riga extra nel form: il prezzo è stringa (input controllato), convertito a numero al salvataggio.
+type ExtraRow = { name: string; price: string };
+
 type FormState = {
   name: string;
   location: string;
@@ -51,7 +54,7 @@ type FormState = {
   pricePerPerson: string;
   mealCostPerPerson: string;
   entranceCostPerPerson: string;
-  extraCostPerPerson: string;
+  extras: ExtraRow[];
   currentCapacity: string;
   minThreshold: string;
   vehicleId: string;
@@ -82,7 +85,7 @@ function emptyState(): FormState {
     pricePerPerson: "0",
     mealCostPerPerson: "0",
     entranceCostPerPerson: "0",
-    extraCostPerPerson: "0",
+    extras: [],
     currentCapacity: "0",
     minThreshold: "1",
     vehicleId: "",
@@ -99,6 +102,19 @@ function emptyState(): FormState {
   };
 }
 
+// Ricava le righe extra dalla gita. Retrocompatibilità: gite vecchie senza
+// `extras` ma con un extraCostPerPerson > 0 diventano una singola riga senza nome,
+// così il valore non va perso alla prima modifica.
+function extrasFromExcursion(exc: ExcursionDetail | ExcursionSummary): ExtraRow[] {
+  const list = (exc.extras ?? []).map((e) => ({ name: e.name ?? "", price: String(e.price ?? 0) }));
+  if (list.length > 0) return list;
+  const legacy = Number(exc.extraCostPerPerson ?? "0");
+  if (Number.isFinite(legacy) && legacy > 0) {
+    return [{ name: "", price: exc.extraCostPerPerson ?? "0" }];
+  }
+  return [];
+}
+
 function fromExcursion(
   exc: ExcursionDetail | ExcursionSummary,
   opts?: { clearDate?: boolean },
@@ -113,7 +129,7 @@ function fromExcursion(
     pricePerPerson: exc.pricePerPerson ?? "0",
     mealCostPerPerson: exc.mealCostPerPerson ?? "0",
     entranceCostPerPerson: exc.entranceCostPerPerson ?? "0",
-    extraCostPerPerson: exc.extraCostPerPerson ?? "0",
+    extras: extrasFromExcursion(exc),
     currentCapacity: String(exc.currentCapacity ?? 0),
     minThreshold: String(exc.minThreshold ?? 1),
     vehicleId: exc.vehicleId ?? "",
@@ -140,6 +156,11 @@ function toPayload(s: FormState): ExcursionInput {
   const switchThresholdNum =
     s.switchThreshold.trim() === "" ? null : Math.max(0, parseInt(s.switchThreshold, 10) || 0);
   const switchVehicleId = s.switchVehicleId || null;
+  // Extra: scarto le righe completamente vuote; extraCostPerPerson = somma dei prezzi.
+  const extras = s.extras
+    .map((r) => ({ name: r.name.trim(), price: Number(normalizeDecimal(r.price)) }))
+    .filter((r) => r.name !== "" || r.price !== 0);
+  const extraTotal = extras.reduce((sum, r) => sum + r.price, 0);
   return {
     name: s.name.trim(),
     location: s.location.trim(),
@@ -151,7 +172,8 @@ function toPayload(s: FormState): ExcursionInput {
     pricePerPerson: normalizeDecimal(s.pricePerPerson),
     mealCostPerPerson: normalizeDecimal(s.mealCostPerPerson),
     entranceCostPerPerson: normalizeDecimal(s.entranceCostPerPerson),
-    extraCostPerPerson: normalizeDecimal(s.extraCostPerPerson),
+    extras,
+    extraCostPerPerson: extraTotal.toFixed(2),
     currentCapacity: Math.max(0, parseInt(s.currentCapacity, 10) || 0),
     minThreshold: Math.max(0, parseInt(s.minThreshold, 10) || 0),
     vehicleId: s.vehicleId || null,
@@ -383,6 +405,20 @@ export function ExcursionFormModal({
     setForm((p) => ({ ...p, [k]: v }));
   };
 
+  const addExtra = () =>
+    setForm((p) => ({ ...p, extras: [...p.extras, { name: "", price: "" }] }));
+  const removeExtra = (i: number) =>
+    setForm((p) => ({ ...p, extras: p.extras.filter((_, idx) => idx !== i) }));
+  const updateExtra = (i: number, key: keyof ExtraRow, value: string) =>
+    setForm((p) => ({
+      ...p,
+      extras: p.extras.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)),
+    }));
+  const extraTotal = form.extras.reduce((sum, r) => {
+    const n = Number(String(r.price).replace(",", "."));
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     const checkDecimalNonNeg = (key: keyof FormState, label: string) => {
@@ -409,7 +445,13 @@ export function ExcursionFormModal({
     }
     checkDecimalNonNeg("mealCostPerPerson", "Costo pasto");
     checkDecimalNonNeg("entranceCostPerPerson", "Costo ingressi");
-    checkDecimalNonNeg("extraCostPerPerson", "Costo extra");
+    const badExtra = form.extras.some((r) => {
+      const raw = r.price.trim();
+      if (raw === "") return false;
+      const n = Number(raw.replace(",", "."));
+      return isNaN(n) || n < 0;
+    });
+    if (badExtra) errs.extras = "Prezzo extra non valido (≥ 0).";
     checkDecimalNonNeg("vehicleFixedCost", "Costo mezzo");
     checkDecimalNonNeg("switchVehicleAdditionalCost", "Costo aggiuntivo mezzo alternativo");
     checkIntNonNeg("currentCapacity", "Capienza");
@@ -593,7 +635,7 @@ export function ExcursionFormModal({
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Prezzo e costi per persona (€)
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">
                   Prezzo *
@@ -635,18 +677,78 @@ export function ExcursionFormModal({
                   data-testid="input-excursion-entrance"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">Extra</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.extraCostPerPerson}
-                  onChange={(e) => setField("extraCostPerPerson", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-extra"
-                />
+            </div>
+
+            {/* Extra: voci di costo nominate e ripetibili (guida, assicurazione, ...) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-foreground">
+                  Extra (voci di costo per persona)
+                </label>
+                {form.extras.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    Totale: {extraTotal.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
+                  </span>
+                )}
               </div>
+
+              <div className="space-y-2">
+                {form.extras.map((row, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nome (es. Guida, Assicurazione)"
+                      value={row.name}
+                      onChange={(e) => updateExtra(i, "name", e.target.value)}
+                      className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid={`input-excursion-extra-name-${i}`}
+                    />
+                    <div className="relative w-28 shrink-0">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={row.price}
+                        onChange={(e) => updateExtra(i, "price", e.target.value)}
+                        className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
+                        data-testid={`input-excursion-extra-price-${i}`}
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                        €
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeExtra(i)}
+                      className="p-2 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                      title="Rimuovi extra"
+                      data-testid={`button-remove-extra-${i}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {form.extras.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Nessun extra. Aggiungine uno se ci sono costi accessori (guida, assicurazione, ...).
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={addExtra}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-dashed border-border text-primary hover:bg-primary/5 transition-colors"
+                data-testid="button-add-extra"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Aggiungi extra
+              </button>
+
+              {fieldErrors.extras && (
+                <p className="text-xs text-red-600 mt-1">{fieldErrors.extras}</p>
+              )}
             </div>
           </section>
 

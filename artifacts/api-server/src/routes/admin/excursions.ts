@@ -76,6 +76,29 @@ function calcFinancials(e: typeof excursionsTable.$inferSelect) {
   return { ricaviStimati, costiVariabili, costiTotali, margineNetto };
 }
 
+// Sanitizza le voci "extra": scarta righe non valide/vuote, forza price >= 0.
+type ExcursionExtra = { name: string; price: number };
+function normalizeExtras(input: unknown): ExcursionExtra[] {
+  if (!Array.isArray(input)) return [];
+  const out: ExcursionExtra[] = [];
+  for (const item of input) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const name = typeof rec.name === "string" ? rec.name.trim() : "";
+    const price = Number(rec.price);
+    if (!Number.isFinite(price) || price < 0) continue;
+    // Salta righe completamente vuote (nessun nome e prezzo nullo).
+    if (name === "" && price === 0) continue;
+    out.push({ name, price });
+  }
+  return out;
+}
+
+// Totale delle voci extra, come stringa numerica (fonte di extraCostPerPerson).
+function sumExtras(extras: ExcursionExtra[]): string {
+  return extras.reduce((s, e) => s + e.price, 0).toFixed(2);
+}
+
 // Normalizza i tag: trim, rimuove vuoti e duplicati (case-insensitive), mantiene l'ordine.
 function normalizeTags(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
@@ -131,6 +154,9 @@ router.post("/excursions", async (req, res) => {
   try {
     const body = req.body as Partial<typeof excursionsTable.$inferInsert>;
 
+    // Le voci extra sono la fonte: extraCostPerPerson è la loro somma.
+    const extras = normalizeExtras(body.extras);
+
     const [created] = await db
       .insert(excursionsTable)
       .values({
@@ -150,7 +176,8 @@ router.post("/excursions", async (req, res) => {
         vehicleFixedCost: body.vehicleFixedCost ?? "0",
         mealCostPerPerson: body.mealCostPerPerson ?? "0",
         entranceCostPerPerson: body.entranceCostPerPerson ?? "0",
-        extraCostPerPerson: body.extraCostPerPerson ?? "0",
+        extras,
+        extraCostPerPerson: extras.length > 0 ? sumExtras(extras) : (body.extraCostPerPerson ?? "0"),
         pricePerPerson: body.pricePerPerson ?? "0",
         switchThreshold: body.switchThreshold ?? null,
         switchVehicleId: body.switchVehicleId ?? null,
@@ -240,6 +267,7 @@ router.patch("/excursions/:id", async (req, res) => {
       "currentCapacity", "minThreshold", "adherentsCount",
       "depositsCount", "balancesCount", "vehicleFixedCost",
       "mealCostPerPerson", "entranceCostPerPerson", "extraCostPerPerson",
+      "extras",
       "pricePerPerson", "switchThreshold", "switchVehicleId",
       "switchVehicleAdditionalCost", "operationalNotes", "coverImageUrl",
       "schedule", "included", "excluded", "generalInfo",
@@ -259,6 +287,13 @@ router.patch("/excursions/:id", async (req, res) => {
     // Tag: normalizzati; azzerati se la gita (nuova o esistente) è rident.
     if ("tags" in body) {
       allowed.tags = normalizeTags(body.tags);
+    }
+
+    // Extra: la lista è la fonte; extraCostPerPerson viene ricalcolato come somma.
+    if ("extras" in body) {
+      const extras = normalizeExtras(body.extras);
+      allowed.extras = extras;
+      allowed.extraCostPerPerson = sumExtras(extras);
     }
     const effectiveCategory = (allowed.category as string | undefined) ?? previous?.category;
     if (effectiveCategory === "rident") {
