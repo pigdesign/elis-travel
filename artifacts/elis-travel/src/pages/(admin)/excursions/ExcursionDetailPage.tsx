@@ -117,27 +117,25 @@ function CopyLinkRow({ label, url }: { label: string; url: string }) {
   );
 }
 
-// Box link condivisibili: mostrato solo per le gite Rident, che non compaiono
-// nel sito pubblico e vanno raggiunte tramite link diretto.
+// Box link condivisibile: mostrato per le gite Rident, con il link diretto alla
+// pagina pubblica della gita, comodo da condividere direttamente.
 function RidentLinksBox({ excursionId, excursionName }: { excursionId: string; excursionName: string }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const ridentPageUrl = `${origin}/rident`;
   const excursionUrl = `${origin}${buildSlugUrl("gite", excursionId, excursionName)}`;
   return (
     <div className="bg-gradient-to-b from-primary/[0.06] to-transparent border border-border rounded-3xl p-4 md:p-5 shadow-sm space-y-4">
       <div className="px-1">
         <div className="flex items-center gap-2 text-primary mb-1">
           <Link2 className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-wide">Gita Rident — riservata</span>
+          <span className="text-xs font-semibold uppercase tracking-wide">Gita Rident</span>
         </div>
         <h2 className="text-lg font-bold text-foreground">Link da condividere</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Questa gita non compare sul sito pubblico né in sitemap: condividila solo con questi link.
+          Link diretto a questa gita, comodo da condividere. La gita è comunque visibile nella pagina Rident del sito.
         </p>
       </div>
 
       <div className="bg-white rounded-2xl border border-border p-4 md:p-5 space-y-4">
-        <CopyLinkRow label="Pagina Rident (elenco gite)" url={ridentPageUrl} />
         <CopyLinkRow label="Link diretto di questa gita" url={excursionUrl} />
       </div>
     </div>

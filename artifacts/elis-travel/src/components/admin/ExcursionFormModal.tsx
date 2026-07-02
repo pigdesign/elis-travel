@@ -37,8 +37,8 @@ const STATUS_OPTIONS = [
 ] as const;
 
 const CATEGORY_OPTIONS = [
-  { value: "standard", label: "Standard — visibile sul sito" },
-  { value: "rident", label: "Rident — privata, solo via link" },
+  { value: "standard", label: "Standard — elenco Gite del sito" },
+  { value: "rident", label: "Rident — sezione dedicata" },
 ] as const;
 
 // Riga extra nel form: il prezzo è stringa (input controllato), convertito a numero al salvataggio.
@@ -604,9 +604,9 @@ export function ExcursionFormModal({
                   ))}
                 </select>
                 {form.category === "rident" && (
-                  <p className="text-[11px] text-amber-700 mt-1 flex items-center gap-1">
+                  <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3 shrink-0" />
-                    Gita Rident: non compare nell'elenco/filtri del sito né nella sitemap. Resta raggiungibile solo tramite link diretto (quando è Aperta o Confermata).
+                    Gita Rident: compare nella pagina Rident del sito (con voce di menu dedicata), non nell'elenco/filtri delle gite standard.
                   </p>
                 )}
               </div>

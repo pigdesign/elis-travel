@@ -1511,7 +1511,7 @@ export const GetPublicExcursionResponse = zod.object({
 });
 
 /**
- * @summary Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+ * @summary Lista gite Rident attive (pagina pubblica dedicata /rident)
  */
 export const ListPublicRidentResponse = zod.object({
   excursions: zod.array(

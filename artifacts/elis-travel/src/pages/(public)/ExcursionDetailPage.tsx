@@ -100,8 +100,9 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
     description: seoDescription,
     type: "product",
     canonicalPath: excursion ? buildSlugUrl("gite", excursion.id, excursion.name) : undefined,
-    // Le gite Rident restano fuori dai motori di ricerca: raggiungibili solo via link diretto.
-    noindex: !excursion || excursion.category === "rident",
+    // noindex solo se la gita non è disponibile (non trovata / non caricata).
+    // Le Rident sono pubbliche e indicizzabili come le standard.
+    noindex: !excursion,
   });
 
   useEffect(() => {

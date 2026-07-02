@@ -4826,7 +4826,7 @@ export function useGetPublicExcursion<
 }
 
 /**
- * @summary Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+ * @summary Lista gite Rident attive (pagina pubblica dedicata /rident)
  */
 export const getListPublicRidentUrl = () => {
   return `/api/catalog/rident`;
@@ -4877,7 +4877,7 @@ export type ListPublicRidentQueryResult = NonNullable<
 export type ListPublicRidentQueryError = ErrorType<unknown>;
 
 /**
- * @summary Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+ * @summary Lista gite Rident attive (pagina pubblica dedicata /rident)
  */
 
 export function useListPublicRident<

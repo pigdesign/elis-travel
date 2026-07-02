@@ -35,12 +35,10 @@ export function RidentPage() {
     navigate(`/rident${qs ? `?${qs}` : ""}`);
   }
 
-  // Pagina riservata: mai indicizzata dai motori di ricerca.
   useSeo({
     title: "Gite Rident",
-    description: "Le gite riservate Rident di Elis Travel.",
+    description: "Le gite Rident organizzate da Elis Travel: scegli quella che ti interessa e prenota il tuo posto.",
     canonicalPath: "/rident",
-    noindex: true,
   });
 
   const filtered = excursions.filter((ex) => {
@@ -58,7 +56,7 @@ export function RidentPage() {
         <div className="container relative z-10 mx-auto px-4 md:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Gite Rident</h1>
           <p className="text-white/80 max-w-2xl mx-auto text-lg">
-            Le gite riservate Rident. Scegli quella che ti interessa e prenota il tuo posto.
+            Le gite Rident. Scegli quella che ti interessa e prenota il tuo posto.
           </p>
         </div>
       </section>

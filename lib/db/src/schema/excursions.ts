@@ -34,8 +34,9 @@ export const excursionsTable = pgTable("excursions", {
   location: text("location").notNull(),
   date: date("date").notNull(),
   status: text("status").notNull().default("draft"),
-  // "standard" = gita pubblica normale; "rident" = trasferta clinica dentale,
-  // gestita come le altre ma nascosta dal sito pubblico (visibile solo via link diretto).
+  // "standard" = gita pubblica normale (elenco /gite); "rident" = gita pubblica
+  // mostrata nella pagina dedicata /rident (con voce di menu propria), fuori
+  // dall'elenco/filtri delle gite standard ma comunque indicizzabile.
   category: text("category").notNull().default("standard"),
   // Tag tematici liberi (es. "weekend", "cultura"), usati dal filtro pubblico "Tipologia".
   // Concetto distinto da category: si applicano solo alle gite standard.

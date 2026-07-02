@@ -27,6 +27,7 @@ export function Header() {
     { name: "Crociere", href: "/offerte?category=crociera" },
     { name: "Vacanze", href: "/offerte?category=vacanza" },
     { name: "Gite", href: "/gite" },
+    { name: "Rident", href: "/rident" },
     { name: "Contatti", href: "/contatti" },
   ];
 

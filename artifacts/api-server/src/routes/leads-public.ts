@@ -50,12 +50,14 @@ router.get("/sitemap.xml", async (req, res) => {
     const excursions = await db
       .select({ id: excursionsTable.id, name: excursionsTable.name, updatedAt: excursionsTable.updatedAt })
       .from(excursionsTable)
-      .where(and(eq(excursionsTable.status, "confirmed"), eq(excursionsTable.category, "standard")));
+      // Tutte le gite confermate (standard + Rident): entrambe in sitemap.
+      .where(eq(excursionsTable.status, "confirmed"));
 
     const staticUrls = [
       { loc: "/", priority: "1.0", changefreq: "daily" },
       { loc: "/offerte", priority: "0.9", changefreq: "daily" },
       { loc: "/gite", priority: "0.9", changefreq: "daily" },
+      { loc: "/rident", priority: "0.9", changefreq: "daily" },
       { loc: "/contatti", priority: "0.5", changefreq: "monthly" },
     ];
 
@@ -202,8 +204,8 @@ router.get("/catalog/products", async (_req, res) => {
   }
 });
 
-// Elenco gite Rident attive: pagina riservata, non listata nel catalogo pubblico
-// né in sitemap. Raggiungibile solo da chi conosce l'URL /rident.
+// Elenco gite Rident attive (open/confirmed): alimenta la pagina pubblica /rident.
+// Categoria distinta dalle standard, quindi fuori dall'elenco/filtri di /gite.
 router.get("/catalog/rident", async (_req, res) => {
   try {
     const excursions = await db

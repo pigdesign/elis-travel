@@ -1413,7 +1413,7 @@ paths:
     get:
       operationId: listPublicRident
       tags: [public]
-      summary: Lista gite Rident attive (pagina riservata raggiungibile solo via link)
+      summary: Lista gite Rident attive (pagina pubblica dedicata /rident)
       responses:
         "200":
           description: Elenco gite Rident attive
