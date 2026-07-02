@@ -825,6 +825,11 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const depositCount = activeBookings.filter((b) => b.paymentStatus === "deposit").length;
   const pendingCount = activeBookings.length - paidCount - depositCount;
 
+  const toBookParts: string[] = [];
+  if (mealCost > 0) toBookParts.push(`${totalPeople} pasti`);
+  if (entranceCost > 0) toBookParts.push(`${totalPeople} ingressi`);
+  const toBookLabel = toBookParts.length > 0 ? toBookParts.join(" · ") : "—";
+
   const handlePrintReport = () => {
     const rowsHtml = reportRows
       .map(
@@ -881,7 +886,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   <div class="summary">
     <span><b>${activeBookings.length}</b> prenotazioni · <b>${totalPeople}</b> persone</span>
     <span>Saldati <b>${paidCount}</b> · Acconto <b>${depositCount}</b> · In attesa <b>${pendingCount}</b></span>
-    <span>Da prenotare: <b>${totalPeople}</b> pasti · <b>${totalPeople}</b> ingressi</span>
+    <span>Da prenotare: <b>${escapeHtml(toBookLabel)}</b></span>
   </div>
   <table>
     <thead>
@@ -1229,7 +1234,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Da prenotare</span>
-                <span className="font-medium">{totalPeople} pasti · {totalPeople} ingressi</span>
+                <span className="font-medium">{toBookLabel}</span>
               </div>
             </div>
             <button
