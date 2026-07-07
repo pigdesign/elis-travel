@@ -15,6 +15,7 @@ import {
   Star,
   Pencil,
   Zap,
+  Printer,
 } from "lucide-react";
 import {
   useGetOffer,
@@ -447,6 +448,14 @@ export function OfferDetailPage({ offerId }: { offerId: string }) {
                 >
                   <Copy className="w-4 h-4" />
                   {isDuplicating ? "Duplicazione…" : "Duplica offerta"}
+                </button>
+
+                <button
+                  onClick={() => navigate(`~/admin/pdf/offer/${offerId}`)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Genera locandina
                 </button>
               </div>
             </div>

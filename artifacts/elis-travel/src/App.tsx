@@ -27,6 +27,7 @@ import { OfferDetailPage } from "@/pages/(admin)/offers/OfferDetailPage";
 import { LeadsPage } from "@/pages/(admin)/leads/LeadsPage";
 import { CustomersPage } from "@/pages/(admin)/customers/CustomersPage";
 import { SettingsPage } from "@/pages/(admin)/settings/SettingsPage";
+import { PosterPreviewPage, type PosterSourceKind } from "@/pages/(admin)/pdf/PosterPreviewPage";
 
 const queryClient = new QueryClient();
 
@@ -51,25 +52,35 @@ function Router() {
       <Route path="/admin/login" component={LoginPage} />
 
       <Route path="/admin" nest>
-        <AdminLayout>
-          <Switch>
-            <Route path="/" component={DashboardPage} />
-            <Route path="/dashboard" component={DashboardPage} />
-            <Route path="/excursions" component={ExcursionsPage} />
-            <Route path="/excursions/:id">
-              {(params) => <ExcursionDetailPage excursionId={params.id} />}
-            </Route>
-            <Route path="/vehicles" component={VehiclesPage} />
-            <Route path="/offers" component={OffersPage} />
-            <Route path="/offers/:id">
-              {(params) => <OfferDetailPage offerId={params.id} />}
-            </Route>
-            <Route path="/leads" component={LeadsPage} />
-            <Route path="/customers" component={CustomersPage} />
-            <Route path="/settings" component={SettingsPage} />
-            <Route component={NotFound} />
-          </Switch>
-        </AdminLayout>
+        <Switch>
+          {/* Anteprima locandina: fuori da AdminLayout per stampare la pagina pulita */}
+          <Route path="/pdf/:kind/:id">
+            {(params) => (
+              <PosterPreviewPage kind={params.kind as PosterSourceKind} id={params.id} />
+            )}
+          </Route>
+          <Route>
+            <AdminLayout>
+              <Switch>
+                <Route path="/" component={DashboardPage} />
+                <Route path="/dashboard" component={DashboardPage} />
+                <Route path="/excursions" component={ExcursionsPage} />
+                <Route path="/excursions/:id">
+                  {(params) => <ExcursionDetailPage excursionId={params.id} />}
+                </Route>
+                <Route path="/vehicles" component={VehiclesPage} />
+                <Route path="/offers" component={OffersPage} />
+                <Route path="/offers/:id">
+                  {(params) => <OfferDetailPage offerId={params.id} />}
+                </Route>
+                <Route path="/leads" component={LeadsPage} />
+                <Route path="/customers" component={CustomersPage} />
+                <Route path="/settings" component={SettingsPage} />
+                <Route component={NotFound} />
+              </Switch>
+            </AdminLayout>
+          </Route>
+        </Switch>
       </Route>
 
       <Route component={NotFound} />

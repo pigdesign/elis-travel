@@ -1,0 +1,1096 @@
+/*
+ * Stili delle locandine PDF (copertina + pagine interne).
+ * Layout ripreso dai mockup docs/pdf-design/elis_locandine_*.pdf.
+ * Il colore categoria arriva dalle CSS var --pk / --pk-dark impostate
+ * inline dal template; i colori fissi (navy, verde, arancio) sono qui.
+ */
+
+.poster-root {
+  --poster-navy: #002949;
+  --poster-navy-dark: #001d33;
+  --poster-green: #3dae4a;
+  --poster-orange: #e17803;
+  font-family: "Barlow", "Montserrat", sans-serif;
+  color: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.poster-condensed {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+}
+
+/* ---------- Pagina ---------- */
+
+.poster-page {
+  position: relative;
+  overflow: hidden;
+  background: var(--poster-navy);
+  margin: 0 auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+.poster-page--portrait {
+  width: 210mm;
+  height: 297mm;
+}
+
+.poster-page--landscape {
+  width: 297mm;
+  height: 210mm;
+}
+
+/* ---------- Elementi comuni copertina ---------- */
+
+.poster-logo {
+  position: absolute;
+  z-index: 30;
+}
+
+.poster-logo img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.poster-photo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.poster-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Velo di raccordo tra foto e fondo navy sul bordo sinistro */
+.poster-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    var(--poster-navy) 0%,
+    rgba(20, 41, 60, 0.55) 14%,
+    rgba(20, 41, 60, 0) 38%
+  );
+}
+
+/* Sfondo del grafico (navy + curve, finestra foto trasparente) sopra la foto */
+.poster-bg-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* Onda categoria del grafico (icona + etichetta incluse nell'SVG) */
+.poster-wave {
+  position: absolute;
+  z-index: 20;
+  height: auto;
+}
+
+.poster-kicker {
+  color: var(--poster-green);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 15pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.poster-title {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 0.98;
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(14, 31, 48, 0.55);
+  text-wrap: balance;
+}
+
+/* Riquadro del titolo: il corpo viene calcolato via JS (AutoFitTitle)
+   per riempire questo spazio senza sforare */
+.poster-title-box {
+  overflow: hidden;
+}
+
+.pv .poster-title-box {
+  height: 48mm;
+  margin-top: 2mm;
+}
+
+.ph .poster-title-box {
+  height: 46mm;
+  margin-top: 1.5mm;
+}
+
+.poster-daterow {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  font-size: 15pt;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.poster-daterow svg {
+  width: 7mm;
+  height: 7mm;
+  color: #fff;
+  stroke-width: 1.8;
+  flex-shrink: 0;
+}
+
+/* Le cifre della riga data sono evidenziate in arancio (come nel mockup) */
+.poster-daterow .num {
+  color: var(--poster-orange);
+  font-weight: 800;
+}
+
+/* ---------- Cartellino prezzo ---------- */
+
+/* Etichetta prezzo: SVG del grafico (forma, cordino, ombra) + testi sopra */
+.poster-pricetag {
+  position: absolute;
+  z-index: 25;
+}
+
+.poster-pricetag img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Testi ancorati al corpo del cartellino, misurato sul file del grafico:
+   centro a (37.5%, 56%) del canvas SVG, inclinazione −14°.
+   Nota: il corpo è ~45% della larghezza del file (il resto è cordino e
+   ombra), quindi il contenitore va dimensionato grande. */
+.poster-pricetag .tag-text {
+  position: absolute;
+  left: 37.5%;
+  top: 56%;
+  width: 38%;
+  transform: translate(-50%, -50%) rotate(-14deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+}
+
+.poster-pricetag .tag-quota {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  font-size: 14pt;
+  letter-spacing: 0.3em;
+}
+
+.poster-pricetag .tag-price {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  font-size: 40pt;
+  line-height: 1.02;
+  white-space: nowrap;
+}
+
+.poster-pricetag .tag-price--request {
+  font-size: 20pt;
+  line-height: 1.1;
+  padding: 1.5mm 0;
+  white-space: normal;
+}
+
+.poster-pricetag .tag-person {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  font-size: 12pt;
+  letter-spacing: 0.2em;
+}
+
+/* ---------- Timeline giorni ---------- */
+
+.poster-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.poster-day {
+  display: flex;
+  gap: 5mm;
+  position: relative;
+}
+
+.poster-day-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 13mm;
+}
+
+.poster-day-circle {
+  width: 11mm;
+  height: 11mm;
+  border-radius: 50%;
+  background: var(--poster-orange);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  font-size: 14pt;
+}
+
+.poster-day-marker .giorno {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 9pt;
+  letter-spacing: 0.08em;
+  margin-top: 1mm;
+}
+
+/* Connettore verticale tra un giorno e il successivo */
+.poster-day:not(:last-child) .poster-day-marker::after {
+  content: "";
+  flex: 1;
+  width: 0.5mm;
+  min-height: 4mm;
+  background: var(--poster-orange);
+  margin-top: 1.5mm;
+}
+
+.poster-day-text {
+  padding-top: 0.5mm;
+  min-width: 0;
+}
+
+.poster-day-text .accent {
+  color: var(--poster-orange);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 15pt;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.poster-day-text .main {
+  color: #fff;
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 17.5pt;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.12;
+}
+
+/* Nel pannello stretto dell'orizzontale i titoli giorno restano più compatti */
+.ph .poster-side .poster-day-text .accent {
+  font-size: 12pt;
+}
+
+.ph .poster-side .poster-day-text .main {
+  font-size: 13.5pt;
+}
+
+.poster-timeline-more {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 9pt;
+  font-style: italic;
+  margin-top: 2mm;
+}
+
+/* Attività della giornata in copertina (gite di 1 giorno): riempiono la
+   colonna sinistra con orari e tappe, collegate alla linea della timeline */
+.poster-day-activities {
+  margin-left: 5.5mm;
+  padding-left: 10.5mm;
+  border-left: 0.5mm solid var(--poster-orange);
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+  margin-top: 1mm;
+}
+
+.cover-activity {
+  position: relative;
+  display: flex;
+  gap: 3mm;
+  align-items: baseline;
+  color: #fff;
+  font-size: 12pt;
+  line-height: 1.4;
+}
+
+.cover-activity .dot {
+  position: absolute;
+  left: -12.2mm;
+  top: 1mm;
+  width: 3.2mm;
+  height: 3.2mm;
+  border-radius: 50%;
+  background: var(--poster-orange);
+  border: 0.7mm solid var(--poster-navy);
+}
+
+.cover-activity .time {
+  color: var(--poster-orange);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 13pt;
+  width: 13mm;
+  flex-shrink: 0;
+}
+
+.cover-activity .text strong {
+  font-weight: 700;
+}
+
+.poster-cover-description {
+  margin-top: 3mm;
+  margin-left: 5.5mm;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 10pt;
+  line-height: 1.55;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 10;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Fallback highlights quando manca il programma */
+.poster-highlights li {
+  display: flex;
+  gap: 2.5mm;
+  color: #fff;
+  font-size: 10.5pt;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 2.5mm;
+}
+
+.poster-highlights li::before {
+  content: "";
+  width: 3mm;
+  height: 3mm;
+  border-radius: 50%;
+  background: var(--poster-orange);
+  flex-shrink: 0;
+  margin-top: 1.2mm;
+}
+
+/* ---------- Liste quota include / non include ---------- */
+
+.poster-services-title {
+  color: var(--poster-orange);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  font-size: 14pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 2.5mm;
+}
+
+.poster-services-list li {
+  display: flex;
+  gap: 2mm;
+  color: #fff;
+  font-size: 10.5pt;
+  line-height: 1.28;
+  margin-bottom: 1.6mm;
+}
+
+.poster-services-list li::before {
+  content: "▪";
+  color: #fff;
+  font-size: 7pt;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+
+/* ---------- Footer copertina ---------- */
+
+.poster-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background: var(--pk);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0;
+  line-height: 1.3;
+}
+
+.poster-footer .f-line1 {
+  font-size: 11pt;
+  letter-spacing: 0.06em;
+}
+
+.poster-footer .f-line1 strong {
+  font-weight: 800;
+}
+
+.poster-footer .f-line2 {
+  font-size: 9.5pt;
+  letter-spacing: 0.1em;
+}
+
+.poster-footer .f-line3 {
+  font-weight: 700;
+  font-size: 10pt;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Copertina VERTICALE ---------- */
+
+.pv .poster-logo {
+  top: 9mm;
+  left: 12mm;
+  width: 50mm;
+}
+
+/* La foto copre TUTTA la zona della finestra inclusa la sfumatura del
+   grafico (alpha graduale fino a x=41mm / y=190mm): i bordi morbidi
+   li disegna l'overlay PNG, la foto non deve mai finire prima */
+.pv .poster-photo {
+  left: 40mm;
+  right: 0;
+  width: auto;
+  height: 191mm;
+}
+
+/* Niente sfumature CSS: il raccordo lo disegna lo sfondo sagomato */
+.pv .poster-photo::after {
+  display: none;
+}
+
+.pv .poster-wave {
+  top: 0;
+  right: 0;
+  width: 115mm;
+}
+
+.pv .poster-body {
+  position: absolute;
+  top: 46mm;
+  left: 12mm;
+  width: 80mm;
+  z-index: 10;
+}
+
+.pv .poster-title {
+  font-size: 39pt;
+  max-width: 78mm;
+  margin-top: 2mm;
+}
+
+.pv .poster-daterow {
+  margin-top: 6mm;
+}
+
+/* Zona sotto la finestra foto (0→135mm) e sotto il cartellino: timeline + liste.
+   Il bottom lascia aria tra i testi e la fascia footer */
+.pv .pv-lower {
+  position: absolute;
+  top: 140mm;
+  left: 12mm;
+  right: 10mm;
+  bottom: 33mm;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74mm;
+  gap: 8mm;
+  overflow: hidden;
+}
+
+/* Il programma riempie in altezza tutta la colonna disponibile */
+.pv .pv-lower .poster-timeline {
+  height: 100%;
+}
+
+/* Più giorni: righe impacchettate (flex-start) con margini distribuiti
+   via JS e linea continua dietro i marker (fondo navy che la maschera
+   dentro le righe). ATTENZIONE: niente flex-grow/space-between/evenly
+   sulle righe — il motore di stampa di Chrome PERDE l'ultimo giorno
+   quando lo spazio è distribuito dal flex in un documento multipagina. */
+.pv .pv-lower .poster-timeline:not(.poster-timeline--single) {
+  position: relative;
+}
+
+.pv .pv-lower .poster-timeline:not(.poster-timeline--single)::before {
+  content: "";
+  position: absolute;
+  left: 5.3mm;
+  top: 5mm;
+  /* Il JS ancora la fine della linea al centro dell'ultimo cerchio */
+  bottom: var(--tl-bottom, 10mm);
+  width: 0.5mm;
+  background: var(--poster-orange);
+}
+
+.pv .pv-lower .poster-timeline:not(.poster-timeline--single) .poster-day {
+  margin-bottom: 0;
+}
+
+.pv .pv-lower .poster-timeline:not(.poster-timeline--single) .poster-day-marker {
+  background: var(--poster-navy);
+  position: relative;
+  z-index: 1;
+}
+
+.pv .pv-lower .poster-timeline:not(.poster-timeline--single) .poster-day .poster-day-marker::after {
+  display: none;
+}
+
+/* Giorno singolo: intestazione in alto, attività impacchettate; la
+   distribuzione nello spazio la fa il JS coi margini (sicuro in stampa) */
+
+.pv .poster-timeline {
+  gap: 0;
+}
+
+.pv .poster-day {
+  margin-bottom: 4mm;
+}
+
+.pv .poster-services {
+  border-left: 0.4mm solid rgba(255, 255, 255, 0.35);
+  padding-left: 6mm;
+  overflow: hidden;
+}
+
+.pv .poster-services-block + .poster-services-block {
+  margin-top: 5mm;
+}
+
+/* Le liste partono sotto il cartellino, che scende dalla foto */
+.pv .poster-services {
+  padding-top: 10mm;
+}
+
+/* Il contenitore sborda ben oltre il bordo destro: i laccetti del cartellino
+   risultano tagliati dal foglio (la pagina ha overflow hidden) */
+.pv .poster-pricetag {
+  top: 70mm;
+  left: 108mm;
+  width: 124mm;
+}
+
+.pv .poster-footer {
+  height: 23mm;
+}
+
+/* ---------- Copertina ORIZZONTALE ---------- */
+
+.ph .poster-logo {
+  top: 8mm;
+  left: 10mm;
+  width: 46mm;
+}
+
+/* La maschera del grafico copre la zona a sinistra del pannello programma e
+   sopra il footer (2447×2149 px @300dpi = 207.2×182 mm), con la finestra
+   foto sfumata in alto a destra */
+.ph .poster-bg-overlay {
+  inset: auto;
+  top: 0;
+  left: 0;
+  width: 207.2mm;
+  height: 182mm;
+}
+
+/* La foto copre finestra + sfumatura della maschera (finestra: x 112→207mm,
+   y 0→113mm; sfumatura fino a ~x 76mm / y 147mm) e prosegue sotto il
+   pannello, che essendo opaco la taglia di netto come nel mockup */
+.ph .poster-photo {
+  top: 0;
+  left: 64mm;
+  right: 60mm;
+  width: auto;
+  height: 182mm;
+  /* Il bordo sinistro della foto sfuma a sua volta: sommato alla sfumatura
+     della maschera, la foto emerge solo verso la finestra (come nel mockup)
+     e il suo bordo non è mai visibile */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 32%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 32%);
+}
+
+/* Niente sfumature CSS: il raccordo lo disegna la maschera del grafico */
+.ph .poster-photo::after {
+  display: none;
+}
+
+.ph .poster-wave {
+  top: 0;
+  left: 130mm;
+  width: 150mm;
+}
+
+/* Il pannello programma copre foto e laccetti del cartellino (z sopra) e
+   parte esattamente dove finisce la maschera (297 − 91 = 206mm).
+   Stesso blu dello sfondo del grafico, come da indicazione */
+.ph .poster-side {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 91mm;
+  background: var(--poster-navy);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12mm 10mm 34mm;
+  overflow: hidden;
+}
+
+/* Nel pannello stretto le attività della giornata vanno compattate */
+.ph .poster-side .cover-activity {
+  font-size: 10pt;
+  line-height: 1.3;
+}
+
+.ph .poster-side .cover-activity .time {
+  font-size: 11pt;
+  width: 10mm;
+}
+
+.ph .poster-side .poster-day-activities {
+  gap: 2.2mm;
+}
+
+.ph .poster-side .poster-day {
+  margin-bottom: 5mm;
+  text-align: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5mm;
+}
+
+.ph .poster-side .poster-day-marker {
+  width: auto;
+}
+
+.ph .poster-side .poster-day:not(:last-child) .poster-day-marker::after {
+  display: none;
+}
+
+.ph .poster-side .poster-day:not(:last-child)::after {
+  content: "";
+  width: 0.5mm;
+  height: 6mm;
+  background: var(--poster-orange);
+  margin: 1mm auto 0;
+}
+
+.ph .poster-body {
+  position: absolute;
+  top: 40mm;
+  left: 10mm;
+  width: 86mm;
+  bottom: 31mm;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.ph .poster-title {
+  font-size: 27pt;
+}
+
+.ph .poster-kicker {
+  font-size: 13pt;
+}
+
+.ph .poster-daterow {
+  margin-top: 5mm;
+  font-size: 13pt;
+}
+
+/* Liste quota in basso, su due colonne come nel mockup orizzontale */
+.ph .ph-services {
+  position: absolute;
+  left: 10mm;
+  right: 100mm;
+  bottom: 33mm;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 10mm;
+  align-items: end;
+  overflow: hidden;
+}
+
+.ph .poster-services-list li {
+  font-size: 9.5pt;
+  margin-bottom: 1.4mm;
+}
+
+.ph .poster-services-list li::before {
+  content: "-";
+  font-size: 8pt;
+}
+
+/* Cartellino SOTTO il pannello programma (z 7 < 8): i laccetti che entrano
+   nel blu del pannello risultano tagliati, come nel mockup. Sta alto sulla
+   foto e non deve MAI invadere le liste di testo in basso */
+.ph .poster-pricetag {
+  z-index: 7;
+  top: 44mm;
+  left: 118mm;
+  width: 112mm;
+}
+
+.ph .poster-pricetag .tag-price {
+  font-size: 38pt;
+}
+
+.ph .poster-footer {
+  height: 28mm;
+}
+
+/* ---------- Pagine interne ---------- */
+
+.poster-inner {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  color: var(--poster-navy);
+}
+
+.poster-inner-header {
+  background: var(--poster-navy);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4mm 10mm;
+}
+
+.poster-inner-header img {
+  height: 12mm;
+  width: auto;
+}
+
+.poster-inner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5mm;
+  background: var(--pk);
+  color: var(--poster-navy);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  font-size: 13pt;
+  letter-spacing: 0.06em;
+  padding: 2mm 5mm;
+  border-radius: 10mm;
+}
+
+.poster-inner-badge svg {
+  width: 6mm;
+  height: 6mm;
+}
+
+.poster-inner-body {
+  padding: 8mm 10mm 10mm;
+}
+
+.poster-inner-section {
+  margin-bottom: 8mm;
+}
+
+.poster-inner-title {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  font-size: 17pt;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--poster-navy);
+  border-bottom: 0.8mm solid var(--pk);
+  padding-bottom: 1.5mm;
+  margin-bottom: 4mm;
+}
+
+.poster-inner-description {
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: #2c3e50;
+  white-space: pre-line;
+}
+
+.poster-inner-day {
+  break-inside: avoid;
+  display: flex;
+  gap: 5mm;
+  margin-bottom: 6mm;
+}
+
+.poster-inner-day .poster-day-circle {
+  background: var(--poster-orange);
+}
+
+.poster-inner-day-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.poster-inner-day-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2mm 4mm;
+  margin-bottom: 2mm;
+}
+
+.poster-inner-day-head .accent {
+  color: var(--poster-orange);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 12pt;
+  text-transform: uppercase;
+}
+
+.poster-inner-day-head .main {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 13pt;
+  text-transform: uppercase;
+  color: var(--poster-navy);
+}
+
+.poster-inner-activity {
+  display: flex;
+  gap: 3mm;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  color: #2c3e50;
+  margin-bottom: 1.2mm;
+}
+
+.poster-inner-activity .time {
+  color: var(--poster-orange);
+  font-weight: 700;
+  width: 12mm;
+  flex-shrink: 0;
+}
+
+.poster-inner-activity .title {
+  font-weight: 600;
+}
+
+.poster-inner-day-photo {
+  width: 100%;
+  max-height: 55mm;
+  object-fit: cover;
+  border-radius: 3mm;
+  margin-top: 3mm;
+}
+
+.poster-inner-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8mm;
+}
+
+.poster-inner-list li {
+  display: flex;
+  gap: 2mm;
+  font-size: 9.5pt;
+  line-height: 1.4;
+  color: #2c3e50;
+  margin-bottom: 1.5mm;
+}
+
+.poster-inner-list li::before {
+  content: "▪";
+  color: var(--pk);
+  flex-shrink: 0;
+}
+
+.poster-inner-pickup {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  font-size: 9.5pt;
+  padding: 1.8mm 0;
+  border-bottom: 0.2mm solid #e2e8f0;
+}
+
+.poster-inner-pickup .place {
+  font-weight: 600;
+  color: var(--poster-navy);
+}
+
+.poster-inner-pickup .time {
+  color: var(--poster-orange);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.poster-inner-payment {
+  background: #f4f7f9;
+  border-left: 1.2mm solid var(--pk);
+  border-radius: 2mm;
+  padding: 4mm 5mm;
+  font-size: 9.5pt;
+  line-height: 1.5;
+  color: #2c3e50;
+  break-inside: avoid;
+}
+
+.poster-inner-footerband {
+  background: var(--pk);
+  color: #fff;
+  text-align: center;
+  padding: 3mm 10mm;
+  font-size: 9pt;
+  letter-spacing: 0.06em;
+}
+
+.poster-inner-footerband strong {
+  font-weight: 800;
+}
+
+/* ---------- Stampa ---------- */
+
+.poster-break {
+  break-after: page;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .poster-page {
+    box-shadow: none;
+    margin: 0;
+  }
+
+  .poster-inner thead {
+    display: table-header-group;
+  }
+
+  .poster-inner tfoot {
+    display: table-footer-group;
+  }
+
+  /* Footer fisso a fondo pagina fisica: in stampa gli elementi fixed si
+     ripetono su OGNI pagina. Sulla copertina resta nascosto sotto la
+     fascia footer della locandina (opaca, più alta, z-index maggiore). */
+  .poster-print-footband {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 12mm;
+    z-index: 30;
+    background: var(--pk);
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 8.5pt;
+    letter-spacing: 0.06em;
+    padding: 0 10mm;
+  }
+
+  /* Spazio riservato in fondo a ogni pagina piena (tfoot si ripete):
+     il testo non finisce mai sotto la banda fissa */
+  .poster-inner-endspace {
+    height: 16mm;
+  }
+}
+
+/* A schermo la banda fissa non esiste e lo spacer è a zero (le regole
+   stanno in @media screen per NON vincere sull'@media print qui sopra) */
+@media screen {
+  .poster-print-footband {
+    display: none;
+  }
+
+  .poster-inner-endspace {
+    height: 0;
+  }
+}
+
+.poster-print-footband strong {
+  font-weight: 800;
+}
+
+/* Aria tra la fascia header (ripetuta a ogni pagina) e il contenuto */
+.poster-inner thead td {
+  padding-bottom: 5mm;
+}
+
+/* Regole anti-taglio per la stampa multipagina delle pagine interne */
+.poster-inner-title {
+  break-after: avoid;
+}
+
+.poster-inner-list li,
+.poster-inner-activity,
+.poster-inner-pickup {
+  break-inside: avoid;
+}
+
+.poster-inner-cols,
+.poster-inner-payment {
+  break-inside: avoid;
+}
+
+.poster-inner-body,
+.poster-inner-description {
+  orphans: 3;
+  widows: 3;
+}
+
+/* Anteprima a schermo */
+@media screen {
+  .poster-preview-stage {
+    padding: 24px 16px 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    background: #3c4652;
+    min-height: 100vh;
+  }
+
+  .poster-inner-wrap {
+    width: 210mm;
+    background: #fff;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .poster-inner-wrap--landscape {
+    width: 297mm;
+  }
+}
