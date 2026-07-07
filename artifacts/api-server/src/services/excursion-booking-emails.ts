@@ -16,6 +16,9 @@ export type ExcursionBookingEmailData = {
   children: number;
   servizioCasa?: boolean;
   pickupPoint?: { name: string; pickupTime: string | null } | null;
+  // Supplemento provincia (euro a persona) del punto di raccolta scelto; già
+  // incluso nei totali mostrati in email.
+  pickupSurchargePerPerson?: number | null;
   paymentType: "deposit" | "full";
   excursion: {
     id: string;
@@ -59,6 +62,11 @@ function formatPrice(value: string | number | null | undefined): string | null {
   });
 }
 
+function surchargeOf(data: ExcursionBookingEmailData): number {
+  const n = Number(data.pickupSurchargePerPerson ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 function getAgencyContacts() {
   return {
     name: process.env.AGENCY_NAME || "Elis Travel",
@@ -88,11 +96,14 @@ export function buildCustomerEmail(
     data.paymentType === "full" ? "Saldo intero" : "Acconto";
   const dateLabel = formatDateIt(data.excursion.date);
   const pricePerPerson = formatPrice(data.excursion.pricePerPerson);
+  const surchargePerPerson = surchargeOf(data);
+  const surchargeLabel =
+    surchargePerPerson > 0 ? formatPrice(surchargePerPerson) : null;
   const totalPrice =
     data.excursion.pricePerPerson !== null &&
     data.excursion.pricePerPerson !== undefined
       ? formatPrice(
-          Number(data.excursion.pricePerPerson) * data.seats,
+          (Number(data.excursion.pricePerPerson) + surchargePerPerson) * data.seats,
         )
       : null;
   const paymentInstructions = getPaymentInstructions(data.paymentType);
@@ -119,6 +130,8 @@ export function buildCustomerEmail(
   lines.push(`• Partecipanti: ${participantsLabel}`);
   if (pickupPointLabel) lines.push(`• Punto di raccolta: ${pickupPointLabel}`);
   if (pricePerPerson) lines.push(`• Prezzo per persona: ${pricePerPerson}`);
+  if (surchargeLabel)
+    lines.push(`• Supplemento punto di raccolta: +${surchargeLabel} a persona`);
   if (totalPrice) lines.push(`• Totale: ${totalPrice}`);
   lines.push(`• Modalità di pagamento scelta: ${paymentLabel}`);
   lines.push("");
@@ -182,6 +195,10 @@ export function buildCustomerEmail(
   if (pricePerPerson)
     detailsRows.push(
       `<tr><td style="padding:6px 0;color:#555;">Prezzo per persona</td><td style="padding:6px 0;">${escapeHtml(pricePerPerson)}</td></tr>`,
+    );
+  if (surchargeLabel)
+    detailsRows.push(
+      `<tr><td style="padding:6px 0;color:#555;">Supplemento punto di raccolta</td><td style="padding:6px 0;">+${escapeHtml(surchargeLabel)} a persona</td></tr>`,
     );
   if (totalPrice)
     detailsRows.push(
@@ -253,11 +270,12 @@ export function buildAdminEmail(
   if (recipients.length === 0) return null;
 
   const dateLabel = formatDateIt(data.excursion.date);
+  const surchargePerPerson = surchargeOf(data);
   const totalPrice =
     data.excursion.pricePerPerson !== null &&
     data.excursion.pricePerPerson !== undefined
       ? formatPrice(
-          Number(data.excursion.pricePerPerson) * data.seats,
+          (Number(data.excursion.pricePerPerson) + surchargePerPerson) * data.seats,
         )
       : null;
   const paymentLabel =
@@ -285,6 +303,9 @@ export function buildAdminEmail(
     "",
     `Partecipanti: ${participantsLabel}`,
     pickupPointLabel ? `Punto di raccolta: ${pickupPointLabel}` : "",
+    surchargePerPerson > 0
+      ? `Supplemento punto di raccolta: +${formatPrice(surchargePerPerson)} a persona`
+      : "",
     `Pagamento: ${paymentLabel}`,
     totalPrice ? `Totale: ${totalPrice}` : "",
     data.servizioCasa ? `Servizio sotto casa: Richiesto` : "",
@@ -303,6 +324,7 @@ export function buildAdminEmail(
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Telefono</td><td style="padding:4px 0;">${escapeHtml(data.customerPhone || "—")}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Partecipanti</td><td style="padding:4px 0;">${escapeHtml(participantsLabel)}</td></tr>
     ${pickupPointLabel ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Punto di raccolta</td><td style="padding:4px 0;">${escapeHtml(pickupPointLabel)}</td></tr>` : ""}
+    ${surchargePerPerson > 0 ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Supplemento punto di raccolta</td><td style="padding:4px 0;">+${escapeHtml(formatPrice(surchargePerPerson) ?? "")} a persona</td></tr>` : ""}
     <tr><td style="padding:4px 12px 4px 0;color:#555;">Pagamento</td><td style="padding:4px 0;">${escapeHtml(paymentLabel)}</td></tr>
     ${totalPrice ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Totale</td><td style="padding:4px 0;">${escapeHtml(totalPrice)}</td></tr>` : ""}
     ${data.servizioCasa ? `<tr><td style="padding:4px 12px 4px 0;color:#555;">Servizio sotto casa</td><td style="padding:4px 0;color:#e07b00;font-weight:600;">Richiesto</td></tr>` : ""}

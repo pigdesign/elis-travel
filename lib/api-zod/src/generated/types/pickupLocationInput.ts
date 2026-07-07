@@ -10,5 +10,6 @@ export interface PickupLocationInput {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
   sortOrder?: number;
 }

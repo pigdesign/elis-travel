@@ -62,6 +62,14 @@ function formatPrice(value?: string | null) {
   }).format(n);
 }
 
+function formatEuro(n: number) {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: n % 1 === 0 ? 0 : 2,
+  }).format(n);
+}
+
 export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPageProps) {
   const excursionId = extractIdFromSlug(excursionIdOrSlug);
   const { data: excursion, isLoading, isError, error } = useGetPublicExcursion(excursionId);
@@ -406,6 +414,11 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                                 {[pp.city, pp.address].filter(Boolean).join(" · ")}
                               </div>
                             </div>
+                            {(pp.surcharge ?? 0) > 0 && (
+                              <div className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-sm font-semibold text-accent">
+                                +{formatEuro(pp.surcharge ?? 0)}/persona
+                              </div>
+                            )}
                             {pp.pickupTime && (
                               <div className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm font-semibold text-primary">
                                 <Clock className="h-3.5 w-3.5" />
@@ -653,6 +666,10 @@ function BookingCard({
     amountLabel: string | null;
   } | null>(null);
 
+  // Supplemento a persona del punto di raccolta selezionato (0 se nessuno).
+  const selectedPoint = points.find((p) => p.id === pickupPointId);
+  const selectedSurcharge = (selectedPoint?.surcharge ?? 0) > 0 ? selectedPoint!.surcharge! : 0;
+
   const { mutateAsync, isPending } = useCreatePublicExcursionBooking({
     mutation: {
       onSuccess: () => {
@@ -790,11 +807,14 @@ function BookingCard({
         const pct = res.depositPercentage;
         const priceNum = priceLabel ? Number(priceLabel.replace(/[^0-9.,]/g, "").replace(",", ".")) : null;
         let amountLabel: string | null = null;
-        if (priceNum && pct && paymentType === "deposit") {
-          const amt = priceNum * (adults + children) * (pct / 100);
+        // Importo calcolato dal server (include supplemento provincia e % acconto).
+        if (typeof res.amountDueCents === "number" && res.amountDueCents > 0) {
+          amountLabel = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(res.amountDueCents / 100);
+        } else if (priceNum && pct && paymentType === "deposit") {
+          const amt = (priceNum + selectedSurcharge) * (adults + children) * (pct / 100);
           amountLabel = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(amt);
         } else if (priceNum && paymentType === "full") {
-          const amt = priceNum * (adults + children);
+          const amt = (priceNum + selectedSurcharge) * (adults + children);
           amountLabel = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(amt);
         }
         setStripeData({ bookingId: res.id, clientSecret: res.setupIntentClientSecret, amountLabel });
@@ -993,12 +1013,21 @@ function BookingCard({
                   {p.name}
                   {p.city ? ` – ${p.city}` : ""}
                   {p.pickupTime ? ` (ore ${p.pickupTime})` : ""}
+                  {(p.surcharge ?? 0) > 0 ? ` [+${formatEuro(p.surcharge ?? 0)}/persona]` : ""}
                 </option>
               ))}
             </select>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Indica da quale punto di raccolta preferisci partire. Potrai modificarlo contattandoci.
-            </p>
+            {selectedSurcharge > 0 ? (
+              <p className="mt-1.5 text-xs font-medium text-accent" data-testid="text-pickup-surcharge">
+                Questo punto di raccolta prevede un supplemento di {formatEuro(selectedSurcharge)} a
+                persona ({adults + children} {adults + children === 1 ? "partecipante" : "partecipanti"}:
+                +{formatEuro(selectedSurcharge * (adults + children))} sul totale).
+              </p>
+            ) : (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Indica da quale punto di raccolta preferisci partire. Potrai modificarlo contattandoci.
+              </p>
+            )}
           </div>
         )}
 

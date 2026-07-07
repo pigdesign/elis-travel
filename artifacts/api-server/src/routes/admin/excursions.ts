@@ -99,6 +99,21 @@ function sumExtras(extras: ExcursionExtra[]): string {
   return extras.reduce((s, e) => s + e.price, 0).toFixed(2);
 }
 
+// Supplementi per provincia: chiavi = sigle valide (2 lettere), valori = euro > 0.
+// Le voci a 0 o non valide vengono scartate: assenza dalla mappa = nessun supplemento.
+function normalizeProvinceSurcharges(input: unknown): Record<string, number> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    const code = key.trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(code)) continue;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    out[code] = n;
+  }
+  return out;
+}
+
 // Normalizza i tag: trim, rimuove vuoti e duplicati (case-insensitive), mantiene l'ordine.
 function normalizeTags(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
@@ -179,6 +194,7 @@ router.post("/excursions", async (req, res) => {
         extras,
         extraCostPerPerson: extras.length > 0 ? sumExtras(extras) : (body.extraCostPerPerson ?? "0"),
         pricePerPerson: body.pricePerPerson ?? "0",
+        provinceSurcharges: normalizeProvinceSurcharges(body.provinceSurcharges),
         switchThreshold: body.switchThreshold ?? null,
         switchVehicleId: body.switchVehicleId ?? null,
         switchVehicleAdditionalCost: body.switchVehicleAdditionalCost ?? null,
@@ -228,6 +244,7 @@ router.get("/excursions/:id", async (req, res) => {
             name: pickupLocationsTable.name,
             city: pickupLocationsTable.city,
             address: pickupLocationsTable.address,
+            province: pickupLocationsTable.province,
             sortOrder: pickupLocationsTable.sortOrder,
           },
         })
@@ -268,7 +285,7 @@ router.patch("/excursions/:id", async (req, res) => {
       "depositsCount", "balancesCount", "vehicleFixedCost",
       "mealCostPerPerson", "entranceCostPerPerson", "extraCostPerPerson",
       "extras",
-      "pricePerPerson", "switchThreshold", "switchVehicleId",
+      "pricePerPerson", "provinceSurcharges", "switchThreshold", "switchVehicleId",
       "switchVehicleAdditionalCost", "operationalNotes", "coverImageUrl",
       "schedule", "included", "excluded", "generalInfo",
     ] as const;
@@ -294,6 +311,10 @@ router.patch("/excursions/:id", async (req, res) => {
       const extras = normalizeExtras(body.extras);
       allowed.extras = extras;
       allowed.extraCostPerPerson = sumExtras(extras);
+    }
+
+    if ("provinceSurcharges" in body) {
+      allowed.provinceSurcharges = normalizeProvinceSurcharges(body.provinceSurcharges);
     }
     const effectiveCategory = (allowed.category as string | undefined) ?? previous?.category;
     if (effectiveCategory === "rident") {
@@ -982,6 +1003,7 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
           name: pickupLocationsTable.name,
           city: pickupLocationsTable.city,
           address: pickupLocationsTable.address,
+          province: pickupLocationsTable.province,
           sortOrder: pickupLocationsTable.sortOrder,
         },
       })

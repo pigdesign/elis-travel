@@ -15,4 +15,5 @@ export interface PublicBookingResponse {
   message: string;
   setupIntentClientSecret?: string | null;
   depositPercentage?: number | null;
+  amountDueCents?: number | null;
 }

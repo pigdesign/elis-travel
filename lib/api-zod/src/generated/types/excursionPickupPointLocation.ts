@@ -11,5 +11,6 @@ export interface ExcursionPickupPointLocation {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
   sortOrder: number;
 }

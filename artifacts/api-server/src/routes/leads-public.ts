@@ -21,6 +21,15 @@ function isCardPaymentEnabled(value: string | null | undefined): boolean {
   return value !== "false";
 }
 
+// Supplemento a persona (euro) per la provincia data; 0 se assente o non valido.
+function provinceSurchargeFor(
+  surcharges: Record<string, number> | null | undefined,
+  province: string,
+): number {
+  const n = Number(surcharges?.[province] ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 function slugify(input: string): string {
   return input
     .toString()
@@ -301,6 +310,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         location: excursionsTable.location,
         date: excursionsTable.date,
         pricePerPerson: excursionsTable.pricePerPerson,
+        provinceSurcharges: excursionsTable.provinceSurcharges,
         currentCapacity: excursionsTable.currentCapacity,
         minThreshold: excursionsTable.minThreshold,
         adherentsCount: excursionsTable.adherentsCount,
@@ -329,6 +339,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         name: pickupLocationsTable.name,
         city: pickupLocationsTable.city,
         address: pickupLocationsTable.address,
+        province: pickupLocationsTable.province,
       })
       .from(excursionPickupPointsTable)
       .innerJoin(pickupLocationsTable, eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id))
@@ -341,10 +352,17 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       .where(eq(settingsTable.key, CARD_PAYMENTS_SETTING_KEY))
       .limit(1);
 
-    const { status: _status, ...publicExcursion } = excursion;
+    // Ogni punto espone il supplemento a persona della sua provincia per questa gita.
+    const surchargeMap = excursion.provinceSurcharges ?? {};
+    const pickupPointsWithSurcharge = pickupPoints.map((p) => ({
+      ...p,
+      surcharge: p.province ? provinceSurchargeFor(surchargeMap, p.province) : 0,
+    }));
+
+    const { status: _status, provinceSurcharges: _ps, ...publicExcursion } = excursion;
     res.json({
       ...publicExcursion,
-      pickupPoints,
+      pickupPoints: pickupPointsWithSurcharge,
       cardPaymentsEnabled: isCardPaymentEnabled(cardPaymentSetting?.value) && Boolean(stripe),
     });
   } catch (err) {
@@ -529,13 +547,14 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     }
 
     // Punto di raccolta facoltativo: se fornito deve appartenere a questa gita.
-    let pickupPointInfo: { id: string; name: string; pickupTime: string | null } | null = null;
+    let pickupPointInfo: { id: string; name: string; pickupTime: string | null; province: string | null } | null = null;
     if (pickupPointId) {
       const [pp] = await db
         .select({
           id: excursionPickupPointsTable.id,
           name: pickupLocationsTable.name,
           pickupTime: excursionPickupPointsTable.pickupTime,
+          province: pickupLocationsTable.province,
         })
         .from(excursionPickupPointsTable)
         .innerJoin(
@@ -622,7 +641,12 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
 
       const excursion = updated[0];
       const pricePerPerson = Number(excursion.pricePerPerson ?? 0);
-      const totalEuros = pricePerPerson * seatsNum;
+      // Supplemento provincia del punto di raccolta scelto: a persona, vale
+      // per tutti i partecipanti (adulti e bambini), prima della % di acconto.
+      const surchargePerPerson = pickupPointInfo?.province
+        ? provinceSurchargeFor(excursion.provinceSurcharges, pickupPointInfo.province)
+        : 0;
+      const totalEuros = (pricePerPerson + surchargePerPerson) * seatsNum;
       let amountEuros: number;
       if (paymentType === "full" || !depositPct || depositPct <= 0) {
         amountEuros = totalEuros;
@@ -669,7 +693,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
             .where(eq(excursionsTable.id, id))
             .limit(1);
 
-      return { kind: "ok" as const, booking, excursion: excursionDetails, amountDueCents };
+      return { kind: "ok" as const, booking, excursion: excursionDetails, amountDueCents, surchargePerPerson };
     });
 
     if (result.kind === "notfound") {
@@ -704,6 +728,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
           pickupPoint: pickupPointInfo
             ? { name: pickupPointInfo.name, pickupTime: pickupPointInfo.pickupTime }
             : null,
+          pickupSurchargePerPerson: result.surchargePerPerson,
           paymentType: paymentType as "deposit" | "full",
           excursion: {
             id: result.excursion.id,
@@ -775,6 +800,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         message: "Inserisci i dati della carta per completare la prenotazione.",
         setupIntentClientSecret: setupIntent.client_secret,
         depositPercentage: depositPct,
+        amountDueCents: result.amountDueCents,
       });
     } catch (stripeErr) {
       logger.error({ stripeErr, bookingId: result.booking.id }, "Stripe SetupIntent creation failed");

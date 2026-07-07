@@ -5,6 +5,13 @@ import { eq, asc, count } from "drizzle-orm";
 
 const router = Router();
 
+// Sigla provincia: 2 lettere maiuscole (es. "IM"); qualsiasi altro valore → null.
+function normalizeProvince(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const code = input.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : null;
+}
+
 router.get("/pickup-locations", async (_req, res) => {
   try {
     const rows = await db
@@ -20,10 +27,11 @@ router.get("/pickup-locations", async (_req, res) => {
 
 router.post("/pickup-locations", async (req, res) => {
   try {
-    const { name, city, address, sortOrder } = req.body as {
+    const { name, city, address, province, sortOrder } = req.body as {
       name?: string;
       city?: string;
       address?: string;
+      province?: string | null;
       sortOrder?: number;
     };
     if (!name?.trim()) {
@@ -40,6 +48,7 @@ router.post("/pickup-locations", async (req, res) => {
         name: name.trim(),
         city: city.trim(),
         address: address?.trim() || null,
+        province: normalizeProvince(province),
         sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
       })
       .returning();
@@ -53,10 +62,11 @@ router.post("/pickup-locations", async (req, res) => {
 router.patch("/pickup-locations/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, city, address, sortOrder } = req.body as {
+    const { name, city, address, province, sortOrder } = req.body as {
       name?: string;
       city?: string;
       address?: string | null;
+      province?: string | null;
       sortOrder?: number;
     };
     const updates: Partial<typeof pickupLocationsTable.$inferInsert> = {
@@ -65,6 +75,7 @@ router.patch("/pickup-locations/:id", async (req, res) => {
     if (name !== undefined) updates.name = name.trim();
     if (city !== undefined) updates.city = city.trim();
     if (address !== undefined) updates.address = address?.trim() || null;
+    if (province !== undefined) updates.province = normalizeProvince(province);
     if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 
     const [row] = await db

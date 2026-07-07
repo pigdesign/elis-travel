@@ -11,6 +11,7 @@ export interface PickupLocation {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;

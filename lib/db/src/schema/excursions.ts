@@ -73,6 +73,12 @@ export const excursionsTable = pgTable("excursions", {
     precision: 10,
     scale: 2,
   }).notNull().default("0"),
+  // Supplemento a persona per provincia del punto di raccolta scelto,
+  // specifico di questa gita: { "IM": 10, "GE": 0 }. Chiave = sigla provincia.
+  provinceSurcharges: jsonb("province_surcharges")
+    .$type<Record<string, number>>()
+    .notNull()
+    .default({}),
   switchThreshold: integer("switch_threshold"),
   switchVehicleId: uuid("switch_vehicle_id").references(
     () => excursionVehiclesTable.id,

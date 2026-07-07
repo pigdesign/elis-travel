@@ -11,6 +11,8 @@ export interface PublicPickupPoint {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
+  surcharge?: number;
   pickupTime?: string | null;
   sortOrder: number;
 }

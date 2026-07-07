@@ -24,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 import { ScheduleEditor } from "@/components/shared/ScheduleEditor";
 import { TagMultiCombobox } from "@/components/shared/TagMultiCombobox";
+import { provinceName } from "@/data/provinces";
 
 // Suggerimenti iniziali per i tag (le voci tipologia storiche del sito).
 const DEFAULT_TAG_SUGGESTIONS = ["In giornata", "Weekend", "Mare", "Montagna", "Cultura"];
@@ -55,6 +56,9 @@ type FormState = {
   mealCostPerPerson: string;
   entranceCostPerPerson: string;
   extras: ExtraRow[];
+  // Supplemento a persona per provincia dei punti di raccolta (sigla → euro,
+  // stringa perché input controllato). Vuoto o "0" = nessun supplemento.
+  provinceSurcharges: Record<string, string>;
   currentCapacity: string;
   minThreshold: string;
   vehicleId: string;
@@ -86,6 +90,7 @@ function emptyState(): FormState {
     mealCostPerPerson: "0",
     entranceCostPerPerson: "0",
     extras: [],
+    provinceSurcharges: {},
     currentCapacity: "0",
     minThreshold: "1",
     vehicleId: "",
@@ -130,6 +135,9 @@ function fromExcursion(
     mealCostPerPerson: exc.mealCostPerPerson ?? "0",
     entranceCostPerPerson: exc.entranceCostPerPerson ?? "0",
     extras: extrasFromExcursion(exc),
+    provinceSurcharges: Object.fromEntries(
+      Object.entries(exc.provinceSurcharges ?? {}).map(([code, value]) => [code, String(value)]),
+    ),
     currentCapacity: String(exc.currentCapacity ?? 0),
     minThreshold: String(exc.minThreshold ?? 1),
     vehicleId: exc.vehicleId ?? "",
@@ -174,6 +182,12 @@ function toPayload(s: FormState): ExcursionInput {
     entranceCostPerPerson: normalizeDecimal(s.entranceCostPerPerson),
     extras,
     extraCostPerPerson: extraTotal.toFixed(2),
+    // Solo i supplementi > 0: l'assenza dalla mappa equivale a 0.
+    provinceSurcharges: Object.fromEntries(
+      Object.entries(s.provinceSurcharges)
+        .map(([code, value]) => [code, Number(normalizeDecimal(value))] as const)
+        .filter(([, n]) => Number.isFinite(n) && n > 0),
+    ),
     currentCapacity: Math.max(0, parseInt(s.currentCapacity, 10) || 0),
     minThreshold: Math.max(0, parseInt(s.minThreshold, 10) || 0),
     vehicleId: s.vehicleId || null,
@@ -196,7 +210,17 @@ function toPayload(s: FormState): ExcursionInput {
 
 // ---- Pickup points section (edit mode only) ----
 
-function PickupPointsSection({ excursionId }: { excursionId: string }) {
+function PickupPointsSection({
+  excursionId,
+  surcharges,
+  onSurchargeChange,
+  surchargeError,
+}: {
+  excursionId: string;
+  surcharges: Record<string, string>;
+  onSurchargeChange: (code: string, value: string) => void;
+  surchargeError?: string;
+}) {
   const queryClient = useQueryClient();
   const { data: allLocations = [] } = useListPickupLocations();
   const { data: points = [], isLoading } = useListExcursionPickupPoints(excursionId);
@@ -224,6 +248,13 @@ function PickupPointsSection({ excursionId }: { excursionId: string }) {
   const usedLocationIds = new Set(points.map((p) => p.pickupLocationId));
   const availableLocations = allLocations.filter((l) => !usedLocationIds.has(l.id));
 
+  // Province coinvolte, dedotte dai punti selezionati: il supplemento si
+  // imposta una sola volta per provincia, qualunque sia il numero di punti.
+  const provinceCodes = Array.from(
+    new Set(points.map((p) => p.location.province).filter((c): c is string => Boolean(c))),
+  ).sort((a, b) => (provinceName(a) ?? a).localeCompare(provinceName(b) ?? b, "it"));
+  const pointsWithoutProvince = points.filter((p) => !p.location.province);
+
   return (
     <section className="space-y-3">
       <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -241,7 +272,10 @@ function PickupPointsSection({ excursionId }: { excursionId: string }) {
               <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
               <span className="flex-1 text-sm font-medium text-foreground">
                 {pp.location.name}
-                <span className="text-xs text-muted-foreground ml-1">({pp.location.city})</span>
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({pp.location.city}
+                  {pp.location.province ? `, ${pp.location.province}` : ""})
+                </span>
               </span>
               <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <input
@@ -280,7 +314,8 @@ function PickupPointsSection({ excursionId }: { excursionId: string }) {
               <option value="">— Seleziona —</option>
               {availableLocations.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {l.name} ({l.city})
+                  {l.name} ({l.city}
+                  {l.province ? `, ${l.province}` : ""})
                 </option>
               ))}
             </select>
@@ -314,6 +349,47 @@ function PickupPointsSection({ excursionId }: { excursionId: string }) {
       {allLocations.length === 0 && (
         <p className="text-xs text-muted-foreground">
           Configura prima i punti di raccolta in Impostazioni.
+        </p>
+      )}
+
+      {/* Supplementi per provincia: una riga per provincia dei punti scelti. */}
+      {provinceCodes.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Supplementi per provincia
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Maggiorazione a persona per chi parte da un punto di raccolta della provincia.
+            Si imposta una volta per provincia (vale per tutti i suoi punti) e si salva con
+            "Salva modifiche". Lascia vuoto o 0 per nessun supplemento.
+          </p>
+          {provinceCodes.map((code) => (
+            <div key={code} className="flex items-center gap-2">
+              <span className="flex-1 text-sm text-foreground">
+                {provinceName(code)}
+                <span className="text-xs text-muted-foreground ml-1">({code})</span>
+              </span>
+              <span className="text-xs text-muted-foreground">+ €</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={surcharges[code] ?? ""}
+                onChange={(e) => onSurchargeChange(code, e.target.value)}
+                placeholder="0"
+                className="w-20 px-2 py-1 border border-border rounded-lg text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
+                data-testid={`input-province-surcharge-${code}`}
+              />
+              <span className="text-xs text-muted-foreground">/persona</span>
+            </div>
+          ))}
+          {surchargeError && <p className="text-xs text-red-600">{surchargeError}</p>}
+        </div>
+      )}
+      {pointsWithoutProvince.length > 0 && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Punti senza provincia (nessun supplemento applicabile):{" "}
+          {pointsWithoutProvince.map((p) => p.location.name).join(", ")}. Imposta la
+          provincia in Impostazioni → Punti di raccolta.
         </p>
       )}
     </section>
@@ -452,6 +528,13 @@ export function ExcursionFormModal({
       return isNaN(n) || n < 0;
     });
     if (badExtra) errs.extras = "Prezzo extra non valido (≥ 0).";
+    const badSurcharge = Object.values(form.provinceSurcharges).some((raw) => {
+      const t = raw.trim();
+      if (t === "") return false;
+      const n = Number(t.replace(",", "."));
+      return isNaN(n) || n < 0;
+    });
+    if (badSurcharge) errs.provinceSurcharges = "Supplemento provincia non valido (≥ 0).";
     checkDecimalNonNeg("vehicleFixedCost", "Costo mezzo");
     checkDecimalNonNeg("switchVehicleAdditionalCost", "Costo aggiuntivo mezzo alternativo");
     checkIntNonNeg("currentCapacity", "Capienza");
@@ -986,7 +1069,17 @@ export function ExcursionFormModal({
 
           {/* Sezione: Punti di raccolta */}
           {mode === "edit" && initial?.id ? (
-            <PickupPointsSection excursionId={initial.id} />
+            <PickupPointsSection
+              excursionId={initial.id}
+              surcharges={form.provinceSurcharges}
+              onSurchargeChange={(code, value) =>
+                setForm((p) => ({
+                  ...p,
+                  provinceSurcharges: { ...p.provinceSurcharges, [code]: value },
+                }))
+              }
+              surchargeError={fieldErrors.provinceSurcharges}
+            />
           ) : (
             <section className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

@@ -29,6 +29,8 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type ExcursionSummaryProvinceSurcharges = { [key: string]: number };
+
 export interface ExcursionExtra {
   name: string;
   price: number;
@@ -67,6 +69,7 @@ export interface ExcursionSummary {
   extraCostPerPerson?: string;
   extras: ExcursionExtra[];
   pricePerPerson: string;
+  provinceSurcharges?: ExcursionSummaryProvinceSurcharges;
   vehicleId?: string | null;
   switchThreshold?: number | null;
   switchVehicleId?: string | null;
@@ -168,7 +171,10 @@ export interface PublicBookingResponse {
   message: string;
   setupIntentClientSecret?: string | null;
   depositPercentage?: number | null;
+  amountDueCents?: number | null;
 }
+
+export type ExcursionInputProvinceSurcharges = { [key: string]: number };
 
 export interface ExcursionInput {
   name?: string;
@@ -186,6 +192,7 @@ export interface ExcursionInput {
   extraCostPerPerson?: string;
   extras?: ExcursionExtra[];
   pricePerPerson?: string;
+  provinceSurcharges?: ExcursionInputProvinceSurcharges;
   switchThreshold?: number | null;
   switchVehicleId?: string | null;
   switchVehicleAdditionalCost?: string | null;
@@ -455,6 +462,8 @@ export interface PublicPickupPoint {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
+  surcharge?: number;
   pickupTime?: string | null;
   sortOrder: number;
 }
@@ -602,6 +611,7 @@ export interface PickupLocation {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -611,6 +621,7 @@ export interface PickupLocationInput {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
   sortOrder?: number;
 }
 
@@ -619,6 +630,7 @@ export interface ExcursionPickupPointLocation {
   name: string;
   city: string;
   address?: string | null;
+  province?: string | null;
   sortOrder: number;
 }
 

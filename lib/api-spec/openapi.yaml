@@ -1577,6 +1577,10 @@ components:
             $ref: "#/components/schemas/ExcursionExtra"
         pricePerPerson:
           type: string
+        provinceSurcharges:
+          type: object
+          additionalProperties:
+            type: number
         vehicleId:
           type: string
           nullable: true
@@ -1801,6 +1805,11 @@ components:
         depositPercentage:
           type: number
           nullable: true
+        # Importo (in centesimi) che verrà addebitato alla conferma, già
+        # comprensivo di eventuale supplemento provincia e % acconto.
+        amountDueCents:
+          type: integer
+          nullable: true
       required: [id, seats, adults, children, paymentStatus, message]
     ExcursionInput:
       type: object
@@ -1840,6 +1849,10 @@ components:
             $ref: "#/components/schemas/ExcursionExtra"
         pricePerPerson:
           type: string
+        provinceSurcharges:
+          type: object
+          additionalProperties:
+            type: number
         switchThreshold:
           type: integer
           nullable: true
@@ -2591,6 +2604,12 @@ components:
         address:
           type: string
           nullable: true
+        province:
+          type: string
+          nullable: true
+        # Supplemento in euro a persona per questo punto (dalla provincia), 0 se assente.
+        surcharge:
+          type: number
         pickupTime:
           type: string
           nullable: true
@@ -2926,6 +2945,9 @@ components:
         address:
           type: string
           nullable: true
+        province:
+          type: string
+          nullable: true
         sortOrder:
           type: integer
         createdAt:
@@ -2951,6 +2973,9 @@ components:
         address:
           type: string
           nullable: true
+        province:
+          type: string
+          nullable: true
         sortOrder:
           type: integer
       required:
@@ -2967,6 +2992,9 @@ components:
         city:
           type: string
         address:
+          type: string
+          nullable: true
+        province:
           type: string
           nullable: true
         sortOrder:

@@ -12,9 +12,29 @@ import {
 } from "@workspace/api-client-react";
 import type { PickupLocation } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { PROVINCES, provinceName } from "@/data/provinces";
 
 const inputCls =
   "w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+
+function ProvinceSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls}>
+      <option value="">— Provincia * —</option>
+      {PROVINCES.map((p) => (
+        <option key={p.code} value={p.code}>
+          {p.name} ({p.code})
+        </option>
+      ))}
+    </select>
+  );
+}
 
 // ---- Pickup location row (view + inline edit) ----
 
@@ -31,6 +51,7 @@ function PickupRow({
   const [name, setName] = useState(loc.name);
   const [city, setCity] = useState(loc.city);
   const [address, setAddress] = useState(loc.address ?? "");
+  const [province, setProvince] = useState(loc.province ?? "");
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { mutate: update, isPending: isUpdating } = useUpdatePickupLocation({
@@ -65,12 +86,15 @@ function PickupRow({
             className={inputCls}
           />
         </div>
-        <input
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Indirizzo / dettaglio (opzionale)"
-          className={inputCls}
-        />
+        <div className="grid sm:grid-cols-2 gap-2">
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Indirizzo / dettaglio (opzionale)"
+            className={inputCls}
+          />
+          <ProvinceSelect value={province} onChange={setProvince} />
+        </div>
         <div className="flex gap-2 justify-end">
           <button
             type="button"
@@ -83,7 +107,15 @@ function PickupRow({
             type="button"
             disabled={isUpdating || !name.trim() || !city.trim()}
             onClick={() =>
-              update({ id: loc.id, data: { name: name.trim(), city: city.trim(), address: address.trim() || null } })
+              update({
+                id: loc.id,
+                data: {
+                  name: name.trim(),
+                  city: city.trim(),
+                  address: address.trim() || null,
+                  province: province || null,
+                },
+              })
             }
             className="px-3 py-1.5 text-xs rounded-lg bg-primary text-white flex items-center gap-1 disabled:opacity-50"
           >
@@ -101,6 +133,11 @@ function PickupRow({
       <div className="flex-1 min-w-0">
         <span className="font-medium text-sm text-foreground">{loc.name}</span>
         <span className="text-xs text-muted-foreground ml-2">{loc.city}</span>
+        {loc.province ? (
+          <span className="text-xs text-muted-foreground ml-1">({provinceName(loc.province)})</span>
+        ) : (
+          <span className="text-xs text-amber-600 font-medium ml-1">· Provincia mancante</span>
+        )}
         {loc.address && <span className="text-xs text-muted-foreground ml-1">· {loc.address}</span>}
       </div>
       {deleteError && (
@@ -133,12 +170,13 @@ function NewPickupForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
+  const [province, setProvince] = useState("");
   const [open, setOpen] = useState(false);
 
   const { mutate: create, isPending } = useCreatePickupLocation({
     mutation: {
       onSuccess: () => {
-        setName(""); setCity(""); setAddress("");
+        setName(""); setCity(""); setAddress(""); setProvince("");
         setOpen(false);
         onCreated();
       },
@@ -175,12 +213,18 @@ function NewPickupForm({ onCreated }: { onCreated: () => void }) {
           className={inputCls}
         />
       </div>
-      <input
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        placeholder="Indirizzo / dettaglio (opzionale)"
-        className={inputCls}
-      />
+      <div className="grid sm:grid-cols-2 gap-2">
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Indirizzo / dettaglio (opzionale)"
+          className={inputCls}
+        />
+        <ProvinceSelect value={province} onChange={setProvince} />
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        La provincia serve per applicare gli eventuali supplementi di prezzo configurati su ogni gita.
+      </p>
       <div className="flex gap-2 justify-end">
         <button
           type="button"
@@ -191,8 +235,17 @@ function NewPickupForm({ onCreated }: { onCreated: () => void }) {
         </button>
         <button
           type="button"
-          disabled={isPending || !name.trim() || !city.trim()}
-          onClick={() => create({ data: { name: name.trim(), city: city.trim(), address: address.trim() || null } })}
+          disabled={isPending || !name.trim() || !city.trim() || !province}
+          onClick={() =>
+            create({
+              data: {
+                name: name.trim(),
+                city: city.trim(),
+                address: address.trim() || null,
+                province: province || null,
+              },
+            })
+          }
           className="px-3 py-1.5 text-xs rounded-lg bg-primary text-white flex items-center gap-1 disabled:opacity-50"
         >
           {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
