@@ -313,16 +313,37 @@
   margin-top: 2mm;
 }
 
-/* Attività della giornata in copertina (gite di 1 giorno): riempiono la
-   colonna sinistra con orari e tappe, collegate alla linea della timeline */
+/* Attività della giornata in copertina (gite di 1 giorno): orari e tappe
+   su un'unica linea verticale IN ASSE col centro del cerchio del giorno
+   (6.5mm), pallini centrati sulla linea, testi allineati al titolo giorno */
 .poster-day-activities {
-  margin-left: 5.5mm;
-  padding-left: 10.5mm;
-  border-left: 0.5mm solid var(--poster-orange);
+  position: relative;
+  padding-left: 18mm;
   display: flex;
   flex-direction: column;
   gap: 3mm;
-  margin-top: 1mm;
+  margin-top: 1.5mm;
+}
+
+/* La linea: parte subito sotto l'intestazione e si ferma esattamente
+   sull'ultimo pallino (--act-bottom ancorato via JS) */
+.poster-day-activities::before {
+  content: "";
+  position: absolute;
+  left: 6.25mm;
+  top: 0.5mm;
+  bottom: var(--act-bottom, 2mm);
+  width: 0.5mm;
+  background: var(--poster-orange);
+}
+
+/* Il moncone di connettore giorno→giorno non ha senso col giorno singolo */
+.poster-timeline--single .poster-day-marker::after {
+  display: none !important;
+}
+
+.poster-timeline--single .poster-day {
+  margin-bottom: 1.5mm;
 }
 
 .cover-activity {
@@ -335,9 +356,11 @@
   line-height: 1.4;
 }
 
+/* Pallino centrato sulla linea: centro a 6.5mm dal bordo colonna
+   (contenuto attività a 18mm → 6.5 − 1.6 − 18 = −13.1mm) */
 .cover-activity .dot {
   position: absolute;
-  left: -12.2mm;
+  left: -13.1mm;
   top: 1mm;
   width: 3.2mm;
   height: 3.2mm;
@@ -659,24 +682,65 @@
   z-index: 8;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 12mm 10mm 34mm;
+  /* Il padding-top tiene il contenuto sotto l'onda categoria; il bottom
+     si ferma al bordo del footer (28mm) + 2mm di sicurezza, così il
+     contenuto centrato non lo tocca mai */
+  padding: 26mm 10mm 30mm;
   overflow: hidden;
 }
 
-/* Nel pannello stretto le attività della giornata vanno compattate */
-.ph .poster-side .cover-activity {
+/* Il centraggio verticale nel pannello è calcolato via JS (margine
+   esplicito): margin auto / justify-content distribuiscono spazio elastico
+   e il motore di stampa di Chrome perde l'ultimo elemento della colonna */
+
+/* Nel pannello orizzontale il giorno singolo è tutto giustificato al
+   centro, come i giorni multipli: attività con orario arancio sopra e
+   titolo bianco sotto, separate da trattini centrati (niente pallini) */
+.ph .poster-side .poster-timeline--single .poster-day-activities {
+  padding-left: 0;
+  margin-top: 2.5mm;
+  align-items: center;
+  text-align: center;
+  gap: 1.5mm;
+}
+
+/* Niente connettore né margine extra tra intestazione e attività: la
+   separazione la danno i trattini tra le attività */
+.ph .poster-side .poster-timeline--single .poster-day {
+  margin-bottom: 0;
+}
+
+
+.ph .poster-side .poster-timeline--single .poster-day-activities::before {
+  display: none;
+}
+
+.ph .poster-side .poster-timeline--single .cover-activity {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4mm;
   font-size: 10pt;
-  line-height: 1.3;
+  line-height: 1.15;
 }
 
-.ph .poster-side .cover-activity .time {
+.ph .poster-side .poster-timeline--single .cover-activity .dot {
+  display: none;
+}
+
+.ph .poster-side .poster-timeline--single .cover-activity .time {
+  width: auto;
   font-size: 11pt;
-  width: 10mm;
+  line-height: 1.1;
 }
 
-.ph .poster-side .poster-day-activities {
-  gap: 2.2mm;
+/* Trattino centrato tra un'attività e la successiva, come tra i giorni */
+.ph .poster-side .poster-timeline--single .cover-activity:not(:first-child)::before {
+  content: "";
+  display: block;
+  width: 0.5mm;
+  height: 3mm;
+  margin: 0 auto 1.2mm;
+  background: var(--poster-orange);
 }
 
 .ph .poster-side .poster-day {
@@ -695,7 +759,7 @@
   display: none;
 }
 
-.ph .poster-side .poster-day:not(:last-child)::after {
+.ph .poster-side .poster-timeline:not(.poster-timeline--single) .poster-day:not(:last-child)::after {
   content: "";
   width: 0.5mm;
   height: 6mm;
