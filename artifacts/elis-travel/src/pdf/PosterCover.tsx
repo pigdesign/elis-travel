@@ -124,9 +124,25 @@ function useFillColumn(
 ) {
   useLayoutEffect(() => {
     const root = ref.current;
-    if (!root || !enabled) return;
+    if (!root) return;
 
     const distribute = () => {
+      // Nel pannello orizzontale il centraggio verticale è un margine
+      // esplicito calcolato qui: margin auto / justify-content lasciano al
+      // flex lo spazio elastico e il motore di stampa di Chrome perde
+      // l'ultimo elemento della colonna.
+      const side = root.parentElement;
+      if (side?.classList.contains("poster-side")) {
+        root.style.marginTop = "";
+        const cs = getComputedStyle(side);
+        const avail =
+          side.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+        const free = avail - root.getBoundingClientRect().height;
+        if (free > 0) root.style.marginTop = `${free / 2}px`;
+      }
+
+      if (!enabled) return;
+
       const items = Array.from(root.querySelectorAll<HTMLElement>(itemSelector));
       items.forEach((el) => {
         el.style.marginBottom = "";
@@ -149,15 +165,32 @@ function useFillColumn(
         }
       }
 
-      // La linea della timeline si ferma al centro dell'ultimo cerchio:
-      // mai un tratto di linea nuda sotto l'ultimo giorno.
-      const circles = root.querySelectorAll<HTMLElement>(".poster-day-circle");
-      const lastCircle = circles[circles.length - 1];
-      if (lastCircle) {
-        const rootRect = root.getBoundingClientRect();
-        const circleRect = lastCircle.getBoundingClientRect();
-        const fromBottom = rootRect.bottom - circleRect.bottom + circleRect.height / 2;
-        root.style.setProperty("--tl-bottom", `${Math.max(0, fromBottom)}px`);
+      if (root.classList.contains("poster-timeline--single")) {
+        // Giorno singolo: la linea delle attività si ferma esattamente al
+        // centro dell'ultimo pallino (se i pallini sono visibili — nel
+        // pannello orizzontale centrato non ci sono).
+        const acts = root.querySelector<HTMLElement>(".poster-day-activities");
+        const dots = root.querySelectorAll<HTMLElement>(".cover-activity .dot");
+        const lastDot = dots[dots.length - 1];
+        if (acts && lastDot) {
+          const dotRect = lastDot.getBoundingClientRect();
+          if (dotRect.height > 0) {
+            const actsRect = acts.getBoundingClientRect();
+            const fromBottom = actsRect.bottom - dotRect.top - dotRect.height / 2;
+            acts.style.setProperty("--act-bottom", `${Math.max(0, fromBottom)}px`);
+          }
+        }
+      } else {
+        // Più giorni: la linea si ferma al centro dell'ultimo cerchio,
+        // mai un tratto di linea nuda sotto l'ultimo giorno.
+        const circles = root.querySelectorAll<HTMLElement>(".poster-day-circle");
+        const lastCircle = circles[circles.length - 1];
+        if (lastCircle) {
+          const rootRect = root.getBoundingClientRect();
+          const circleRect = lastCircle.getBoundingClientRect();
+          const fromBottom = rootRect.bottom - circleRect.bottom + circleRect.height / 2;
+          root.style.setProperty("--tl-bottom", `${Math.max(0, fromBottom)}px`);
+        }
       }
     };
 
@@ -233,7 +266,7 @@ function Timeline({
     // Fallback: senza programma giorno-per-giorno mostriamo i punti di forza.
     if (model.highlights.length === 0) return null;
     return (
-      <ul className="poster-highlights">
+      <ul ref={rootRef as unknown as React.RefObject<HTMLUListElement>} className="poster-highlights">
         {model.highlights.slice(0, 8).map((h, i) => (
           <li key={i}>{h}</li>
         ))}
