@@ -21,6 +21,13 @@ export interface Booking {
   servizioCasa?: boolean | null;
   pickupPointId?: string | null;
   cancelledAt?: Date | null;
+  bookingCode?: string | null;
+  paymentType?: string | null;
+  paymentMethod?: string | null;
+  totalAmountCents?: number | null;
+  amountDueCents?: number | null;
+  amountPaidCents?: number | null;
+  paymentDeadline?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

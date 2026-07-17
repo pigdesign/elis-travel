@@ -623,11 +623,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /excursions/{id}/book/{bookingId}/payment-confirmed:
+    post:
+      operationId: confirmPublicExcursionBookingPayment
+      tags: [public]
+      summary: Conferma il PaymentIntent dopo stripe.confirmPayment (idempotente col webhook)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paymentIntentId:
+                  type: string
+              required: [paymentIntentId]
+      responses:
+        "200":
+          description: Pagamento confermato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Errore
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /excursions/{id}/book/{bookingId}/card-confirmed:
     post:
       operationId: confirmPublicExcursionBookingCard
       tags: [public]
-      summary: Conferma carta salvata dopo SetupIntent (chiamato dopo 3DS)
+      summary: Conferma carta salvata dopo SetupIntent (legacy, prenotazioni pre-v2)
       parameters:
         - name: id
           in: path
@@ -660,6 +710,220 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/confirm-trip:
+    post:
+      operationId: confirmTrip
+      tags: [excursions]
+      summary: Conferma la gita e genera le richieste saldo (idempotente)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Gita confermata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfirmTripResponse"
+        "400":
+          description: Stato non confermabile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/expire-overdue:
+    post:
+      operationId: expireOverdueBookings
+      tags: [excursions]
+      summary: Marca scadute le prenotazioni oltre scadenza (liberando i posti solo se richiesto)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                releaseSeats:
+                  type: boolean
+      responses:
+        "200":
+          description: Prenotazioni scadute aggiornate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  expired:
+                    type: integer
+                  releasedSeats:
+                    type: integer
+                required: [ok, expired, releasedSeats]
+  /admin/payment-requests/{requestId}/mark-paid:
+    post:
+      operationId: markPaymentRequestPaid
+      tags: [excursions]
+      summary: Conferma manuale di una richiesta di pagamento (bonifico/ufficio)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transactionReference:
+                  type: string
+      responses:
+        "200":
+          description: Pagamento registrato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  alreadyApplied:
+                    type: boolean
+                required: [ok, alreadyApplied]
+        "404":
+          description: Richiesta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/request-balance:
+    post:
+      operationId: requestBookingBalance
+      tags: [excursions]
+      summary: Crea la richiesta saldo per una prenotazione (idempotente)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Richiesta creata o già esistente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  outcome:
+                    type: string
+                required: [ok, outcome]
+        "400":
+          description: Nessun residuo da richiedere
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/deadline:
+    patch:
+      operationId: updateBookingDeadline
+      tags: [excursions]
+      summary: Modifica/estende la scadenza pagamento (riattiva le scadute)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deadline:
+                  type: string
+                  format: date-time
+              required: [deadline]
+      responses:
+        "200":
+          description: Scadenza aggiornata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/details:
+    get:
+      operationId: getAdminBookingDetails
+      tags: [excursions]
+      summary: Dettaglio completo prenotazione (partecipanti, consensi, pagamenti)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dettaglio prenotazione
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBookingDetails"
         "404":
           description: Prenotazione non trovata
           content:
@@ -1847,6 +2111,28 @@ components:
           type: string
           format: date-time
           nullable: true
+        bookingCode:
+          type: string
+          nullable: true
+        paymentType:
+          type: string
+          nullable: true
+        paymentMethod:
+          type: string
+          nullable: true
+        totalAmountCents:
+          type: integer
+          nullable: true
+        amountDueCents:
+          type: integer
+          nullable: true
+        amountPaidCents:
+          type: integer
+          nullable: true
+        paymentDeadline:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1864,6 +2150,122 @@ components:
         - bookedAt
         - createdAt
         - updatedAt
+    AdminBookingParticipant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        participantType:
+          type: string
+        ageRangeLabel:
+          type: string
+          nullable: true
+        pickupPointName:
+          type: string
+          nullable: true
+        basePriceCents:
+          type: integer
+        pickupSurchargeCents:
+          type: integer
+        finalPriceCents:
+          type: integer
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        dataCompleted:
+          type: boolean
+        sortOrder:
+          type: integer
+      required: [id, participantType, basePriceCents, pickupSurchargeCents, finalPriceCents, dataCompleted, sortOrder]
+    AdminBookingConsent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        consentType:
+          type: string
+        accepted:
+          type: boolean
+        policyVersion:
+          type: string
+          nullable: true
+        acceptedAt:
+          type: string
+          format: date-time
+      required: [id, consentType, accepted, acceptedAt]
+    AdminPaymentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        amountCents:
+          type: integer
+        status:
+          type: string
+        method:
+          type: string
+          nullable: true
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        transactionReference:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, bookingId, type, amountCents, status, createdAt]
+    AdminBookingDetails:
+      type: object
+      properties:
+        booking:
+          $ref: "#/components/schemas/Booking"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminBookingParticipant"
+        consents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminBookingConsent"
+        paymentRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPaymentRequest"
+        participantsDetailed:
+          type: boolean
+      required: [booking, participants, consents, paymentRequests, participantsDetailed]
+    ConfirmTripResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        status:
+          type: string
+        balanceRequestsCreated:
+          type: integer
+        alreadyRequested:
+          type: integer
+      required: [ok, status, balanceRequestsCreated, alreadyRequested]
     BookingInput:
       type: object
       properties:
@@ -1900,63 +2302,114 @@ components:
           enum: [pending, deposit_requested, deposit, full_requested, paid, refunded]
       required:
         - paymentStatus
+    PublicBookingConsents:
+      type: object
+      properties:
+        terms:
+          type: boolean
+        privacy:
+          type: boolean
+        media:
+          type: boolean
+      required: [terms, privacy]
     PublicBookingInput:
       type: object
       properties:
-        customerName:
+        firstName:
+          type: string
+        lastName:
           type: string
         email:
           type: string
         phone:
           type: string
-        adults:
-          type: integer
-          minimum: 1
-        children:
-          type: integer
-          minimum: 0
-        paymentType:
-          type: string
-          enum: [deposit, full]
-        servizioCasa:
-          type: boolean
-          nullable: true
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteParticipantInput"
+        # Punto di raccolta unico della prenotazione (gite normali)
         pickupPointId:
           type: string
           format: uuid
+          nullable: true
+        paymentType:
+          type: string
+          enum: [deposit, full]
+        paymentMethod:
+          type: string
+          enum: [card, bank_transfer, office]
+        consents:
+          $ref: "#/components/schemas/PublicBookingConsents"
+        servizioCasa:
+          type: boolean
+          nullable: true
       required:
-        - customerName
+        - firstName
+        - lastName
         - email
-        - adults
+        - phone
+        - participants
         - paymentType
+        - paymentMethod
+        - consents
+    PublicBankInstructions:
+      type: object
+      properties:
+        iban:
+          type: string
+          nullable: true
+        beneficiary:
+          type: string
+          nullable: true
+        bank:
+          type: string
+          nullable: true
+        causale:
+          type: string
+      required: [causale]
+    PublicOfficeInstructions:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        openingHours:
+          type: string
+          nullable: true
     PublicBookingResponse:
       type: object
       properties:
         id:
           type: string
           format: uuid
+        bookingCode:
+          type: string
         seats:
           type: integer
-        adults:
+        totalCents:
           type: integer
-        children:
+        amountDueCents:
           type: integer
+        paymentType:
+          type: string
+          enum: [deposit, full]
+        paymentMethod:
+          type: string
+          enum: [card, bank_transfer, office]
         paymentStatus:
+          type: string
+        paymentDeadline:
           type: string
         message:
           type: string
-        setupIntentClientSecret:
+        bank:
+          $ref: "#/components/schemas/PublicBankInstructions"
+        office:
+          $ref: "#/components/schemas/PublicOfficeInstructions"
+        stripeClientSecret:
           type: string
           nullable: true
-        depositPercentage:
-          type: number
-          nullable: true
-        # Importo (in centesimi) che verrà addebitato alla conferma, già
-        # comprensivo di eventuale supplemento provincia e % acconto.
-        amountDueCents:
-          type: integer
-          nullable: true
-      required: [id, seats, adults, children, paymentStatus, message]
+      required: [id, bookingCode, seats, totalCents, amountDueCents, paymentType, paymentMethod, paymentStatus, paymentDeadline, message]
     ExcursionInput:
       type: object
       properties:

@@ -497,6 +497,13 @@ export const GetExcursionResponse = zod
           servizioCasa: zod.boolean().nullish(),
           pickupPointId: zod.string().uuid().nullish(),
           cancelledAt: zod.coerce.date().nullish(),
+          bookingCode: zod.string().nullish(),
+          paymentType: zod.string().nullish(),
+          paymentMethod: zod.string().nullish(),
+          totalAmountCents: zod.number().nullish(),
+          amountDueCents: zod.number().nullish(),
+          amountPaidCents: zod.number().nullish(),
+          paymentDeadline: zod.coerce.date().nullish(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date(),
         }),
@@ -686,6 +693,13 @@ export const UpdateExcursionBookingPaymentResponse = zod.object({
   servizioCasa: zod.boolean().nullish(),
   pickupPointId: zod.string().uuid().nullish(),
   cancelledAt: zod.coerce.date().nullish(),
+  bookingCode: zod.string().nullish(),
+  paymentType: zod.string().nullish(),
+  paymentMethod: zod.string().nullish(),
+  totalAmountCents: zod.number().nullish(),
+  amountDueCents: zod.number().nullish(),
+  amountPaidCents: zod.number().nullish(),
+  paymentDeadline: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -709,24 +723,47 @@ export const CreatePublicExcursionBookingParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
-export const createPublicExcursionBookingBodyChildrenMin = 0;
-
 export const CreatePublicExcursionBookingBody = zod.object({
-  customerName: zod.string(),
+  firstName: zod.string(),
+  lastName: zod.string(),
   email: zod.string(),
-  phone: zod.string().optional(),
-  adults: zod.number().min(1),
-  children: zod
-    .number()
-    .min(createPublicExcursionBookingBodyChildrenMin)
-    .optional(),
+  phone: zod.string(),
+  participants: zod.array(
+    zod.object({
+      type: zod.enum(["adult", "child", "patient", "companion"]),
+      ageRangeId: zod.string().uuid().nullish(),
+      pickupPointId: zod.string().uuid().nullish(),
+    }),
+  ),
+  pickupPointId: zod.string().uuid().nullish(),
   paymentType: zod.enum(["deposit", "full"]),
+  paymentMethod: zod.enum(["card", "bank_transfer", "office"]),
+  consents: zod.object({
+    terms: zod.boolean(),
+    privacy: zod.boolean(),
+    media: zod.boolean().optional(),
+  }),
   servizioCasa: zod.boolean().nullish(),
-  pickupPointId: zod.string().uuid().optional(),
 });
 
 /**
- * @summary Conferma carta salvata dopo SetupIntent (chiamato dopo 3DS)
+ * @summary Conferma il PaymentIntent dopo stripe.confirmPayment (idempotente col webhook)
+ */
+export const ConfirmPublicExcursionBookingPaymentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const ConfirmPublicExcursionBookingPaymentBody = zod.object({
+  paymentIntentId: zod.string(),
+});
+
+export const ConfirmPublicExcursionBookingPaymentResponse = zod.object({
+  ok: zod.boolean().optional(),
+});
+
+/**
+ * @summary Conferma carta salvata dopo SetupIntent (legacy, prenotazioni pre-v2)
  */
 export const ConfirmPublicExcursionBookingCardParams = zod.object({
   id: zod.coerce.string().uuid(),
@@ -739,6 +776,155 @@ export const ConfirmPublicExcursionBookingCardBody = zod.object({
 
 export const ConfirmPublicExcursionBookingCardResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * @summary Conferma la gita e genera le richieste saldo (idempotente)
+ */
+export const ConfirmTripParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ConfirmTripResponse = zod.object({
+  ok: zod.boolean(),
+  status: zod.string(),
+  balanceRequestsCreated: zod.number(),
+  alreadyRequested: zod.number(),
+});
+
+/**
+ * @summary Marca scadute le prenotazioni oltre scadenza (liberando i posti solo se richiesto)
+ */
+export const ExpireOverdueBookingsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ExpireOverdueBookingsBody = zod.object({
+  releaseSeats: zod.boolean().optional(),
+});
+
+export const ExpireOverdueBookingsResponse = zod.object({
+  ok: zod.boolean(),
+  expired: zod.number(),
+  releasedSeats: zod.number(),
+});
+
+/**
+ * @summary Conferma manuale di una richiesta di pagamento (bonifico/ufficio)
+ */
+export const MarkPaymentRequestPaidParams = zod.object({
+  requestId: zod.coerce.string().uuid(),
+});
+
+export const MarkPaymentRequestPaidBody = zod.object({
+  transactionReference: zod.string().optional(),
+});
+
+export const MarkPaymentRequestPaidResponse = zod.object({
+  ok: zod.boolean(),
+  alreadyApplied: zod.boolean(),
+});
+
+/**
+ * @summary Crea la richiesta saldo per una prenotazione (idempotente)
+ */
+export const RequestBookingBalanceParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const RequestBookingBalanceResponse = zod.object({
+  ok: zod.boolean(),
+  outcome: zod.string(),
+});
+
+/**
+ * @summary Modifica/estende la scadenza pagamento (riattiva le scadute)
+ */
+export const UpdateBookingDeadlineParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const UpdateBookingDeadlineBody = zod.object({
+  deadline: zod.coerce.date(),
+});
+
+export const UpdateBookingDeadlineResponse = zod.object({
+  ok: zod.boolean().optional(),
+});
+
+/**
+ * @summary Dettaglio completo prenotazione (partecipanti, consensi, pagamenti)
+ */
+export const GetAdminBookingDetailsParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const GetAdminBookingDetailsResponse = zod.object({
+  booking: zod.object({
+    id: zod.string().uuid(),
+    excursionId: zod.string().uuid(),
+    customerId: zod.string().nullish(),
+    customerName: zod.string(),
+    email: zod.string().nullish(),
+    phone: zod.string().nullish(),
+    seats: zod.number(),
+    adults: zod.number(),
+    children: zod.number(),
+    paymentStatus: zod.string(),
+    bookedAt: zod.coerce.date(),
+    servizioCasa: zod.boolean().nullish(),
+    pickupPointId: zod.string().uuid().nullish(),
+    cancelledAt: zod.coerce.date().nullish(),
+    bookingCode: zod.string().nullish(),
+    paymentType: zod.string().nullish(),
+    paymentMethod: zod.string().nullish(),
+    totalAmountCents: zod.number().nullish(),
+    amountDueCents: zod.number().nullish(),
+    amountPaidCents: zod.number().nullish(),
+    paymentDeadline: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  participants: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      participantType: zod.string(),
+      ageRangeLabel: zod.string().nullish(),
+      pickupPointName: zod.string().nullish(),
+      basePriceCents: zod.number(),
+      pickupSurchargeCents: zod.number(),
+      finalPriceCents: zod.number(),
+      firstName: zod.string().nullish(),
+      lastName: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      dataCompleted: zod.boolean(),
+      sortOrder: zod.number(),
+    }),
+  ),
+  consents: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      consentType: zod.string(),
+      accepted: zod.boolean(),
+      policyVersion: zod.string().nullish(),
+      acceptedAt: zod.coerce.date(),
+    }),
+  ),
+  paymentRequests: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      bookingId: zod.string().uuid(),
+      type: zod.string(),
+      amountCents: zod.number(),
+      status: zod.string(),
+      method: zod.string().nullish(),
+      deadline: zod.coerce.date().nullish(),
+      paidAt: zod.coerce.date().nullish(),
+      transactionReference: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  participantsDetailed: zod.boolean(),
 });
 
 /**

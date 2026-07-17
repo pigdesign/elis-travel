@@ -103,6 +103,13 @@ export interface Booking {
   servizioCasa?: boolean | null;
   pickupPointId?: string | null;
   cancelledAt?: string | null;
+  bookingCode?: string | null;
+  paymentType?: string | null;
+  paymentMethod?: string | null;
+  totalAmountCents?: number | null;
+  amountDueCents?: number | null;
+  amountPaidCents?: number | null;
+  paymentDeadline?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,6 +117,57 @@ export interface Booking {
 export type ExcursionDetail = ExcursionSummary & {
   bookings: Booking[];
 };
+
+export interface AdminBookingParticipant {
+  id: string;
+  participantType: string;
+  ageRangeLabel?: string | null;
+  pickupPointName?: string | null;
+  basePriceCents: number;
+  pickupSurchargeCents: number;
+  finalPriceCents: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  notes?: string | null;
+  dataCompleted: boolean;
+  sortOrder: number;
+}
+
+export interface AdminBookingConsent {
+  id: string;
+  consentType: string;
+  accepted: boolean;
+  policyVersion?: string | null;
+  acceptedAt: string;
+}
+
+export interface AdminPaymentRequest {
+  id: string;
+  bookingId: string;
+  type: string;
+  amountCents: number;
+  status: string;
+  method?: string | null;
+  deadline?: string | null;
+  paidAt?: string | null;
+  transactionReference?: string | null;
+  createdAt: string;
+}
+
+export interface AdminBookingDetails {
+  booking: Booking;
+  participants: AdminBookingParticipant[];
+  consents: AdminBookingConsent[];
+  paymentRequests: AdminPaymentRequest[];
+  participantsDetailed: boolean;
+}
+
+export interface ConfirmTripResponse {
+  ok: boolean;
+  status: string;
+  balanceRequestsCreated: number;
+  alreadyRequested: number;
+}
 
 export interface BookingInput {
   customerName: string;
@@ -141,6 +199,12 @@ export interface BookingPaymentStatusUpdate {
   paymentStatus: BookingPaymentStatusUpdatePaymentStatus;
 }
 
+export interface PublicBookingConsents {
+  terms: boolean;
+  privacy: boolean;
+  media?: boolean;
+}
+
 export type PublicBookingInputPaymentType =
   (typeof PublicBookingInputPaymentType)[keyof typeof PublicBookingInputPaymentType];
 
@@ -149,29 +213,87 @@ export const PublicBookingInputPaymentType = {
   full: "full",
 } as const;
 
-export interface PublicBookingInput {
-  customerName: string;
-  email: string;
-  phone?: string;
-  /** @minimum 1 */
-  adults: number;
-  /** @minimum 0 */
-  children?: number;
-  paymentType: PublicBookingInputPaymentType;
-  servizioCasa?: boolean | null;
-  pickupPointId?: string;
+export type PublicBookingInputPaymentMethod =
+  (typeof PublicBookingInputPaymentMethod)[keyof typeof PublicBookingInputPaymentMethod];
+
+export const PublicBookingInputPaymentMethod = {
+  card: "card",
+  bank_transfer: "bank_transfer",
+  office: "office",
+} as const;
+
+export type QuoteParticipantInputType =
+  (typeof QuoteParticipantInputType)[keyof typeof QuoteParticipantInputType];
+
+export const QuoteParticipantInputType = {
+  adult: "adult",
+  child: "child",
+  patient: "patient",
+  companion: "companion",
+} as const;
+
+export interface QuoteParticipantInput {
+  type: QuoteParticipantInputType;
+  ageRangeId?: string | null;
+  pickupPointId?: string | null;
 }
+
+export interface PublicBookingInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  participants: QuoteParticipantInput[];
+  pickupPointId?: string | null;
+  paymentType: PublicBookingInputPaymentType;
+  paymentMethod: PublicBookingInputPaymentMethod;
+  consents: PublicBookingConsents;
+  servizioCasa?: boolean | null;
+}
+
+export interface PublicBankInstructions {
+  iban?: string | null;
+  beneficiary?: string | null;
+  bank?: string | null;
+  causale: string;
+}
+
+export interface PublicOfficeInstructions {
+  address?: string | null;
+  openingHours?: string | null;
+}
+
+export type PublicBookingResponsePaymentType =
+  (typeof PublicBookingResponsePaymentType)[keyof typeof PublicBookingResponsePaymentType];
+
+export const PublicBookingResponsePaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export type PublicBookingResponsePaymentMethod =
+  (typeof PublicBookingResponsePaymentMethod)[keyof typeof PublicBookingResponsePaymentMethod];
+
+export const PublicBookingResponsePaymentMethod = {
+  card: "card",
+  bank_transfer: "bank_transfer",
+  office: "office",
+} as const;
 
 export interface PublicBookingResponse {
   id: string;
+  bookingCode: string;
   seats: number;
-  adults: number;
-  children: number;
+  totalCents: number;
+  amountDueCents: number;
+  paymentType: PublicBookingResponsePaymentType;
+  paymentMethod: PublicBookingResponsePaymentMethod;
   paymentStatus: string;
+  paymentDeadline: string;
   message: string;
-  setupIntentClientSecret?: string | null;
-  depositPercentage?: number | null;
-  amountDueCents?: number | null;
+  bank?: PublicBankInstructions;
+  office?: PublicOfficeInstructions;
+  stripeClientSecret?: string | null;
 }
 
 export type ExcursionInputProvinceSurcharges = { [key: string]: number };
@@ -536,22 +658,6 @@ export interface PublicExcursionDetail {
   officeOpeningHours?: string | null;
 }
 
-export type QuoteParticipantInputType =
-  (typeof QuoteParticipantInputType)[keyof typeof QuoteParticipantInputType];
-
-export const QuoteParticipantInputType = {
-  adult: "adult",
-  child: "child",
-  patient: "patient",
-  companion: "companion",
-} as const;
-
-export interface QuoteParticipantInput {
-  type: QuoteParticipantInputType;
-  ageRangeId?: string | null;
-  pickupPointId?: string | null;
-}
-
 export type QuoteRequestPaymentType =
   (typeof QuoteRequestPaymentType)[keyof typeof QuoteRequestPaymentType];
 
@@ -828,6 +934,46 @@ export type SearchRmsCustomersParams = {
    * Testo di ricerca (min 2 caratteri)
    */
   q: string;
+};
+
+export type ConfirmPublicExcursionBookingPaymentBody = {
+  paymentIntentId: string;
+};
+
+export type ConfirmPublicExcursionBookingPayment200 = {
+  ok?: boolean;
+};
+
+export type ExpireOverdueBookingsBody = {
+  releaseSeats?: boolean;
+};
+
+export type ExpireOverdueBookings200 = {
+  ok: boolean;
+  expired: number;
+  releasedSeats: number;
+};
+
+export type MarkPaymentRequestPaidBody = {
+  transactionReference?: string;
+};
+
+export type MarkPaymentRequestPaid200 = {
+  ok: boolean;
+  alreadyApplied: boolean;
+};
+
+export type RequestBookingBalance200 = {
+  ok: boolean;
+  outcome: string;
+};
+
+export type UpdateBookingDeadlineBody = {
+  deadline: string;
+};
+
+export type UpdateBookingDeadline200 = {
+  ok?: boolean;
 };
 
 export type DeleteVehicle200 = {
