@@ -171,13 +171,18 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
           {formatEur(exc.ricaviStimati)}
         </td>
         <td className="py-3 px-2 text-center">
-          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-0.5 bg-accent/10 text-accent rounded-md px-1.5 py-0.5 font-medium">
-              <span>A</span><span className="font-bold">{exc.depositsCount}</span>
+          <div className="flex flex-col items-center gap-0.5 text-[11px] text-muted-foreground whitespace-nowrap">
+            <span className="inline-flex items-center gap-1 bg-accent/10 text-accent rounded-md px-1.5 py-0.5 font-medium">
+              Acconti: <span className="font-bold">{exc.depositsCount}</span>
             </span>
-            <span className="inline-flex items-center gap-0.5 bg-primary/10 text-primary rounded-md px-1.5 py-0.5 font-medium">
-              <span>S</span><span className="font-bold">{exc.balancesCount}</span>
+            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary rounded-md px-1.5 py-0.5 font-medium">
+              Saldi: <span className="font-bold">{exc.balancesCount}</span>
             </span>
+            {exc.pendingRequestsCount > 0 && (
+              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 font-medium">
+                In attesa: <span className="font-bold">{exc.pendingRequestsCount}</span>
+              </span>
+            )}
           </div>
         </td>
         <td className="py-3 pr-4 pl-2 text-right">
@@ -257,16 +262,16 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
                   </div>
                   <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-accent font-medium">Acconti (A)</span>
+                      <span className="text-accent font-medium">Acconti ricevuti</span>
                       <span className="font-semibold text-accent">{exc.depositsCount}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-primary font-medium">Saldi (S)</span>
+                      <span className="text-primary font-medium">Saldi ricevuti</span>
                       <span className="font-semibold text-primary">{exc.balancesCount}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">In attesa</span>
-                      <span>{exc.adherentsCount - exc.depositsCount - exc.balancesCount}</span>
+                      <span className="text-muted-foreground">In attesa di pagamento</span>
+                      <span>{exc.pendingRequestsCount}</span>
                     </div>
                   </div>
                 </div>

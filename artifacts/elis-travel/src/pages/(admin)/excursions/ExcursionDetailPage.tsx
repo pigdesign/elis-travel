@@ -28,6 +28,7 @@ import {
   Link2,
 } from "lucide-react";
 import { ExcursionFormModal } from "@/components/admin/ExcursionFormModal";
+import { BookingDetailsModal } from "@/components/admin/BookingDetailsModal";
 import {
   useGetExcursion,
   useUpdateExcursion,
@@ -37,6 +38,8 @@ import {
   useAddExcursionBooking,
   useListExcursionPickupPoints,
   useGetAdminSettings,
+  useConfirmTrip,
+  useExpireOverdueBookings,
   getGetExcursionQueryKey,
   getListExcursionsQueryKey,
 } from "@workspace/api-client-react";
@@ -64,6 +67,8 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; icon: React.Element
   charge_failed:     { label: "Addebito fallito",  icon: AlertCircle, className: "text-red-600",  rowCls: "bg-red-50/60" },
   charge_skipped:    { label: "Nessun addebito",   icon: RotateCcw,   className: "text-slate-400" },
   refunded:          { label: "Rimborsato",        icon: RotateCcw,   className: "text-slate-500" },
+  balance_requested: { label: "Saldo richiesto",   icon: Clock,       className: "text-amber-600" },
+  expired:           { label: "Scaduto",           icon: AlertCircle, className: "text-red-600",  rowCls: "bg-red-50/40" },
 };
 
 function formatEur(n: number) {
@@ -203,6 +208,8 @@ const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
   deposit:           ["paid", "refunded"],
   paid:              ["refunded"],
   refunded:          [],
+  balance_requested: [],
+  expired:           [],
 };
 
 const TRANSITION_LABELS: Record<string, Record<string, string>> = {
@@ -221,6 +228,7 @@ function BookingRow({
   excursionLocation,
   pricePerPerson,
   pickupPointName,
+  onOpenDetails,
 }: {
   booking: Booking;
   excursionId: string;
@@ -229,11 +237,16 @@ function BookingRow({
   excursionLocation: string;
   pricePerPerson: string | null;
   pickupPointName?: string | null;
+  onOpenDetails: (bookingId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const paymentCfg = PAYMENT_STATUS_CONFIG[booking.paymentStatus] ?? PAYMENT_STATUS_CONFIG["pending"];
   const PayIcon = paymentCfg.icon;
-  const allowedNextStates = ALLOWED_TRANSITIONS[booking.paymentStatus] ?? [];
+  // Prenotazioni Gite v2 (con codice): le azioni passano dal dettaglio, che
+  // aggiorna anche importi pagati e richieste; i pulsanti rapidi legacy restano
+  // per le prenotazioni precedenti.
+  const isV2 = Boolean(booking.bookingCode);
+  const allowedNextStates = isV2 ? [] : ALLOWED_TRANSITIONS[booking.paymentStatus] ?? [];
   const isChargeFailed = booking.paymentStatus === "charge_failed";
 
   const invalidate = () => {
@@ -294,10 +307,24 @@ function BookingRow({
           <div className="min-w-0">
             <div className={`font-medium text-sm truncate ${isCancelled ? "line-through text-muted-foreground" : "text-foreground"}`}>
               {booking.customerName}
+              {booking.bookingCode && (
+                <span className="ml-1.5 font-mono text-[10px] text-primary/80">{booking.bookingCode}</span>
+              )}
             </div>
             {booking.email && (
               <div className="text-xs text-muted-foreground truncate" data-testid={`text-booking-email-${booking.id}`}>
                 {booking.email}
+              </div>
+            )}
+            {booking.totalAmountCents != null && (
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {formatEur((booking.amountPaidCents ?? 0) / 100)} / {formatEur(booking.totalAmountCents / 100)}
+                {booking.paymentDeadline &&
+                  !["paid", "refunded"].includes(booking.paymentStatus) && (
+                    <span className={new Date(booking.paymentDeadline) < new Date() ? "ml-1.5 text-red-600 font-medium" : "ml-1.5"}>
+                      · scad. {formatDateTime(booking.paymentDeadline)}
+                    </span>
+                  )}
               </div>
             )}
             {pickupPointName && (
@@ -346,6 +373,15 @@ function BookingRow({
       </td>
       <td className="py-2.5 pr-4 pl-2 text-right">
         <div className="inline-flex items-center gap-1 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={() => onOpenDetails(booking.id)}
+            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/70 transition-colors"
+            data-testid={`button-details-${booking.id}`}
+            title="Dettaglio prenotazione: partecipanti, consensi, pagamenti"
+          >
+            Dettagli
+          </button>
           {!isCancelled && allowedNextStates.map((targetStatus) => {
             const label = TRANSITION_LABELS[booking.paymentStatus]?.[targetStatus] ?? `→ ${targetStatus}`;
             const isRefund = targetStatus === "refunded";
@@ -717,6 +753,48 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
+  const [detailsBookingId, setDetailsBookingId] = useState<string | null>(null);
+  const [confirmResult, setConfirmResult] = useState<string | null>(null);
+
+  const invalidateExcursion = () => {
+    void queryClient.invalidateQueries({ queryKey: getGetExcursionQueryKey(excursionId) });
+    void queryClient.invalidateQueries({ queryKey: getListExcursionsQueryKey() });
+  };
+  const { mutateAsync: confirmTrip, isPending: isConfirming } = useConfirmTrip({
+    mutation: { onSuccess: invalidateExcursion },
+  });
+  const { mutateAsync: expireOverdue, isPending: isExpiring } = useExpireOverdueBookings({
+    mutation: { onSuccess: invalidateExcursion },
+  });
+
+  const handleConfirmTrip = async () => {
+    if (!window.confirm(
+      "Confermare la gita? Verranno generate le richieste di saldo per chi ha già versato l'acconto (una sola volta).",
+    )) return;
+    try {
+      const r = await confirmTrip({ id: excursionId });
+      setConfirmResult(
+        r.balanceRequestsCreated > 0
+          ? `Gita confermata: ${r.balanceRequestsCreated} richieste saldo generate.`
+          : "Gita confermata. Nessuna nuova richiesta saldo da generare.",
+      );
+    } catch {
+      alert("Impossibile confermare la gita.");
+    }
+  };
+
+  const handleExpireOverdue = async () => {
+    try {
+      const r = await expireOverdue({ id: excursionId, data: {} });
+      alert(
+        r.expired > 0
+          ? `${r.expired} prenotazioni segnate come scadute${r.releasedSeats > 0 ? `, ${r.releasedSeats} posti liberati` : " (posti non liberati)"}.`
+          : "Nessuna prenotazione oltre scadenza.",
+      );
+    } catch {
+      alert("Verifica scadute non riuscita.");
+    }
+  };
   const { mutateAsync: updateExcursion } = useUpdateExcursion({
     mutation: {
       onSuccess: () => {
@@ -988,6 +1066,33 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
         <RidentLinksBox excursionId={exc.id} excursionName={exc.name} />
       )}
 
+      {/* Soglia raggiunta: la conferma resta una scelta manuale dell'admin */}
+      {overThreshold && exc.status === "open" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div className="flex-1 text-sm text-emerald-900">
+            <strong>Soglia minima raggiunta</strong> ({exc.adherentsCount} persone su{" "}
+            {exc.minThreshold} richieste). Puoi confermare la gita: verranno generate le richieste
+            di saldo per chi ha versato l'acconto.
+          </div>
+          <button
+            type="button"
+            onClick={handleConfirmTrip}
+            disabled={isConfirming}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            data-testid="button-confirm-trip"
+          >
+            {isConfirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+            Conferma gita
+          </button>
+        </div>
+      )}
+      {confirmResult && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm text-foreground">
+          {confirmResult}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
           <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-5">
@@ -1008,19 +1113,23 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
               <Users className="w-4 h-4" /> Stato Adesioni
             </h2>
 
-            <div className="flex items-end gap-4 mb-4">
+            <div className="flex items-end gap-4 mb-4 flex-wrap">
               <div>
                 <div className="text-4xl font-bold text-foreground">{exc.adherentsCount}</div>
-                <div className="text-sm text-muted-foreground">aderenti su {capacityMax} posti</div>
+                <div className="text-sm text-muted-foreground">persone su {capacityMax} posti</div>
               </div>
-              <div className="flex gap-3 pb-1">
+              <div className="flex gap-4 pb-1">
+                <div className="text-center">
+                  <div className="text-xl font-bold text-foreground">{activeBookings.length}</div>
+                  <div className="text-xs text-muted-foreground">prenotazioni</div>
+                </div>
                 <div className="text-center">
                   <div className="text-xl font-bold text-accent">{exc.depositsCount}</div>
-                  <div className="text-xs text-muted-foreground">acconti</div>
+                  <div className="text-xs text-muted-foreground">acconti ricevuti</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl font-bold text-primary">{exc.balancesCount}</div>
-                  <div className="text-xs text-muted-foreground">saldi</div>
+                  <div className="text-xs text-muted-foreground">saldi ricevuti</div>
                 </div>
               </div>
             </div>
@@ -1062,8 +1171,19 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
             <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                  <Users className="w-4 h-4" /> Partecipanti ({activeBookings.length})
+                  <Users className="w-4 h-4" /> Prenotazioni: {activeBookings.length} · Persone: {totalPeople}
                 </h2>
+                <button
+                  type="button"
+                  onClick={handleExpireOverdue}
+                  disabled={isExpiring}
+                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-border bg-white text-muted-foreground hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50"
+                  data-testid="button-expire-overdue"
+                  title="Segna come scadute le prenotazioni oltre la scadenza di pagamento"
+                >
+                  {isExpiring ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                  Verifica scadute
+                </button>
                 {cancelledBookings.length > 0 && (
                   <button
                     type="button"
@@ -1108,6 +1228,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                       excursionLocation={exc.location}
                       pricePerPerson={exc.pricePerPerson}
                       pickupPointName={b.pickupPointId ? pickupPointById.get(b.pickupPointId) ?? null : null}
+                      onOpenDetails={setDetailsBookingId}
                     />
                   ))}
                   {bookings.length === 0 && (
@@ -1273,6 +1394,14 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
 
       {showAddModal && (
         <AddParticipantModal excursionId={excursionId} onClose={() => setShowAddModal(false)} />
+      )}
+
+      {detailsBookingId && (
+        <BookingDetailsModal
+          bookingId={detailsBookingId}
+          excursionId={excursionId}
+          onClose={() => setDetailsBookingId(null)}
+        />
       )}
 
       {showEditModal && (

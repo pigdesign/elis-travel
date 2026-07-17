@@ -1,11 +1,46 @@
 import type Stripe from "stripe";
 import { db } from "@workspace/db";
 import {
+  excursionsTable,
   excursionBookingsTable,
   paymentRequestsTable,
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Applica il nuovo stato alla prenotazione e allinea i contatori della gita
+// (depositsCount/balancesCount contano le PERSONE, come nel flusso legacy).
+async function setBookingStatusWithCounters(
+  tx: Tx,
+  booking: typeof excursionBookingsTable.$inferSelect,
+  newStatus: string,
+): Promise<void> {
+  const seats = booking.seats;
+  let depositsDelta = 0;
+  let balancesDelta = 0;
+  if (booking.paymentStatus === "deposit") depositsDelta -= seats;
+  if (booking.paymentStatus === "paid") balancesDelta -= seats;
+  if (newStatus === "deposit") depositsDelta += seats;
+  if (newStatus === "paid") balancesDelta += seats;
+
+  await tx
+    .update(excursionBookingsTable)
+    .set({ paymentStatus: newStatus, updatedAt: new Date() })
+    .where(eq(excursionBookingsTable.id, booking.id));
+
+  if (depositsDelta !== 0 || balancesDelta !== 0) {
+    await tx
+      .update(excursionsTable)
+      .set({
+        depositsCount: sql`GREATEST(0, ${excursionsTable.depositsCount} + ${depositsDelta})`,
+        balancesCount: sql`GREATEST(0, ${excursionsTable.balancesCount} + ${balancesDelta})`,
+        updatedAt: new Date(),
+      })
+      .where(eq(excursionsTable.id, booking.excursionId));
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Applicazione pagamenti Gite v2 — logica idempotente condivisa tra webhook
@@ -84,27 +119,24 @@ export async function applySuccessfulCardPayment(
       return { bookingId: request.bookingId, requestType: request.type, alreadyApplied: true };
     }
 
-    const [booking] = await tx
-      .update(excursionBookingsTable)
-      .set({
-        amountPaidCents: sql`${excursionBookingsTable.amountPaidCents} + ${paidAmount}`,
-        updatedAt: new Date(),
-      })
+    const [before] = await tx
+      .select()
+      .from(excursionBookingsTable)
       .where(eq(excursionBookingsTable.id, request.bookingId))
-      .returning();
+      .for("update")
+      .limit(1);
 
-    if (booking) {
+    if (before) {
+      const newPaid = before.amountPaidCents + paidAmount;
       await tx
         .update(excursionBookingsTable)
-        .set({
-          paymentStatus: paymentStatusAfterPayment(
-            request.type,
-            booking.amountPaidCents,
-            booking.totalAmountCents,
-          ),
-          updatedAt: new Date(),
-        })
-        .where(eq(excursionBookingsTable.id, booking.id));
+        .set({ amountPaidCents: newPaid, updatedAt: new Date() })
+        .where(eq(excursionBookingsTable.id, before.id));
+      await setBookingStatusWithCounters(
+        tx,
+        before,
+        paymentStatusAfterPayment(request.type, newPaid, before.totalAmountCents),
+      );
     }
 
     return { bookingId: request.bookingId, requestType: request.type, alreadyApplied: false };
@@ -146,27 +178,24 @@ export async function applyManualPayment(opts: {
       return { bookingId: request.bookingId, requestType: request.type, alreadyApplied: true };
     }
 
-    const [booking] = await tx
-      .update(excursionBookingsTable)
-      .set({
-        amountPaidCents: sql`${excursionBookingsTable.amountPaidCents} + ${request.amountCents}`,
-        updatedAt: new Date(),
-      })
+    const [before] = await tx
+      .select()
+      .from(excursionBookingsTable)
       .where(eq(excursionBookingsTable.id, request.bookingId))
-      .returning();
+      .for("update")
+      .limit(1);
 
-    if (booking) {
+    if (before) {
+      const newPaid = before.amountPaidCents + request.amountCents;
       await tx
         .update(excursionBookingsTable)
-        .set({
-          paymentStatus: paymentStatusAfterPayment(
-            request.type,
-            booking.amountPaidCents,
-            booking.totalAmountCents,
-          ),
-          updatedAt: new Date(),
-        })
-        .where(eq(excursionBookingsTable.id, booking.id));
+        .set({ amountPaidCents: newPaid, updatedAt: new Date() })
+        .where(eq(excursionBookingsTable.id, before.id));
+      await setBookingStatusWithCounters(
+        tx,
+        before,
+        paymentStatusAfterPayment(request.type, newPaid, before.totalAmountCents),
+      );
     }
 
     return { bookingId: request.bookingId, requestType: request.type, alreadyApplied: false };
