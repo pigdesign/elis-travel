@@ -595,6 +595,18 @@ export interface SettingsResponse {
   payment_notes?: string | null;
   deposit_percentage?: string | null;
   excursion_card_payments_enabled?: string | null;
+  payment_deadline_bank_hours?: string | null;
+  payment_deadline_office_hours?: string | null;
+  payment_deadline_balance_hours?: string | null;
+  payment_deadline_near_departure_hours?: string | null;
+  full_payment_only_days_before?: string | null;
+  auto_release_seats_on_expiry?: string | null;
+  office_address?: string | null;
+  office_opening_hours?: string | null;
+  terms_policy_version?: string | null;
+  privacy_policy_version?: string | null;
+  media_policy_version?: string | null;
+  adult_min_age?: string | null;
 }
 
 export interface SettingsInput {
@@ -604,6 +616,35 @@ export interface SettingsInput {
   payment_notes?: string;
   deposit_percentage?: string;
   excursion_card_payments_enabled?: string;
+  payment_deadline_bank_hours?: string;
+  payment_deadline_office_hours?: string;
+  payment_deadline_balance_hours?: string;
+  payment_deadline_near_departure_hours?: string;
+  full_payment_only_days_before?: string;
+  auto_release_seats_on_expiry?: string;
+  office_address?: string;
+  office_opening_hours?: string;
+  terms_policy_version?: string;
+  privacy_policy_version?: string;
+  media_policy_version?: string;
+  adult_min_age?: string;
+}
+
+export interface AgeRange {
+  id: string;
+  label: string;
+  minAge: number;
+  maxAge: number;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface AgeRangeInput {
+  label?: string;
+  minAge?: number;
+  maxAge?: number;
+  active?: boolean;
+  sortOrder?: number;
 }
 
 export interface PickupLocation {
@@ -613,6 +654,9 @@ export interface PickupLocation {
   address?: string | null;
   province?: string | null;
   sortOrder: number;
+  active: boolean;
+  mapsUrl?: string | null;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -623,6 +667,9 @@ export interface PickupLocationInput {
   address?: string | null;
   province?: string | null;
   sortOrder?: number;
+  active?: boolean;
+  mapsUrl?: string | null;
+  notes?: string | null;
 }
 
 export interface ExcursionPickupPointLocation {
@@ -684,4 +731,8 @@ export type ConvertLeadToCustomerBody = {
   email: string;
   phone?: string | null;
   mobile?: string | null;
+};
+
+export type DeleteAgeRange200 = {
+  ok?: boolean;
 };

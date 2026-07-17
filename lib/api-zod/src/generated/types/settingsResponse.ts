@@ -13,4 +13,16 @@ export interface SettingsResponse {
   payment_notes?: string | null;
   deposit_percentage?: string | null;
   excursion_card_payments_enabled?: string | null;
+  payment_deadline_bank_hours?: string | null;
+  payment_deadline_office_hours?: string | null;
+  payment_deadline_balance_hours?: string | null;
+  payment_deadline_near_departure_hours?: string | null;
+  full_payment_only_days_before?: string | null;
+  auto_release_seats_on_expiry?: string | null;
+  office_address?: string | null;
+  office_opening_hours?: string | null;
+  terms_policy_version?: string | null;
+  privacy_policy_version?: string | null;
+  media_policy_version?: string | null;
+  adult_min_age?: string | null;
 }

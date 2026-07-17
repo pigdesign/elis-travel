@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Save, Loader2, MapPin, Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Settings, Save, Loader2, MapPin, Plus, Pencil, Trash2, Check, X, Users, Clock, Building2, FileText } from "lucide-react";
 import {
   useGetAdminSettings,
   useUpdateAdminSettings,
@@ -9,8 +9,13 @@ import {
   useUpdatePickupLocation,
   useDeletePickupLocation,
   getListPickupLocationsQueryKey,
+  useListAgeRanges,
+  useCreateAgeRange,
+  useUpdateAgeRange,
+  useDeleteAgeRange,
+  getListAgeRangesQueryKey,
 } from "@workspace/api-client-react";
-import type { PickupLocation } from "@workspace/api-client-react";
+import type { PickupLocation, AgeRange } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PROVINCES, provinceName } from "@/data/provinces";
 
@@ -52,6 +57,8 @@ function PickupRow({
   const [city, setCity] = useState(loc.city);
   const [address, setAddress] = useState(loc.address ?? "");
   const [province, setProvince] = useState(loc.province ?? "");
+  const [mapsUrl, setMapsUrl] = useState(loc.mapsUrl ?? "");
+  const [locNotes, setLocNotes] = useState(loc.notes ?? "");
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { mutate: update, isPending: isUpdating } = useUpdatePickupLocation({
@@ -95,6 +102,20 @@ function PickupRow({
           />
           <ProvinceSelect value={province} onChange={setProvince} />
         </div>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <input
+            value={mapsUrl}
+            onChange={(e) => setMapsUrl(e.target.value)}
+            placeholder="Link Google Maps (opzionale)"
+            className={inputCls}
+          />
+          <input
+            value={locNotes}
+            onChange={(e) => setLocNotes(e.target.value)}
+            placeholder="Note interne (opzionale)"
+            className={inputCls}
+          />
+        </div>
         <div className="flex gap-2 justify-end">
           <button
             type="button"
@@ -114,6 +135,8 @@ function PickupRow({
                   city: city.trim(),
                   address: address.trim() || null,
                   province: province || null,
+                  mapsUrl: mapsUrl.trim() || null,
+                  notes: locNotes.trim() || null,
                 },
               })
             }
@@ -131,7 +154,7 @@ function PickupRow({
     <li className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:bg-muted/30 transition-colors">
       <MapPin className="w-4 h-4 text-accent shrink-0" />
       <div className="flex-1 min-w-0">
-        <span className="font-medium text-sm text-foreground">{loc.name}</span>
+        <span className={`font-medium text-sm ${loc.active ? "text-foreground" : "text-muted-foreground line-through"}`}>{loc.name}</span>
         <span className="text-xs text-muted-foreground ml-2">{loc.city}</span>
         {loc.province ? (
           <span className="text-xs text-muted-foreground ml-1">({provinceName(loc.province)})</span>
@@ -139,10 +162,20 @@ function PickupRow({
           <span className="text-xs text-amber-600 font-medium ml-1">· Provincia mancante</span>
         )}
         {loc.address && <span className="text-xs text-muted-foreground ml-1">· {loc.address}</span>}
+        {!loc.active && <span className="text-xs text-amber-600 font-medium ml-1">· Disattivato</span>}
       </div>
       {deleteError && (
         <span className="text-xs text-red-600 max-w-[200px] truncate">{deleteError}</span>
       )}
+      <button
+        type="button"
+        disabled={isUpdating}
+        onClick={() => update({ id: loc.id, data: { name: loc.name, city: loc.city, active: !loc.active } })}
+        className={`px-2 py-1 rounded-lg text-xs font-medium ${loc.active ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100" : "text-muted-foreground bg-muted hover:bg-muted/70"}`}
+        title={loc.active ? "Disattiva (non selezionabile nelle nuove gite)" : "Riattiva"}
+      >
+        {loc.active ? "Attivo" : "Spento"}
+      </button>
       <button
         type="button"
         onClick={() => setEditing(true)}
@@ -256,12 +289,240 @@ function NewPickupForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// ---- Age range row (view + inline edit) ----
+
+function AgeRangeRow({
+  range,
+  onSaved,
+  onDeleted,
+}: {
+  range: AgeRange;
+  onSaved: () => void;
+  onDeleted: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [label, setLabel] = useState(range.label);
+  const [minAge, setMinAge] = useState(String(range.minAge));
+  const [maxAge, setMaxAge] = useState(String(range.maxAge));
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const { mutate: update, isPending: isUpdating } = useUpdateAgeRange({
+    mutation: { onSuccess: () => { setEditing(false); onSaved(); } },
+  });
+  const { mutate: remove, isPending: isDeleting } = useDeleteAgeRange({
+    mutation: {
+      onSuccess: onDeleted,
+      onError: (err: unknown) => {
+        const msg =
+          (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+          "Impossibile eliminare la fascia età.";
+        setDeleteError(msg);
+      },
+    },
+  });
+
+  if (editing) {
+    return (
+      <li className="flex flex-col gap-2 p-3 border border-primary/30 rounded-xl bg-primary/5">
+        <div className="grid sm:grid-cols-3 gap-2">
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Etichetta * (es. 4-11 anni)"
+            className={inputCls}
+          />
+          <input
+            type="number"
+            min={0}
+            value={minAge}
+            onChange={(e) => setMinAge(e.target.value)}
+            placeholder="Età min *"
+            className={inputCls}
+          />
+          <input
+            type="number"
+            min={0}
+            value={maxAge}
+            onChange={(e) => setMaxAge(e.target.value)}
+            placeholder="Età max *"
+            className={inputCls}
+          />
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            disabled={isUpdating || !label.trim() || minAge === "" || maxAge === "" || Number(minAge) > Number(maxAge)}
+            onClick={() =>
+              update({
+                id: range.id,
+                data: {
+                  label: label.trim(),
+                  minAge: Number(minAge),
+                  maxAge: Number(maxAge),
+                },
+              })
+            }
+            className="px-3 py-1.5 text-xs rounded-lg bg-primary text-white flex items-center gap-1 disabled:opacity-50"
+          >
+            {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            Salva
+          </button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:bg-muted/30 transition-colors">
+      <Users className="w-4 h-4 text-accent shrink-0" />
+      <div className="flex-1 min-w-0">
+        <span className={`font-medium text-sm ${range.active ? "text-foreground" : "text-muted-foreground line-through"}`}>
+          {range.label}
+        </span>
+        <span className="text-xs text-muted-foreground ml-2">
+          {range.minAge}–{range.maxAge} anni
+        </span>
+        {!range.active && (
+          <span className="text-xs text-amber-600 font-medium ml-2">· Disattivata</span>
+        )}
+      </div>
+      {deleteError && (
+        <span className="text-xs text-red-600 max-w-[220px] truncate" title={deleteError}>{deleteError}</span>
+      )}
+      <button
+        type="button"
+        disabled={isUpdating}
+        onClick={() => update({ id: range.id, data: { active: !range.active } })}
+        className={`px-2 py-1 rounded-lg text-xs font-medium ${range.active ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100" : "text-muted-foreground bg-muted hover:bg-muted/70"}`}
+        title={range.active ? "Disattiva (non comparirà più nei form)" : "Riattiva"}
+      >
+        {range.active ? "Attiva" : "Spenta"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
+        title="Modifica"
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        disabled={isDeleting}
+        onClick={() => { setDeleteError(null); remove({ id: range.id }); }}
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50"
+        title="Elimina (solo se non usata)"
+      >
+        {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+      </button>
+    </li>
+  );
+}
+
+// ---- New age range inline form ----
+
+function NewAgeRangeForm({ onCreated, nextSortOrder }: { onCreated: () => void; nextSortOrder: number }) {
+  const [label, setLabel] = useState("");
+  const [minAge, setMinAge] = useState("");
+  const [maxAge, setMaxAge] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const { mutate: create, isPending } = useCreateAgeRange({
+    mutation: {
+      onSuccess: () => {
+        setLabel(""); setMinAge(""); setMaxAge("");
+        setOpen(false);
+        onCreated();
+      },
+    },
+  });
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+        Aggiungi fascia età
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 p-3 border border-primary/30 rounded-xl bg-primary/5">
+      <div className="grid sm:grid-cols-3 gap-2">
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Etichetta * (es. 4-11 anni)"
+          className={inputCls}
+          autoFocus
+        />
+        <input
+          type="number"
+          min={0}
+          value={minAge}
+          onChange={(e) => setMinAge(e.target.value)}
+          placeholder="Età min *"
+          className={inputCls}
+        />
+        <input
+          type="number"
+          min={0}
+          value={maxAge}
+          onChange={(e) => setMaxAge(e.target.value)}
+          placeholder="Età max *"
+          className={inputCls}
+        />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted"
+        >
+          Annulla
+        </button>
+        <button
+          type="button"
+          disabled={isPending || !label.trim() || minAge === "" || maxAge === "" || Number(minAge) > Number(maxAge)}
+          onClick={() =>
+            create({
+              data: {
+                label: label.trim(),
+                minAge: Number(minAge),
+                maxAge: Number(maxAge),
+                active: true,
+                sortOrder: nextSortOrder,
+              },
+            })
+          }
+          className="px-3 py-1.5 text-xs rounded-lg bg-primary text-white flex items-center gap-1 disabled:opacity-50"
+        >
+          {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          Aggiungi
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ---- Main SettingsPage ----
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: settings, isLoading: isLoadingSettings } = useGetAdminSettings();
   const { data: pickupLocations = [], isLoading: isLoadingPickup } = useListPickupLocations();
+  const { data: ageRanges = [], isLoading: isLoadingAgeRanges } = useListAgeRanges();
 
   const { mutateAsync, isPending } = useUpdateAdminSettings({
     mutation: {
@@ -279,6 +540,21 @@ export function SettingsPage() {
   const [notes, setNotes] = useState("");
   const [depositPercentage, setDepositPercentage] = useState("");
   const [cardPaymentsEnabled, setCardPaymentsEnabled] = useState(true);
+  // Gite v2 — scadenze pagamento (ore) e regole
+  const [bankHours, setBankHours] = useState("");
+  const [officeHours, setOfficeHours] = useState("");
+  const [balanceHours, setBalanceHours] = useState("");
+  const [nearDepartureHours, setNearDepartureHours] = useState("");
+  const [fullOnlyDaysBefore, setFullOnlyDaysBefore] = useState("");
+  const [autoReleaseSeats, setAutoReleaseSeats] = useState(false);
+  // Gite v2 — pagamento in ufficio
+  const [officeAddress, setOfficeAddress] = useState("");
+  const [officeOpeningHours, setOfficeOpeningHours] = useState("");
+  // Gite v2 — versioni policy consensi + età adulto
+  const [termsVersion, setTermsVersion] = useState("");
+  const [privacyVersion, setPrivacyVersion] = useState("");
+  const [mediaVersion, setMediaVersion] = useState("");
+  const [adultMinAge, setAdultMinAge] = useState("");
   const [saved, setSaved] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -290,6 +566,18 @@ export function SettingsPage() {
       setNotes(settings.payment_notes ?? "");
       setDepositPercentage(settings.deposit_percentage ?? "");
       setCardPaymentsEnabled(settings.excursion_card_payments_enabled !== "false");
+      setBankHours(settings.payment_deadline_bank_hours ?? "48");
+      setOfficeHours(settings.payment_deadline_office_hours ?? "48");
+      setBalanceHours(settings.payment_deadline_balance_hours ?? "48");
+      setNearDepartureHours(settings.payment_deadline_near_departure_hours ?? "48");
+      setFullOnlyDaysBefore(settings.full_payment_only_days_before ?? "5");
+      setAutoReleaseSeats(settings.auto_release_seats_on_expiry === "true");
+      setOfficeAddress(settings.office_address ?? "");
+      setOfficeOpeningHours(settings.office_opening_hours ?? "");
+      setTermsVersion(settings.terms_policy_version ?? "1.0");
+      setPrivacyVersion(settings.privacy_policy_version ?? "1.0");
+      setMediaVersion(settings.media_policy_version ?? "1.0");
+      setAdultMinAge(settings.adult_min_age ?? "18");
     }
   }, [settings]);
 
@@ -302,6 +590,29 @@ export function SettingsPage() {
         setErrorMsg("La percentuale acconto deve essere un numero tra 0 e 100.");
         return;
       }
+      const hourFields: [string, string][] = [
+        ["scadenza bonifico", bankHours],
+        ["scadenza ufficio", officeHours],
+        ["scadenza saldo", balanceHours],
+        ["scadenza sotto partenza", nearDepartureHours],
+      ];
+      for (const [name, v] of hourFields) {
+        const t = v.trim();
+        if (t !== "" && (!Number.isInteger(Number(t)) || Number(t) < 1 || Number(t) > 720)) {
+          setErrorMsg(`Le ore per "${name}" devono essere un intero tra 1 e 720.`);
+          return;
+        }
+      }
+      const days = fullOnlyDaysBefore.trim();
+      if (days !== "" && (!Number.isInteger(Number(days)) || Number(days) < 0 || Number(days) > 90)) {
+        setErrorMsg("I giorni per il solo pagamento completo devono essere tra 0 e 90.");
+        return;
+      }
+      const adult = adultMinAge.trim();
+      if (adult !== "" && (!Number.isInteger(Number(adult)) || Number(adult) < 1 || Number(adult) > 99)) {
+        setErrorMsg("L'età minima adulto deve essere un intero tra 1 e 99.");
+        return;
+      }
       await mutateAsync({
         data: {
           payment_iban: iban.trim(),
@@ -310,6 +621,18 @@ export function SettingsPage() {
           payment_notes: notes.trim(),
           deposit_percentage: pct,
           excursion_card_payments_enabled: cardPaymentsEnabled ? "true" : "false",
+          payment_deadline_bank_hours: bankHours.trim(),
+          payment_deadline_office_hours: officeHours.trim(),
+          payment_deadline_balance_hours: balanceHours.trim(),
+          payment_deadline_near_departure_hours: nearDepartureHours.trim(),
+          full_payment_only_days_before: days,
+          auto_release_seats_on_expiry: autoReleaseSeats ? "true" : "false",
+          office_address: officeAddress.trim(),
+          office_opening_hours: officeOpeningHours.trim(),
+          terms_policy_version: termsVersion.trim(),
+          privacy_policy_version: privacyVersion.trim(),
+          media_policy_version: mediaVersion.trim(),
+          adult_min_age: adult,
         },
       });
     } catch {
@@ -319,6 +642,8 @@ export function SettingsPage() {
 
   const refreshPickup = () =>
     void queryClient.invalidateQueries({ queryKey: getListPickupLocationsQueryKey() });
+  const refreshAgeRanges = () =>
+    void queryClient.invalidateQueries({ queryKey: getListAgeRangesQueryKey() });
 
   if (isLoadingSettings) {
     return (
@@ -437,6 +762,137 @@ export function SettingsPage() {
             </p>
           </div>
 
+          {/* --- Scadenze pagamento --- */}
+          <div className="pt-4 border-t border-border">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-1">
+              <Clock className="w-4 h-4 text-primary" />
+              Scadenze pagamento
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Ore a disposizione del cliente per completare il pagamento. Ogni gita può sovrascrivere questi valori.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Bonifico (ore)</label>
+                <input type="number" min={1} max={720} value={bankHours}
+                  onChange={(e) => setBankHours(e.target.value)} placeholder="48" className={inputCls}
+                  data-testid="input-settings-deadline-bank" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">In ufficio (ore)</label>
+                <input type="number" min={1} max={720} value={officeHours}
+                  onChange={(e) => setOfficeHours(e.target.value)} placeholder="48" className={inputCls}
+                  data-testid="input-settings-deadline-office" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Saldo dopo conferma (ore)</label>
+                <input type="number" min={1} max={720} value={balanceHours}
+                  onChange={(e) => setBalanceHours(e.target.value)} placeholder="48" className={inputCls}
+                  data-testid="input-settings-deadline-balance" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Sotto partenza (ore)</label>
+                <input type="number" min={1} max={720} value={nearDepartureHours}
+                  onChange={(e) => setNearDepartureHours(e.target.value)} placeholder="48" className={inputCls}
+                  data-testid="input-settings-deadline-near-departure" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-foreground mb-1">
+                Solo pagamento completo da (giorni prima della partenza)
+              </label>
+              <input type="number" min={0} max={90} value={fullOnlyDaysBefore}
+                onChange={(e) => setFullOnlyDaysBefore(e.target.value)} placeholder="5" className={inputCls}
+                data-testid="input-settings-full-only-days" />
+              <p className="text-xs text-muted-foreground mt-1">
+                Sotto questa soglia l'acconto non è più proposto e viene richiesto il pagamento completo.
+              </p>
+            </div>
+            <div className="mt-3">
+              <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+                <input type="checkbox" checked={autoReleaseSeats}
+                  onChange={(e) => setAutoReleaseSeats(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                  data-testid="checkbox-settings-auto-release" />
+                <span>
+                  <span className="block text-sm font-medium text-foreground">
+                    Libera automaticamente i posti alla scadenza
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Se attivo, le prenotazioni scadute liberano i posti da sole. Se disattivo (consigliato), restano "scadute" finché non decidi tu.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* --- Pagamento in ufficio --- */}
+          <div className="pt-4 border-t border-border">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-1">
+              <Building2 className="w-4 h-4 text-primary" />
+              Pagamento in ufficio
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Mostrati al cliente che sceglie di pagare in sede.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Indirizzo ufficio</label>
+                <input type="text" value={officeAddress}
+                  onChange={(e) => setOfficeAddress(e.target.value)}
+                  placeholder="Es. Via Roma 1, 18100 Imperia (IM)" className={inputCls}
+                  data-testid="input-settings-office-address" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Orari di apertura</label>
+                <input type="text" value={officeOpeningHours}
+                  onChange={(e) => setOfficeOpeningHours(e.target.value)}
+                  placeholder="Es. Lun-Ven 9:00-12:30 / 15:00-18:00" className={inputCls}
+                  data-testid="input-settings-office-hours" />
+              </div>
+            </div>
+          </div>
+
+          {/* --- Consensi e testi --- */}
+          <div className="pt-4 border-t border-border">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-1">
+              <FileText className="w-4 h-4 text-primary" />
+              Consensi e testi
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Le versioni vengono salvate su ogni consenso raccolto: aggiornale quando cambi i testi pubblicati.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Versione Termini</label>
+                <input type="text" value={termsVersion}
+                  onChange={(e) => setTermsVersion(e.target.value)} placeholder="1.0" className={inputCls}
+                  data-testid="input-settings-terms-version" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Versione Privacy</label>
+                <input type="text" value={privacyVersion}
+                  onChange={(e) => setPrivacyVersion(e.target.value)} placeholder="1.0" className={inputCls}
+                  data-testid="input-settings-privacy-version" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Versione Foto/Video</label>
+                <input type="text" value={mediaVersion}
+                  onChange={(e) => setMediaVersion(e.target.value)} placeholder="1.0" className={inputCls}
+                  data-testid="input-settings-media-version" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Età minima adulto</label>
+                <input type="number" min={1} max={99} value={adultMinAge}
+                  onChange={(e) => setAdultMinAge(e.target.value)} placeholder="18" className={inputCls}
+                  data-testid="input-settings-adult-min-age" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Usata per l'etichetta pubblica, es. "Adulti (18+ anni)".
+                </p>
+              </div>
+            </div>
+          </div>
+
           {errorMsg && (
             <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
               {errorMsg}
@@ -461,6 +917,44 @@ export function SettingsPage() {
             )}
           </div>
         </form>
+      </div>
+
+      {/* Sezione fasce età */}
+      <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+          Fasce età bambini
+        </h2>
+        <p className="text-xs text-muted-foreground mb-5">
+          Valide per tutte le gite normali. Il prezzo per fascia si imposta su ogni singola gita;
+          chi supera l'età massima dell'ultima fascia è considerato adulto.
+        </p>
+
+        {isLoadingAgeRanges ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <ul className="space-y-2 mb-3">
+            {ageRanges.length === 0 && (
+              <li className="text-sm text-muted-foreground text-center py-4">
+                Nessuna fascia età configurata.
+              </li>
+            )}
+            {ageRanges.map((range) => (
+              <AgeRangeRow
+                key={range.id}
+                range={range}
+                onSaved={refreshAgeRanges}
+                onDeleted={refreshAgeRanges}
+              />
+            ))}
+          </ul>
+        )}
+
+        <NewAgeRangeForm
+          onCreated={refreshAgeRanges}
+          nextSortOrder={ageRanges.length > 0 ? Math.max(...ageRanges.map((r) => r.sortOrder)) + 1 : 1}
+        />
       </div>
 
       {/* Sezione punti di raccolta */}

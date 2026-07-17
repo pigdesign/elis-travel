@@ -27,12 +27,15 @@ router.get("/pickup-locations", async (_req, res) => {
 
 router.post("/pickup-locations", async (req, res) => {
   try {
-    const { name, city, address, province, sortOrder } = req.body as {
+    const { name, city, address, province, sortOrder, active, mapsUrl, notes } = req.body as {
       name?: string;
       city?: string;
       address?: string;
       province?: string | null;
       sortOrder?: number;
+      active?: boolean;
+      mapsUrl?: string | null;
+      notes?: string | null;
     };
     if (!name?.trim()) {
       res.status(400).json({ error: "Il nome è obbligatorio." });
@@ -50,6 +53,9 @@ router.post("/pickup-locations", async (req, res) => {
         address: address?.trim() || null,
         province: normalizeProvince(province),
         sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+        active: active !== false,
+        mapsUrl: mapsUrl?.trim() || null,
+        notes: notes?.trim() || null,
       })
       .returning();
     res.status(201).json(row);
@@ -62,12 +68,15 @@ router.post("/pickup-locations", async (req, res) => {
 router.patch("/pickup-locations/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, city, address, province, sortOrder } = req.body as {
+    const { name, city, address, province, sortOrder, active, mapsUrl, notes } = req.body as {
       name?: string;
       city?: string;
       address?: string | null;
       province?: string | null;
       sortOrder?: number;
+      active?: boolean;
+      mapsUrl?: string | null;
+      notes?: string | null;
     };
     const updates: Partial<typeof pickupLocationsTable.$inferInsert> = {
       updatedAt: new Date(),
@@ -77,6 +86,9 @@ router.patch("/pickup-locations/:id", async (req, res) => {
     if (address !== undefined) updates.address = address?.trim() || null;
     if (province !== undefined) updates.province = normalizeProvince(province);
     if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+    if (active !== undefined) updates.active = active === true;
+    if (mapsUrl !== undefined) updates.mapsUrl = mapsUrl?.trim() || null;
+    if (notes !== undefined) updates.notes = notes?.trim() || null;
 
     const [row] = await db
       .update(pickupLocationsTable)

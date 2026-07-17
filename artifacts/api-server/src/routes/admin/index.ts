@@ -6,6 +6,7 @@ import dashboardRouter from "./dashboard";
 import customersRouter from "./customers";
 import settingsRouter from "./settings";
 import pickupLocationsRouter from "./pickup-locations";
+import ageRangesRouter from "./age-ranges";
 
 const adminRouter = Router();
 
@@ -16,5 +17,6 @@ adminRouter.use(dashboardRouter);
 adminRouter.use(customersRouter);
 adminRouter.use(settingsRouter);
 adminRouter.use(pickupLocationsRouter);
+adminRouter.use(ageRangesRouter);
 
 export default adminRouter;

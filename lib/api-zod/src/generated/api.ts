@@ -822,6 +822,9 @@ export const ListPickupLocationsResponseItem = zod.object({
   address: zod.string().nullish(),
   province: zod.string().nullish(),
   sortOrder: zod.number(),
+  active: zod.boolean(),
+  mapsUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -838,6 +841,9 @@ export const CreatePickupLocationBody = zod.object({
   address: zod.string().nullish(),
   province: zod.string().nullish(),
   sortOrder: zod.number().optional(),
+  active: zod.boolean().optional(),
+  mapsUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
 });
 
 /**
@@ -853,6 +859,9 @@ export const UpdatePickupLocationBody = zod.object({
   address: zod.string().nullish(),
   province: zod.string().nullish(),
   sortOrder: zod.number().optional(),
+  active: zod.boolean().optional(),
+  mapsUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
 });
 
 export const UpdatePickupLocationResponse = zod.object({
@@ -862,6 +871,9 @@ export const UpdatePickupLocationResponse = zod.object({
   address: zod.string().nullish(),
   province: zod.string().nullish(),
   sortOrder: zod.number(),
+  active: zod.boolean(),
+  mapsUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1574,6 +1586,18 @@ export const GetAdminSettingsResponse = zod.object({
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
+  payment_deadline_bank_hours: zod.string().nullish(),
+  payment_deadline_office_hours: zod.string().nullish(),
+  payment_deadline_balance_hours: zod.string().nullish(),
+  payment_deadline_near_departure_hours: zod.string().nullish(),
+  full_payment_only_days_before: zod.string().nullish(),
+  auto_release_seats_on_expiry: zod.string().nullish(),
+  office_address: zod.string().nullish(),
+  office_opening_hours: zod.string().nullish(),
+  terms_policy_version: zod.string().nullish(),
+  privacy_policy_version: zod.string().nullish(),
+  media_policy_version: zod.string().nullish(),
+  adult_min_age: zod.string().nullish(),
 });
 
 /**
@@ -1586,6 +1610,18 @@ export const UpdateAdminSettingsBody = zod.object({
   payment_notes: zod.string().optional(),
   deposit_percentage: zod.string().optional(),
   excursion_card_payments_enabled: zod.string().optional(),
+  payment_deadline_bank_hours: zod.string().optional(),
+  payment_deadline_office_hours: zod.string().optional(),
+  payment_deadline_balance_hours: zod.string().optional(),
+  payment_deadline_near_departure_hours: zod.string().optional(),
+  full_payment_only_days_before: zod.string().optional(),
+  auto_release_seats_on_expiry: zod.string().optional(),
+  office_address: zod.string().optional(),
+  office_opening_hours: zod.string().optional(),
+  terms_policy_version: zod.string().optional(),
+  privacy_policy_version: zod.string().optional(),
+  media_policy_version: zod.string().optional(),
+  adult_min_age: zod.string().optional(),
 });
 
 export const UpdateAdminSettingsResponse = zod.object({
@@ -1595,4 +1631,75 @@ export const UpdateAdminSettingsResponse = zod.object({
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
+  payment_deadline_bank_hours: zod.string().nullish(),
+  payment_deadline_office_hours: zod.string().nullish(),
+  payment_deadline_balance_hours: zod.string().nullish(),
+  payment_deadline_near_departure_hours: zod.string().nullish(),
+  full_payment_only_days_before: zod.string().nullish(),
+  auto_release_seats_on_expiry: zod.string().nullish(),
+  office_address: zod.string().nullish(),
+  office_opening_hours: zod.string().nullish(),
+  terms_policy_version: zod.string().nullish(),
+  privacy_policy_version: zod.string().nullish(),
+  media_policy_version: zod.string().nullish(),
+  adult_min_age: zod.string().nullish(),
+});
+
+/**
+ * @summary Elenco fasce età globali per i bambini
+ */
+export const ListAgeRangesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  label: zod.string(),
+  minAge: zod.number(),
+  maxAge: zod.number(),
+  active: zod.boolean(),
+  sortOrder: zod.number(),
+});
+export const ListAgeRangesResponse = zod.array(ListAgeRangesResponseItem);
+
+/**
+ * @summary Crea una fascia età
+ */
+export const CreateAgeRangeBody = zod.object({
+  label: zod.string().optional(),
+  minAge: zod.number().optional(),
+  maxAge: zod.number().optional(),
+  active: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Aggiorna una fascia età
+ */
+export const UpdateAgeRangeParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateAgeRangeBody = zod.object({
+  label: zod.string().optional(),
+  minAge: zod.number().optional(),
+  maxAge: zod.number().optional(),
+  active: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateAgeRangeResponse = zod.object({
+  id: zod.string().uuid(),
+  label: zod.string(),
+  minAge: zod.number(),
+  maxAge: zod.number(),
+  active: zod.boolean(),
+  sortOrder: zod.number(),
+});
+
+/**
+ * @summary Elimina una fascia età
+ */
+export const DeleteAgeRangeParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DeleteAgeRangeResponse = zod.object({
+  ok: zod.boolean().optional(),
 });

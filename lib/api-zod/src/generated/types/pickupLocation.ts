@@ -13,6 +13,9 @@ export interface PickupLocation {
   address?: string | null;
   province?: string | null;
   sortOrder: number;
+  active: boolean;
+  mapsUrl?: string | null;
+  notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -18,6 +18,8 @@ import type {
 
 import type {
   AdminUser,
+  AgeRange,
+  AgeRangeInput,
   Booking,
   BookingInput,
   BookingPaymentStatusUpdate,
@@ -32,6 +34,7 @@ import type {
   CustomerSummary,
   CustomerUpdate,
   DashboardStats,
+  DeleteAgeRange200,
   DeleteVehicle200,
   ErrorResponse,
   ExcursionDetail,
@@ -5145,4 +5148,336 @@ export const useUpdateAdminSettings = <
   TContext
 > => {
   return useMutation(getUpdateAdminSettingsMutationOptions(options));
+};
+
+/**
+ * @summary Elenco fasce età globali per i bambini
+ */
+export const getListAgeRangesUrl = () => {
+  return `/api/admin/age-ranges`;
+};
+
+export const listAgeRanges = async (
+  options?: RequestInit,
+): Promise<AgeRange[]> => {
+  return customFetch<AgeRange[]>(getListAgeRangesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAgeRangesQueryKey = () => {
+  return [`/api/admin/age-ranges`] as const;
+};
+
+export const getListAgeRangesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAgeRanges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAgeRanges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAgeRangesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAgeRanges>>> = ({
+    signal,
+  }) => listAgeRanges({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAgeRanges>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAgeRangesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAgeRanges>>
+>;
+export type ListAgeRangesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Elenco fasce età globali per i bambini
+ */
+
+export function useListAgeRanges<
+  TData = Awaited<ReturnType<typeof listAgeRanges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAgeRanges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAgeRangesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Crea una fascia età
+ */
+export const getCreateAgeRangeUrl = () => {
+  return `/api/admin/age-ranges`;
+};
+
+export const createAgeRange = async (
+  ageRangeInput: AgeRangeInput,
+  options?: RequestInit,
+): Promise<AgeRange> => {
+  return customFetch<AgeRange>(getCreateAgeRangeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(ageRangeInput),
+  });
+};
+
+export const getCreateAgeRangeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAgeRange>>,
+    TError,
+    { data: BodyType<AgeRangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAgeRange>>,
+  TError,
+  { data: BodyType<AgeRangeInput> },
+  TContext
+> => {
+  const mutationKey = ["createAgeRange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAgeRange>>,
+    { data: BodyType<AgeRangeInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAgeRange(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAgeRangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAgeRange>>
+>;
+export type CreateAgeRangeMutationBody = BodyType<AgeRangeInput>;
+export type CreateAgeRangeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Crea una fascia età
+ */
+export const useCreateAgeRange = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAgeRange>>,
+    TError,
+    { data: BodyType<AgeRangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAgeRange>>,
+  TError,
+  { data: BodyType<AgeRangeInput> },
+  TContext
+> => {
+  return useMutation(getCreateAgeRangeMutationOptions(options));
+};
+
+/**
+ * @summary Aggiorna una fascia età
+ */
+export const getUpdateAgeRangeUrl = (id: string) => {
+  return `/api/admin/age-ranges/${id}`;
+};
+
+export const updateAgeRange = async (
+  id: string,
+  ageRangeInput: AgeRangeInput,
+  options?: RequestInit,
+): Promise<AgeRange> => {
+  return customFetch<AgeRange>(getUpdateAgeRangeUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(ageRangeInput),
+  });
+};
+
+export const getUpdateAgeRangeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAgeRange>>,
+    TError,
+    { id: string; data: BodyType<AgeRangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAgeRange>>,
+  TError,
+  { id: string; data: BodyType<AgeRangeInput> },
+  TContext
+> => {
+  const mutationKey = ["updateAgeRange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAgeRange>>,
+    { id: string; data: BodyType<AgeRangeInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAgeRange(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAgeRangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAgeRange>>
+>;
+export type UpdateAgeRangeMutationBody = BodyType<AgeRangeInput>;
+export type UpdateAgeRangeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Aggiorna una fascia età
+ */
+export const useUpdateAgeRange = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAgeRange>>,
+    TError,
+    { id: string; data: BodyType<AgeRangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAgeRange>>,
+  TError,
+  { id: string; data: BodyType<AgeRangeInput> },
+  TContext
+> => {
+  return useMutation(getUpdateAgeRangeMutationOptions(options));
+};
+
+/**
+ * @summary Elimina una fascia età
+ */
+export const getDeleteAgeRangeUrl = (id: string) => {
+  return `/api/admin/age-ranges/${id}`;
+};
+
+export const deleteAgeRange = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeleteAgeRange200> => {
+  return customFetch<DeleteAgeRange200>(getDeleteAgeRangeUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAgeRangeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAgeRange>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAgeRange>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteAgeRange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAgeRange>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAgeRange(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAgeRangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAgeRange>>
+>;
+
+export type DeleteAgeRangeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Elimina una fascia età
+ */
+export const useDeleteAgeRange = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAgeRange>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAgeRange>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteAgeRangeMutationOptions(options));
 };

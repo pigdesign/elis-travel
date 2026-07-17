@@ -7,6 +7,8 @@
  */
 
 export * from "./adminUser";
+export * from "./ageRange";
+export * from "./ageRangeInput";
 export * from "./booking";
 export * from "./bookingInput";
 export * from "./bookingPaymentStatusUpdate";
@@ -26,6 +28,7 @@ export * from "./dashboardLeadsByStatus";
 export * from "./dashboardRecentLead";
 export * from "./dashboardStats";
 export * from "./dashboardUpcomingExcursion";
+export * from "./deleteAgeRange200";
 export * from "./deleteVehicle200";
 export * from "./errorResponse";
 export * from "./excursionDetail";

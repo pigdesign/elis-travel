@@ -13,4 +13,16 @@ export interface SettingsInput {
   payment_notes?: string;
   deposit_percentage?: string;
   excursion_card_payments_enabled?: string;
+  payment_deadline_bank_hours?: string;
+  payment_deadline_office_hours?: string;
+  payment_deadline_balance_hours?: string;
+  payment_deadline_near_departure_hours?: string;
+  full_payment_only_days_before?: string;
+  auto_release_seats_on_expiry?: string;
+  office_address?: string;
+  office_opening_hours?: string;
+  terms_policy_version?: string;
+  privacy_policy_version?: string;
+  media_policy_version?: string;
+  adult_min_age?: string;
 }
