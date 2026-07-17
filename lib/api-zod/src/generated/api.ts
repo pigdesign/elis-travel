@@ -355,6 +355,25 @@ export const ListExcursionsResponseItem = zod.object({
   costiVariabili: zod.number(),
   costiTotali: zod.number(),
   margineNetto: zod.number(),
+  patientPrice: zod.string().nullish(),
+  companionPrice: zod.string().nullish(),
+  returnDate: zod.string().nullish(),
+  bookingCloseDate: zod.string().nullish(),
+  depositEnabled: zod.boolean().optional(),
+  depositType: zod.string().optional(),
+  depositValue: zod.string().nullish(),
+  depositAvailableAfterConfirm: zod.boolean().optional(),
+  depositDeadlineDate: zod.string().nullish(),
+  balanceDeadlineDate: zod.string().nullish(),
+  balanceHoursOverride: zod.number().nullish(),
+  payCardEnabled: zod.boolean().optional(),
+  payBankTransferEnabled: zod.boolean().optional(),
+  payOfficeEnabled: zod.boolean().optional(),
+  bankTransferHoursOverride: zod.number().nullish(),
+  officeHoursOverride: zod.number().nullish(),
+  fullPaymentOnlyDaysBefore: zod.number().nullish(),
+  waitlistEnabled: zod.boolean().optional(),
+  confirmedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -411,6 +430,24 @@ export const CreateExcursionBody = zod.object({
   included: zod.string().nullish(),
   excluded: zod.string().nullish(),
   generalInfo: zod.string().nullish(),
+  patientPrice: zod.string().nullish(),
+  companionPrice: zod.string().nullish(),
+  returnDate: zod.string().nullish(),
+  bookingCloseDate: zod.string().nullish(),
+  depositEnabled: zod.boolean().optional(),
+  depositType: zod.enum(["percent", "fixed"]).optional(),
+  depositValue: zod.string().nullish(),
+  depositAvailableAfterConfirm: zod.boolean().optional(),
+  depositDeadlineDate: zod.string().nullish(),
+  balanceDeadlineDate: zod.string().nullish(),
+  balanceHoursOverride: zod.number().nullish(),
+  payCardEnabled: zod.boolean().optional(),
+  payBankTransferEnabled: zod.boolean().optional(),
+  payOfficeEnabled: zod.boolean().optional(),
+  bankTransferHoursOverride: zod.number().nullish(),
+  officeHoursOverride: zod.number().nullish(),
+  fullPaymentOnlyDaysBefore: zod.number().nullish(),
+  waitlistEnabled: zod.boolean().optional(),
 });
 
 /**
@@ -476,6 +513,25 @@ export const GetExcursionResponse = zod
     costiVariabili: zod.number(),
     costiTotali: zod.number(),
     margineNetto: zod.number(),
+    patientPrice: zod.string().nullish(),
+    companionPrice: zod.string().nullish(),
+    returnDate: zod.string().nullish(),
+    bookingCloseDate: zod.string().nullish(),
+    depositEnabled: zod.boolean().optional(),
+    depositType: zod.string().optional(),
+    depositValue: zod.string().nullish(),
+    depositAvailableAfterConfirm: zod.boolean().optional(),
+    depositDeadlineDate: zod.string().nullish(),
+    balanceDeadlineDate: zod.string().nullish(),
+    balanceHoursOverride: zod.number().nullish(),
+    payCardEnabled: zod.boolean().optional(),
+    payBankTransferEnabled: zod.boolean().optional(),
+    payOfficeEnabled: zod.boolean().optional(),
+    bankTransferHoursOverride: zod.number().nullish(),
+    officeHoursOverride: zod.number().nullish(),
+    fullPaymentOnlyDaysBefore: zod.number().nullish(),
+    waitlistEnabled: zod.boolean().optional(),
+    confirmedAt: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   })
@@ -566,6 +622,24 @@ export const UpdateExcursionBody = zod.object({
   included: zod.string().nullish(),
   excluded: zod.string().nullish(),
   generalInfo: zod.string().nullish(),
+  patientPrice: zod.string().nullish(),
+  companionPrice: zod.string().nullish(),
+  returnDate: zod.string().nullish(),
+  bookingCloseDate: zod.string().nullish(),
+  depositEnabled: zod.boolean().optional(),
+  depositType: zod.enum(["percent", "fixed"]).optional(),
+  depositValue: zod.string().nullish(),
+  depositAvailableAfterConfirm: zod.boolean().optional(),
+  depositDeadlineDate: zod.string().nullish(),
+  balanceDeadlineDate: zod.string().nullish(),
+  balanceHoursOverride: zod.number().nullish(),
+  payCardEnabled: zod.boolean().optional(),
+  payBankTransferEnabled: zod.boolean().optional(),
+  payOfficeEnabled: zod.boolean().optional(),
+  bankTransferHoursOverride: zod.number().nullish(),
+  officeHoursOverride: zod.number().nullish(),
+  fullPaymentOnlyDaysBefore: zod.number().nullish(),
+  waitlistEnabled: zod.boolean().optional(),
 });
 
 export const UpdateExcursionResponse = zod.object({
@@ -623,6 +697,25 @@ export const UpdateExcursionResponse = zod.object({
   costiVariabili: zod.number(),
   costiTotali: zod.number(),
   margineNetto: zod.number(),
+  patientPrice: zod.string().nullish(),
+  companionPrice: zod.string().nullish(),
+  returnDate: zod.string().nullish(),
+  bookingCloseDate: zod.string().nullish(),
+  depositEnabled: zod.boolean().optional(),
+  depositType: zod.string().optional(),
+  depositValue: zod.string().nullish(),
+  depositAvailableAfterConfirm: zod.boolean().optional(),
+  depositDeadlineDate: zod.string().nullish(),
+  balanceDeadlineDate: zod.string().nullish(),
+  balanceHoursOverride: zod.number().nullish(),
+  payCardEnabled: zod.boolean().optional(),
+  payBankTransferEnabled: zod.boolean().optional(),
+  payOfficeEnabled: zod.boolean().optional(),
+  bankTransferHoursOverride: zod.number().nullish(),
+  officeHoursOverride: zod.number().nullish(),
+  fullPaymentOnlyDaysBefore: zod.number().nullish(),
+  waitlistEnabled: zod.boolean().optional(),
+  confirmedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -776,6 +869,44 @@ export const ConfirmPublicExcursionBookingCardBody = zod.object({
 
 export const ConfirmPublicExcursionBookingCardResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * @summary Prezzi per fascia età della gita (fasce attive)
+ */
+export const ListExcursionAgePricesParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListExcursionAgePricesResponseItem = zod.object({
+  ageRangeId: zod.string().uuid(),
+  label: zod.string(),
+  minAge: zod.number(),
+  maxAge: zod.number(),
+  price: zod.string().nullish(),
+});
+export const ListExcursionAgePricesResponse = zod.array(
+  ListExcursionAgePricesResponseItem,
+);
+
+/**
+ * @summary Aggiorna i prezzi per fascia età della gita
+ */
+export const UpdateExcursionAgePricesParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateExcursionAgePricesBody = zod.object({
+  prices: zod.array(
+    zod.object({
+      ageRangeId: zod.string().uuid(),
+      price: zod.string().nullish(),
+    }),
+  ),
+});
+
+export const UpdateExcursionAgePricesResponse = zod.object({
+  ok: zod.boolean().optional(),
 });
 
 /**
@@ -994,6 +1125,25 @@ export const UpdateExcursionVehicleResponse = zod.object({
   costiVariabili: zod.number(),
   costiTotali: zod.number(),
   margineNetto: zod.number(),
+  patientPrice: zod.string().nullish(),
+  companionPrice: zod.string().nullish(),
+  returnDate: zod.string().nullish(),
+  bookingCloseDate: zod.string().nullish(),
+  depositEnabled: zod.boolean().optional(),
+  depositType: zod.string().optional(),
+  depositValue: zod.string().nullish(),
+  depositAvailableAfterConfirm: zod.boolean().optional(),
+  depositDeadlineDate: zod.string().nullish(),
+  balanceDeadlineDate: zod.string().nullish(),
+  balanceHoursOverride: zod.number().nullish(),
+  payCardEnabled: zod.boolean().optional(),
+  payBankTransferEnabled: zod.boolean().optional(),
+  payOfficeEnabled: zod.boolean().optional(),
+  bankTransferHoursOverride: zod.number().nullish(),
+  officeHoursOverride: zod.number().nullish(),
+  fullPaymentOnlyDaysBefore: zod.number().nullish(),
+  waitlistEnabled: zod.boolean().optional(),
+  confirmedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1088,6 +1238,7 @@ export const ListExcursionPickupPointsResponseItem = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number(),
+  surcharge: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   location: zod.object({
     id: zod.string().uuid(),
@@ -1113,6 +1264,7 @@ export const AddExcursionPickupPointBody = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number().optional(),
+  surcharge: zod.string().nullish(),
 });
 
 /**
@@ -1126,6 +1278,7 @@ export const UpdateExcursionPickupPointParams = zod.object({
 export const UpdateExcursionPickupPointBody = zod.object({
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number().optional(),
+  surcharge: zod.string().nullish(),
 });
 
 export const UpdateExcursionPickupPointResponse = zod.object({
@@ -1134,6 +1287,7 @@ export const UpdateExcursionPickupPointResponse = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number(),
+  surcharge: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   location: zod.object({
     id: zod.string().uuid(),

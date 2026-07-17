@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ExcursionExtra } from "./excursionExtra";
+import type { ExcursionInputDepositType } from "./excursionInputDepositType";
 import type { ExcursionInputProvinceSurcharges } from "./excursionInputProvinceSurcharges";
 import type { ScheduleDay } from "./scheduleDay";
 
@@ -35,4 +36,22 @@ export interface ExcursionInput {
   included?: string | null;
   excluded?: string | null;
   generalInfo?: string | null;
+  patientPrice?: string | null;
+  companionPrice?: string | null;
+  returnDate?: string | null;
+  bookingCloseDate?: string | null;
+  depositEnabled?: boolean;
+  depositType?: ExcursionInputDepositType;
+  depositValue?: string | null;
+  depositAvailableAfterConfirm?: boolean;
+  depositDeadlineDate?: string | null;
+  balanceDeadlineDate?: string | null;
+  balanceHoursOverride?: number | null;
+  payCardEnabled?: boolean;
+  payBankTransferEnabled?: boolean;
+  payOfficeEnabled?: boolean;
+  bankTransferHoursOverride?: number | null;
+  officeHoursOverride?: number | null;
+  fullPaymentOnlyDaysBefore?: number | null;
+  waitlistEnabled?: boolean;
 }

@@ -10,9 +10,12 @@ import {
   useAddExcursionPickupPoint,
   useDeleteExcursionPickupPoint,
   useUpdateExcursionPickupPoint,
+  useListExcursionAgePrices,
+  useUpdateExcursionAgePrices,
   getGetExcursionQueryKey,
   getListExcursionsQueryKey,
   getListExcursionPickupPointsQueryKey,
+  getListExcursionAgePricesQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ExcursionDetail,
@@ -72,6 +75,25 @@ type FormState = {
   included: string;
   excluded: string;
   generalInfo: string;
+  // ---- Gite v2 ----
+  patientPrice: string;
+  companionPrice: string;
+  returnDate: string;
+  bookingCloseDate: string;
+  depositEnabled: boolean;
+  depositType: string;
+  depositValue: string;
+  depositAvailableAfterConfirm: boolean;
+  depositDeadlineDate: string;
+  balanceDeadlineDate: string;
+  balanceHoursOverride: string;
+  payCardEnabled: boolean;
+  payBankTransferEnabled: boolean;
+  payOfficeEnabled: boolean;
+  bankTransferHoursOverride: string;
+  officeHoursOverride: string;
+  fullPaymentOnlyDaysBefore: string;
+  waitlistEnabled: boolean;
 };
 
 function todayISO() {
@@ -104,6 +126,24 @@ function emptyState(): FormState {
     included: "",
     excluded: "",
     generalInfo: "",
+    patientPrice: "",
+    companionPrice: "",
+    returnDate: "",
+    bookingCloseDate: "",
+    depositEnabled: true,
+    depositType: "percent",
+    depositValue: "",
+    depositAvailableAfterConfirm: false,
+    depositDeadlineDate: "",
+    balanceDeadlineDate: "",
+    balanceHoursOverride: "",
+    payCardEnabled: true,
+    payBankTransferEnabled: true,
+    payOfficeEnabled: true,
+    bankTransferHoursOverride: "",
+    officeHoursOverride: "",
+    fullPaymentOnlyDaysBefore: "",
+    waitlistEnabled: false,
   };
 }
 
@@ -151,6 +191,24 @@ function fromExcursion(
     included: exc.included ?? "",
     excluded: exc.excluded ?? "",
     generalInfo: exc.generalInfo ?? "",
+    patientPrice: exc.patientPrice ?? "",
+    companionPrice: exc.companionPrice ?? "",
+    returnDate: opts?.clearDate ? "" : exc.returnDate ?? "",
+    bookingCloseDate: opts?.clearDate ? "" : exc.bookingCloseDate ?? "",
+    depositEnabled: exc.depositEnabled !== false,
+    depositType: exc.depositType ?? "percent",
+    depositValue: exc.depositValue ?? "",
+    depositAvailableAfterConfirm: exc.depositAvailableAfterConfirm === true,
+    depositDeadlineDate: opts?.clearDate ? "" : exc.depositDeadlineDate ?? "",
+    balanceDeadlineDate: opts?.clearDate ? "" : exc.balanceDeadlineDate ?? "",
+    balanceHoursOverride: exc.balanceHoursOverride != null ? String(exc.balanceHoursOverride) : "",
+    payCardEnabled: exc.payCardEnabled !== false,
+    payBankTransferEnabled: exc.payBankTransferEnabled !== false,
+    payOfficeEnabled: exc.payOfficeEnabled !== false,
+    bankTransferHoursOverride: exc.bankTransferHoursOverride != null ? String(exc.bankTransferHoursOverride) : "",
+    officeHoursOverride: exc.officeHoursOverride != null ? String(exc.officeHoursOverride) : "",
+    fullPaymentOnlyDaysBefore: exc.fullPaymentOnlyDaysBefore != null ? String(exc.fullPaymentOnlyDaysBefore) : "",
+    waitlistEnabled: exc.waitlistEnabled === true,
   };
 }
 
@@ -205,7 +263,119 @@ function toPayload(s: FormState): ExcursionInput {
     included: s.included.trim() || null,
     excluded: s.excluded.trim() || null,
     generalInfo: s.generalInfo.trim() || null,
+    patientPrice: s.category === "rident" && s.patientPrice.trim() !== "" ? normalizeDecimal(s.patientPrice) : null,
+    companionPrice: s.category === "rident" && s.companionPrice.trim() !== "" ? normalizeDecimal(s.companionPrice) : null,
+    returnDate: s.returnDate || null,
+    bookingCloseDate: s.bookingCloseDate || null,
+    depositEnabled: s.depositEnabled,
+    depositType: s.depositType === "fixed" ? "fixed" : "percent",
+    depositValue: s.depositValue.trim() !== "" ? normalizeDecimal(s.depositValue) : null,
+    depositAvailableAfterConfirm: s.depositAvailableAfterConfirm,
+    depositDeadlineDate: s.depositDeadlineDate || null,
+    balanceDeadlineDate: s.balanceDeadlineDate || null,
+    balanceHoursOverride: s.balanceHoursOverride.trim() !== "" ? Math.max(1, parseInt(s.balanceHoursOverride, 10) || 0) : null,
+    payCardEnabled: s.payCardEnabled,
+    payBankTransferEnabled: s.payBankTransferEnabled,
+    payOfficeEnabled: s.payOfficeEnabled,
+    bankTransferHoursOverride: s.bankTransferHoursOverride.trim() !== "" ? Math.max(1, parseInt(s.bankTransferHoursOverride, 10) || 0) : null,
+    officeHoursOverride: s.officeHoursOverride.trim() !== "" ? Math.max(1, parseInt(s.officeHoursOverride, 10) || 0) : null,
+    fullPaymentOnlyDaysBefore: s.fullPaymentOnlyDaysBefore.trim() !== "" ? Math.max(0, parseInt(s.fullPaymentOnlyDaysBefore, 10) || 0) : null,
+    waitlistEnabled: s.waitlistEnabled,
   };
+}
+
+// ---- Prezzi per fascia età (solo modifica, gite standard) ----
+
+function AgePricesSection({ excursionId, adultPrice }: { excursionId: string; adultPrice: string }) {
+  const queryClient = useQueryClient();
+  const { data: rows = [], isLoading } = useListExcursionAgePrices(excursionId);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (rows.length > 0 && !loaded) {
+      setValues(Object.fromEntries(rows.map((r) => [r.ageRangeId, r.price ?? ""])));
+      setLoaded(true);
+    }
+  }, [rows, loaded]);
+
+  const { mutateAsync: savePrices, isPending } = useUpdateExcursionAgePrices({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListExcursionAgePricesQueryKey(excursionId) });
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 2000);
+      },
+    },
+  });
+
+  if (isLoading) {
+    return <p className="text-xs text-muted-foreground">Caricamento fasce età…</p>;
+  }
+  if (rows.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Nessuna fascia età attiva: configurale nelle Impostazioni.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-muted-foreground">
+        Gli adulti pagano il prezzo base ({adultPrice || "0"} €). Per ogni fascia: 0 = gratuito,
+        vuoto = stesso prezzo adulto. Salvataggio separato dal resto del form.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {rows.map((r) => (
+          <div key={r.ageRangeId}>
+            <label className="block text-xs font-medium text-foreground mb-1">{r.label}</label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={values[r.ageRangeId] ?? ""}
+                onChange={(e) =>
+                  setValues((prev) => ({ ...prev, [r.ageRangeId]: e.target.value }))
+                }
+                placeholder="= adulto"
+                className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid={`input-age-price-${r.label.replace(/\s+/g, "-")}`}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                €
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() =>
+            void savePrices({
+              id: excursionId,
+              data: {
+                prices: rows.map((r) => ({
+                  ageRangeId: r.ageRangeId,
+                  price: (values[r.ageRangeId] ?? "").trim() === "" ? null : values[r.ageRangeId],
+                })),
+              },
+            })
+          }
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+          data-testid="button-save-age-prices"
+        >
+          {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          Salva prezzi fasce
+        </button>
+        {savedFlash && <span className="text-xs font-medium text-emerald-700">Salvato!</span>}
+      </div>
+    </div>
+  );
 }
 
 // ---- Pickup points section (edit mode only) ----
@@ -289,6 +459,22 @@ function PickupPointsSection({
                 }}
                 placeholder="Orario"
                 className="w-20 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+              <span className="text-[11px] text-muted-foreground shrink-0">+€</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                defaultValue={pp.surcharge ?? ""}
+                onBlur={(e) => {
+                  const t = e.target.value.trim();
+                  if (t !== (pp.surcharge ?? "")) {
+                    updateTime({ id: excursionId, ppId: pp.id, data: { surcharge: t || null } });
+                  }
+                }}
+                placeholder="prov."
+                title="Supplemento specifico di questo punto (a persona). Vuoto = vale il supplemento della provincia."
+                className="w-14 px-2 py-1 border border-border rounded-lg text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
+                data-testid={`input-point-surcharge-${pp.id}`}
               />
               <button
                 type="button"
@@ -835,6 +1021,258 @@ export function ExcursionFormModal({
             </div>
           </section>
 
+          {/* Sezione: Prezzi partecipanti (Gite v2) */}
+          <section className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Prezzi partecipanti
+            </h4>
+            {form.category === "rident" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Prezzo paziente (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.patientPrice}
+                    onChange={(e) => setField("patientPrice", e.target.value)}
+                    placeholder={form.pricePerPerson || "0"}
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-excursion-patient-price"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Vuoto = vale il prezzo base della gita.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Prezzo accompagnatore (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.companionPrice}
+                    onChange={(e) => setField("companionPrice", e.target.value)}
+                    placeholder={form.pricePerPerson || "0"}
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-excursion-companion-price"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Vuoto = vale il prezzo base della gita.
+                  </p>
+                </div>
+              </div>
+            ) : mode === "edit" && initial?.id ? (
+              <AgePricesSection excursionId={initial.id} adultPrice={form.pricePerPerson} />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Gli adulti pagano il prezzo indicato sopra. I prezzi per fascia età dei bambini si
+                configurano dopo il primo salvataggio della gita.
+              </p>
+            )}
+          </section>
+
+          {/* Sezione: Acconto e saldo (Gite v2) */}
+          <section className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Acconto e saldo
+            </h4>
+            <label className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={form.depositEnabled}
+                onChange={(e) => setField("depositEnabled", e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+                data-testid="checkbox-excursion-deposit-enabled"
+              />
+              <span className="text-sm text-foreground">
+                Acconto abilitato
+                <span className="block text-[11px] text-muted-foreground">
+                  Se disattivato, i clienti possono solo pagare l'importo completo.
+                </span>
+              </span>
+            </label>
+            {form.depositEnabled && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Tipo acconto
+                  </label>
+                  <select
+                    value={form.depositType}
+                    onChange={(e) => setField("depositType", e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="select-excursion-deposit-type"
+                  >
+                    <option value="percent">Percentuale sul totale</option>
+                    <option value="fixed">Importo fisso a persona</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    {form.depositType === "fixed" ? "Importo (€ a persona)" : "Percentuale (%)"}
+                  </label>
+                  <input
+                    type="number"
+                    step={form.depositType === "fixed" ? "0.01" : "1"}
+                    min="0"
+                    value={form.depositValue}
+                    onChange={(e) => setField("depositValue", e.target.value)}
+                    placeholder={form.depositType === "fixed" ? "es. 50" : "vuoto = impostazione globale"}
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-excursion-deposit-value"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Data limite acconto
+                  </label>
+                  <input
+                    type="date"
+                    value={form.depositDeadlineDate}
+                    onChange={(e) => setField("depositDeadlineDate", e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-excursion-deposit-deadline"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Oltre questa data l'acconto non è più proposto.
+                  </p>
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={form.depositAvailableAfterConfirm}
+                      onChange={(e) => setField("depositAvailableAfterConfirm", e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-primary"
+                      data-testid="checkbox-excursion-deposit-after-confirm"
+                    />
+                    <span className="text-xs text-foreground">
+                      Acconto disponibile anche dopo la conferma della gita
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Ore per il saldo dopo la conferma
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.balanceHoursOverride}
+                  onChange={(e) => setField("balanceHoursOverride", e.target.value)}
+                  placeholder="vuoto = impostazione globale"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-excursion-balance-hours"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Data limite saldo
+                </label>
+                <input
+                  type="date"
+                  value={form.balanceDeadlineDate}
+                  onChange={(e) => setField("balanceDeadlineDate", e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-excursion-balance-deadline"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Sezione: Metodi di pagamento e scadenze (Gite v2) */}
+          <section className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Metodi di pagamento e scadenze
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={form.payCardEnabled}
+                  onChange={(e) => setField("payCardEnabled", e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                  data-testid="checkbox-excursion-pay-card"
+                />
+                <span className="text-sm text-foreground">Carta</span>
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={form.payBankTransferEnabled}
+                  onChange={(e) => setField("payBankTransferEnabled", e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                  data-testid="checkbox-excursion-pay-bank"
+                />
+                <span className="text-sm text-foreground">Bonifico</span>
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={form.payOfficeEnabled}
+                  onChange={(e) => setField("payOfficeEnabled", e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                  data-testid="checkbox-excursion-pay-office"
+                />
+                <span className="text-sm text-foreground">In ufficio</span>
+              </label>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Ore scadenza bonifico
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.bankTransferHoursOverride}
+                  onChange={(e) => setField("bankTransferHoursOverride", e.target.value)}
+                  placeholder="globale"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-excursion-bank-hours"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Ore scadenza ufficio
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.officeHoursOverride}
+                  onChange={(e) => setField("officeHoursOverride", e.target.value)}
+                  placeholder="globale"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-excursion-office-hours"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Solo totale da (giorni prima)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.fullPaymentOnlyDaysBefore}
+                  onChange={(e) => setField("fullPaymentOnlyDaysBefore", e.target.value)}
+                  placeholder="globale"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-excursion-full-only-days"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              I campi vuoti usano i valori delle Impostazioni globali.
+            </p>
+          </section>
+
           {/* Sezione: Capienza & soglia */}
           <section className="space-y-3">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -872,11 +1310,59 @@ export function ExcursionFormModal({
                   className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   data-testid="input-excursion-min-threshold"
                 />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Calcolata sulle persone, non sulle prenotazioni.
+                </p>
                 {fieldErrors.minThreshold && (
                   <p className="text-xs text-red-600 mt-1">{fieldErrors.minThreshold}</p>
                 )}
               </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Data ritorno
+                </label>
+                <input
+                  type="date"
+                  value={form.returnDate}
+                  onChange={(e) => setField("returnDate", e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-excursion-return-date"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Facoltativa, per gite di più giorni.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Chiusura prenotazioni
+                </label>
+                <input
+                  type="date"
+                  value={form.bookingCloseDate}
+                  onChange={(e) => setField("bookingCloseDate", e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-excursion-booking-close"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Oltre questa data il form pubblico è chiuso.
+                </p>
+              </div>
             </div>
+            <label className="flex items-start gap-2.5">
+              <input
+                type="checkbox"
+                checked={form.waitlistEnabled}
+                onChange={(e) => setField("waitlistEnabled", e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+                data-testid="checkbox-excursion-waitlist"
+              />
+              <span className="text-xs text-foreground">
+                Lista d'attesa attiva
+                <span className="block text-[11px] text-muted-foreground">
+                  Predisposizione: la gestione operativa della lista arriverà in una fase successiva.
+                </span>
+              </span>
+            </label>
           </section>
 
           {/* Sezione: Mezzo */}

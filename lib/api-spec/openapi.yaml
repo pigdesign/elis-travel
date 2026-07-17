@@ -716,6 +716,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/age-prices:
+    get:
+      operationId: listExcursionAgePrices
+      tags: [excursions]
+      summary: Prezzi per fascia età della gita (fasce attive)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Prezzi per fascia
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExcursionAgePriceRow"
+    put:
+      operationId: updateExcursionAgePrices
+      tags: [excursions]
+      summary: Aggiorna i prezzi per fascia età della gita
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExcursionAgePricesInput"
+      responses:
+        "200":
+          description: Prezzi aggiornati
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/excursions/{id}/confirm-trip:
     post:
       operationId: confirmTrip
@@ -2031,6 +2089,57 @@ components:
           type: number
         margineNetto:
           type: number
+        patientPrice:
+          type: string
+          nullable: true
+        companionPrice:
+          type: string
+          nullable: true
+        returnDate:
+          type: string
+          nullable: true
+        bookingCloseDate:
+          type: string
+          nullable: true
+        depositEnabled:
+          type: boolean
+        depositType:
+          type: string
+        depositValue:
+          type: string
+          nullable: true
+        depositAvailableAfterConfirm:
+          type: boolean
+        depositDeadlineDate:
+          type: string
+          nullable: true
+        balanceDeadlineDate:
+          type: string
+          nullable: true
+        balanceHoursOverride:
+          type: integer
+          nullable: true
+        payCardEnabled:
+          type: boolean
+        payBankTransferEnabled:
+          type: boolean
+        payOfficeEnabled:
+          type: boolean
+        bankTransferHoursOverride:
+          type: integer
+          nullable: true
+        officeHoursOverride:
+          type: integer
+          nullable: true
+        fullPaymentOnlyDaysBefore:
+          type: integer
+          nullable: true
+        waitlistEnabled:
+          type: boolean
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2481,6 +2590,87 @@ components:
         generalInfo:
           type: string
           nullable: true
+        patientPrice:
+          type: string
+          nullable: true
+        companionPrice:
+          type: string
+          nullable: true
+        returnDate:
+          type: string
+          nullable: true
+        bookingCloseDate:
+          type: string
+          nullable: true
+        depositEnabled:
+          type: boolean
+        depositType:
+          type: string
+          enum: [percent, fixed]
+        depositValue:
+          type: string
+          nullable: true
+        depositAvailableAfterConfirm:
+          type: boolean
+        depositDeadlineDate:
+          type: string
+          nullable: true
+        balanceDeadlineDate:
+          type: string
+          nullable: true
+        balanceHoursOverride:
+          type: integer
+          nullable: true
+        payCardEnabled:
+          type: boolean
+        payBankTransferEnabled:
+          type: boolean
+        payOfficeEnabled:
+          type: boolean
+        bankTransferHoursOverride:
+          type: integer
+          nullable: true
+        officeHoursOverride:
+          type: integer
+          nullable: true
+        fullPaymentOnlyDaysBefore:
+          type: integer
+          nullable: true
+        waitlistEnabled:
+          type: boolean
+    ExcursionAgePriceRow:
+      type: object
+      properties:
+        ageRangeId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: integer
+        # Prezzo in euro (stringa decimale); null = prezzo adulto pieno
+        price:
+          type: string
+          nullable: true
+      required: [ageRangeId, label, minAge, maxAge]
+    ExcursionAgePricesInput:
+      type: object
+      properties:
+        prices:
+          type: array
+          items:
+            type: object
+            properties:
+              ageRangeId:
+                type: string
+                format: uuid
+              price:
+                type: string
+                nullable: true
+            required: [ageRangeId]
+      required: [prices]
     VehicleUpdateInput:
       type: object
       properties:
@@ -3885,6 +4075,11 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        # Supplemento specifico del punto per questa gita (euro, stringa decimale);
+        # null = fallback sul supplemento provincia della gita.
+        surcharge:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -3908,6 +4103,9 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        surcharge:
+          type: string
+          nullable: true
       required:
         - pickupLocationId
     ExcursionPickupPointUpdate:
@@ -3918,3 +4116,6 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        surcharge:
+          type: string
+          nullable: true

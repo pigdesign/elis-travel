@@ -84,6 +84,25 @@ export interface ExcursionSummary {
   costiVariabili: number;
   costiTotali: number;
   margineNetto: number;
+  patientPrice?: string | null;
+  companionPrice?: string | null;
+  returnDate?: string | null;
+  bookingCloseDate?: string | null;
+  depositEnabled?: boolean;
+  depositType?: string;
+  depositValue?: string | null;
+  depositAvailableAfterConfirm?: boolean;
+  depositDeadlineDate?: string | null;
+  balanceDeadlineDate?: string | null;
+  balanceHoursOverride?: number | null;
+  payCardEnabled?: boolean;
+  payBankTransferEnabled?: boolean;
+  payOfficeEnabled?: boolean;
+  bankTransferHoursOverride?: number | null;
+  officeHoursOverride?: number | null;
+  fullPaymentOnlyDaysBefore?: number | null;
+  waitlistEnabled?: boolean;
+  confirmedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -298,6 +317,14 @@ export interface PublicBookingResponse {
 
 export type ExcursionInputProvinceSurcharges = { [key: string]: number };
 
+export type ExcursionInputDepositType =
+  (typeof ExcursionInputDepositType)[keyof typeof ExcursionInputDepositType];
+
+export const ExcursionInputDepositType = {
+  percent: "percent",
+  fixed: "fixed",
+} as const;
+
 export interface ExcursionInput {
   name?: string;
   location?: string;
@@ -324,6 +351,41 @@ export interface ExcursionInput {
   included?: string | null;
   excluded?: string | null;
   generalInfo?: string | null;
+  patientPrice?: string | null;
+  companionPrice?: string | null;
+  returnDate?: string | null;
+  bookingCloseDate?: string | null;
+  depositEnabled?: boolean;
+  depositType?: ExcursionInputDepositType;
+  depositValue?: string | null;
+  depositAvailableAfterConfirm?: boolean;
+  depositDeadlineDate?: string | null;
+  balanceDeadlineDate?: string | null;
+  balanceHoursOverride?: number | null;
+  payCardEnabled?: boolean;
+  payBankTransferEnabled?: boolean;
+  payOfficeEnabled?: boolean;
+  bankTransferHoursOverride?: number | null;
+  officeHoursOverride?: number | null;
+  fullPaymentOnlyDaysBefore?: number | null;
+  waitlistEnabled?: boolean;
+}
+
+export interface ExcursionAgePriceRow {
+  ageRangeId: string;
+  label: string;
+  minAge: number;
+  maxAge: number;
+  price?: string | null;
+}
+
+export type ExcursionAgePricesInputPricesItem = {
+  ageRangeId: string;
+  price?: string | null;
+};
+
+export interface ExcursionAgePricesInput {
+  prices: ExcursionAgePricesInputPricesItem[];
 }
 
 export interface VehicleUpdateInput {
@@ -902,6 +964,7 @@ export interface ExcursionPickupPoint {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder: number;
+  surcharge?: string | null;
   createdAt: string;
   location: ExcursionPickupPointLocation;
 }
@@ -910,11 +973,13 @@ export interface ExcursionPickupPointInput {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder?: number;
+  surcharge?: string | null;
 }
 
 export interface ExcursionPickupPointUpdate {
   pickupTime?: string | null;
   sortOrder?: number;
+  surcharge?: string | null;
 }
 
 export type ListCustomersParams = {
@@ -941,6 +1006,10 @@ export type ConfirmPublicExcursionBookingPaymentBody = {
 };
 
 export type ConfirmPublicExcursionBookingPayment200 = {
+  ok?: boolean;
+};
+
+export type UpdateExcursionAgePrices200 = {
   ok?: boolean;
 };
 

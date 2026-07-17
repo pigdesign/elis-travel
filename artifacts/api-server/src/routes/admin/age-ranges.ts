@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { ageRangesTable, bookingParticipantsTable, excursionAgePricesTable } from "@workspace/db/schema";
-import { eq, asc, count } from "drizzle-orm";
+import { eq, asc, count, and, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -149,6 +149,93 @@ router.delete("/age-ranges/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error("Age range delete failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// ---- Prezzi per fascia della singola gita ----
+
+// Elenco fasce attive con l'eventuale prezzo configurato per la gita.
+router.get("/excursions/:id/age-prices", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const ranges = await db
+      .select()
+      .from(ageRangesTable)
+      .where(eq(ageRangesTable.active, true))
+      .orderBy(asc(ageRangesTable.sortOrder), asc(ageRangesTable.minAge));
+    const prices = await db
+      .select()
+      .from(excursionAgePricesTable)
+      .where(eq(excursionAgePricesTable.excursionId, id));
+    const priceByRange = new Map(prices.map((p) => [p.ageRangeId, p.price]));
+    res.json(
+      ranges.map((r) => ({
+        ageRangeId: r.id,
+        label: r.label,
+        minAge: r.minAge,
+        maxAge: r.maxAge,
+        // null = prezzo non configurato → vale il prezzo adulto pieno
+        price: priceByRange.get(r.id) ?? null,
+      })),
+    );
+  } catch (err) {
+    console.error("Age prices fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// Upsert dei prezzi per fascia: price null/assente = torna al prezzo adulto.
+router.put("/excursions/:id/age-prices", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { prices } = req.body as {
+      prices?: { ageRangeId?: string; price?: string | number | null }[];
+    };
+    if (!Array.isArray(prices)) {
+      res.status(400).json({ error: "Formato prezzi non valido." });
+      return;
+    }
+    const toSet: { ageRangeId: string; price: string }[] = [];
+    const toClear: string[] = [];
+    for (const row of prices) {
+      if (!row.ageRangeId) continue;
+      if (row.price === null || row.price === undefined || row.price === "") {
+        toClear.push(row.ageRangeId);
+        continue;
+      }
+      const n = Number(String(row.price).replace(",", "."));
+      if (!Number.isFinite(n) || n < 0) {
+        res.status(400).json({ error: "Prezzo fascia non valido (deve essere ≥ 0)." });
+        return;
+      }
+      toSet.push({ ageRangeId: row.ageRangeId, price: n.toFixed(2) });
+    }
+
+    await db.transaction(async (tx) => {
+      if (toClear.length > 0) {
+        await tx
+          .delete(excursionAgePricesTable)
+          .where(
+            and(
+              eq(excursionAgePricesTable.excursionId, id),
+              inArray(excursionAgePricesTable.ageRangeId, toClear),
+            ),
+          );
+      }
+      for (const row of toSet) {
+        await tx
+          .insert(excursionAgePricesTable)
+          .values({ excursionId: id, ageRangeId: row.ageRangeId, price: row.price })
+          .onConflictDoUpdate({
+            target: [excursionAgePricesTable.excursionId, excursionAgePricesTable.ageRangeId],
+            set: { price: row.price, updatedAt: new Date() },
+          });
+      }
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Age prices update failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
   }
 });
