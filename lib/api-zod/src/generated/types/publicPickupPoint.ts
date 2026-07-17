@@ -15,4 +15,5 @@ export interface PublicPickupPoint {
   surcharge?: number;
   pickupTime?: string | null;
   sortOrder: number;
+  mapsUrl?: string | null;
 }

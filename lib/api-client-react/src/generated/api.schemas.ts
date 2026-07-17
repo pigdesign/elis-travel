@@ -457,6 +457,14 @@ export interface PublicOfferDetail {
   schedule?: ScheduleDay[] | null;
 }
 
+export type PublicExcursionDetailTripType =
+  (typeof PublicExcursionDetailTripType)[keyof typeof PublicExcursionDetailTripType];
+
+export const PublicExcursionDetailTripType = {
+  standard: "standard",
+  rident: "rident",
+} as const;
+
 export interface PublicPickupPoint {
   id: string;
   name: string;
@@ -466,6 +474,35 @@ export interface PublicPickupPoint {
   surcharge?: number;
   pickupTime?: string | null;
   sortOrder: number;
+  mapsUrl?: string | null;
+}
+
+export interface PublicAgeRangePrice {
+  id: string;
+  label: string;
+  minAge: number;
+  maxAge: number;
+  price: number;
+}
+
+export type PublicDepositConfigType =
+  (typeof PublicDepositConfigType)[keyof typeof PublicDepositConfigType];
+
+export const PublicDepositConfigType = {
+  percent: "percent",
+  fixed: "fixed",
+} as const;
+
+export interface PublicDepositConfig {
+  available: boolean;
+  type: PublicDepositConfigType;
+  value?: number | null;
+}
+
+export interface PublicPaymentMethods {
+  card: boolean;
+  bankTransfer: boolean;
+  office: boolean;
 }
 
 export interface PublicExcursionDetail {
@@ -485,6 +522,78 @@ export interface PublicExcursionDetail {
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
   cardPaymentsEnabled?: boolean;
+  tripType?: PublicExcursionDetailTripType;
+  adultLabel?: string;
+  ageRanges?: PublicAgeRangePrice[];
+  patientPrice?: number | null;
+  companionPrice?: number | null;
+  depositConfig?: PublicDepositConfig;
+  paymentMethods?: PublicPaymentMethods;
+  thresholdReached?: boolean;
+  spotsLeft?: number | null;
+  bookingClosed?: boolean;
+  officeAddress?: string | null;
+  officeOpeningHours?: string | null;
+}
+
+export type QuoteParticipantInputType =
+  (typeof QuoteParticipantInputType)[keyof typeof QuoteParticipantInputType];
+
+export const QuoteParticipantInputType = {
+  adult: "adult",
+  child: "child",
+  patient: "patient",
+  companion: "companion",
+} as const;
+
+export interface QuoteParticipantInput {
+  type: QuoteParticipantInputType;
+  ageRangeId?: string | null;
+  pickupPointId?: string | null;
+}
+
+export type QuoteRequestPaymentType =
+  (typeof QuoteRequestPaymentType)[keyof typeof QuoteRequestPaymentType];
+
+export const QuoteRequestPaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export interface QuoteRequest {
+  participants: QuoteParticipantInput[];
+  pickupPointId?: string | null;
+  paymentType: QuoteRequestPaymentType;
+}
+
+export interface QuotedParticipant {
+  type: string;
+  ageRangeId?: string | null;
+  ageRangeLabel?: string | null;
+  pickupPointId?: string | null;
+  pickupPointName?: string | null;
+  basePriceCents: number;
+  pickupSurchargeCents: number;
+  finalPriceCents: number;
+  sortOrder: number;
+}
+
+export type QuoteResponsePaymentType =
+  (typeof QuoteResponsePaymentType)[keyof typeof QuoteResponsePaymentType];
+
+export const QuoteResponsePaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export interface QuoteResponse {
+  participants: QuotedParticipant[];
+  totalCents: number;
+  depositCents: number;
+  amountDueCents: number;
+  paymentType: QuoteResponsePaymentType;
+  depositAllowed: boolean;
+  seats: number;
 }
 
 export interface UploadUrlRequest {

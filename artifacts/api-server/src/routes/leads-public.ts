@@ -12,6 +12,15 @@ import { verifyBookingCancellationToken } from "../services/booking-cancellation
 import { publicFormsLimiter } from "../middlewares/rateLimiter";
 import { stripe } from "../services/stripe";
 import { logger } from "../lib/logger";
+import {
+  loadPricingContext,
+  getPaymentSettings,
+  buildQuote,
+  isDepositAvailable,
+  availablePaymentMethods,
+  QuoteError,
+  type QuoteParticipantInput,
+} from "../services/excursion-pricing";
 
 const router = Router();
 
@@ -346,27 +355,131 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       .where(eq(excursionPickupPointsTable.excursionId, id))
       .orderBy(asc(excursionPickupPointsTable.sortOrder));
 
-    const [cardPaymentSetting] = await db
-      .select({ value: settingsTable.value })
-      .from(settingsTable)
-      .where(eq(settingsTable.key, CARD_PAYMENTS_SETTING_KEY))
-      .limit(1);
+    // Contesto prezzi Gite v2: fasce età, prezzi per fascia, punti con supplemento risolto
+    const ctx = await loadPricingContext(id);
+    const settings = await getPaymentSettings();
+    if (!ctx) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
 
-    // Ogni punto espone il supplemento a persona della sua provincia per questa gita.
-    const surchargeMap = excursion.provinceSurcharges ?? {};
-    const pickupPointsWithSurcharge = pickupPoints.map((p) => ({
-      ...p,
-      surcharge: p.province ? provinceSurchargeFor(surchargeMap, p.province) : 0,
-    }));
+    const isRident = ctx.isRident;
+    const activePoints = ctx.pickupPoints.filter((p) => p.active);
+    const pickupPointsPublic = activePoints.map((p) => {
+      // pickupPoints legacy della select sopra: manteniamo la stessa shape + estensioni
+      const legacy = pickupPoints.find((lp) => lp.id === p.id);
+      return {
+        id: p.id,
+        name: p.name,
+        city: p.city,
+        address: legacy?.address ?? null,
+        province: p.province,
+        pickupTime: p.pickupTime,
+        sortOrder: p.sortOrder,
+        surcharge: p.surchargeCents / 100,
+        mapsUrl: p.mapsUrl,
+      };
+    });
+
+    const depositAllowed = isDepositAvailable(ctx.excursion, settings);
+    const methods = availablePaymentMethods(ctx.excursion, settings, Boolean(stripe));
+    const thresholdReached =
+      (excursion.adherentsCount ?? 0) >= Math.max(excursion.minThreshold ?? 1, 1);
+    const bookingClosed = ctx.excursion.bookingCloseDate
+      ? new Date() > new Date(`${ctx.excursion.bookingCloseDate}T23:59:59`)
+      : false;
 
     const { status: _status, provinceSurcharges: _ps, ...publicExcursion } = excursion;
     res.json({
       ...publicExcursion,
-      pickupPoints: pickupPointsWithSurcharge,
-      cardPaymentsEnabled: isCardPaymentEnabled(cardPaymentSetting?.value) && Boolean(stripe),
+      pickupPoints: pickupPointsPublic,
+      cardPaymentsEnabled: methods.card,
+      // ---- Gite v2 ----
+      tripType: isRident ? "rident" : "standard",
+      adultLabel: `Adulti (${settings.adultMinAge}+ anni)`,
+      ageRanges: isRident
+        ? []
+        : ctx.ageRanges.map((r) => ({
+            id: r.id,
+            label: r.label,
+            minAge: r.minAge,
+            maxAge: r.maxAge,
+            price: (ctx.agePriceCents.get(r.id) ?? Math.round(Number(excursion.pricePerPerson ?? 0) * 100)) / 100,
+          })),
+      patientPrice: isRident
+        ? Number(ctx.excursion.patientPrice ?? excursion.pricePerPerson ?? 0)
+        : null,
+      companionPrice: isRident
+        ? Number(ctx.excursion.companionPrice ?? excursion.pricePerPerson ?? 0)
+        : null,
+      depositConfig: {
+        available: depositAllowed,
+        type: ctx.excursion.depositType === "fixed" ? "fixed" : "percent",
+        value:
+          ctx.excursion.depositValue !== null
+            ? Number(ctx.excursion.depositValue)
+            : settings.depositPercentage,
+      },
+      paymentMethods: methods,
+      thresholdReached,
+      minThreshold: excursion.minThreshold,
+      spotsLeft:
+        (excursion.currentCapacity ?? 0) > 0
+          ? Math.max((excursion.currentCapacity ?? 0) - (excursion.adherentsCount ?? 0), 0)
+          : null,
+      bookingClosed,
+      officeAddress: settings.officeAddress,
+      officeOpeningHours: settings.officeOpeningHours,
     });
   } catch (err) {
     console.error("Public excursion detail fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// Preventivo server-side: il frontend lo usa per il riepilogo, la prenotazione
+// ricalcola comunque tutto (mai fidarsi dei totali del browser).
+router.post("/excursions/:id/quote", publicFormsLimiter, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const { participants, pickupPointId, paymentType } = req.body as {
+      participants?: QuoteParticipantInput[];
+      pickupPointId?: string | null;
+      paymentType?: string;
+    };
+
+    const ctx = await loadPricingContext(id);
+    if (!ctx || (ctx.excursion.status !== "open" && ctx.excursion.status !== "confirmed")) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
+    const settings = await getPaymentSettings();
+
+    const quote = buildQuote(
+      ctx,
+      {
+        participants: participants ?? [],
+        pickupPointId: pickupPointId ?? null,
+        paymentType: paymentType === "deposit" ? "deposit" : "full",
+      },
+      settings,
+    );
+
+    res.json({
+      participants: quote.participants,
+      totalCents: quote.totalCents,
+      depositCents: quote.depositCents,
+      amountDueCents: quote.amountDueCents,
+      paymentType: quote.paymentType,
+      depositAllowed: quote.depositAllowed,
+      seats: quote.seats,
+    });
+  } catch (err) {
+    if (err instanceof QuoteError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    console.error("Public excursion quote failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
   }
 });

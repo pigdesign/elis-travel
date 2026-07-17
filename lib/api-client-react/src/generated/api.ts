@@ -64,6 +64,8 @@ import type {
   PublicLeadResponse,
   PublicOfferDetail,
   PublicRidentCatalog,
+  QuoteRequest,
+  QuoteResponse,
   RmsSearchResult,
   SearchRmsCustomersParams,
   SettingsInput,
@@ -4827,6 +4829,93 @@ export function useGetPublicExcursion<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Preventivo server-side per una prenotazione gita
+ */
+export const getQuotePublicExcursionUrl = (id: string) => {
+  return `/api/excursions/${id}/quote`;
+};
+
+export const quotePublicExcursion = async (
+  id: string,
+  quoteRequest: QuoteRequest,
+  options?: RequestInit,
+): Promise<QuoteResponse> => {
+  return customFetch<QuoteResponse>(getQuotePublicExcursionUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(quoteRequest),
+  });
+};
+
+export const getQuotePublicExcursionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof quotePublicExcursion>>,
+    TError,
+    { id: string; data: BodyType<QuoteRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof quotePublicExcursion>>,
+  TError,
+  { id: string; data: BodyType<QuoteRequest> },
+  TContext
+> => {
+  const mutationKey = ["quotePublicExcursion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof quotePublicExcursion>>,
+    { id: string; data: BodyType<QuoteRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return quotePublicExcursion(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuotePublicExcursionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof quotePublicExcursion>>
+>;
+export type QuotePublicExcursionMutationBody = BodyType<QuoteRequest>;
+export type QuotePublicExcursionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Preventivo server-side per una prenotazione gita
+ */
+export const useQuotePublicExcursion = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof quotePublicExcursion>>,
+    TError,
+    { id: string; data: BodyType<QuoteRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof quotePublicExcursion>>,
+  TError,
+  { id: string; data: BodyType<QuoteRequest> },
+  TContext
+> => {
+  return useMutation(getQuotePublicExcursionMutationOptions(options));
+};
 
 /**
  * @summary Lista gite Rident attive (pagina pubblica dedicata /rident)

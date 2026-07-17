@@ -1530,10 +1530,86 @@ export const GetPublicExcursionResponse = zod.object({
         surcharge: zod.number().optional(),
         pickupTime: zod.string().nullish(),
         sortOrder: zod.number(),
+        mapsUrl: zod.string().nullish(),
       }),
     )
     .nullish(),
   cardPaymentsEnabled: zod.boolean().optional(),
+  tripType: zod.enum(["standard", "rident"]).optional(),
+  adultLabel: zod.string().optional(),
+  ageRanges: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        label: zod.string(),
+        minAge: zod.number(),
+        maxAge: zod.number(),
+        price: zod.number(),
+      }),
+    )
+    .optional(),
+  patientPrice: zod.number().nullish(),
+  companionPrice: zod.number().nullish(),
+  depositConfig: zod
+    .object({
+      available: zod.boolean(),
+      type: zod.enum(["percent", "fixed"]),
+      value: zod.number().nullish(),
+    })
+    .optional(),
+  paymentMethods: zod
+    .object({
+      card: zod.boolean(),
+      bankTransfer: zod.boolean(),
+      office: zod.boolean(),
+    })
+    .optional(),
+  thresholdReached: zod.boolean().optional(),
+  spotsLeft: zod.number().nullish(),
+  bookingClosed: zod.boolean().optional(),
+  officeAddress: zod.string().nullish(),
+  officeOpeningHours: zod.string().nullish(),
+});
+
+/**
+ * @summary Preventivo server-side per una prenotazione gita
+ */
+export const QuotePublicExcursionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const QuotePublicExcursionBody = zod.object({
+  participants: zod.array(
+    zod.object({
+      type: zod.enum(["adult", "child", "patient", "companion"]),
+      ageRangeId: zod.string().uuid().nullish(),
+      pickupPointId: zod.string().uuid().nullish(),
+    }),
+  ),
+  pickupPointId: zod.string().uuid().nullish(),
+  paymentType: zod.enum(["deposit", "full"]),
+});
+
+export const QuotePublicExcursionResponse = zod.object({
+  participants: zod.array(
+    zod.object({
+      type: zod.string(),
+      ageRangeId: zod.string().nullish(),
+      ageRangeLabel: zod.string().nullish(),
+      pickupPointId: zod.string().nullish(),
+      pickupPointName: zod.string().nullish(),
+      basePriceCents: zod.number(),
+      pickupSurchargeCents: zod.number(),
+      finalPriceCents: zod.number(),
+      sortOrder: zod.number(),
+    }),
+  ),
+  totalCents: zod.number(),
+  depositCents: zod.number(),
+  amountDueCents: zod.number(),
+  paymentType: zod.enum(["deposit", "full"]),
+  depositAllowed: zod.boolean(),
+  seats: zod.number(),
 });
 
 /**

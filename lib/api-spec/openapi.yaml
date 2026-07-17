@@ -1409,6 +1409,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /excursions/{id}/quote:
+    post:
+      operationId: quotePublicExcursion
+      tags: [public]
+      summary: Preventivo server-side per una prenotazione gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteRequest"
+      responses:
+        "200":
+          description: Preventivo calcolato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /catalog/rident:
     get:
       operationId: listPublicRident
@@ -2699,7 +2736,155 @@ components:
             $ref: "#/components/schemas/PublicPickupPoint"
         cardPaymentsEnabled:
           type: boolean
+        tripType:
+          type: string
+          enum: [standard, rident]
+        adultLabel:
+          type: string
+        ageRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicAgeRangePrice"
+        patientPrice:
+          type: number
+          nullable: true
+        companionPrice:
+          type: number
+          nullable: true
+        depositConfig:
+          $ref: "#/components/schemas/PublicDepositConfig"
+        paymentMethods:
+          $ref: "#/components/schemas/PublicPaymentMethods"
+        thresholdReached:
+          type: boolean
+        spotsLeft:
+          type: integer
+          nullable: true
+        bookingClosed:
+          type: boolean
+        officeAddress:
+          type: string
+          nullable: true
+        officeOpeningHours:
+          type: string
+          nullable: true
       required: [id, name]
+    PublicAgeRangePrice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: integer
+        # Prezzo in euro per questa fascia su questa gita
+        price:
+          type: number
+      required: [id, label, minAge, maxAge, price]
+    PublicDepositConfig:
+      type: object
+      properties:
+        available:
+          type: boolean
+        type:
+          type: string
+          enum: [percent, fixed]
+        # percent → percentuale; fixed → euro a persona; null → acconto non configurato
+        value:
+          type: number
+          nullable: true
+      required: [available, type]
+    PublicPaymentMethods:
+      type: object
+      properties:
+        card:
+          type: boolean
+        bankTransfer:
+          type: boolean
+        office:
+          type: boolean
+      required: [card, bankTransfer, office]
+    QuoteParticipantInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [adult, child, patient, companion]
+        ageRangeId:
+          type: string
+          format: uuid
+          nullable: true
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+      required: [type]
+    QuoteRequest:
+      type: object
+      properties:
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteParticipantInput"
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+        paymentType:
+          type: string
+          enum: [deposit, full]
+      required: [participants, paymentType]
+    QuotedParticipant:
+      type: object
+      properties:
+        type:
+          type: string
+        ageRangeId:
+          type: string
+          nullable: true
+        ageRangeLabel:
+          type: string
+          nullable: true
+        pickupPointId:
+          type: string
+          nullable: true
+        pickupPointName:
+          type: string
+          nullable: true
+        basePriceCents:
+          type: integer
+        pickupSurchargeCents:
+          type: integer
+        finalPriceCents:
+          type: integer
+        sortOrder:
+          type: integer
+      required: [type, basePriceCents, pickupSurchargeCents, finalPriceCents, sortOrder]
+    QuoteResponse:
+      type: object
+      properties:
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuotedParticipant"
+        totalCents:
+          type: integer
+        depositCents:
+          type: integer
+        amountDueCents:
+          type: integer
+        paymentType:
+          type: string
+          enum: [deposit, full]
+        depositAllowed:
+          type: boolean
+        seats:
+          type: integer
+      required: [participants, totalCents, depositCents, amountDueCents, paymentType, depositAllowed, seats]
     PublicPickupPoint:
       type: object
       properties:
@@ -2716,7 +2901,8 @@ components:
         province:
           type: string
           nullable: true
-        # Supplemento in euro a persona per questo punto (dalla provincia), 0 se assente.
+        # Supplemento in euro a persona per questo punto: override del punto
+        # per questa gita, altrimenti supplemento provincia; 0 se assente.
         surcharge:
           type: number
         pickupTime:
@@ -2724,6 +2910,9 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        mapsUrl:
+          type: string
+          nullable: true
       required:
         - id
         - name

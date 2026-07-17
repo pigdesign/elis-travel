@@ -5,6 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicAgeRangePrice } from "./publicAgeRangePrice";
+import type { PublicDepositConfig } from "./publicDepositConfig";
+import type { PublicExcursionDetailTripType } from "./publicExcursionDetailTripType";
+import type { PublicPaymentMethods } from "./publicPaymentMethods";
 import type { PublicPickupPoint } from "./publicPickupPoint";
 import type { ScheduleDay } from "./scheduleDay";
 
@@ -25,4 +29,16 @@ export interface PublicExcursionDetail {
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
   cardPaymentsEnabled?: boolean;
+  tripType?: PublicExcursionDetailTripType;
+  adultLabel?: string;
+  ageRanges?: PublicAgeRangePrice[];
+  patientPrice?: number | null;
+  companionPrice?: number | null;
+  depositConfig?: PublicDepositConfig;
+  paymentMethods?: PublicPaymentMethods;
+  thresholdReached?: boolean;
+  spotsLeft?: number | null;
+  bookingClosed?: boolean;
+  officeAddress?: string | null;
+  officeOpeningHours?: string | null;
 }
