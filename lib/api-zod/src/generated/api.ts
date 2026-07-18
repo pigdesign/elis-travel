@@ -910,6 +910,46 @@ export const UpdateExcursionAgePricesResponse = zod.object({
 });
 
 /**
+ * @summary Report raccolta bus per punto (persone, tipi, nominativi)
+ */
+export const GetExcursionPickupReportParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetExcursionPickupReportResponse = zod.object({
+  excursion: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    date: zod.string(),
+  }),
+  groups: zod.array(
+    zod.object({
+      pickupPointId: zod.string().nullish(),
+      pickupPointName: zod.string(),
+      province: zod.string().nullish(),
+      pickupTime: zod.string().nullish(),
+      people: zod.array(
+        zod.object({
+          name: zod.string(),
+          participantType: zod.string(),
+          ageRangeLabel: zod.string().nullish(),
+          bookingCode: zod.string().nullish(),
+          referente: zod.string(),
+          phone: zod.string().nullish(),
+          paymentStatus: zod.string(),
+        }),
+      ),
+      patients: zod.number(),
+      companions: zod.number(),
+      adults: zod.number(),
+      children: zod.number(),
+      totalPeople: zod.number(),
+    }),
+  ),
+  totalPeople: zod.number(),
+});
+
+/**
  * @summary Conferma la gita e genera le richieste saldo (idempotente)
  */
 export const ConfirmTripParams = zod.object({

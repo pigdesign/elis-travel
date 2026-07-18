@@ -774,6 +774,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/pickup-report:
+    get:
+      operationId: getExcursionPickupReport
+      tags: [excursions]
+      summary: Report raccolta bus per punto (persone, tipi, nominativi)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Report raccolta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PickupReport"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/excursions/{id}/confirm-trip:
     post:
       operationId: confirmTrip
@@ -2363,6 +2390,76 @@ components:
         participantsDetailed:
           type: boolean
       required: [booking, participants, consents, paymentRequests, participantsDetailed]
+    PickupReportPerson:
+      type: object
+      properties:
+        name:
+          type: string
+        participantType:
+          type: string
+        ageRangeLabel:
+          type: string
+          nullable: true
+        bookingCode:
+          type: string
+          nullable: true
+        referente:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        paymentStatus:
+          type: string
+      required: [name, participantType, referente, paymentStatus]
+    PickupReportGroup:
+      type: object
+      properties:
+        pickupPointId:
+          type: string
+          nullable: true
+        pickupPointName:
+          type: string
+        province:
+          type: string
+          nullable: true
+        pickupTime:
+          type: string
+          nullable: true
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/PickupReportPerson"
+        patients:
+          type: integer
+        companions:
+          type: integer
+        adults:
+          type: integer
+        children:
+          type: integer
+        totalPeople:
+          type: integer
+      required: [pickupPointName, people, patients, companions, adults, children, totalPeople]
+    PickupReport:
+      type: object
+      properties:
+        excursion:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            date:
+              type: string
+          required: [id, name, date]
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/PickupReportGroup"
+        totalPeople:
+          type: integer
+      required: [excursion, groups, totalPeople]
     ConfirmTripResponse:
       type: object
       properties:

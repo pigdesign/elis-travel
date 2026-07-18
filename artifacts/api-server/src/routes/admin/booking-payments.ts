@@ -6,6 +6,8 @@ import {
   bookingParticipantsTable,
   bookingConsentsTable,
   paymentRequestsTable,
+  excursionPickupPointsTable,
+  pickupLocationsTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, isNull, inArray, sql } from "drizzle-orm";
 import {
@@ -13,6 +15,7 @@ import {
   computePaymentDeadline,
 } from "../../services/excursion-pricing";
 import { applyManualPayment } from "../../services/excursion-payments";
+import { dispatchBalanceRequestEmailV2 } from "../../services/excursion-booking-emails-v2";
 import { logger } from "../../lib/logger";
 
 // ---------------------------------------------------------------------------
@@ -121,8 +124,10 @@ router.post("/excursions/:id/confirm-trip", async (req, res) => {
     for (const booking of bookings) {
       if (booking.paymentStatus === "paid" || booking.paymentStatus === "refunded") continue;
       const outcome = await createBalanceRequestIfNeeded(booking, excursion, balanceHours, now);
-      if (outcome === "created") created += 1;
-      else if (outcome === "exists") skipped += 1;
+      if (outcome === "created") {
+        created += 1;
+        dispatchBalanceRequestEmailV2(booking.id);
+      } else if (outcome === "exists") skipped += 1;
     }
 
     logger.info({ excursionId: id, created, skipped }, "Gita confermata, richieste saldo generate");
@@ -166,6 +171,7 @@ router.post("/bookings/:bookingId/request-balance", async (req, res) => {
       res.status(400).json({ error: "Nessun residuo da richiedere (acconto non pagato o già saldato)." });
       return;
     }
+    if (outcome === "created") dispatchBalanceRequestEmailV2(bookingId);
     res.json({ ok: true, outcome });
   } catch (err) {
     console.error("Request balance failed:", err);
@@ -345,6 +351,134 @@ router.get("/bookings/:bookingId/details", async (req, res) => {
     });
   } catch (err) {
     console.error("Booking details fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// Report raccolta bus: persone raggruppate per punto di raccolta, con tipo
+// partecipante e riferimento della prenotazione. Pensato per le gite RIDENT
+// (punto per persona) ma funziona anche per le gite normali.
+router.get("/excursions/:id/pickup-report", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [excursion] = await db
+      .select({ id: excursionsTable.id, name: excursionsTable.name, date: excursionsTable.date })
+      .from(excursionsTable)
+      .where(eq(excursionsTable.id, id))
+      .limit(1);
+    if (!excursion) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        participantType: bookingParticipantsTable.participantType,
+        ageRangeLabel: bookingParticipantsTable.ageRangeLabel,
+        firstName: bookingParticipantsTable.firstName,
+        lastName: bookingParticipantsTable.lastName,
+        pickupPointId: bookingParticipantsTable.pickupPointId,
+        pickupPointName: bookingParticipantsTable.pickupPointName,
+        bookingCode: excursionBookingsTable.bookingCode,
+        customerName: excursionBookingsTable.customerName,
+        customerPhone: excursionBookingsTable.phone,
+        paymentStatus: excursionBookingsTable.paymentStatus,
+      })
+      .from(bookingParticipantsTable)
+      .innerJoin(
+        excursionBookingsTable,
+        eq(bookingParticipantsTable.bookingId, excursionBookingsTable.id),
+      )
+      .where(
+        and(
+          eq(excursionBookingsTable.excursionId, id),
+          isNull(excursionBookingsTable.cancelledAt),
+        ),
+      )
+      .orderBy(asc(excursionBookingsTable.customerName), asc(bookingParticipantsTable.sortOrder));
+
+    const points = await db
+      .select({
+        id: excursionPickupPointsTable.id,
+        pickupTime: excursionPickupPointsTable.pickupTime,
+        sortOrder: excursionPickupPointsTable.sortOrder,
+        name: pickupLocationsTable.name,
+        province: pickupLocationsTable.province,
+      })
+      .from(excursionPickupPointsTable)
+      .innerJoin(
+        pickupLocationsTable,
+        eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id),
+      )
+      .where(eq(excursionPickupPointsTable.excursionId, id))
+      .orderBy(asc(excursionPickupPointsTable.sortOrder));
+    const pointById = new Map(points.map((p) => [p.id, p]));
+
+    type Group = {
+      pickupPointId: string | null;
+      pickupPointName: string;
+      province: string | null;
+      pickupTime: string | null;
+      people: {
+        name: string;
+        participantType: string;
+        ageRangeLabel: string | null;
+        bookingCode: string | null;
+        referente: string;
+        phone: string | null;
+        paymentStatus: string;
+      }[];
+      patients: number;
+      companions: number;
+      adults: number;
+      children: number;
+    };
+    const groups = new Map<string, Group>();
+    for (const r of rows) {
+      const point = r.pickupPointId ? pointById.get(r.pickupPointId) : null;
+      const key = r.pickupPointId ?? "none";
+      let g = groups.get(key);
+      if (!g) {
+        g = {
+          pickupPointId: r.pickupPointId,
+          pickupPointName: point?.name ?? r.pickupPointName ?? "Senza punto di raccolta",
+          province: point?.province ?? null,
+          pickupTime: point?.pickupTime ?? null,
+          people: [],
+          patients: 0,
+          companions: 0,
+          adults: 0,
+          children: 0,
+        };
+        groups.set(key, g);
+      }
+      const personName =
+        [r.firstName, r.lastName].filter(Boolean).join(" ").trim() || r.customerName;
+      g.people.push({
+        name: personName,
+        participantType: r.participantType,
+        ageRangeLabel: r.ageRangeLabel,
+        bookingCode: r.bookingCode,
+        referente: r.customerName,
+        phone: r.customerPhone,
+        paymentStatus: r.paymentStatus,
+      });
+      if (r.participantType === "patient") g.patients += 1;
+      else if (r.participantType === "companion") g.companions += 1;
+      else if (r.participantType === "child") g.children += 1;
+      else g.adults += 1;
+    }
+
+    const sorted = Array.from(groups.values()).sort((a, b) =>
+      a.pickupPointName.localeCompare(b.pickupPointName, "it"),
+    );
+    res.json({
+      excursion,
+      groups: sorted.map((g) => ({ ...g, totalPeople: g.people.length })),
+      totalPeople: rows.length,
+    });
+  } catch (err) {
+    console.error("Pickup report failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
   }
 });

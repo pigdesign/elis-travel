@@ -66,6 +66,7 @@ import type {
   OkResponse,
   PickupLocation,
   PickupLocationInput,
+  PickupReport,
   PublicBookingInput,
   PublicBookingResponse,
   PublicCatalog,
@@ -2557,6 +2558,95 @@ export const useUpdateExcursionAgePrices = <
 > => {
   return useMutation(getUpdateExcursionAgePricesMutationOptions(options));
 };
+
+/**
+ * @summary Report raccolta bus per punto (persone, tipi, nominativi)
+ */
+export const getGetExcursionPickupReportUrl = (id: string) => {
+  return `/api/admin/excursions/${id}/pickup-report`;
+};
+
+export const getExcursionPickupReport = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PickupReport> => {
+  return customFetch<PickupReport>(getGetExcursionPickupReportUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExcursionPickupReportQueryKey = (id: string) => {
+  return [`/api/admin/excursions/${id}/pickup-report`] as const;
+};
+
+export const getGetExcursionPickupReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExcursionPickupReport>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExcursionPickupReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetExcursionPickupReportQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExcursionPickupReport>>
+  > = ({ signal }) =>
+    getExcursionPickupReport(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExcursionPickupReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExcursionPickupReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExcursionPickupReport>>
+>;
+export type GetExcursionPickupReportQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Report raccolta bus per punto (persone, tipi, nominativi)
+ */
+
+export function useGetExcursionPickupReport<
+  TData = Awaited<ReturnType<typeof getExcursionPickupReport>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExcursionPickupReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExcursionPickupReportQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Conferma la gita e genera le richieste saldo (idempotente)

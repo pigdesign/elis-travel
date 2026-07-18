@@ -40,6 +40,7 @@ import {
   useGetAdminSettings,
   useConfirmTrip,
   useExpireOverdueBookings,
+  getExcursionPickupReport,
   getGetExcursionQueryKey,
   getListExcursionsQueryKey,
 } from "@workspace/api-client-react";
@@ -783,6 +784,64 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     }
   };
 
+  // Report raccolta bus: persone per punto (RIDENT: punto per persona)
+  const handlePrintPickupReport = async () => {
+    try {
+      const report = await getExcursionPickupReport(excursionId);
+      const typeLabel: Record<string, string> = {
+        adult: "Adulto", child: "Bambino", patient: "Paziente", companion: "Accompagnatore",
+      };
+      const groupsHtml = report.groups
+        .map(
+          (g) => `
+        <h2>${escapeHtml(g.pickupPointName)}${g.province ? ` (${escapeHtml(g.province)})` : ""}${g.pickupTime ? ` — ore ${escapeHtml(g.pickupTime)}` : ""}</h2>
+        <p class="meta">${g.totalPeople} person${g.totalPeople === 1 ? "a" : "e"}${g.patients + g.companions > 0 ? ` · Pazienti: ${g.patients} · Accompagnatori: ${g.companions}` : g.children > 0 ? ` · Adulti: ${g.adults} · Bambini: ${g.children}` : ""}</p>
+        <table>
+          <thead><tr><th>#</th><th>Nominativo</th><th>Tipo</th><th>Prenotazione</th><th>Referente / Tel.</th><th>Check</th></tr></thead>
+          <tbody>
+          ${g.people
+            .map(
+              (p, i) => `<tr>
+                <td class="center">${i + 1}</td>
+                <td>${escapeHtml(p.name)}</td>
+                <td>${escapeHtml(typeLabel[p.participantType] ?? p.participantType)}${p.ageRangeLabel ? ` (${escapeHtml(p.ageRangeLabel)})` : ""}</td>
+                <td>${escapeHtml(p.bookingCode ?? "—")}</td>
+                <td>${escapeHtml(p.referente)}${p.phone ? ` · ${escapeHtml(p.phone)}` : ""}</td>
+                <td class="check"><span class="box"></span></td>
+              </tr>`,
+            )
+            .join("")}
+          </tbody>
+        </table>`,
+        )
+        .join("");
+      const win = window.open("", "_blank");
+      if (!win) return;
+      win.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="utf-8" />
+        <title>Report raccolta — ${escapeHtml(exc?.name ?? "")}</title>
+        <style>
+          body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #14242b; padding: 24px; }
+          h1 { font-size: 20px; margin: 0 0 2px; }
+          h2 { font-size: 15px; margin: 22px 0 2px; color: #0b5b60; }
+          .meta { color: #5b6b72; font-size: 12px; margin: 0 0 8px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th, td { border: 1px solid #cbd5db; padding: 5px 8px; text-align: left; }
+          th { background: #f1f5f7; }
+          .center { text-align: center; }
+          .check { width: 46px; text-align: center; }
+          .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #14242b; border-radius: 3px; }
+        </style></head><body>
+        <h1>Report raccolta bus — ${escapeHtml(exc?.name ?? "")}</h1>
+        <p class="meta">${escapeHtml(formatDate(report.excursion.date))} · Totale persone: ${report.totalPeople}</p>
+        ${groupsHtml || "<p>Nessun partecipante con punto di raccolta registrato.</p>"}
+        </body></html>`);
+      win.document.close();
+      setTimeout(() => win.print(), 300);
+    } catch {
+      alert("Impossibile generare il report raccolta.");
+    }
+  };
+
   const handleExpireOverdue = async () => {
     try {
       const r = await expireOverdue({ id: excursionId, data: {} });
@@ -1025,6 +1084,16 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
             <Printer className="w-3.5 h-3.5" />
             Locandina
           </Link>
+          <button
+            type="button"
+            onClick={() => void handlePrintPickupReport()}
+            className="inline-flex items-center gap-1.5 bg-white hover:bg-muted/50 border border-border text-foreground text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+            data-testid="button-pickup-report"
+            title="Report raccolta bus: persone per punto di raccolta"
+          >
+            <Bus className="w-3.5 h-3.5" />
+            Raccolta
+          </button>
           <button
             type="button"
             onClick={() => setShowEditModal(true)}

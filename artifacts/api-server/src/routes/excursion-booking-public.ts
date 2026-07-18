@@ -23,6 +23,10 @@ import {
   type QuoteParticipantInput,
 } from "../services/excursion-pricing";
 import { applySuccessfulCardPayment } from "../services/excursion-payments";
+import {
+  dispatchBookingInstructionsEmailsV2,
+  dispatchNewBookingAdminEmailV2,
+} from "../services/excursion-booking-emails-v2";
 
 // ---------------------------------------------------------------------------
 // Prenotazione pubblica Gite v2: partecipanti individuali, consensi separati,
@@ -307,6 +311,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     };
 
     if (paymentMethod === "bank_transfer") {
+      dispatchBookingInstructionsEmailsV2(result.booking.id);
       res.status(201).json({
         ...baseResponse,
         bank: {
@@ -324,6 +329,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     }
 
     if (paymentMethod === "office") {
+      dispatchBookingInstructionsEmailsV2(result.booking.id);
       res.status(201).json({
         ...baseResponse,
         office: {
@@ -373,6 +379,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         .set({ stripePaymentIntentId: intent.id, updatedAt: new Date() })
         .where(eq(paymentRequestsTable.id, result.paymentRequest.id));
 
+      dispatchNewBookingAdminEmailV2(result.booking.id);
       res.status(201).json({
         ...baseResponse,
         stripeClientSecret: intent.client_secret,

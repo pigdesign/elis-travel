@@ -7,6 +7,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { dispatchPaymentReceivedEmailV2 } from "./excursion-booking-emails-v2";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -97,7 +98,7 @@ export async function applySuccessfulCardPayment(
 
   const paidAmount = paymentIntent.amount_received ?? paymentIntent.amount;
 
-  return await db.transaction(async (tx) => {
+  const applied = await db.transaction(async (tx) => {
     // Guardia idempotente: solo la transizione pending→paid applica gli importi
     const updatedRequests = await tx
       .update(paymentRequestsTable)
@@ -141,6 +142,11 @@ export async function applySuccessfulCardPayment(
 
     return { bookingId: request.bookingId, requestType: request.type, alreadyApplied: false };
   });
+
+  if (!applied.alreadyApplied) {
+    dispatchPaymentReceivedEmailV2(applied.bookingId, applied.requestType);
+  }
+  return applied;
 }
 
 // Conferma manuale admin (bonifico ricevuto, pagamento in ufficio, ecc.).
@@ -158,7 +164,7 @@ export async function applyManualPayment(opts: {
     return { bookingId: request.bookingId, requestType: request.type, alreadyApplied: true };
   }
 
-  return await db.transaction(async (tx) => {
+  const applied = await db.transaction(async (tx) => {
     const updated = await tx
       .update(paymentRequestsTable)
       .set({
@@ -200,4 +206,9 @@ export async function applyManualPayment(opts: {
 
     return { bookingId: request.bookingId, requestType: request.type, alreadyApplied: false };
   });
+
+  if (!applied.alreadyApplied) {
+    dispatchPaymentReceivedEmailV2(applied.bookingId, applied.requestType);
+  }
+  return applied;
 }

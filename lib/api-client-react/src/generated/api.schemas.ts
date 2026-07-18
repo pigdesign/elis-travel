@@ -181,6 +181,41 @@ export interface AdminBookingDetails {
   participantsDetailed: boolean;
 }
 
+export interface PickupReportPerson {
+  name: string;
+  participantType: string;
+  ageRangeLabel?: string | null;
+  bookingCode?: string | null;
+  referente: string;
+  phone?: string | null;
+  paymentStatus: string;
+}
+
+export interface PickupReportGroup {
+  pickupPointId?: string | null;
+  pickupPointName: string;
+  province?: string | null;
+  pickupTime?: string | null;
+  people: PickupReportPerson[];
+  patients: number;
+  companions: number;
+  adults: number;
+  children: number;
+  totalPeople: number;
+}
+
+export type PickupReportExcursion = {
+  id: string;
+  name: string;
+  date: string;
+};
+
+export interface PickupReport {
+  excursion: PickupReportExcursion;
+  groups: PickupReportGroup[];
+  totalPeople: number;
+}
+
 export interface ConfirmTripResponse {
   ok: boolean;
   status: string;
