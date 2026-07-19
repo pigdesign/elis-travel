@@ -44,6 +44,25 @@ export interface ExcursionSummary {
   costiVariabili: number;
   costiTotali: number;
   margineNetto: number;
+  patientPrice?: string | null;
+  companionPrice?: string | null;
+  returnDate?: string | null;
+  bookingCloseDate?: string | null;
+  depositEnabled?: boolean;
+  depositType?: string;
+  depositValue?: string | null;
+  depositAvailableAfterConfirm?: boolean;
+  depositDeadlineDate?: string | null;
+  balanceDeadlineDate?: string | null;
+  balanceHoursOverride?: number | null;
+  payCardEnabled?: boolean;
+  payBankTransferEnabled?: boolean;
+  payOfficeEnabled?: boolean;
+  bankTransferHoursOverride?: number | null;
+  officeHoursOverride?: number | null;
+  fullPaymentOnlyDaysBefore?: number | null;
+  waitlistEnabled?: boolean;
+  confirmedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

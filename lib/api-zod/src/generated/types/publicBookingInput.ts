@@ -5,17 +5,20 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicBookingConsents } from "./publicBookingConsents";
+import type { PublicBookingInputPaymentMethod } from "./publicBookingInputPaymentMethod";
 import type { PublicBookingInputPaymentType } from "./publicBookingInputPaymentType";
+import type { QuoteParticipantInput } from "./quoteParticipantInput";
 
 export interface PublicBookingInput {
-  customerName: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone?: string;
-  /** @minimum 1 */
-  adults: number;
-  /** @minimum 0 */
-  children?: number;
+  phone: string;
+  participants: QuoteParticipantInput[];
+  pickupPointId?: string | null;
   paymentType: PublicBookingInputPaymentType;
+  paymentMethod: PublicBookingInputPaymentMethod;
+  consents: PublicBookingConsents;
   servizioCasa?: boolean | null;
-  pickupPointId?: string;
 }

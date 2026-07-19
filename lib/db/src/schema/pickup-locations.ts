@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, boolean, uuid } from "drizzle-orm/pg-core";
 
 export const pickupLocationsTable = pgTable("pickup_locations", {
   id:        uuid("id").primaryKey().defaultRandom(),
@@ -9,6 +9,9 @@ export const pickupLocationsTable = pgTable("pickup_locations", {
   // delle province restano null = nessun supplemento applicabile.
   province:  text("province"),
   sortOrder: integer("sort_order").notNull().default(0),
+  active:    boolean("active").notNull().default(true),
+  mapsUrl:   text("maps_url"),
+  notes:     text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

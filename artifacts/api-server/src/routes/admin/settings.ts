@@ -12,6 +12,24 @@ const SETTING_KEYS = [
   "payment_notes",
   "deposit_percentage",
   "excursion_card_payments_enabled",
+  // Gite v2 — scadenze pagamento in ore (override per gita sulle colonne excursions)
+  "payment_deadline_bank_hours",
+  "payment_deadline_office_hours",
+  "payment_deadline_balance_hours",
+  "payment_deadline_near_departure_hours",
+  // Giorni prima della partenza da cui è ammesso solo il pagamento completo
+  "full_payment_only_days_before",
+  // Libera automaticamente i posti alla scadenza pagamento ("true"/"false", default no)
+  "auto_release_seats_on_expiry",
+  // Pagamento in ufficio
+  "office_address",
+  "office_opening_hours",
+  // Versioni dei testi di consenso (snapshot su booking_consents)
+  "terms_policy_version",
+  "privacy_policy_version",
+  "media_policy_version",
+  // Età minima adulto per l'etichetta pubblica (es. "Adulti (18+ anni)")
+  "adult_min_age",
 ] as const;
 
 type SettingKey = (typeof SETTING_KEYS)[number];

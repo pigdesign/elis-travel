@@ -623,11 +623,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /excursions/{id}/book/{bookingId}/payment-confirmed:
+    post:
+      operationId: confirmPublicExcursionBookingPayment
+      tags: [public]
+      summary: Conferma il PaymentIntent dopo stripe.confirmPayment (idempotente col webhook)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paymentIntentId:
+                  type: string
+              required: [paymentIntentId]
+      responses:
+        "200":
+          description: Pagamento confermato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Errore
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /excursions/{id}/book/{bookingId}/card-confirmed:
     post:
       operationId: confirmPublicExcursionBookingCard
       tags: [public]
-      summary: Conferma carta salvata dopo SetupIntent (chiamato dopo 3DS)
+      summary: Conferma carta salvata dopo SetupIntent (legacy, prenotazioni pre-v2)
       parameters:
         - name: id
           in: path
@@ -660,6 +710,305 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/age-prices:
+    get:
+      operationId: listExcursionAgePrices
+      tags: [excursions]
+      summary: Prezzi per fascia età della gita (fasce attive)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Prezzi per fascia
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExcursionAgePriceRow"
+    put:
+      operationId: updateExcursionAgePrices
+      tags: [excursions]
+      summary: Aggiorna i prezzi per fascia età della gita
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExcursionAgePricesInput"
+      responses:
+        "200":
+          description: Prezzi aggiornati
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/pickup-report:
+    get:
+      operationId: getExcursionPickupReport
+      tags: [excursions]
+      summary: Report raccolta bus per punto (persone, tipi, nominativi)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Report raccolta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PickupReport"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/confirm-trip:
+    post:
+      operationId: confirmTrip
+      tags: [excursions]
+      summary: Conferma la gita e genera le richieste saldo (idempotente)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Gita confermata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfirmTripResponse"
+        "400":
+          description: Stato non confermabile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/expire-overdue:
+    post:
+      operationId: expireOverdueBookings
+      tags: [excursions]
+      summary: Marca scadute le prenotazioni oltre scadenza (liberando i posti solo se richiesto)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                releaseSeats:
+                  type: boolean
+      responses:
+        "200":
+          description: Prenotazioni scadute aggiornate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  expired:
+                    type: integer
+                  releasedSeats:
+                    type: integer
+                required: [ok, expired, releasedSeats]
+  /admin/payment-requests/{requestId}/mark-paid:
+    post:
+      operationId: markPaymentRequestPaid
+      tags: [excursions]
+      summary: Conferma manuale di una richiesta di pagamento (bonifico/ufficio)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transactionReference:
+                  type: string
+      responses:
+        "200":
+          description: Pagamento registrato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  alreadyApplied:
+                    type: boolean
+                required: [ok, alreadyApplied]
+        "404":
+          description: Richiesta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/request-balance:
+    post:
+      operationId: requestBookingBalance
+      tags: [excursions]
+      summary: Crea la richiesta saldo per una prenotazione (idempotente)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Richiesta creata o già esistente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  outcome:
+                    type: string
+                required: [ok, outcome]
+        "400":
+          description: Nessun residuo da richiedere
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/deadline:
+    patch:
+      operationId: updateBookingDeadline
+      tags: [excursions]
+      summary: Modifica/estende la scadenza pagamento (riattiva le scadute)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deadline:
+                  type: string
+                  format: date-time
+              required: [deadline]
+      responses:
+        "200":
+          description: Scadenza aggiornata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/details:
+    get:
+      operationId: getAdminBookingDetails
+      tags: [excursions]
+      summary: Dettaglio completo prenotazione (partecipanti, consensi, pagamenti)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dettaglio prenotazione
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBookingDetails"
         "404":
           description: Prenotazione non trovata
           content:
@@ -1409,6 +1758,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /excursions/{id}/quote:
+    post:
+      operationId: quotePublicExcursion
+      tags: [public]
+      summary: Preventivo server-side per una prenotazione gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteRequest"
+      responses:
+        "200":
+          description: Preventivo calcolato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /catalog/rident:
     get:
       operationId: listPublicRident
@@ -1479,6 +1865,115 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SettingsResponse"
+  /admin/age-ranges:
+    get:
+      operationId: listAgeRanges
+      tags: [admin]
+      summary: Elenco fasce età globali per i bambini
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Elenco fasce età
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgeRange"
+    post:
+      operationId: createAgeRange
+      tags: [admin]
+      summary: Crea una fascia età
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgeRangeInput"
+      responses:
+        "201":
+          description: Fascia età creata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgeRange"
+        "400":
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/age-ranges/{id}:
+    patch:
+      operationId: updateAgeRange
+      tags: [admin]
+      summary: Aggiorna una fascia età
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgeRangeInput"
+      responses:
+        "200":
+          description: Fascia età aggiornata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgeRange"
+        "404":
+          description: Fascia età non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAgeRange
+      tags: [admin]
+      summary: Elimina una fascia età
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Fascia età eliminata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          description: Fascia età non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Fascia età in uso, non eliminabile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -1621,6 +2116,57 @@ components:
           type: number
         margineNetto:
           type: number
+        patientPrice:
+          type: string
+          nullable: true
+        companionPrice:
+          type: string
+          nullable: true
+        returnDate:
+          type: string
+          nullable: true
+        bookingCloseDate:
+          type: string
+          nullable: true
+        depositEnabled:
+          type: boolean
+        depositType:
+          type: string
+        depositValue:
+          type: string
+          nullable: true
+        depositAvailableAfterConfirm:
+          type: boolean
+        depositDeadlineDate:
+          type: string
+          nullable: true
+        balanceDeadlineDate:
+          type: string
+          nullable: true
+        balanceHoursOverride:
+          type: integer
+          nullable: true
+        payCardEnabled:
+          type: boolean
+        payBankTransferEnabled:
+          type: boolean
+        payOfficeEnabled:
+          type: boolean
+        bankTransferHoursOverride:
+          type: integer
+          nullable: true
+        officeHoursOverride:
+          type: integer
+          nullable: true
+        fullPaymentOnlyDaysBefore:
+          type: integer
+          nullable: true
+        waitlistEnabled:
+          type: boolean
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1701,6 +2247,28 @@ components:
           type: string
           format: date-time
           nullable: true
+        bookingCode:
+          type: string
+          nullable: true
+        paymentType:
+          type: string
+          nullable: true
+        paymentMethod:
+          type: string
+          nullable: true
+        totalAmountCents:
+          type: integer
+          nullable: true
+        amountDueCents:
+          type: integer
+          nullable: true
+        amountPaidCents:
+          type: integer
+          nullable: true
+        paymentDeadline:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1718,6 +2286,192 @@ components:
         - bookedAt
         - createdAt
         - updatedAt
+    AdminBookingParticipant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        participantType:
+          type: string
+        ageRangeLabel:
+          type: string
+          nullable: true
+        pickupPointName:
+          type: string
+          nullable: true
+        basePriceCents:
+          type: integer
+        pickupSurchargeCents:
+          type: integer
+        finalPriceCents:
+          type: integer
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        dataCompleted:
+          type: boolean
+        sortOrder:
+          type: integer
+      required: [id, participantType, basePriceCents, pickupSurchargeCents, finalPriceCents, dataCompleted, sortOrder]
+    AdminBookingConsent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        consentType:
+          type: string
+        accepted:
+          type: boolean
+        policyVersion:
+          type: string
+          nullable: true
+        acceptedAt:
+          type: string
+          format: date-time
+      required: [id, consentType, accepted, acceptedAt]
+    AdminPaymentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        amountCents:
+          type: integer
+        status:
+          type: string
+        method:
+          type: string
+          nullable: true
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        transactionReference:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, bookingId, type, amountCents, status, createdAt]
+    AdminBookingDetails:
+      type: object
+      properties:
+        booking:
+          $ref: "#/components/schemas/Booking"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminBookingParticipant"
+        consents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminBookingConsent"
+        paymentRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPaymentRequest"
+        participantsDetailed:
+          type: boolean
+      required: [booking, participants, consents, paymentRequests, participantsDetailed]
+    PickupReportPerson:
+      type: object
+      properties:
+        name:
+          type: string
+        participantType:
+          type: string
+        ageRangeLabel:
+          type: string
+          nullable: true
+        bookingCode:
+          type: string
+          nullable: true
+        referente:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        paymentStatus:
+          type: string
+      required: [name, participantType, referente, paymentStatus]
+    PickupReportGroup:
+      type: object
+      properties:
+        pickupPointId:
+          type: string
+          nullable: true
+        pickupPointName:
+          type: string
+        province:
+          type: string
+          nullable: true
+        pickupTime:
+          type: string
+          nullable: true
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/PickupReportPerson"
+        patients:
+          type: integer
+        companions:
+          type: integer
+        adults:
+          type: integer
+        children:
+          type: integer
+        totalPeople:
+          type: integer
+      required: [pickupPointName, people, patients, companions, adults, children, totalPeople]
+    PickupReport:
+      type: object
+      properties:
+        excursion:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            date:
+              type: string
+          required: [id, name, date]
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/PickupReportGroup"
+        totalPeople:
+          type: integer
+      required: [excursion, groups, totalPeople]
+    ConfirmTripResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        status:
+          type: string
+        balanceRequestsCreated:
+          type: integer
+        alreadyRequested:
+          type: integer
+      required: [ok, status, balanceRequestsCreated, alreadyRequested]
     BookingInput:
       type: object
       properties:
@@ -1754,63 +2508,114 @@ components:
           enum: [pending, deposit_requested, deposit, full_requested, paid, refunded]
       required:
         - paymentStatus
+    PublicBookingConsents:
+      type: object
+      properties:
+        terms:
+          type: boolean
+        privacy:
+          type: boolean
+        media:
+          type: boolean
+      required: [terms, privacy]
     PublicBookingInput:
       type: object
       properties:
-        customerName:
+        firstName:
+          type: string
+        lastName:
           type: string
         email:
           type: string
         phone:
           type: string
-        adults:
-          type: integer
-          minimum: 1
-        children:
-          type: integer
-          minimum: 0
-        paymentType:
-          type: string
-          enum: [deposit, full]
-        servizioCasa:
-          type: boolean
-          nullable: true
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteParticipantInput"
+        # Punto di raccolta unico della prenotazione (gite normali)
         pickupPointId:
           type: string
           format: uuid
+          nullable: true
+        paymentType:
+          type: string
+          enum: [deposit, full]
+        paymentMethod:
+          type: string
+          enum: [card, bank_transfer, office]
+        consents:
+          $ref: "#/components/schemas/PublicBookingConsents"
+        servizioCasa:
+          type: boolean
+          nullable: true
       required:
-        - customerName
+        - firstName
+        - lastName
         - email
-        - adults
+        - phone
+        - participants
         - paymentType
+        - paymentMethod
+        - consents
+    PublicBankInstructions:
+      type: object
+      properties:
+        iban:
+          type: string
+          nullable: true
+        beneficiary:
+          type: string
+          nullable: true
+        bank:
+          type: string
+          nullable: true
+        causale:
+          type: string
+      required: [causale]
+    PublicOfficeInstructions:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        openingHours:
+          type: string
+          nullable: true
     PublicBookingResponse:
       type: object
       properties:
         id:
           type: string
           format: uuid
+        bookingCode:
+          type: string
         seats:
           type: integer
-        adults:
+        totalCents:
           type: integer
-        children:
+        amountDueCents:
           type: integer
+        paymentType:
+          type: string
+          enum: [deposit, full]
+        paymentMethod:
+          type: string
+          enum: [card, bank_transfer, office]
         paymentStatus:
+          type: string
+        paymentDeadline:
           type: string
         message:
           type: string
-        setupIntentClientSecret:
+        bank:
+          $ref: "#/components/schemas/PublicBankInstructions"
+        office:
+          $ref: "#/components/schemas/PublicOfficeInstructions"
+        stripeClientSecret:
           type: string
           nullable: true
-        depositPercentage:
-          type: number
-          nullable: true
-        # Importo (in centesimi) che verrà addebitato alla conferma, già
-        # comprensivo di eventuale supplemento provincia e % acconto.
-        amountDueCents:
-          type: integer
-          nullable: true
-      required: [id, seats, adults, children, paymentStatus, message]
+      required: [id, bookingCode, seats, totalCents, amountDueCents, paymentType, paymentMethod, paymentStatus, paymentDeadline, message]
     ExcursionInput:
       type: object
       properties:
@@ -1882,6 +2687,87 @@ components:
         generalInfo:
           type: string
           nullable: true
+        patientPrice:
+          type: string
+          nullable: true
+        companionPrice:
+          type: string
+          nullable: true
+        returnDate:
+          type: string
+          nullable: true
+        bookingCloseDate:
+          type: string
+          nullable: true
+        depositEnabled:
+          type: boolean
+        depositType:
+          type: string
+          enum: [percent, fixed]
+        depositValue:
+          type: string
+          nullable: true
+        depositAvailableAfterConfirm:
+          type: boolean
+        depositDeadlineDate:
+          type: string
+          nullable: true
+        balanceDeadlineDate:
+          type: string
+          nullable: true
+        balanceHoursOverride:
+          type: integer
+          nullable: true
+        payCardEnabled:
+          type: boolean
+        payBankTransferEnabled:
+          type: boolean
+        payOfficeEnabled:
+          type: boolean
+        bankTransferHoursOverride:
+          type: integer
+          nullable: true
+        officeHoursOverride:
+          type: integer
+          nullable: true
+        fullPaymentOnlyDaysBefore:
+          type: integer
+          nullable: true
+        waitlistEnabled:
+          type: boolean
+    ExcursionAgePriceRow:
+      type: object
+      properties:
+        ageRangeId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: integer
+        # Prezzo in euro (stringa decimale); null = prezzo adulto pieno
+        price:
+          type: string
+          nullable: true
+      required: [ageRangeId, label, minAge, maxAge]
+    ExcursionAgePricesInput:
+      type: object
+      properties:
+        prices:
+          type: array
+          items:
+            type: object
+            properties:
+              ageRangeId:
+                type: string
+                format: uuid
+              price:
+                type: string
+                nullable: true
+            required: [ageRangeId]
+      required: [prices]
     VehicleUpdateInput:
       type: object
       properties:
@@ -2590,7 +3476,155 @@ components:
             $ref: "#/components/schemas/PublicPickupPoint"
         cardPaymentsEnabled:
           type: boolean
+        tripType:
+          type: string
+          enum: [standard, rident]
+        adultLabel:
+          type: string
+        ageRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicAgeRangePrice"
+        patientPrice:
+          type: number
+          nullable: true
+        companionPrice:
+          type: number
+          nullable: true
+        depositConfig:
+          $ref: "#/components/schemas/PublicDepositConfig"
+        paymentMethods:
+          $ref: "#/components/schemas/PublicPaymentMethods"
+        thresholdReached:
+          type: boolean
+        spotsLeft:
+          type: integer
+          nullable: true
+        bookingClosed:
+          type: boolean
+        officeAddress:
+          type: string
+          nullable: true
+        officeOpeningHours:
+          type: string
+          nullable: true
       required: [id, name]
+    PublicAgeRangePrice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: integer
+        # Prezzo in euro per questa fascia su questa gita
+        price:
+          type: number
+      required: [id, label, minAge, maxAge, price]
+    PublicDepositConfig:
+      type: object
+      properties:
+        available:
+          type: boolean
+        type:
+          type: string
+          enum: [percent, fixed]
+        # percent → percentuale; fixed → euro a persona; null → acconto non configurato
+        value:
+          type: number
+          nullable: true
+      required: [available, type]
+    PublicPaymentMethods:
+      type: object
+      properties:
+        card:
+          type: boolean
+        bankTransfer:
+          type: boolean
+        office:
+          type: boolean
+      required: [card, bankTransfer, office]
+    QuoteParticipantInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [adult, child, patient, companion]
+        ageRangeId:
+          type: string
+          format: uuid
+          nullable: true
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+      required: [type]
+    QuoteRequest:
+      type: object
+      properties:
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteParticipantInput"
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+        paymentType:
+          type: string
+          enum: [deposit, full]
+      required: [participants, paymentType]
+    QuotedParticipant:
+      type: object
+      properties:
+        type:
+          type: string
+        ageRangeId:
+          type: string
+          nullable: true
+        ageRangeLabel:
+          type: string
+          nullable: true
+        pickupPointId:
+          type: string
+          nullable: true
+        pickupPointName:
+          type: string
+          nullable: true
+        basePriceCents:
+          type: integer
+        pickupSurchargeCents:
+          type: integer
+        finalPriceCents:
+          type: integer
+        sortOrder:
+          type: integer
+      required: [type, basePriceCents, pickupSurchargeCents, finalPriceCents, sortOrder]
+    QuoteResponse:
+      type: object
+      properties:
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuotedParticipant"
+        totalCents:
+          type: integer
+        depositCents:
+          type: integer
+        amountDueCents:
+          type: integer
+        paymentType:
+          type: string
+          enum: [deposit, full]
+        depositAllowed:
+          type: boolean
+        seats:
+          type: integer
+      required: [participants, totalCents, depositCents, amountDueCents, paymentType, depositAllowed, seats]
     PublicPickupPoint:
       type: object
       properties:
@@ -2607,7 +3641,8 @@ components:
         province:
           type: string
           nullable: true
-        # Supplemento in euro a persona per questo punto (dalla provincia), 0 se assente.
+        # Supplemento in euro a persona per questo punto: override del punto
+        # per questa gita, altrimenti supplemento provincia; 0 se assente.
         surcharge:
           type: number
         pickupTime:
@@ -2615,6 +3650,9 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        mapsUrl:
+          type: string
+          nullable: true
       required:
         - id
         - name
@@ -2876,6 +3914,42 @@ components:
         excursion_card_payments_enabled:
           type: string
           nullable: true
+        payment_deadline_bank_hours:
+          type: string
+          nullable: true
+        payment_deadline_office_hours:
+          type: string
+          nullable: true
+        payment_deadline_balance_hours:
+          type: string
+          nullable: true
+        payment_deadline_near_departure_hours:
+          type: string
+          nullable: true
+        full_payment_only_days_before:
+          type: string
+          nullable: true
+        auto_release_seats_on_expiry:
+          type: string
+          nullable: true
+        office_address:
+          type: string
+          nullable: true
+        office_opening_hours:
+          type: string
+          nullable: true
+        terms_policy_version:
+          type: string
+          nullable: true
+        privacy_policy_version:
+          type: string
+          nullable: true
+        media_policy_version:
+          type: string
+          nullable: true
+        adult_min_age:
+          type: string
+          nullable: true
     SettingsInput:
       type: object
       properties:
@@ -2891,6 +3965,66 @@ components:
           type: string
         excursion_card_payments_enabled:
           type: string
+        payment_deadline_bank_hours:
+          type: string
+        payment_deadline_office_hours:
+          type: string
+        payment_deadline_balance_hours:
+          type: string
+        payment_deadline_near_departure_hours:
+          type: string
+        full_payment_only_days_before:
+          type: string
+        auto_release_seats_on_expiry:
+          type: string
+        office_address:
+          type: string
+        office_opening_hours:
+          type: string
+        terms_policy_version:
+          type: string
+        privacy_policy_version:
+          type: string
+        media_policy_version:
+          type: string
+        adult_min_age:
+          type: string
+    AgeRange:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: integer
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
+      required:
+        - id
+        - label
+        - minAge
+        - maxAge
+        - active
+        - sortOrder
+    AgeRangeInput:
+      type: object
+      properties:
+        label:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: integer
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
     ExcursionExtra:
       type: object
       properties:
@@ -2950,6 +4084,14 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        active:
+          type: boolean
+        mapsUrl:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2961,6 +4103,7 @@ components:
         - name
         - city
         - sortOrder
+        - active
         - createdAt
         - updatedAt
     PickupLocationInput:
@@ -2978,6 +4121,14 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        active:
+          type: boolean
+        mapsUrl:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
       required:
         - name
         - city
@@ -3021,6 +4172,11 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        # Supplemento specifico del punto per questa gita (euro, stringa decimale);
+        # null = fallback sul supplemento provincia della gita.
+        surcharge:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -3044,6 +4200,9 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        surcharge:
+          type: string
+          nullable: true
       required:
         - pickupLocationId
     ExcursionPickupPointUpdate:
@@ -3054,3 +4213,6 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        surcharge:
+          type: string
+          nullable: true

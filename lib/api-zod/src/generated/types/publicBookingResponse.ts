@@ -5,15 +5,23 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicBankInstructions } from "./publicBankInstructions";
+import type { PublicBookingResponsePaymentMethod } from "./publicBookingResponsePaymentMethod";
+import type { PublicBookingResponsePaymentType } from "./publicBookingResponsePaymentType";
+import type { PublicOfficeInstructions } from "./publicOfficeInstructions";
 
 export interface PublicBookingResponse {
   id: string;
+  bookingCode: string;
   seats: number;
-  adults: number;
-  children: number;
+  totalCents: number;
+  amountDueCents: number;
+  paymentType: PublicBookingResponsePaymentType;
+  paymentMethod: PublicBookingResponsePaymentMethod;
   paymentStatus: string;
+  paymentDeadline: string;
   message: string;
-  setupIntentClientSecret?: string | null;
-  depositPercentage?: number | null;
-  amountDueCents?: number | null;
+  bank?: PublicBankInstructions;
+  office?: PublicOfficeInstructions;
+  stripeClientSecret?: string | null;
 }

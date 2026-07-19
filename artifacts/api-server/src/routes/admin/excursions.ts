@@ -200,6 +200,25 @@ router.post("/excursions", async (req, res) => {
         switchVehicleAdditionalCost: body.switchVehicleAdditionalCost ?? null,
         operationalNotes: body.operationalNotes ?? null,
         coverImageUrl: body.coverImageUrl ?? null,
+        // ---- Gite v2 ----
+        patientPrice: body.patientPrice ?? null,
+        companionPrice: body.companionPrice ?? null,
+        returnDate: body.returnDate ?? null,
+        bookingCloseDate: body.bookingCloseDate ?? null,
+        depositEnabled: body.depositEnabled ?? true,
+        depositType: body.depositType ?? "percent",
+        depositValue: body.depositValue ?? null,
+        depositAvailableAfterConfirm: body.depositAvailableAfterConfirm ?? false,
+        depositDeadlineDate: body.depositDeadlineDate ?? null,
+        balanceDeadlineDate: body.balanceDeadlineDate ?? null,
+        balanceHoursOverride: body.balanceHoursOverride ?? null,
+        payCardEnabled: body.payCardEnabled ?? true,
+        payBankTransferEnabled: body.payBankTransferEnabled ?? true,
+        payOfficeEnabled: body.payOfficeEnabled ?? true,
+        bankTransferHoursOverride: body.bankTransferHoursOverride ?? null,
+        officeHoursOverride: body.officeHoursOverride ?? null,
+        fullPaymentOnlyDaysBefore: body.fullPaymentOnlyDaysBefore ?? null,
+        waitlistEnabled: body.waitlistEnabled ?? false,
       })
       .returning();
 
@@ -238,6 +257,7 @@ router.get("/excursions/:id", async (req, res) => {
           pickupLocationId: excursionPickupPointsTable.pickupLocationId,
           pickupTime: excursionPickupPointsTable.pickupTime,
           sortOrder: excursionPickupPointsTable.sortOrder,
+          surcharge: excursionPickupPointsTable.surcharge,
           createdAt: excursionPickupPointsTable.createdAt,
           location: {
             id: pickupLocationsTable.id,
@@ -288,6 +308,14 @@ router.patch("/excursions/:id", async (req, res) => {
       "pricePerPerson", "provinceSurcharges", "switchThreshold", "switchVehicleId",
       "switchVehicleAdditionalCost", "operationalNotes", "coverImageUrl",
       "schedule", "included", "excluded", "generalInfo",
+      // ---- Gite v2 ----
+      "patientPrice", "companionPrice", "returnDate", "bookingCloseDate",
+      "depositEnabled", "depositType", "depositValue",
+      "depositAvailableAfterConfirm", "depositDeadlineDate",
+      "balanceDeadlineDate", "balanceHoursOverride",
+      "payCardEnabled", "payBankTransferEnabled", "payOfficeEnabled",
+      "bankTransferHoursOverride", "officeHoursOverride",
+      "fullPaymentOnlyDaysBefore", "waitlistEnabled",
     ] as const;
     for (const field of mutableFields) {
       if (field in body) {
@@ -997,6 +1025,7 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
         pickupLocationId: excursionPickupPointsTable.pickupLocationId,
         pickupTime: excursionPickupPointsTable.pickupTime,
         sortOrder: excursionPickupPointsTable.sortOrder,
+        surcharge: excursionPickupPointsTable.surcharge,
         createdAt: excursionPickupPointsTable.createdAt,
         location: {
           id: pickupLocationsTable.id,
@@ -1018,13 +1047,22 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
   }
 });
 
+// Supplemento per punto (euro): null/vuoto = fallback sul supplemento provincia.
+function normalizeSurchargeInput(input: string | null | undefined): string | null {
+  if (input === null || input === undefined || String(input).trim() === "") return null;
+  const n = Number(String(input).replace(",", "."));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n.toFixed(2);
+}
+
 router.post("/excursions/:id/pickup-points", async (req, res) => {
   try {
     const { id } = req.params;
-    const { pickupLocationId, pickupTime, sortOrder } = req.body as {
+    const { pickupLocationId, pickupTime, sortOrder, surcharge } = req.body as {
       pickupLocationId?: string;
       pickupTime?: string;
       sortOrder?: number;
+      surcharge?: string | null;
     };
     if (!pickupLocationId) {
       res.status(400).json({ error: "pickupLocationId è obbligatorio." });
@@ -1046,6 +1084,7 @@ router.post("/excursions/:id/pickup-points", async (req, res) => {
         pickupLocationId,
         pickupTime: pickupTime?.trim() || null,
         sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+        surcharge: normalizeSurchargeInput(surcharge),
       })
       .returning();
     res.status(201).json(row);
@@ -1058,13 +1097,15 @@ router.post("/excursions/:id/pickup-points", async (req, res) => {
 router.patch("/excursions/:id/pickup-points/:ppId", async (req, res) => {
   try {
     const { id, ppId } = req.params;
-    const { pickupTime, sortOrder } = req.body as {
+    const { pickupTime, sortOrder, surcharge } = req.body as {
       pickupTime?: string | null;
       sortOrder?: number;
+      surcharge?: string | null;
     };
     const updates: Partial<typeof excursionPickupPointsTable.$inferInsert> = {};
     if (pickupTime !== undefined) updates.pickupTime = pickupTime?.trim() || null;
     if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+    if (surcharge !== undefined) updates.surcharge = normalizeSurchargeInput(surcharge);
 
     const [row] = await db
       .update(excursionPickupPointsTable)

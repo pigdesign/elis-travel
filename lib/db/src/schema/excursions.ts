@@ -79,6 +79,40 @@ export const excursionsTable = pgTable("excursions", {
     .$type<Record<string, number>>()
     .notNull()
     .default({}),
+  // ---- Gite v2: prezzi RIDENT (usati solo se category = "rident") ----
+  patientPrice: numeric("patient_price", { precision: 10, scale: 2 }),
+  companionPrice: numeric("companion_price", { precision: 10, scale: 2 }),
+  // ---- Gite v2: date aggiuntive ----
+  returnDate: date("return_date"),
+  bookingCloseDate: date("booking_close_date"),
+  // ---- Gite v2: configurazione acconto ----
+  depositEnabled: boolean("deposit_enabled").notNull().default(true),
+  // "percent" | "fixed"; depositValue null = fallback sull'impostazione globale deposit_percentage
+  depositType: text("deposit_type").notNull().default("percent"),
+  depositValue: numeric("deposit_value", { precision: 10, scale: 2 }),
+  // Acconto ancora selezionabile dopo la conferma della gita (default: solo totale)
+  depositAvailableAfterConfirm: boolean("deposit_available_after_confirm")
+    .notNull()
+    .default(false),
+  depositDeadlineDate: date("deposit_deadline_date"),
+  // ---- Gite v2: saldo ----
+  balanceDeadlineDate: date("balance_deadline_date"),
+  // Override delle ore globali (payment_deadline_balance_hours) per questa gita
+  balanceHoursOverride: integer("balance_hours_override"),
+  // ---- Gite v2: metodi di pagamento abilitati ----
+  payCardEnabled: boolean("pay_card_enabled").notNull().default(true),
+  payBankTransferEnabled: boolean("pay_bank_transfer_enabled").notNull().default(true),
+  payOfficeEnabled: boolean("pay_office_enabled").notNull().default(true),
+  // Override delle ore globali di scadenza per bonifico / ufficio
+  bankTransferHoursOverride: integer("bank_transfer_hours_override"),
+  officeHoursOverride: integer("office_hours_override"),
+  // Giorni prima della partenza da cui è ammesso solo il pagamento completo
+  // (null = fallback sull'impostazione globale full_payment_only_days_before)
+  fullPaymentOnlyDaysBefore: integer("full_payment_only_days_before"),
+  // Momento della conferma manuale admin (base per le scadenze saldo)
+  confirmedAt: timestamp("confirmed_at"),
+  // Fase 2: solo flag, nessuna logica waitlist ancora attiva
+  waitlistEnabled: boolean("waitlist_enabled").notNull().default(false),
   switchThreshold: integer("switch_threshold"),
   switchVehicleId: uuid("switch_vehicle_id").references(
     () => excursionVehiclesTable.id,
@@ -125,6 +159,19 @@ export const excursionBookingsTable = pgTable("excursion_bookings", {
   stripeSetupIntentId: text("stripe_setup_intent_id"),
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   amountDueCents: integer("amount_due_cents"),
+  // ---- Gite v2 ----
+  // Codice breve leggibile (es. "ET-4F7K9") usato in causale bonifico ed email.
+  // Null per le prenotazioni precedenti a Gite v2.
+  bookingCode: text("booking_code"),
+  // "deposit" | "full" | "balance": cosa ha scelto di pagare il cliente
+  paymentType: text("payment_type"),
+  // "card" | "bank_transfer" | "office"
+  paymentMethod: text("payment_method"),
+  // Totale prenotazione in centesimi (snapshot storico calcolato dal server);
+  // amountDueCents resta l'importo della richiesta corrente (acconto o totale).
+  totalAmountCents: integer("total_amount_cents"),
+  amountPaidCents: integer("amount_paid_cents").notNull().default(0),
+  paymentDeadline: timestamp("payment_deadline"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -135,6 +182,9 @@ export const excursionPickupPointsTable = pgTable("excursion_pickup_points", {
   pickupLocationId: uuid("pickup_location_id").notNull().references(() => pickupLocationsTable.id, { onDelete: "cascade" }),
   pickupTime:       text("pickup_time"),
   sortOrder:        integer("sort_order").notNull().default(0),
+  // Supplemento specifico del punto per questa gita (euro, a persona).
+  // Null = fallback sul supplemento provincia (excursions.provinceSurcharges).
+  surcharge:        numeric("surcharge", { precision: 10, scale: 2 }),
   createdAt:        timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -13,6 +13,7 @@ export interface ExcursionPickupPoint {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder: number;
+  surcharge?: string | null;
   createdAt: Date;
   location: ExcursionPickupPointLocation;
 }

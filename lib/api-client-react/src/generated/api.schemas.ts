@@ -84,6 +84,25 @@ export interface ExcursionSummary {
   costiVariabili: number;
   costiTotali: number;
   margineNetto: number;
+  patientPrice?: string | null;
+  companionPrice?: string | null;
+  returnDate?: string | null;
+  bookingCloseDate?: string | null;
+  depositEnabled?: boolean;
+  depositType?: string;
+  depositValue?: string | null;
+  depositAvailableAfterConfirm?: boolean;
+  depositDeadlineDate?: string | null;
+  balanceDeadlineDate?: string | null;
+  balanceHoursOverride?: number | null;
+  payCardEnabled?: boolean;
+  payBankTransferEnabled?: boolean;
+  payOfficeEnabled?: boolean;
+  bankTransferHoursOverride?: number | null;
+  officeHoursOverride?: number | null;
+  fullPaymentOnlyDaysBefore?: number | null;
+  waitlistEnabled?: boolean;
+  confirmedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +122,13 @@ export interface Booking {
   servizioCasa?: boolean | null;
   pickupPointId?: string | null;
   cancelledAt?: string | null;
+  bookingCode?: string | null;
+  paymentType?: string | null;
+  paymentMethod?: string | null;
+  totalAmountCents?: number | null;
+  amountDueCents?: number | null;
+  amountPaidCents?: number | null;
+  paymentDeadline?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,6 +136,92 @@ export interface Booking {
 export type ExcursionDetail = ExcursionSummary & {
   bookings: Booking[];
 };
+
+export interface AdminBookingParticipant {
+  id: string;
+  participantType: string;
+  ageRangeLabel?: string | null;
+  pickupPointName?: string | null;
+  basePriceCents: number;
+  pickupSurchargeCents: number;
+  finalPriceCents: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  notes?: string | null;
+  dataCompleted: boolean;
+  sortOrder: number;
+}
+
+export interface AdminBookingConsent {
+  id: string;
+  consentType: string;
+  accepted: boolean;
+  policyVersion?: string | null;
+  acceptedAt: string;
+}
+
+export interface AdminPaymentRequest {
+  id: string;
+  bookingId: string;
+  type: string;
+  amountCents: number;
+  status: string;
+  method?: string | null;
+  deadline?: string | null;
+  paidAt?: string | null;
+  transactionReference?: string | null;
+  createdAt: string;
+}
+
+export interface AdminBookingDetails {
+  booking: Booking;
+  participants: AdminBookingParticipant[];
+  consents: AdminBookingConsent[];
+  paymentRequests: AdminPaymentRequest[];
+  participantsDetailed: boolean;
+}
+
+export interface PickupReportPerson {
+  name: string;
+  participantType: string;
+  ageRangeLabel?: string | null;
+  bookingCode?: string | null;
+  referente: string;
+  phone?: string | null;
+  paymentStatus: string;
+}
+
+export interface PickupReportGroup {
+  pickupPointId?: string | null;
+  pickupPointName: string;
+  province?: string | null;
+  pickupTime?: string | null;
+  people: PickupReportPerson[];
+  patients: number;
+  companions: number;
+  adults: number;
+  children: number;
+  totalPeople: number;
+}
+
+export type PickupReportExcursion = {
+  id: string;
+  name: string;
+  date: string;
+};
+
+export interface PickupReport {
+  excursion: PickupReportExcursion;
+  groups: PickupReportGroup[];
+  totalPeople: number;
+}
+
+export interface ConfirmTripResponse {
+  ok: boolean;
+  status: string;
+  balanceRequestsCreated: number;
+  alreadyRequested: number;
+}
 
 export interface BookingInput {
   customerName: string;
@@ -141,6 +253,12 @@ export interface BookingPaymentStatusUpdate {
   paymentStatus: BookingPaymentStatusUpdatePaymentStatus;
 }
 
+export interface PublicBookingConsents {
+  terms: boolean;
+  privacy: boolean;
+  media?: boolean;
+}
+
 export type PublicBookingInputPaymentType =
   (typeof PublicBookingInputPaymentType)[keyof typeof PublicBookingInputPaymentType];
 
@@ -149,32 +267,98 @@ export const PublicBookingInputPaymentType = {
   full: "full",
 } as const;
 
-export interface PublicBookingInput {
-  customerName: string;
-  email: string;
-  phone?: string;
-  /** @minimum 1 */
-  adults: number;
-  /** @minimum 0 */
-  children?: number;
-  paymentType: PublicBookingInputPaymentType;
-  servizioCasa?: boolean | null;
-  pickupPointId?: string;
+export type PublicBookingInputPaymentMethod =
+  (typeof PublicBookingInputPaymentMethod)[keyof typeof PublicBookingInputPaymentMethod];
+
+export const PublicBookingInputPaymentMethod = {
+  card: "card",
+  bank_transfer: "bank_transfer",
+  office: "office",
+} as const;
+
+export type QuoteParticipantInputType =
+  (typeof QuoteParticipantInputType)[keyof typeof QuoteParticipantInputType];
+
+export const QuoteParticipantInputType = {
+  adult: "adult",
+  child: "child",
+  patient: "patient",
+  companion: "companion",
+} as const;
+
+export interface QuoteParticipantInput {
+  type: QuoteParticipantInputType;
+  ageRangeId?: string | null;
+  pickupPointId?: string | null;
 }
+
+export interface PublicBookingInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  participants: QuoteParticipantInput[];
+  pickupPointId?: string | null;
+  paymentType: PublicBookingInputPaymentType;
+  paymentMethod: PublicBookingInputPaymentMethod;
+  consents: PublicBookingConsents;
+  servizioCasa?: boolean | null;
+}
+
+export interface PublicBankInstructions {
+  iban?: string | null;
+  beneficiary?: string | null;
+  bank?: string | null;
+  causale: string;
+}
+
+export interface PublicOfficeInstructions {
+  address?: string | null;
+  openingHours?: string | null;
+}
+
+export type PublicBookingResponsePaymentType =
+  (typeof PublicBookingResponsePaymentType)[keyof typeof PublicBookingResponsePaymentType];
+
+export const PublicBookingResponsePaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export type PublicBookingResponsePaymentMethod =
+  (typeof PublicBookingResponsePaymentMethod)[keyof typeof PublicBookingResponsePaymentMethod];
+
+export const PublicBookingResponsePaymentMethod = {
+  card: "card",
+  bank_transfer: "bank_transfer",
+  office: "office",
+} as const;
 
 export interface PublicBookingResponse {
   id: string;
+  bookingCode: string;
   seats: number;
-  adults: number;
-  children: number;
+  totalCents: number;
+  amountDueCents: number;
+  paymentType: PublicBookingResponsePaymentType;
+  paymentMethod: PublicBookingResponsePaymentMethod;
   paymentStatus: string;
+  paymentDeadline: string;
   message: string;
-  setupIntentClientSecret?: string | null;
-  depositPercentage?: number | null;
-  amountDueCents?: number | null;
+  bank?: PublicBankInstructions;
+  office?: PublicOfficeInstructions;
+  stripeClientSecret?: string | null;
 }
 
 export type ExcursionInputProvinceSurcharges = { [key: string]: number };
+
+export type ExcursionInputDepositType =
+  (typeof ExcursionInputDepositType)[keyof typeof ExcursionInputDepositType];
+
+export const ExcursionInputDepositType = {
+  percent: "percent",
+  fixed: "fixed",
+} as const;
 
 export interface ExcursionInput {
   name?: string;
@@ -202,6 +386,41 @@ export interface ExcursionInput {
   included?: string | null;
   excluded?: string | null;
   generalInfo?: string | null;
+  patientPrice?: string | null;
+  companionPrice?: string | null;
+  returnDate?: string | null;
+  bookingCloseDate?: string | null;
+  depositEnabled?: boolean;
+  depositType?: ExcursionInputDepositType;
+  depositValue?: string | null;
+  depositAvailableAfterConfirm?: boolean;
+  depositDeadlineDate?: string | null;
+  balanceDeadlineDate?: string | null;
+  balanceHoursOverride?: number | null;
+  payCardEnabled?: boolean;
+  payBankTransferEnabled?: boolean;
+  payOfficeEnabled?: boolean;
+  bankTransferHoursOverride?: number | null;
+  officeHoursOverride?: number | null;
+  fullPaymentOnlyDaysBefore?: number | null;
+  waitlistEnabled?: boolean;
+}
+
+export interface ExcursionAgePriceRow {
+  ageRangeId: string;
+  label: string;
+  minAge: number;
+  maxAge: number;
+  price?: string | null;
+}
+
+export type ExcursionAgePricesInputPricesItem = {
+  ageRangeId: string;
+  price?: string | null;
+};
+
+export interface ExcursionAgePricesInput {
+  prices: ExcursionAgePricesInputPricesItem[];
 }
 
 export interface VehicleUpdateInput {
@@ -457,6 +676,14 @@ export interface PublicOfferDetail {
   schedule?: ScheduleDay[] | null;
 }
 
+export type PublicExcursionDetailTripType =
+  (typeof PublicExcursionDetailTripType)[keyof typeof PublicExcursionDetailTripType];
+
+export const PublicExcursionDetailTripType = {
+  standard: "standard",
+  rident: "rident",
+} as const;
+
 export interface PublicPickupPoint {
   id: string;
   name: string;
@@ -466,6 +693,35 @@ export interface PublicPickupPoint {
   surcharge?: number;
   pickupTime?: string | null;
   sortOrder: number;
+  mapsUrl?: string | null;
+}
+
+export interface PublicAgeRangePrice {
+  id: string;
+  label: string;
+  minAge: number;
+  maxAge: number;
+  price: number;
+}
+
+export type PublicDepositConfigType =
+  (typeof PublicDepositConfigType)[keyof typeof PublicDepositConfigType];
+
+export const PublicDepositConfigType = {
+  percent: "percent",
+  fixed: "fixed",
+} as const;
+
+export interface PublicDepositConfig {
+  available: boolean;
+  type: PublicDepositConfigType;
+  value?: number | null;
+}
+
+export interface PublicPaymentMethods {
+  card: boolean;
+  bankTransfer: boolean;
+  office: boolean;
 }
 
 export interface PublicExcursionDetail {
@@ -485,6 +741,62 @@ export interface PublicExcursionDetail {
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
   cardPaymentsEnabled?: boolean;
+  tripType?: PublicExcursionDetailTripType;
+  adultLabel?: string;
+  ageRanges?: PublicAgeRangePrice[];
+  patientPrice?: number | null;
+  companionPrice?: number | null;
+  depositConfig?: PublicDepositConfig;
+  paymentMethods?: PublicPaymentMethods;
+  thresholdReached?: boolean;
+  spotsLeft?: number | null;
+  bookingClosed?: boolean;
+  officeAddress?: string | null;
+  officeOpeningHours?: string | null;
+}
+
+export type QuoteRequestPaymentType =
+  (typeof QuoteRequestPaymentType)[keyof typeof QuoteRequestPaymentType];
+
+export const QuoteRequestPaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export interface QuoteRequest {
+  participants: QuoteParticipantInput[];
+  pickupPointId?: string | null;
+  paymentType: QuoteRequestPaymentType;
+}
+
+export interface QuotedParticipant {
+  type: string;
+  ageRangeId?: string | null;
+  ageRangeLabel?: string | null;
+  pickupPointId?: string | null;
+  pickupPointName?: string | null;
+  basePriceCents: number;
+  pickupSurchargeCents: number;
+  finalPriceCents: number;
+  sortOrder: number;
+}
+
+export type QuoteResponsePaymentType =
+  (typeof QuoteResponsePaymentType)[keyof typeof QuoteResponsePaymentType];
+
+export const QuoteResponsePaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export interface QuoteResponse {
+  participants: QuotedParticipant[];
+  totalCents: number;
+  depositCents: number;
+  amountDueCents: number;
+  paymentType: QuoteResponsePaymentType;
+  depositAllowed: boolean;
+  seats: number;
 }
 
 export interface UploadUrlRequest {
@@ -595,6 +907,18 @@ export interface SettingsResponse {
   payment_notes?: string | null;
   deposit_percentage?: string | null;
   excursion_card_payments_enabled?: string | null;
+  payment_deadline_bank_hours?: string | null;
+  payment_deadline_office_hours?: string | null;
+  payment_deadline_balance_hours?: string | null;
+  payment_deadline_near_departure_hours?: string | null;
+  full_payment_only_days_before?: string | null;
+  auto_release_seats_on_expiry?: string | null;
+  office_address?: string | null;
+  office_opening_hours?: string | null;
+  terms_policy_version?: string | null;
+  privacy_policy_version?: string | null;
+  media_policy_version?: string | null;
+  adult_min_age?: string | null;
 }
 
 export interface SettingsInput {
@@ -604,6 +928,35 @@ export interface SettingsInput {
   payment_notes?: string;
   deposit_percentage?: string;
   excursion_card_payments_enabled?: string;
+  payment_deadline_bank_hours?: string;
+  payment_deadline_office_hours?: string;
+  payment_deadline_balance_hours?: string;
+  payment_deadline_near_departure_hours?: string;
+  full_payment_only_days_before?: string;
+  auto_release_seats_on_expiry?: string;
+  office_address?: string;
+  office_opening_hours?: string;
+  terms_policy_version?: string;
+  privacy_policy_version?: string;
+  media_policy_version?: string;
+  adult_min_age?: string;
+}
+
+export interface AgeRange {
+  id: string;
+  label: string;
+  minAge: number;
+  maxAge: number;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface AgeRangeInput {
+  label?: string;
+  minAge?: number;
+  maxAge?: number;
+  active?: boolean;
+  sortOrder?: number;
 }
 
 export interface PickupLocation {
@@ -613,6 +966,9 @@ export interface PickupLocation {
   address?: string | null;
   province?: string | null;
   sortOrder: number;
+  active: boolean;
+  mapsUrl?: string | null;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -623,6 +979,9 @@ export interface PickupLocationInput {
   address?: string | null;
   province?: string | null;
   sortOrder?: number;
+  active?: boolean;
+  mapsUrl?: string | null;
+  notes?: string | null;
 }
 
 export interface ExcursionPickupPointLocation {
@@ -640,6 +999,7 @@ export interface ExcursionPickupPoint {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder: number;
+  surcharge?: string | null;
   createdAt: string;
   location: ExcursionPickupPointLocation;
 }
@@ -648,11 +1008,13 @@ export interface ExcursionPickupPointInput {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder?: number;
+  surcharge?: string | null;
 }
 
 export interface ExcursionPickupPointUpdate {
   pickupTime?: string | null;
   sortOrder?: number;
+  surcharge?: string | null;
 }
 
 export type ListCustomersParams = {
@@ -674,6 +1036,50 @@ export type SearchRmsCustomersParams = {
   q: string;
 };
 
+export type ConfirmPublicExcursionBookingPaymentBody = {
+  paymentIntentId: string;
+};
+
+export type ConfirmPublicExcursionBookingPayment200 = {
+  ok?: boolean;
+};
+
+export type UpdateExcursionAgePrices200 = {
+  ok?: boolean;
+};
+
+export type ExpireOverdueBookingsBody = {
+  releaseSeats?: boolean;
+};
+
+export type ExpireOverdueBookings200 = {
+  ok: boolean;
+  expired: number;
+  releasedSeats: number;
+};
+
+export type MarkPaymentRequestPaidBody = {
+  transactionReference?: string;
+};
+
+export type MarkPaymentRequestPaid200 = {
+  ok: boolean;
+  alreadyApplied: boolean;
+};
+
+export type RequestBookingBalance200 = {
+  ok: boolean;
+  outcome: string;
+};
+
+export type UpdateBookingDeadlineBody = {
+  deadline: string;
+};
+
+export type UpdateBookingDeadline200 = {
+  ok?: boolean;
+};
+
 export type DeleteVehicle200 = {
   ok: boolean;
 };
@@ -684,4 +1090,8 @@ export type ConvertLeadToCustomerBody = {
   email: string;
   phone?: string | null;
   mobile?: string | null;
+};
+
+export type DeleteAgeRange200 = {
+  ok?: boolean;
 };

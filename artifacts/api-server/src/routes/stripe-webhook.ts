@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { excursionBookingsTable } from "@workspace/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { applySuccessfulCardPayment } from "../services/excursion-payments";
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
   const sig = req.headers["stripe-signature"];
@@ -33,6 +34,36 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
   }
 
   try {
+    // Gite v2: addebito immediato — il webhook è la fonte primaria di verità.
+    // applySuccessfulCardPayment è idempotente rispetto alla conferma in pagina.
+    if (event.type === "payment_intent.succeeded") {
+      const intent = event.data.object;
+      if (intent.metadata?.source === "elis-travel" || intent.metadata?.bookingId) {
+        const applied = await applySuccessfulCardPayment(intent);
+        if (applied && !applied.alreadyApplied) {
+          logger.info(
+            { bookingId: applied.bookingId, type: applied.requestType },
+            "Pagamento carta applicato via webhook",
+          );
+        }
+      }
+      res.json({ received: true });
+      return;
+    }
+
+    if (event.type === "payment_intent.payment_failed") {
+      const intent = event.data.object;
+      const bookingId = intent.metadata?.bookingId;
+      if (bookingId) {
+        logger.warn(
+          { bookingId, paymentIntentId: intent.id, lastError: intent.last_payment_error?.code },
+          "Pagamento carta fallito (l'utente può riprovare in pagina)",
+        );
+      }
+      res.json({ received: true });
+      return;
+    }
+
     // Fallback for setup_intent.succeeded in case the frontend card-confirmed endpoint was not reached
     if (event.type === "setup_intent.succeeded") {
       const setupIntent = event.data.object;

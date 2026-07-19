@@ -12,6 +12,15 @@ import { verifyBookingCancellationToken } from "../services/booking-cancellation
 import { publicFormsLimiter } from "../middlewares/rateLimiter";
 import { stripe } from "../services/stripe";
 import { logger } from "../lib/logger";
+import {
+  loadPricingContext,
+  getPaymentSettings,
+  buildQuote,
+  isDepositAvailable,
+  availablePaymentMethods,
+  QuoteError,
+  type QuoteParticipantInput,
+} from "../services/excursion-pricing";
 
 const router = Router();
 
@@ -346,27 +355,131 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       .where(eq(excursionPickupPointsTable.excursionId, id))
       .orderBy(asc(excursionPickupPointsTable.sortOrder));
 
-    const [cardPaymentSetting] = await db
-      .select({ value: settingsTable.value })
-      .from(settingsTable)
-      .where(eq(settingsTable.key, CARD_PAYMENTS_SETTING_KEY))
-      .limit(1);
+    // Contesto prezzi Gite v2: fasce età, prezzi per fascia, punti con supplemento risolto
+    const ctx = await loadPricingContext(id);
+    const settings = await getPaymentSettings();
+    if (!ctx) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
 
-    // Ogni punto espone il supplemento a persona della sua provincia per questa gita.
-    const surchargeMap = excursion.provinceSurcharges ?? {};
-    const pickupPointsWithSurcharge = pickupPoints.map((p) => ({
-      ...p,
-      surcharge: p.province ? provinceSurchargeFor(surchargeMap, p.province) : 0,
-    }));
+    const isRident = ctx.isRident;
+    const activePoints = ctx.pickupPoints.filter((p) => p.active);
+    const pickupPointsPublic = activePoints.map((p) => {
+      // pickupPoints legacy della select sopra: manteniamo la stessa shape + estensioni
+      const legacy = pickupPoints.find((lp) => lp.id === p.id);
+      return {
+        id: p.id,
+        name: p.name,
+        city: p.city,
+        address: legacy?.address ?? null,
+        province: p.province,
+        pickupTime: p.pickupTime,
+        sortOrder: p.sortOrder,
+        surcharge: p.surchargeCents / 100,
+        mapsUrl: p.mapsUrl,
+      };
+    });
+
+    const depositAllowed = isDepositAvailable(ctx.excursion, settings);
+    const methods = availablePaymentMethods(ctx.excursion, settings, Boolean(stripe));
+    const thresholdReached =
+      (excursion.adherentsCount ?? 0) >= Math.max(excursion.minThreshold ?? 1, 1);
+    const bookingClosed = ctx.excursion.bookingCloseDate
+      ? new Date() > new Date(`${ctx.excursion.bookingCloseDate}T23:59:59`)
+      : false;
 
     const { status: _status, provinceSurcharges: _ps, ...publicExcursion } = excursion;
     res.json({
       ...publicExcursion,
-      pickupPoints: pickupPointsWithSurcharge,
-      cardPaymentsEnabled: isCardPaymentEnabled(cardPaymentSetting?.value) && Boolean(stripe),
+      pickupPoints: pickupPointsPublic,
+      cardPaymentsEnabled: methods.card,
+      // ---- Gite v2 ----
+      tripType: isRident ? "rident" : "standard",
+      adultLabel: `Adulti (${settings.adultMinAge}+ anni)`,
+      ageRanges: isRident
+        ? []
+        : ctx.ageRanges.map((r) => ({
+            id: r.id,
+            label: r.label,
+            minAge: r.minAge,
+            maxAge: r.maxAge,
+            price: (ctx.agePriceCents.get(r.id) ?? Math.round(Number(excursion.pricePerPerson ?? 0) * 100)) / 100,
+          })),
+      patientPrice: isRident
+        ? Number(ctx.excursion.patientPrice ?? excursion.pricePerPerson ?? 0)
+        : null,
+      companionPrice: isRident
+        ? Number(ctx.excursion.companionPrice ?? excursion.pricePerPerson ?? 0)
+        : null,
+      depositConfig: {
+        available: depositAllowed,
+        type: ctx.excursion.depositType === "fixed" ? "fixed" : "percent",
+        value:
+          ctx.excursion.depositValue !== null
+            ? Number(ctx.excursion.depositValue)
+            : settings.depositPercentage,
+      },
+      paymentMethods: methods,
+      thresholdReached,
+      minThreshold: excursion.minThreshold,
+      spotsLeft:
+        (excursion.currentCapacity ?? 0) > 0
+          ? Math.max((excursion.currentCapacity ?? 0) - (excursion.adherentsCount ?? 0), 0)
+          : null,
+      bookingClosed,
+      officeAddress: settings.officeAddress,
+      officeOpeningHours: settings.officeOpeningHours,
     });
   } catch (err) {
     console.error("Public excursion detail fetch failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+// Preventivo server-side: il frontend lo usa per il riepilogo, la prenotazione
+// ricalcola comunque tutto (mai fidarsi dei totali del browser).
+router.post("/excursions/:id/quote", publicFormsLimiter, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const { participants, pickupPointId, paymentType } = req.body as {
+      participants?: QuoteParticipantInput[];
+      pickupPointId?: string | null;
+      paymentType?: string;
+    };
+
+    const ctx = await loadPricingContext(id);
+    if (!ctx || (ctx.excursion.status !== "open" && ctx.excursion.status !== "confirmed")) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
+    const settings = await getPaymentSettings();
+
+    const quote = buildQuote(
+      ctx,
+      {
+        participants: participants ?? [],
+        pickupPointId: pickupPointId ?? null,
+        paymentType: paymentType === "deposit" ? "deposit" : "full",
+      },
+      settings,
+    );
+
+    res.json({
+      participants: quote.participants,
+      totalCents: quote.totalCents,
+      depositCents: quote.depositCents,
+      amountDueCents: quote.amountDueCents,
+      paymentType: quote.paymentType,
+      depositAllowed: quote.depositAllowed,
+      seats: quote.seats,
+    });
+  } catch (err) {
+    if (err instanceof QuoteError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    console.error("Public excursion quote failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
   }
 });
@@ -499,326 +612,7 @@ router.post("/leads", publicFormsLimiter, async (req, res) => {
   }
 });
 
-router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
-  try {
-    const id = req.params.id as string;
-    const { customerName, email, phone, adults, children, paymentType, servizioCasa, pickupPointId } = req.body as {
-      customerName?: string;
-      email?: string;
-      phone?: string;
-      adults?: number;
-      children?: number;
-      paymentType?: string;
-      servizioCasa?: boolean;
-      pickupPointId?: string;
-    };
-
-    if (!customerName?.trim() || !email?.trim()) {
-      res.status(400).json({ error: "Nome e email sono obbligatori." });
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      res.status(400).json({ error: "Indirizzo email non valido." });
-      return;
-    }
-    if (customerName.length > 200 || email.length > 200) {
-      res.status(400).json({ error: "Nome o email troppo lunghi." });
-      return;
-    }
-    if (phone && phone.length > 40) {
-      res.status(400).json({ error: "Numero di telefono troppo lungo." });
-      return;
-    }
-    const adultsNum = Number(adults);
-    const childrenNum = Number(children ?? 0);
-    if (!Number.isInteger(adultsNum) || adultsNum < 1) {
-      res.status(400).json({ error: "Almeno 1 adulto è obbligatorio." });
-      return;
-    }
-    if (!Number.isInteger(childrenNum) || childrenNum < 0) {
-      res.status(400).json({ error: "Numero bambini non valido." });
-      return;
-    }
-    const seatsNum = adultsNum + childrenNum;
-    if (paymentType !== "deposit" && paymentType !== "full") {
-      res.status(400).json({ error: "Tipo di pagamento non valido." });
-      return;
-    }
-
-    // Punto di raccolta facoltativo: se fornito deve appartenere a questa gita.
-    let pickupPointInfo: { id: string; name: string; pickupTime: string | null; province: string | null } | null = null;
-    if (pickupPointId) {
-      const [pp] = await db
-        .select({
-          id: excursionPickupPointsTable.id,
-          name: pickupLocationsTable.name,
-          pickupTime: excursionPickupPointsTable.pickupTime,
-          province: pickupLocationsTable.province,
-        })
-        .from(excursionPickupPointsTable)
-        .innerJoin(
-          pickupLocationsTable,
-          eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id),
-        )
-        .where(
-          and(
-            eq(excursionPickupPointsTable.id, pickupPointId),
-            eq(excursionPickupPointsTable.excursionId, id),
-          ),
-        )
-        .limit(1);
-      if (!pp) {
-        res.status(400).json({ error: "Punto di raccolta non valido per questa gita." });
-        return;
-      }
-      pickupPointInfo = pp;
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Load booking payment settings
-    const settingRows = await db
-      .select({ key: settingsTable.key, value: settingsTable.value })
-      .from(settingsTable)
-      .where(
-        sql`${settingsTable.key} IN ('deposit_percentage', ${CARD_PAYMENTS_SETTING_KEY})`,
-      );
-    const settingMap = Object.fromEntries(settingRows.map((row) => [row.key, row.value]));
-    const depositPct = settingMap.deposit_percentage ? Number(settingMap.deposit_percentage) : null;
-    const cardPaymentsEnabled = isCardPaymentEnabled(settingMap[CARD_PAYMENTS_SETTING_KEY]);
-    const useCardPayment = cardPaymentsEnabled && Boolean(stripe);
-    const paymentStatus = useCardPayment
-      ? "pending_card"
-      : paymentType === "full"
-        ? "full_requested"
-        : "deposit_requested";
-
-    const result = await db.transaction(async (tx) => {
-      const updated = await tx
-        .update(excursionsTable)
-        .set({
-          adherentsCount: sql`${excursionsTable.adherentsCount} + ${seatsNum}`,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(excursionsTable.id, id),
-            ne(excursionsTable.status, "completed"),
-            ne(excursionsTable.status, "cancelled"),
-            ne(excursionsTable.status, "archived"),
-            or(
-              eq(excursionsTable.currentCapacity, 0),
-              sql`${excursionsTable.adherentsCount} + ${seatsNum} <= ${excursionsTable.currentCapacity}`,
-            ),
-          ),
-        )
-        .returning();
-
-      if (updated.length === 0) {
-        const [exists] = await tx
-          .select({
-            id: excursionsTable.id,
-            status: excursionsTable.status,
-            currentCapacity: excursionsTable.currentCapacity,
-            adherentsCount: excursionsTable.adherentsCount,
-          })
-          .from(excursionsTable)
-          .where(eq(excursionsTable.id, id))
-          .limit(1);
-
-        if (!exists) return { kind: "notfound" as const };
-        if (
-          exists.status === "completed" ||
-          exists.status === "cancelled" ||
-          exists.status === "archived"
-        ) {
-          return { kind: "closed" as const };
-        }
-        const remaining = (exists.currentCapacity ?? 0) - (exists.adherentsCount ?? 0);
-        return { kind: "full" as const, remaining: Math.max(0, remaining) };
-      }
-
-      const excursion = updated[0];
-      const pricePerPerson = Number(excursion.pricePerPerson ?? 0);
-      // Supplemento provincia del punto di raccolta scelto: a persona, vale
-      // per tutti i partecipanti (adulti e bambini), prima della % di acconto.
-      const surchargePerPerson = pickupPointInfo?.province
-        ? provinceSurchargeFor(excursion.provinceSurcharges, pickupPointInfo.province)
-        : 0;
-      const totalEuros = (pricePerPerson + surchargePerPerson) * seatsNum;
-      let amountEuros: number;
-      if (paymentType === "full" || !depositPct || depositPct <= 0) {
-        amountEuros = totalEuros;
-      } else {
-        amountEuros = totalEuros * (depositPct / 100);
-      }
-      const amountDueCents = Math.round(amountEuros * 100);
-
-      const [existingCustomer] = await tx
-        .select({ id: customersTable.id })
-        .from(customersTable)
-        .where(eq(customersTable.email, normalizedEmail))
-        .limit(1);
-
-      const [booking] = await tx
-        .insert(excursionBookingsTable)
-        .values({
-          excursionId: id,
-          customerId: existingCustomer?.id ?? null,
-          customerName: customerName.trim(),
-          email: normalizedEmail,
-          phone: phone?.trim() || null,
-          seats: seatsNum,
-          adults: adultsNum,
-          children: childrenNum,
-          paymentStatus,
-          servizioCasa: servizioCasa === true,
-          amountDueCents: useCardPayment ? amountDueCents : null,
-          pickupPointId: pickupPointInfo?.id ?? null,
-        })
-        .returning();
-
-      const [excursionDetails] = useCardPayment
-        ? [excursion]
-        : await tx
-            .select({
-              id: excursionsTable.id,
-              name: excursionsTable.name,
-              location: excursionsTable.location,
-              date: excursionsTable.date,
-              pricePerPerson: excursionsTable.pricePerPerson,
-            })
-            .from(excursionsTable)
-            .where(eq(excursionsTable.id, id))
-            .limit(1);
-
-      return { kind: "ok" as const, booking, excursion: excursionDetails, amountDueCents, surchargePerPerson };
-    });
-
-    if (result.kind === "notfound") {
-      res.status(404).json({ error: "Gita non trovata." });
-      return;
-    }
-    if (result.kind === "closed") {
-      res.status(400).json({ error: "Le prenotazioni per questa gita sono chiuse." });
-      return;
-    }
-    if (result.kind === "full") {
-      res.status(400).json({
-        error:
-          result.remaining <= 0
-            ? "Posti esauriti per questa gita."
-            : `Sono rimasti solo ${result.remaining} posti disponibili.`,
-      });
-      return;
-    }
-
-    if (!useCardPayment) {
-      if (result.excursion) {
-        dispatchExcursionBookingEmails({
-          bookingId: result.booking.id,
-          customerName: customerName.trim(),
-          customerEmail: normalizedEmail,
-          customerPhone: phone?.trim() || null,
-          seats: seatsNum,
-          adults: adultsNum,
-          children: childrenNum,
-          servizioCasa: result.booking.servizioCasa,
-          pickupPoint: pickupPointInfo
-            ? { name: pickupPointInfo.name, pickupTime: pickupPointInfo.pickupTime }
-            : null,
-          pickupSurchargePerPerson: result.surchargePerPerson,
-          paymentType: paymentType as "deposit" | "full",
-          excursion: {
-            id: result.excursion.id,
-            name: result.excursion.name,
-            location: result.excursion.location,
-            date: result.excursion.date,
-            pricePerPerson: result.excursion.pricePerPerson,
-          },
-        });
-      }
-
-      res.status(201).json({
-        id: result.booking.id,
-        seats: result.booking.seats,
-        adults: result.booking.adults,
-        children: result.booking.children,
-        paymentStatus: result.booking.paymentStatus,
-        message:
-          paymentStatus === "full_requested"
-            ? "Richiesta ricevuta. Ti contatteremo a breve con gli estremi per il pagamento completo."
-            : "Richiesta ricevuta. Ti contatteremo a breve con gli estremi per versare l'acconto.",
-      });
-      return;
-    }
-
-    // Create or retrieve Stripe Customer, then SetupIntent
-    const stripeClient = stripe;
-    if (!stripeClient) {
-      res.status(503).json({ error: "Pagamenti non configurati." });
-      return;
-    }
-
-    let stripeCustomerId: string;
-    try {
-      const existingCustomers = await stripeClient.customers.list({ email: normalizedEmail, limit: 1 });
-      if (existingCustomers.data.length > 0) {
-        stripeCustomerId = existingCustomers.data[0].id;
-      } else {
-        const customer = await stripeClient.customers.create({
-          email: normalizedEmail,
-          name: customerName.trim(),
-          metadata: { source: "elis-travel" },
-        });
-        stripeCustomerId = customer.id;
-      }
-
-      const setupIntent = await stripeClient.setupIntents.create({
-        customer: stripeCustomerId,
-        usage: "off_session",
-        metadata: { bookingId: result.booking.id },
-        payment_method_types: ["card"],
-      });
-
-      await db
-        .update(excursionBookingsTable)
-        .set({
-          stripeCustomerId,
-          stripeSetupIntentId: setupIntent.id,
-          updatedAt: new Date(),
-        })
-        .where(eq(excursionBookingsTable.id, result.booking.id));
-
-      res.status(201).json({
-        id: result.booking.id,
-        seats: result.booking.seats,
-        adults: result.booking.adults,
-        children: result.booking.children,
-        paymentStatus: result.booking.paymentStatus,
-        message: "Inserisci i dati della carta per completare la prenotazione.",
-        setupIntentClientSecret: setupIntent.client_secret,
-        depositPercentage: depositPct,
-        amountDueCents: result.amountDueCents,
-      });
-    } catch (stripeErr) {
-      logger.error({ stripeErr, bookingId: result.booking.id }, "Stripe SetupIntent creation failed");
-      // Roll back adherents count and delete booking
-      await db.transaction(async (tx) => {
-        await tx.delete(excursionBookingsTable).where(eq(excursionBookingsTable.id, result.booking.id));
-        await tx.update(excursionsTable).set({
-          adherentsCount: sql`GREATEST(${excursionsTable.adherentsCount} - ${seatsNum}, 0)`,
-          updatedAt: new Date(),
-        }).where(eq(excursionsTable.id, id));
-      });
-      res.status(500).json({ error: "Errore nella creazione del pagamento. Riprova." });
-    }
-  } catch (err) {
-    console.error("Public excursion booking failed:", err);
-    res.status(500).json({ error: "Errore interno del server." });
-  }
-});
+// Prenotazione pubblica: spostata in excursion-booking-public.ts (Gite v2).
 
 // Called by frontend after stripe.confirmSetup succeeds (in-page or via return_url redirect)
 router.post("/excursions/:id/book/:bookingId/card-confirmed", async (req, res) => {

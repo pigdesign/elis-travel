@@ -12,4 +12,7 @@ export interface PickupLocationInput {
   address?: string | null;
   province?: string | null;
   sortOrder?: number;
+  active?: boolean;
+  mapsUrl?: string | null;
+  notes?: string | null;
 }
