@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { sessionPool } from "@workspace/db";
 import router from "./routes";
 import { stripeWebhookHandler } from "./routes/stripe-webhook";
+import { ftpImageProxy } from "./routes/ftp-image-proxy";
 import { logger } from "./lib/logger";
 import { globalLimiter } from "./middlewares/rateLimiter";
 
@@ -101,6 +102,11 @@ app.use(
     },
   }),
 );
+
+// Proxy immagini: inoltra /ftp-image/* all'origine Aruba così gli URL già in DB
+// continuano a funzionare quando il dominio passa a Railway. Reversibile:
+// basta rimuovere questa riga per tornare al comportamento precedente.
+app.use("/ftp-image", ftpImageProxy);
 
 app.use("/api", globalLimiter, router);
 
