@@ -12,6 +12,7 @@ import { stripeWebhookHandler } from "./routes/stripe-webhook";
 import { ftpImageProxy } from "./routes/ftp-image-proxy";
 import { logger } from "./lib/logger";
 import { globalLimiter } from "./middlewares/rateLimiter";
+import { siteGate } from "./middlewares/siteGate";
 
 if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET must be set in production");
@@ -68,6 +69,10 @@ app.use(
     credentials: true,
   }),
 );
+
+// Gate Basic Auth pre-lancio: chiude l'intero sito al pubblico se le variabili
+// SITE_BASIC_AUTH_USER/PASS sono impostate. Esenti healthcheck e webhook Stripe.
+app.use(siteGate);
 
 // Stripe webhook needs raw body — must be registered before express.json()
 app.post(
