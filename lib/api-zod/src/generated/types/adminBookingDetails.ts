@@ -6,8 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdminBookingConsent } from "./adminBookingConsent";
+import type { AdminBookingEconomicSummary } from "./adminBookingEconomicSummary";
 import type { AdminBookingParticipant } from "./adminBookingParticipant";
+import type { AdminCancellationCase } from "./adminCancellationCase";
+import type { AdminPaymentAttempt } from "./adminPaymentAttempt";
+import type { AdminPaymentRefund } from "./adminPaymentRefund";
 import type { AdminPaymentRequest } from "./adminPaymentRequest";
+import type { AdminStripeCleanupJob } from "./adminStripeCleanupJob";
 import type { Booking } from "./booking";
 
 export interface AdminBookingDetails {
@@ -15,5 +20,10 @@ export interface AdminBookingDetails {
   participants: AdminBookingParticipant[];
   consents: AdminBookingConsent[];
   paymentRequests: AdminPaymentRequest[];
+  paymentAttempts: AdminPaymentAttempt[];
+  cancellationCases: AdminCancellationCase[];
+  refunds: AdminPaymentRefund[];
+  cleanupJobs: AdminStripeCleanupJob[];
+  economicSummary: AdminBookingEconomicSummary;
   participantsDetailed: boolean;
 }

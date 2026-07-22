@@ -7,6 +7,7 @@
  */
 import type { PublicAgeRangePrice } from "./publicAgeRangePrice";
 import type { PublicDepositConfig } from "./publicDepositConfig";
+import type { PublicExcursionDetailCardFlow } from "./publicExcursionDetailCardFlow";
 import type { PublicExcursionDetailTripType } from "./publicExcursionDetailTripType";
 import type { PublicPaymentMethods } from "./publicPaymentMethods";
 import type { PublicPickupPoint } from "./publicPickupPoint";
@@ -17,6 +18,7 @@ export interface PublicExcursionDetail {
   name: string;
   location?: string | null;
   date?: string | null;
+  departureAt?: Date | null;
   pricePerPerson?: string | null;
   currentCapacity?: number | null;
   minThreshold?: number | null;
@@ -29,6 +31,8 @@ export interface PublicExcursionDetail {
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
   cardPaymentsEnabled?: boolean;
+  /** Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto */
+  cardFlow?: PublicExcursionDetailCardFlow;
   tripType?: PublicExcursionDetailTripType;
   adultLabel?: string;
   ageRanges?: PublicAgeRangePrice[];

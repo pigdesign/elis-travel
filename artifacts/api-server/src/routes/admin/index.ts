@@ -8,6 +8,8 @@ import settingsRouter from "./settings";
 import pickupLocationsRouter from "./pickup-locations";
 import ageRangesRouter from "./age-ranges";
 import bookingPaymentsRouter from "./booking-payments";
+import emailOutboxRouter from "./email-outbox";
+import bookingCancellationsRouter from "./booking-cancellations";
 
 const adminRouter = Router();
 
@@ -20,5 +22,7 @@ adminRouter.use(settingsRouter);
 adminRouter.use(pickupLocationsRouter);
 adminRouter.use(ageRangesRouter);
 adminRouter.use(bookingPaymentsRouter);
+adminRouter.use(emailOutboxRouter);
+adminRouter.use(bookingCancellationsRouter);
 
 export default adminRouter;

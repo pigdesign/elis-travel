@@ -7,5 +7,7 @@
  */
 
 export type UpdateBookingDeadlineBody = {
+  /** Obbligazione attiva più recente da prorogare */
+  paymentRequestId: string;
   deadline: Date;
 };

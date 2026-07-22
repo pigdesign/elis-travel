@@ -8,7 +8,8 @@
     "build": "vite build --config vite.config.ts && pnpm run prerender",
     "prerender": "tsx scripts/prerender.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test src/lib/*.test.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

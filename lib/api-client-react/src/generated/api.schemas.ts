@@ -27,7 +27,28 @@ export interface OkResponse {
 
 export interface ErrorResponse {
   error: string;
+  code?: string;
 }
+
+export type ExcursionSummaryStatus =
+  (typeof ExcursionSummaryStatus)[keyof typeof ExcursionSummaryStatus];
+
+export const ExcursionSummaryStatus = {
+  draft: "draft",
+  open: "open",
+  confirmed: "confirmed",
+  completed: "completed",
+  cancelled: "cancelled",
+  archived: "archived",
+} as const;
+
+export type ExcursionSummaryCategory =
+  (typeof ExcursionSummaryCategory)[keyof typeof ExcursionSummaryCategory];
+
+export const ExcursionSummaryCategory = {
+  standard: "standard",
+  rident: "rident",
+} as const;
 
 export type ExcursionSummaryProvinceSurcharges = { [key: string]: number };
 
@@ -54,8 +75,10 @@ export interface ExcursionSummary {
   name: string;
   location: string;
   date: string;
-  status: string;
-  category: string;
+  /** Istante di partenza; visualizzato e inserito nel fuso Europe/Rome */
+  departureAt?: string | null;
+  status: ExcursionSummaryStatus;
+  category: ExcursionSummaryCategory;
   tags?: string[];
   currentCapacity: number;
   minThreshold: number;
@@ -120,6 +143,11 @@ export interface Booking {
   paymentStatus: string;
   bookedAt: string;
   servizioCasa?: boolean | null;
+  /**
+   * Snapshot dell'indirizzo indicato per il ritiro a domicilio
+   * @maxLength 500
+   */
+  homePickupAddress?: string | null;
   pickupPointId?: string | null;
   cancelledAt?: string | null;
   bookingCode?: string | null;
@@ -129,6 +157,15 @@ export interface Booking {
   amountDueCents?: number | null;
   amountPaidCents?: number | null;
   paymentDeadline?: string | null;
+  workflowVersion?: number;
+  /** True quando il cliente ha autorizzato le comunicazioni automatiche per questa prenotazione */
+  customerNotificationsEnabled: boolean;
+  seatStatus?: string;
+  seatHoldExpiresAt?: string | null;
+  seatReleasedAt?: string | null;
+  seatReleaseReason?: string | null;
+  cancellationRequestedAt?: string | null;
+  cancellationRequestStatus?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -140,7 +177,9 @@ export type ExcursionDetail = ExcursionSummary & {
 export interface AdminBookingParticipant {
   id: string;
   participantType: string;
+  ageRangeId?: string | null;
   ageRangeLabel?: string | null;
+  pickupPointId?: string | null;
   pickupPointName?: string | null;
   basePriceCents: number;
   pickupSurchargeCents: number;
@@ -150,6 +189,58 @@ export interface AdminBookingParticipant {
   notes?: string | null;
   dataCompleted: boolean;
   sortOrder: number;
+}
+
+export type ManualBookingParticipantInputType =
+  (typeof ManualBookingParticipantInputType)[keyof typeof ManualBookingParticipantInputType];
+
+export const ManualBookingParticipantInputType = {
+  adult: "adult",
+  child: "child",
+  patient: "patient",
+  companion: "companion",
+} as const;
+
+export interface ManualBookingParticipantInput {
+  type: ManualBookingParticipantInputType;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  firstName: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  lastName: string;
+  /** Obbligatorio per i bambini quando sono configurate fasce età attive */
+  ageRangeId?: string | null;
+  /** Obbligatorio per ciascun partecipante RIDENT quando esistono punti attivi */
+  pickupPointId?: string | null;
+}
+
+export type AdminBookingParticipantReplaceRow =
+  ManualBookingParticipantInput & {
+    /** Obbligatorio per ogni riga partecipante già esistente; assente solo per completare righe legacy mancanti */
+    id?: string;
+  };
+
+export interface AdminBookingParticipantReplaceInput {
+  /**
+   * @minItems 1
+   * @maxItems 100
+   */
+  participants: AdminBookingParticipantReplaceRow[];
+  /** Punto comune per una gita standard; per RIDENT il punto è su ogni partecipante */
+  pickupPointId?: string | null;
+}
+
+export interface AdminBookingParticipantReplaceResponse {
+  ok: boolean;
+  alreadyApplied: boolean;
+  participantsDetailed: boolean;
+  participants: AdminBookingParticipant[];
+  updatedAt: string;
 }
 
 export interface AdminBookingConsent {
@@ -168,9 +259,243 @@ export interface AdminPaymentRequest {
   status: string;
   method?: string | null;
   deadline?: string | null;
+  graceUntil?: string | null;
+  stripeCheckoutSessionId?: string | null;
   paidAt?: string | null;
   transactionReference?: string | null;
   createdAt: string;
+}
+
+export type AdminPaymentAttemptStatus =
+  (typeof AdminPaymentAttemptStatus)[keyof typeof AdminPaymentAttemptStatus];
+
+export const AdminPaymentAttemptStatus = {
+  pending: "pending",
+  processing: "processing",
+  cancellation_pending: "cancellation_pending",
+  succeeded: "succeeded",
+  failed: "failed",
+  cancelled: "cancelled",
+} as const;
+
+export interface AdminPaymentAttempt {
+  id: string;
+  paymentRequestId: string;
+  provider: string;
+  status: AdminPaymentAttemptStatus;
+  amountCents: number;
+  stripePaymentIntentId?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdminCancellationCaseSource =
+  (typeof AdminCancellationCaseSource)[keyof typeof AdminCancellationCaseSource];
+
+export const AdminCancellationCaseSource = {
+  customer: "customer",
+  admin: "admin",
+  excursion: "excursion",
+} as const;
+
+export type AdminCancellationCaseStatus =
+  (typeof AdminCancellationCaseStatus)[keyof typeof AdminCancellationCaseStatus];
+
+export const AdminCancellationCaseStatus = {
+  pending: "pending",
+  rejected: "rejected",
+  superseded: "superseded",
+  approved: "approved",
+  refunding: "refunding",
+  manual_required: "manual_required",
+  completed: "completed",
+} as const;
+
+export interface AdminCancellationCase {
+  id: string;
+  bookingId: string;
+  excursionId?: string | null;
+  source: AdminCancellationCaseSource;
+  status: AdminCancellationCaseStatus;
+  requestReason?: string | null;
+  decisionReason?: string | null;
+  openedByAdminUserId?: string | null;
+  openedByAdminName?: string | null;
+  decidedByAdminUserId?: string | null;
+  decidedByAdminName?: string | null;
+  refundableAtDecisionCents?: number | null;
+  approvedRefundCents?: number | null;
+  requestedAt: string;
+  decidedAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdminPaymentRefundStatus =
+  (typeof AdminPaymentRefundStatus)[keyof typeof AdminPaymentRefundStatus];
+
+export const AdminPaymentRefundStatus = {
+  pending: "pending",
+  processing: "processing",
+  succeeded: "succeeded",
+  failed: "failed",
+  manual_required: "manual_required",
+} as const;
+
+export interface AdminPaymentRefund {
+  id: string;
+  bookingId: string;
+  paymentRequestId?: string | null;
+  paymentAttemptId?: string | null;
+  cancellationCaseId?: string | null;
+  amountCents: number;
+  reason: string;
+  status: AdminPaymentRefundStatus;
+  provider: string;
+  /** Riferimento operativo del provider o del rimborso offline */
+  providerReference?: string | null;
+  stripePaymentIntentId?: string | null;
+  stripeRefundId?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+  attemptCount: number;
+  maxAttempts: number;
+  nextAttemptAt: string;
+  lastAttemptAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdminStripeCleanupJobStatus =
+  (typeof AdminStripeCleanupJobStatus)[keyof typeof AdminStripeCleanupJobStatus];
+
+export const AdminStripeCleanupJobStatus = {
+  pending: "pending",
+  processing: "processing",
+  failed: "failed",
+  succeeded: "succeeded",
+  manual_required: "manual_required",
+} as const;
+
+export interface AdminStripeCleanupJob {
+  id: string;
+  bookingId?: string | null;
+  operation: string;
+  stripeResourceId: string;
+  status: AdminStripeCleanupJobStatus;
+  attemptCount: number;
+  maxAttempts: number;
+  nextAttemptAt: string;
+  lastAttemptAt?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+  manualCompletionReference?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminBookingEconomicSummary {
+  totalAmountCents: number | null;
+  paidAmountCents: number;
+  balanceAmountCents: number | null;
+  approvedRefundAmountCents: number;
+  registeredRefundAmountCents: number;
+  refundedAmountCents: number;
+  pendingRefundAmountCents: number;
+  failedRefundAmountCents: number;
+  manualRefundRequiredAmountCents: number;
+  remainingApprovedRefundAmountCents: number;
+  penaltyAmountCents: number;
+  netCollectedAmountCents: number;
+}
+
+export interface AdminCancellationOpenInput {
+  /** Identificativo stabile durante i retry dello stesso comando */
+  clientCommandId: string;
+  /** @maxLength 1000 */
+  reason?: string | null;
+}
+
+export interface AdminCancellationOpenResponse {
+  ok: boolean;
+  cancellationCaseId: string;
+  status: string;
+  alreadyOpen: boolean;
+}
+
+export type AdminCancellationResolutionInputDecision =
+  (typeof AdminCancellationResolutionInputDecision)[keyof typeof AdminCancellationResolutionInputDecision];
+
+export const AdminCancellationResolutionInputDecision = {
+  approve: "approve",
+  reject: "reject",
+} as const;
+
+export interface AdminCancellationResolutionInput {
+  cancellationCaseId: string;
+  decision: AdminCancellationResolutionInputDecision;
+  /** @minimum 0 */
+  refundAmountCents?: number;
+  /**
+   * Obbligatoria per un rifiuto o quando il rimborso approvato applica una penale
+   * @maxLength 2000
+   */
+  note?: string | null;
+}
+
+export type AdminCancellationResolutionResponseStatus =
+  (typeof AdminCancellationResolutionResponseStatus)[keyof typeof AdminCancellationResolutionResponseStatus];
+
+export const AdminCancellationResolutionResponseStatus = {
+  approved: "approved",
+  rejected: "rejected",
+  completed: "completed",
+} as const;
+
+export interface AdminCancellationResolutionResponse {
+  ok: boolean;
+  cancellationCaseId: string;
+  status: AdminCancellationResolutionResponseStatus;
+  refundIds: string[];
+  manualRefundIds: string[];
+}
+
+export interface AdminManualRefundCompletionInput {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  reference: string;
+}
+
+export interface AdminManualRefundCompletionResponse {
+  ok: boolean;
+  bookingId: string;
+  cancellationCaseId: string;
+  alreadyCompleted: boolean;
+}
+
+export interface AdminStripeCleanupManualCompletionInput {
+  /**
+   * Identificativo della verifica manuale effettuata nella dashboard Stripe
+   * @minLength 1
+   * @maxLength 500
+   */
+  reference: string;
+}
+
+export interface AdminStripeCleanupManualCompletionResponse {
+  ok: boolean;
+  jobId: string;
+  bookingId: string | null;
+  alreadyCompleted: boolean;
+  manualCompletionReference: string | null;
 }
 
 export interface AdminBookingDetails {
@@ -178,6 +503,11 @@ export interface AdminBookingDetails {
   participants: AdminBookingParticipant[];
   consents: AdminBookingConsent[];
   paymentRequests: AdminPaymentRequest[];
+  paymentAttempts: AdminPaymentAttempt[];
+  cancellationCases: AdminCancellationCase[];
+  refunds: AdminPaymentRefund[];
+  cleanupJobs: AdminStripeCleanupJob[];
+  economicSummary: AdminBookingEconomicSummary;
   participantsDetailed: boolean;
 }
 
@@ -189,6 +519,8 @@ export interface PickupReportPerson {
   referente: string;
   phone?: string | null;
   paymentStatus: string;
+  servizioCasa: boolean;
+  homePickupAddress: string | null;
 }
 
 export interface PickupReportGroup {
@@ -210,47 +542,107 @@ export type PickupReportExcursion = {
   date: string;
 };
 
+export interface PickupReportMissingParticipantDetails {
+  bookingId: string;
+  bookingCode?: string | null;
+  customerName: string;
+  referente: string;
+  phone?: string | null;
+  seats: number;
+  servizioCasa: boolean;
+  homePickupAddress: string | null;
+  participantsDetailed: boolean;
+  warning: string;
+}
+
 export interface PickupReport {
   excursion: PickupReportExcursion;
   groups: PickupReportGroup[];
   totalPeople: number;
+  missingParticipantDetails: PickupReportMissingParticipantDetails[];
 }
 
 export interface ConfirmTripResponse {
   ok: boolean;
   status: string;
   balanceRequestsCreated: number;
-  alreadyRequested: number;
+  cardCharged: number;
+  actionRequired: number;
+  skipped: number;
 }
 
+/**
+ * Per una gita già confermata sono ammessi soltanto full_requested e paid
+ */
+export type BookingInputPaymentStatus =
+  (typeof BookingInputPaymentStatus)[keyof typeof BookingInputPaymentStatus];
+
+export const BookingInputPaymentStatus = {
+  deposit_requested: "deposit_requested",
+  full_requested: "full_requested",
+  deposit: "deposit",
+  paid: "paid",
+} as const;
+
+/**
+ * Obbligatorio salvo prenotazione gratuita, che non ha metodo di pagamento
+ */
+export type BookingInputPaymentMethod =
+  | (typeof BookingInputPaymentMethod)[keyof typeof BookingInputPaymentMethod]
+  | null;
+
+export const BookingInputPaymentMethod = {
+  bank_transfer: "bank_transfer",
+  office: "office",
+} as const;
+
 export interface BookingInput {
+  /** Identificativo stabile riutilizzato nei retry dello stesso comando amministrativo */
+  clientCommandId: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
   customerName: string;
   customerId?: string;
   email?: string | null;
   phone?: string | null;
-  /** @minimum 1 */
-  adults?: number;
-  /** @minimum 0 */
-  children?: number;
-  seats?: number;
-  paymentStatus?: string;
+  /** Opt-in esplicito alle comunicazioni cliente collegate alla prenotazione (istruzioni, conferma gita, saldo e annullamento); richiede email valorizzata. I promemoria automatici dipendono inoltre dall'attivazione globale. La notifica amministrativa viene inviata comunque */
+  sendCustomerEmail?: boolean;
+  /**
+   * @minItems 1
+   * @maxItems 100
+   */
+  participants: ManualBookingParticipantInput[];
+  /** Per una gita già confermata sono ammessi soltanto full_requested e paid */
+  paymentStatus: BookingInputPaymentStatus;
+  /**
+   * Con valore zero la prenotazione deve essere paid ed è registrata come gratuita senza movimento di pagamento
+   * @minimum 0
+   */
+  totalAmountCents: number;
+  /**
+   * Importo della richiesta o dell'incasso corrente; deve coincidere col totale nei flussi full ed essere zero solo per una prenotazione gratuita
+   * @minimum 0
+   */
+  paymentAmountCents: number;
+  /** Obbligatorio salvo prenotazione gratuita, che non ha metodo di pagamento */
+  paymentMethod: BookingInputPaymentMethod;
+  /** Obbligatoria per deposit_requested e full_requested e strettamente precedente alla partenza */
+  paymentDeadline?: string | null;
+  /**
+   * CRO/TRN o riferimento ricevuta/cassa, obbligatorio per deposit e paid salvo prenotazione gratuita
+   * @maxLength 500
+   */
+  transactionReference?: string | null;
+  /** Punto comune obbligatorio per una gita standard con punti attivi */
+  pickupPointId?: string | null;
   servizioCasa?: boolean | null;
-}
-
-export type BookingPaymentStatusUpdatePaymentStatus =
-  (typeof BookingPaymentStatusUpdatePaymentStatus)[keyof typeof BookingPaymentStatusUpdatePaymentStatus];
-
-export const BookingPaymentStatusUpdatePaymentStatus = {
-  pending: "pending",
-  deposit_requested: "deposit_requested",
-  deposit: "deposit",
-  full_requested: "full_requested",
-  paid: "paid",
-  refunded: "refunded",
-} as const;
-
-export interface BookingPaymentStatusUpdate {
-  paymentStatus: BookingPaymentStatusUpdatePaymentStatus;
+  /**
+   * Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti
+   * @maxLength 500
+   */
+  homePickupAddress?: string | null;
 }
 
 export interface PublicBookingConsents {
@@ -276,33 +668,62 @@ export const PublicBookingInputPaymentMethod = {
   office: "office",
 } as const;
 
-export type QuoteParticipantInputType =
-  (typeof QuoteParticipantInputType)[keyof typeof QuoteParticipantInputType];
+export type BookingParticipantInputType =
+  (typeof BookingParticipantInputType)[keyof typeof BookingParticipantInputType];
 
-export const QuoteParticipantInputType = {
+export const BookingParticipantInputType = {
   adult: "adult",
   child: "child",
   patient: "patient",
   companion: "companion",
 } as const;
 
-export interface QuoteParticipantInput {
-  type: QuoteParticipantInputType;
+export interface BookingParticipantInput {
+  type: BookingParticipantInputType;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  firstName: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  lastName: string;
   ageRangeId?: string | null;
   pickupPointId?: string | null;
 }
 
 export interface PublicBookingInput {
+  /** Chiave idempotente generata dal browser e riutilizzata nei retry dello stesso tentativo */
+  bookingAttemptId?: string;
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  participants: QuoteParticipantInput[];
+  participants: BookingParticipantInput[];
   pickupPointId?: string | null;
   paymentType: PublicBookingInputPaymentType;
   paymentMethod: PublicBookingInputPaymentMethod;
+  /**
+   * Totale dell'ultimo preventivo server accettato dal cliente
+   * @minimum 0
+   */
+  quotedTotalCents: number;
+  /**
+   * Importo dovuto dell'ultimo preventivo server accettato dal cliente
+   * @minimum 0
+   */
+  quotedAmountDueCents: number;
+  /** Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation */
+  futureChargeConsent?: boolean;
   consents: PublicBookingConsents;
   servizioCasa?: boolean | null;
+  /**
+   * Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti
+   * @maxLength 500
+   */
+  homePickupAddress?: string | null;
 }
 
 export interface PublicBankInstructions {
@@ -326,12 +747,22 @@ export const PublicBookingResponsePaymentType = {
 } as const;
 
 export type PublicBookingResponsePaymentMethod =
-  (typeof PublicBookingResponsePaymentMethod)[keyof typeof PublicBookingResponsePaymentMethod];
+  | (typeof PublicBookingResponsePaymentMethod)[keyof typeof PublicBookingResponsePaymentMethod]
+  | null;
 
 export const PublicBookingResponsePaymentMethod = {
   card: "card",
   bank_transfer: "bank_transfer",
   office: "office",
+} as const;
+
+export type PublicBookingResponseCardFlow =
+  (typeof PublicBookingResponseCardFlow)[keyof typeof PublicBookingResponseCardFlow];
+
+export const PublicBookingResponseCardFlow = {
+  pay_now: "pay_now",
+  save_for_confirmation: "save_for_confirmation",
+  no_payment_required: "no_payment_required",
 } as const;
 
 export interface PublicBookingResponse {
@@ -343,12 +774,34 @@ export interface PublicBookingResponse {
   paymentType: PublicBookingResponsePaymentType;
   paymentMethod: PublicBookingResponsePaymentMethod;
   paymentStatus: string;
-  paymentDeadline: string;
+  paymentDeadline: string | null;
+  paymentGraceUntil?: string | null;
   message: string;
   bank?: PublicBankInstructions;
   office?: PublicOfficeInstructions;
   stripeClientSecret?: string | null;
+  stripeSetupClientSecret?: string | null;
+  cardFlow?: PublicBookingResponseCardFlow;
 }
+
+/**
+ * Il PATCH generico consente soltanto draft↔open; conferma, completamento, annullamento e archiviazione usano comandi dedicati
+ */
+export type ExcursionInputStatus =
+  (typeof ExcursionInputStatus)[keyof typeof ExcursionInputStatus];
+
+export const ExcursionInputStatus = {
+  draft: "draft",
+  open: "open",
+} as const;
+
+export type ExcursionInputCategory =
+  (typeof ExcursionInputCategory)[keyof typeof ExcursionInputCategory];
+
+export const ExcursionInputCategory = {
+  standard: "standard",
+  rident: "rident",
+} as const;
 
 export type ExcursionInputProvinceSurcharges = { [key: string]: number };
 
@@ -363,9 +816,13 @@ export const ExcursionInputDepositType = {
 export interface ExcursionInput {
   name?: string;
   location?: string;
+  /** Data di compatibilità, derivata da departureAt nel fuso Europe/Rome */
   date?: string;
-  status?: string;
-  category?: string;
+  /** Obbligatorio in creazione e quando si modifica la data; deve includere un offset */
+  departureAt?: string | null;
+  /** Il PATCH generico consente soltanto draft↔open; conferma, completamento, annullamento e archiviazione usano comandi dedicati */
+  status?: ExcursionInputStatus;
+  category?: ExcursionInputCategory;
   tags?: string[];
   vehicleId?: string | null;
   currentCapacity?: number;
@@ -405,6 +862,10 @@ export interface ExcursionInput {
   fullPaymentOnlyDaysBefore?: number | null;
   waitlistEnabled?: boolean;
 }
+
+export type ExcursionCreateInput = ExcursionInput & {
+  [key: string]: unknown;
+} & Required<Pick<ExcursionInput & { [key: string]: unknown }, "departureAt">>;
 
 export interface ExcursionAgePriceRow {
   ageRangeId: string;
@@ -633,6 +1094,7 @@ export interface PublicExcursionCard {
   name: string;
   location?: string | null;
   date?: string | null;
+  departureAt?: string | null;
   coverImageUrl?: string | null;
   status?: string | null;
   currentCapacity?: number | null;
@@ -675,6 +1137,18 @@ export interface PublicOfferDetail {
   lastMinute: boolean;
   schedule?: ScheduleDay[] | null;
 }
+
+/**
+ * Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto
+ */
+export type PublicExcursionDetailCardFlow =
+  (typeof PublicExcursionDetailCardFlow)[keyof typeof PublicExcursionDetailCardFlow];
+
+export const PublicExcursionDetailCardFlow = {
+  pay_now: "pay_now",
+  save_for_confirmation: "save_for_confirmation",
+  unavailable_for_deposit: "unavailable_for_deposit",
+} as const;
 
 export type PublicExcursionDetailTripType =
   (typeof PublicExcursionDetailTripType)[keyof typeof PublicExcursionDetailTripType];
@@ -729,6 +1203,7 @@ export interface PublicExcursionDetail {
   name: string;
   location?: string | null;
   date?: string | null;
+  departureAt?: string | null;
   pricePerPerson?: string | null;
   currentCapacity?: number | null;
   minThreshold?: number | null;
@@ -741,6 +1216,8 @@ export interface PublicExcursionDetail {
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
   cardPaymentsEnabled?: boolean;
+  /** Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto */
+  cardFlow?: PublicExcursionDetailCardFlow;
   tripType?: PublicExcursionDetailTripType;
   adultLabel?: string;
   ageRanges?: PublicAgeRangePrice[];
@@ -753,6 +1230,32 @@ export interface PublicExcursionDetail {
   bookingClosed?: boolean;
   officeAddress?: string | null;
   officeOpeningHours?: string | null;
+}
+
+export type QuoteParticipantInputType =
+  (typeof QuoteParticipantInputType)[keyof typeof QuoteParticipantInputType];
+
+export const QuoteParticipantInputType = {
+  adult: "adult",
+  child: "child",
+  patient: "patient",
+  companion: "companion",
+} as const;
+
+export interface QuoteParticipantInput {
+  type: QuoteParticipantInputType;
+  /**
+   * Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo
+   * @maxLength 100
+   */
+  firstName?: string;
+  /**
+   * Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo
+   * @maxLength 100
+   */
+  lastName?: string;
+  ageRangeId?: string | null;
+  pickupPointId?: string | null;
 }
 
 export type QuoteRequestPaymentType =
@@ -907,6 +1410,10 @@ export interface SettingsResponse {
   payment_notes?: string | null;
   deposit_percentage?: string | null;
   excursion_card_payments_enabled?: string | null;
+  future_card_charge_enabled?: string | null;
+  future_card_charge_consent_version?: string | null;
+  card_checkout_hold_minutes?: string | null;
+  payment_grace_minutes?: string | null;
   payment_deadline_bank_hours?: string | null;
   payment_deadline_office_hours?: string | null;
   payment_deadline_balance_hours?: string | null;
@@ -928,6 +1435,10 @@ export interface SettingsInput {
   payment_notes?: string;
   deposit_percentage?: string;
   excursion_card_payments_enabled?: string;
+  future_card_charge_enabled?: string;
+  future_card_charge_consent_version?: string;
+  card_checkout_hold_minutes?: string;
+  payment_grace_minutes?: string;
   payment_deadline_bank_hours?: string;
   payment_deadline_office_hours?: string;
   payment_deadline_balance_hours?: string;
@@ -991,6 +1502,7 @@ export interface ExcursionPickupPointLocation {
   address?: string | null;
   province?: string | null;
   sortOrder: number;
+  active: boolean;
 }
 
 export interface ExcursionPickupPoint {
@@ -1056,10 +1568,19 @@ export type ExpireOverdueBookings200 = {
   ok: boolean;
   expired: number;
   releasedSeats: number;
+  /** Prenotazioni scadute con fondi o riferimenti finanziari che richiedono una decisione amministrativa prima di liberare i posti */
+  requiresCancellationDecision: number;
+  /** Operazioni di cleanup Stripe pianificate dalla verifica */
+  stripeCancellationsScheduled: number;
 };
 
 export type MarkPaymentRequestPaidBody = {
-  transactionReference?: string;
+  /**
+   * CRO/TRN del bonifico oppure riferimento univoco della ricevuta/cassa
+   * @minLength 1
+   * @maxLength 500
+   */
+  transactionReference: string;
 };
 
 export type MarkPaymentRequestPaid200 = {
@@ -1073,11 +1594,15 @@ export type RequestBookingBalance200 = {
 };
 
 export type UpdateBookingDeadlineBody = {
+  /** Obbligazione attiva più recente da prorogare */
+  paymentRequestId: string;
   deadline: string;
 };
 
 export type UpdateBookingDeadline200 = {
-  ok?: boolean;
+  ok: boolean;
+  deadline: string;
+  graceUntil: string;
 };
 
 export type DeleteVehicle200 = {

@@ -7,7 +7,8 @@
  */
 
 export type PublicBookingResponsePaymentMethod =
-  (typeof PublicBookingResponsePaymentMethod)[keyof typeof PublicBookingResponsePaymentMethod];
+  | (typeof PublicBookingResponsePaymentMethod)[keyof typeof PublicBookingResponsePaymentMethod]
+  | null;
 
 export const PublicBookingResponsePaymentMethod = {
   card: "card",

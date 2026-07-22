@@ -407,7 +407,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ExcursionInput"
+              $ref: "#/components/schemas/ExcursionCreateInput"
       responses:
         "201":
           description: Gita creata
@@ -464,6 +464,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExcursionSummary"
+        "409":
+          description: Capienza inferiore ai posti occupati o attività amministrative aperte
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteExcursion
       tags: [excursions]
@@ -513,49 +519,37 @@ paths:
             schema:
               $ref: "#/components/schemas/BookingInput"
       responses:
+        "200":
+          description: Replay idempotente di una prenotazione già creata dallo stesso comando
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
         "201":
           description: Prenotazione aggiunta
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
-  /admin/excursions/{id}/bookings/{bookingId}:
-    patch:
-      operationId: updateExcursionBookingPayment
-      tags: [excursions]
-      summary: Aggiorna stato pagamento prenotazione
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: bookingId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BookingPaymentStatusUpdate"
-      responses:
-        "200":
-          description: Prenotazione aggiornata
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Booking"
-        "404":
-          description: Prenotazione non trovata
+        "400":
+          description: Referente o partecipanti non validi
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Gita non prenotabile, posti insufficienti o comando riutilizzato con dati diversi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Impossibile allocare temporaneamente un codice prenotazione univoco; retry sicuro con lo stesso clientCommandId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/bookings/{bookingId}:
     delete:
       operationId: deleteExcursionBooking
       tags: [excursions]
@@ -605,6 +599,12 @@ paths:
             schema:
               $ref: "#/components/schemas/PublicBookingInput"
       responses:
+        "200":
+          description: Replay idempotente della stessa prenotazione
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBookingResponse"
         "201":
           description: Prenotazione registrata
           content:
@@ -619,6 +619,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Preventivo cambiato, stato concorrente o flusso carta non più autorizzato
           content:
             application/json:
               schema:
@@ -673,11 +679,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Pagamento ricevuto ma destinato al rimborso o non ancora riconciliato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /excursions/{id}/book/{bookingId}/card-setup-confirmed:
+    post:
+      operationId: confirmPublicExcursionBookingCardSetup
+      tags: [public]
+      summary: Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardConfirmedInput"
+      responses:
+        "200":
+          description: Carta salvata; nessun addebito ancora eseguito
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardConfirmedResponse"
+        "400":
+          description: SetupIntent non valido o non corrispondente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Prenotazione non piu in attesa del salvataggio carta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /excursions/{id}/book/{bookingId}/card-confirmed:
     post:
       operationId: confirmPublicExcursionBookingCard
       tags: [public]
-      summary: Conferma carta salvata dopo SetupIntent (legacy, prenotazioni pre-v2)
+      summary: Conferma carta salvata dopo SetupIntent (endpoint legacy protetto)
+      deprecated: true
       parameters:
         - name: id
           in: path
@@ -834,6 +896,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Partenza già avvenuta oppure conferma superata da un cambio di stato concorrente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/complete-trip:
+    post:
+      operationId: completeExcursionTrip
+      tags: [excursions]
+      summary: Completa amministrativamente una gita dopo i controlli finali
+      description: Comando idempotente; accetta una gita confermata già partita e blocca la chiusura se restano attività economiche, anagrafiche o Stripe aperte.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Gita completata o già completata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionSummary"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Stato, partenza o attività amministrative impediscono il completamento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/excursions/{id}/cancel-trip:
+    post:
+      operationId: cancelExcursionTrip
+      tags: [excursions]
+      summary: Annulla una gita tramite il workflow finanziario dedicato
+      description: Libera i posti e pianifica rimborsi o attività manuali senza passare dal PATCH generico.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Gita annullata o replay idempotente del comando
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcursionSummary"
+        "404":
+          description: Gita non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Stato o attività finanziaria in conflitto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/excursions/{id}/expire-overdue:
     post:
       operationId: expireOverdueBookings
@@ -871,7 +1007,20 @@ paths:
                     type: integer
                   releasedSeats:
                     type: integer
-                required: [ok, expired, releasedSeats]
+                  requiresCancellationDecision:
+                    type: integer
+                    description: Prenotazioni scadute con fondi o riferimenti finanziari che richiedono una decisione amministrativa prima di liberare i posti
+                  stripeCancellationsScheduled:
+                    type: integer
+                    description: Operazioni di cleanup Stripe pianificate dalla verifica
+                required:
+                  [
+                    ok,
+                    expired,
+                    releasedSeats,
+                    requiresCancellationDecision,
+                    stripeCancellationsScheduled,
+                  ]
   /admin/payment-requests/{requestId}/mark-paid:
     post:
       operationId: markPaymentRequestPaid
@@ -887,7 +1036,7 @@ paths:
             type: string
             format: uuid
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -895,6 +1044,10 @@ paths:
               properties:
                 transactionReference:
                   type: string
+                  minLength: 1
+                  maxLength: 500
+                  description: CRO/TRN del bonifico oppure riferimento univoco della ricevuta/cassa
+              required: [transactionReference]
       responses:
         "200":
           description: Pagamento registrato
@@ -910,6 +1063,12 @@ paths:
                 required: [ok, alreadyApplied]
         "404":
           description: Richiesta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Metodo non confermabile manualmente, posti non disponibili o replay con riferimento diverso
           content:
             application/json:
               schema:
@@ -947,6 +1106,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Gita non confermata, già partita o prenotazione con annullamento in corso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/bookings/{bookingId}/deadline:
     patch:
       operationId: updateBookingDeadline
@@ -968,10 +1133,14 @@ paths:
             schema:
               type: object
               properties:
+                paymentRequestId:
+                  type: string
+                  format: uuid
+                  description: Obbligazione attiva più recente da prorogare
                 deadline:
                   type: string
                   format: date-time
-              required: [deadline]
+              required: [paymentRequestId, deadline]
       responses:
         "200":
           description: Scadenza aggiornata
@@ -982,8 +1151,21 @@ paths:
                 properties:
                   ok:
                     type: boolean
+                  deadline:
+                    type: string
+                    format: date-time
+                  graceUntil:
+                    type: string
+                    format: date-time
+                required: [ok, deadline, graceUntil]
         "404":
           description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Richiesta non prorogabile, annullamento in corso, partenza superata o posti non disponibili
           content:
             application/json:
               schema:
@@ -992,7 +1174,7 @@ paths:
     get:
       operationId: getAdminBookingDetails
       tags: [excursions]
-      summary: Dettaglio completo prenotazione (partecipanti, consensi, pagamenti)
+      summary: Dettaglio completo prenotazione e storico amministrativo
       security:
         - cookieAuth: []
       parameters:
@@ -1011,6 +1193,247 @@ paths:
                 $ref: "#/components/schemas/AdminBookingDetails"
         "404":
           description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/participants:
+    put:
+      operationId: replaceAdminBookingParticipants
+      tags: [excursions]
+      summary: Completa o corregge atomicamente i partecipanti di una prenotazione
+      description: >-
+        Il numero di righe deve coincidere con i posti già occupati. Il comando
+        non modifica importi, pagamenti o posti. Le righe già registrate devono
+        conservare il proprio id: vengono aggiornate in-place affinché gli snapshot
+        prezzo storici non siano mai riassegnati per posizione a un'altra riga.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBookingParticipantReplaceInput"
+      responses:
+        "200":
+          description: Partecipanti completi o replay idempotente degli stessi dati
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBookingParticipantReplaceResponse"
+        "400":
+          description: Numero, tipi, nominativi o assegnazioni non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Prenotazione annullata o gita già chiusa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/cancellation:
+    post:
+      operationId: openAdminBookingCancellation
+      tags: [excursions]
+      summary: Apre un caso di cancellazione amministrativa
+      description: >-
+        Registra un caso pendente senza annullare ancora la prenotazione. Il
+        clientCommandId deve restare stabile durante i retry dello stesso
+        comando.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCancellationOpenInput"
+      responses:
+        "200":
+          description: Retry idempotente di un comando già registrato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCancellationOpenResponse"
+        "201":
+          description: Caso amministrativo creato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCancellationOpenResponse"
+        "400":
+          description: Identificativo comando non valido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Prenotazione già annullata o altro caso pendente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/cancellation/resolve:
+    post:
+      operationId: resolveAdminBookingCancellation
+      tags: [excursions]
+      summary: Approva o rifiuta una cancellazione
+      description: Risolve il caso pendente identificato esplicitamente nel body.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCancellationResolutionInput"
+      responses:
+        "200":
+          description: Decisione applicata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCancellationResolutionResponse"
+        "400":
+          description: Decisione o importo non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione o caso non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Caso non più pendente o conflitto finanziario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/refunds/{refundId}/complete-manually:
+    post:
+      operationId: completeAdminRefundManually
+      tags: [excursions]
+      summary: Registra il completamento di un rimborso offline
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: refundId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminManualRefundCompletionInput"
+      responses:
+        "200":
+          description: Rimborso offline registrato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminManualRefundCompletionResponse"
+        "400":
+          description: Riferimento mancante o non valido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Rimborso non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Rimborso non completabile manualmente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/stripe-cleanup-jobs/{jobId}/complete-manually:
+    post:
+      operationId: completeStripeCleanupJobManually
+      tags: [excursions]
+      summary: Chiude un cleanup Stripe dopo verifica manuale esterna
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminStripeCleanupManualCompletionInput"
+      responses:
+        "200":
+          description: Cleanup chiuso o replay idempotente dello stesso riferimento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStripeCleanupManualCompletionResponse"
+        "400":
+          description: Riferimento mancante o non valido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Job di cleanup non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Stato non chiudibile manualmente o replay con riferimento diverso
           content:
             application/json:
               schema:
@@ -1040,6 +1463,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExcursionSummary"
+        "404":
+          description: Gita o veicolo non trovato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Il veicolo non contiene i posti già occupati o riservati
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/pickup-locations:
     get:
       operationId: listPickupLocations
@@ -2024,6 +2459,8 @@ components:
       properties:
         error:
           type: string
+        code:
+          type: string
       required:
         - error
     ExcursionSummary:
@@ -2038,10 +2475,17 @@ components:
           type: string
         date:
           type: string
+        departureAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Istante di partenza; visualizzato e inserito nel fuso Europe/Rome
         status:
           type: string
+          enum: [draft, open, confirmed, completed, cancelled, archived]
         category:
           type: string
+          enum: [standard, rident]
         tags:
           type: array
           items:
@@ -2239,6 +2683,11 @@ components:
         servizioCasa:
           type: boolean
           nullable: true
+        homePickupAddress:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Snapshot dell'indirizzo indicato per il ritiro a domicilio
         pickupPointId:
           type: string
           format: uuid
@@ -2269,6 +2718,31 @@ components:
           type: string
           format: date-time
           nullable: true
+        workflowVersion:
+          type: integer
+        customerNotificationsEnabled:
+          type: boolean
+          description: True quando il cliente ha autorizzato le comunicazioni automatiche per questa prenotazione
+        seatStatus:
+          type: string
+        seatHoldExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        seatReleasedAt:
+          type: string
+          format: date-time
+          nullable: true
+        seatReleaseReason:
+          type: string
+          nullable: true
+        cancellationRequestedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancellationRequestStatus:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2284,6 +2758,7 @@ components:
         - children
         - paymentStatus
         - bookedAt
+        - customerNotificationsEnabled
         - createdAt
         - updatedAt
     AdminBookingParticipant:
@@ -2294,8 +2769,16 @@ components:
           format: uuid
         participantType:
           type: string
+        ageRangeId:
+          type: string
+          format: uuid
+          nullable: true
         ageRangeLabel:
           type: string
+          nullable: true
+        pickupPointId:
+          type: string
+          format: uuid
           nullable: true
         pickupPointName:
           type: string
@@ -2319,7 +2802,58 @@ components:
           type: boolean
         sortOrder:
           type: integer
-      required: [id, participantType, basePriceCents, pickupSurchargeCents, finalPriceCents, dataCompleted, sortOrder]
+      required:
+        [
+          id,
+          participantType,
+          basePriceCents,
+          pickupSurchargeCents,
+          finalPriceCents,
+          dataCompleted,
+          sortOrder,
+        ]
+    AdminBookingParticipantReplaceInput:
+      type: object
+      properties:
+        participants:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/AdminBookingParticipantReplaceRow"
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Punto comune per una gita standard; per RIDENT il punto è su ogni partecipante
+      required: [participants]
+    AdminBookingParticipantReplaceRow:
+      allOf:
+        - $ref: "#/components/schemas/ManualBookingParticipantInput"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Obbligatorio per ogni riga partecipante già esistente; assente solo per completare righe legacy mancanti
+    AdminBookingParticipantReplaceResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        alreadyApplied:
+          type: boolean
+        participantsDetailed:
+          type: boolean
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminBookingParticipant"
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [ok, alreadyApplied, participantsDetailed, participants, updatedAt]
     AdminBookingConsent:
       type: object
       properties:
@@ -2359,6 +2893,13 @@ components:
           type: string
           format: date-time
           nullable: true
+        graceUntil:
+          type: string
+          format: date-time
+          nullable: true
+        stripeCheckoutSessionId:
+          type: string
+          nullable: true
         paidAt:
           type: string
           format: date-time
@@ -2370,6 +2911,429 @@ components:
           type: string
           format: date-time
       required: [id, bookingId, type, amountCents, status, createdAt]
+    AdminPaymentAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        paymentRequestId:
+          type: string
+          format: uuid
+        provider:
+          type: string
+        status:
+          type: string
+          enum:
+            [
+              pending,
+              processing,
+              cancellation_pending,
+              succeeded,
+              failed,
+              cancelled,
+            ]
+        amountCents:
+          type: integer
+        stripePaymentIntentId:
+          type: string
+          nullable: true
+        lastErrorCode:
+          type: string
+          nullable: true
+        lastErrorMessage:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [
+          id,
+          paymentRequestId,
+          provider,
+          status,
+          amountCents,
+          createdAt,
+          updatedAt,
+        ]
+    AdminCancellationCase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        excursionId:
+          type: string
+          format: uuid
+          nullable: true
+        source:
+          type: string
+          enum: [customer, admin, excursion]
+        status:
+          type: string
+          enum:
+            [
+              pending,
+              rejected,
+              superseded,
+              approved,
+              refunding,
+              manual_required,
+              completed,
+            ]
+        requestReason:
+          type: string
+          nullable: true
+        decisionReason:
+          type: string
+          nullable: true
+        openedByAdminUserId:
+          type: string
+          nullable: true
+        openedByAdminName:
+          type: string
+          nullable: true
+        decidedByAdminUserId:
+          type: string
+          nullable: true
+        decidedByAdminName:
+          type: string
+          nullable: true
+        refundableAtDecisionCents:
+          type: integer
+          nullable: true
+        approvedRefundCents:
+          type: integer
+          nullable: true
+        requestedAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [id, bookingId, source, status, requestedAt, createdAt, updatedAt]
+    AdminPaymentRefund:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        paymentRequestId:
+          type: string
+          format: uuid
+          nullable: true
+        paymentAttemptId:
+          type: string
+          format: uuid
+          nullable: true
+        cancellationCaseId:
+          type: string
+          format: uuid
+          nullable: true
+        amountCents:
+          type: integer
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed, manual_required]
+        provider:
+          type: string
+        providerReference:
+          type: string
+          nullable: true
+          description: Riferimento operativo del provider o del rimborso offline
+        stripePaymentIntentId:
+          type: string
+          nullable: true
+        stripeRefundId:
+          type: string
+          nullable: true
+        lastErrorCode:
+          type: string
+          nullable: true
+        lastErrorMessage:
+          type: string
+          nullable: true
+        attemptCount:
+          type: integer
+        maxAttempts:
+          type: integer
+        nextAttemptAt:
+          type: string
+          format: date-time
+        lastAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [
+          id,
+          bookingId,
+          amountCents,
+          reason,
+          status,
+          provider,
+          attemptCount,
+          maxAttempts,
+          nextAttemptAt,
+          createdAt,
+          updatedAt,
+        ]
+    AdminStripeCleanupJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+          nullable: true
+        operation:
+          type: string
+        stripeResourceId:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, failed, succeeded, manual_required]
+        attemptCount:
+          type: integer
+        maxAttempts:
+          type: integer
+        nextAttemptAt:
+          type: string
+          format: date-time
+        lastAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastErrorCode:
+          type: string
+          nullable: true
+        lastErrorMessage:
+          type: string
+          nullable: true
+        manualCompletionReference:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [
+          id,
+          operation,
+          stripeResourceId,
+          status,
+          attemptCount,
+          maxAttempts,
+          nextAttemptAt,
+          createdAt,
+          updatedAt,
+        ]
+    AdminBookingEconomicSummary:
+      type: object
+      properties:
+        totalAmountCents:
+          type: integer
+          nullable: true
+        paidAmountCents:
+          type: integer
+        balanceAmountCents:
+          type: integer
+          nullable: true
+        approvedRefundAmountCents:
+          type: integer
+        registeredRefundAmountCents:
+          type: integer
+        refundedAmountCents:
+          type: integer
+        pendingRefundAmountCents:
+          type: integer
+        failedRefundAmountCents:
+          type: integer
+        manualRefundRequiredAmountCents:
+          type: integer
+        remainingApprovedRefundAmountCents:
+          type: integer
+        penaltyAmountCents:
+          type: integer
+        netCollectedAmountCents:
+          type: integer
+      required:
+        [
+          totalAmountCents,
+          paidAmountCents,
+          balanceAmountCents,
+          approvedRefundAmountCents,
+          registeredRefundAmountCents,
+          refundedAmountCents,
+          pendingRefundAmountCents,
+          failedRefundAmountCents,
+          manualRefundRequiredAmountCents,
+          remainingApprovedRefundAmountCents,
+          penaltyAmountCents,
+          netCollectedAmountCents,
+        ]
+    AdminCancellationOpenInput:
+      type: object
+      properties:
+        clientCommandId:
+          type: string
+          format: uuid
+          description: Identificativo stabile durante i retry dello stesso comando
+        reason:
+          type: string
+          maxLength: 1000
+          nullable: true
+      required: [clientCommandId]
+    AdminCancellationOpenResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        cancellationCaseId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        alreadyOpen:
+          type: boolean
+      required: [ok, cancellationCaseId, status, alreadyOpen]
+    AdminCancellationResolutionInput:
+      type: object
+      properties:
+        cancellationCaseId:
+          type: string
+          format: uuid
+        decision:
+          type: string
+          enum: [approve, reject]
+        refundAmountCents:
+          type: integer
+          minimum: 0
+        note:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Obbligatoria per un rifiuto o quando il rimborso approvato applica una penale
+      required: [cancellationCaseId, decision]
+    AdminCancellationResolutionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        cancellationCaseId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [approved, rejected, completed]
+        refundIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        manualRefundIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required: [ok, cancellationCaseId, status, refundIds, manualRefundIds]
+    AdminManualRefundCompletionInput:
+      type: object
+      properties:
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required: [reference]
+    AdminManualRefundCompletionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        bookingId:
+          type: string
+          format: uuid
+        cancellationCaseId:
+          type: string
+          format: uuid
+        alreadyCompleted:
+          type: boolean
+      required: [ok, bookingId, cancellationCaseId, alreadyCompleted]
+    AdminStripeCleanupManualCompletionInput:
+      type: object
+      properties:
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Identificativo della verifica manuale effettuata nella dashboard Stripe
+      required: [reference]
+    AdminStripeCleanupManualCompletionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        jobId:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+          nullable: true
+        alreadyCompleted:
+          type: boolean
+        manualCompletionReference:
+          type: string
+          nullable: true
+      required:
+        [ok, jobId, bookingId, alreadyCompleted, manualCompletionReference]
     AdminBookingDetails:
       type: object
       properties:
@@ -2387,9 +3351,39 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdminPaymentRequest"
+        paymentAttempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPaymentAttempt"
+        cancellationCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminCancellationCase"
+        refunds:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPaymentRefund"
+        cleanupJobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminStripeCleanupJob"
+        economicSummary:
+          $ref: "#/components/schemas/AdminBookingEconomicSummary"
         participantsDetailed:
           type: boolean
-      required: [booking, participants, consents, paymentRequests, participantsDetailed]
+      required:
+        [
+          booking,
+          participants,
+          consents,
+          paymentRequests,
+          paymentAttempts,
+          cancellationCases,
+          refunds,
+          cleanupJobs,
+          economicSummary,
+          participantsDetailed,
+        ]
     PickupReportPerson:
       type: object
       properties:
@@ -2410,7 +3404,20 @@ components:
           nullable: true
         paymentStatus:
           type: string
-      required: [name, participantType, referente, paymentStatus]
+        servizioCasa:
+          type: boolean
+        homePickupAddress:
+          type: string
+          nullable: true
+      required:
+        [
+          name,
+          participantType,
+          referente,
+          paymentStatus,
+          servizioCasa,
+          homePickupAddress,
+        ]
     PickupReportGroup:
       type: object
       properties:
@@ -2439,7 +3446,16 @@ components:
           type: integer
         totalPeople:
           type: integer
-      required: [pickupPointName, people, patients, companions, adults, children, totalPeople]
+      required:
+        [
+          pickupPointName,
+          people,
+          patients,
+          companions,
+          adults,
+          children,
+          totalPeople,
+        ]
     PickupReport:
       type: object
       properties:
@@ -2459,7 +3475,50 @@ components:
             $ref: "#/components/schemas/PickupReportGroup"
         totalPeople:
           type: integer
-      required: [excursion, groups, totalPeople]
+        missingParticipantDetails:
+          type: array
+          items:
+            $ref: "#/components/schemas/PickupReportMissingParticipantDetails"
+      required: [excursion, groups, totalPeople, missingParticipantDetails]
+    PickupReportMissingParticipantDetails:
+      type: object
+      properties:
+        bookingId:
+          type: string
+          format: uuid
+        bookingCode:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+        referente:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        seats:
+          type: integer
+        servizioCasa:
+          type: boolean
+        homePickupAddress:
+          type: string
+          nullable: true
+        participantsDetailed:
+          type: boolean
+          enum: [false]
+        warning:
+          type: string
+      required:
+        [
+          bookingId,
+          customerName,
+          referente,
+          seats,
+          servizioCasa,
+          homePickupAddress,
+          participantsDetailed,
+          warning,
+        ]
     ConfirmTripResponse:
       type: object
       properties:
@@ -2469,14 +3528,57 @@ components:
           type: string
         balanceRequestsCreated:
           type: integer
-        alreadyRequested:
+        cardCharged:
           type: integer
-      required: [ok, status, balanceRequestsCreated, alreadyRequested]
+        actionRequired:
+          type: integer
+        skipped:
+          type: integer
+      required:
+        [
+          ok,
+          status,
+          balanceRequestsCreated,
+          cardCharged,
+          actionRequired,
+          skipped,
+        ]
+    ManualBookingParticipantInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [adult, child, patient, companion]
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        ageRangeId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Obbligatorio per i bambini quando sono configurate fasce età attive
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Obbligatorio per ciascun partecipante RIDENT quando esistono punti attivi
+      required: [type, firstName, lastName]
     BookingInput:
       type: object
       properties:
+        clientCommandId:
+          type: string
+          format: uuid
+          description: Identificativo stabile riutilizzato nei retry dello stesso comando amministrativo
         customerName:
           type: string
+          minLength: 1
+          maxLength: 200
         customerId:
           type: string
         email:
@@ -2485,29 +3587,64 @@ components:
         phone:
           type: string
           nullable: true
-        adults:
-          type: integer
-          minimum: 1
-        children:
-          type: integer
-          minimum: 0
-        seats:
-          type: integer
+        sendCustomerEmail:
+          type: boolean
+          default: false
+          description: Opt-in esplicito alle comunicazioni cliente collegate alla prenotazione (istruzioni, conferma gita, saldo e annullamento); richiede email valorizzata. I promemoria automatici dipendono inoltre dall'attivazione globale. La notifica amministrativa viene inviata comunque
+        participants:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ManualBookingParticipantInput"
         paymentStatus:
           type: string
+          enum: [deposit_requested, full_requested, deposit, paid]
+          description: Per una gita già confermata sono ammessi soltanto full_requested e paid
+        totalAmountCents:
+          type: integer
+          minimum: 0
+          description: Con valore zero la prenotazione deve essere paid ed è registrata come gratuita senza movimento di pagamento
+        paymentAmountCents:
+          type: integer
+          minimum: 0
+          description: Importo della richiesta o dell'incasso corrente; deve coincidere col totale nei flussi full ed essere zero solo per una prenotazione gratuita
+        paymentMethod:
+          type: string
+          enum: [bank_transfer, office]
+          nullable: true
+          description: Obbligatorio salvo prenotazione gratuita, che non ha metodo di pagamento
+        paymentDeadline:
+          type: string
+          format: date-time
+          nullable: true
+          description: Obbligatoria per deposit_requested e full_requested e strettamente precedente alla partenza
+        transactionReference:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: CRO/TRN o riferimento ricevuta/cassa, obbligatorio per deposit e paid salvo prenotazione gratuita
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Punto comune obbligatorio per una gita standard con punti attivi
         servizioCasa:
           type: boolean
           nullable: true
-      required:
-        - customerName
-    BookingPaymentStatusUpdate:
-      type: object
-      properties:
-        paymentStatus:
+        homePickupAddress:
           type: string
-          enum: [pending, deposit_requested, deposit, full_requested, paid, refunded]
+          nullable: true
+          maxLength: 500
+          description: Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti
       required:
+        - clientCommandId
+        - customerName
+        - participants
         - paymentStatus
+        - totalAmountCents
+        - paymentAmountCents
+        - paymentMethod
     PublicBookingConsents:
       type: object
       properties:
@@ -2521,6 +3658,10 @@ components:
     PublicBookingInput:
       type: object
       properties:
+        bookingAttemptId:
+          type: string
+          format: uuid
+          description: Chiave idempotente generata dal browser e riutilizzata nei retry dello stesso tentativo
         firstName:
           type: string
         lastName:
@@ -2532,7 +3673,7 @@ components:
         participants:
           type: array
           items:
-            $ref: "#/components/schemas/QuoteParticipantInput"
+            $ref: "#/components/schemas/BookingParticipantInput"
         # Punto di raccolta unico della prenotazione (gite normali)
         pickupPointId:
           type: string
@@ -2544,11 +3685,27 @@ components:
         paymentMethod:
           type: string
           enum: [card, bank_transfer, office]
+        quotedTotalCents:
+          type: integer
+          minimum: 0
+          description: Totale dell'ultimo preventivo server accettato dal cliente
+        quotedAmountDueCents:
+          type: integer
+          minimum: 0
+          description: Importo dovuto dell'ultimo preventivo server accettato dal cliente
+        futureChargeConsent:
+          type: boolean
+          description: Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation
         consents:
           $ref: "#/components/schemas/PublicBookingConsents"
         servizioCasa:
           type: boolean
           nullable: true
+        homePickupAddress:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti
       required:
         - firstName
         - lastName
@@ -2557,6 +3714,8 @@ components:
         - participants
         - paymentType
         - paymentMethod
+        - quotedTotalCents
+        - quotedAmountDueCents
         - consents
     PublicBankInstructions:
       type: object
@@ -2602,10 +3761,17 @@ components:
         paymentMethod:
           type: string
           enum: [card, bank_transfer, office]
+          nullable: true
         paymentStatus:
           type: string
         paymentDeadline:
           type: string
+          format: date-time
+          nullable: true
+        paymentGraceUntil:
+          type: string
+          format: date-time
+          nullable: true
         message:
           type: string
         bank:
@@ -2615,7 +3781,25 @@ components:
         stripeClientSecret:
           type: string
           nullable: true
-      required: [id, bookingCode, seats, totalCents, amountDueCents, paymentType, paymentMethod, paymentStatus, paymentDeadline, message]
+        stripeSetupClientSecret:
+          type: string
+          nullable: true
+        cardFlow:
+          type: string
+          enum: [pay_now, save_for_confirmation, no_payment_required]
+      required:
+        [
+          id,
+          bookingCode,
+          seats,
+          totalCents,
+          amountDueCents,
+          paymentType,
+          paymentMethod,
+          paymentStatus,
+          paymentDeadline,
+          message,
+        ]
     ExcursionInput:
       type: object
       properties:
@@ -2625,10 +3809,19 @@ components:
           type: string
         date:
           type: string
+          description: Data di compatibilità, derivata da departureAt nel fuso Europe/Rome
+        departureAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Obbligatorio in creazione e quando si modifica la data; deve includere un offset
         status:
           type: string
+          enum: [draft, open]
+          description: Il PATCH generico consente soltanto draft↔open; conferma, completamento, annullamento e archiviazione usano comandi dedicati
         category:
           type: string
+          enum: [standard, rident]
         tags:
           type: array
           items:
@@ -2735,6 +3928,11 @@ components:
           nullable: true
         waitlistEnabled:
           type: boolean
+    ExcursionCreateInput:
+      allOf:
+        - $ref: "#/components/schemas/ExcursionInput"
+        - type: object
+          required: [departureAt]
     ExcursionAgePriceRow:
       type: object
       properties:
@@ -3321,6 +4519,10 @@ components:
         date:
           type: string
           nullable: true
+        departureAt:
+          type: string
+          format: date-time
+          nullable: true
         coverImageUrl:
           type: string
           nullable: true
@@ -3437,6 +4639,10 @@ components:
         date:
           type: string
           nullable: true
+        departureAt:
+          type: string
+          format: date-time
+          nullable: true
         pricePerPerson:
           type: string
           nullable: true
@@ -3476,6 +4682,10 @@ components:
             $ref: "#/components/schemas/PublicPickupPoint"
         cardPaymentsEnabled:
           type: boolean
+        cardFlow:
+          type: string
+          enum: [pay_now, save_for_confirmation, unavailable_for_deposit]
+          description: Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto
         tripType:
           type: string
           enum: [standard, rident]
@@ -3554,6 +4764,14 @@ components:
         type:
           type: string
           enum: [adult, child, patient, companion]
+        firstName:
+          type: string
+          maxLength: 100
+          description: Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo
+        lastName:
+          type: string
+          maxLength: 100
+          description: Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo
         ageRangeId:
           type: string
           format: uuid
@@ -3563,6 +4781,29 @@ components:
           format: uuid
           nullable: true
       required: [type]
+    BookingParticipantInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [adult, child, patient, companion]
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        ageRangeId:
+          type: string
+          format: uuid
+          nullable: true
+        pickupPointId:
+          type: string
+          format: uuid
+          nullable: true
+      required: [type, firstName, lastName]
     QuoteRequest:
       type: object
       properties:
@@ -3603,7 +4844,8 @@ components:
           type: integer
         sortOrder:
           type: integer
-      required: [type, basePriceCents, pickupSurchargeCents, finalPriceCents, sortOrder]
+      required:
+        [type, basePriceCents, pickupSurchargeCents, finalPriceCents, sortOrder]
     QuoteResponse:
       type: object
       properties:
@@ -3624,7 +4866,16 @@ components:
           type: boolean
         seats:
           type: integer
-      required: [participants, totalCents, depositCents, amountDueCents, paymentType, depositAllowed, seats]
+      required:
+        [
+          participants,
+          totalCents,
+          depositCents,
+          amountDueCents,
+          paymentType,
+          depositAllowed,
+          seats,
+        ]
     PublicPickupPoint:
       type: object
       properties:
@@ -3914,6 +5165,18 @@ components:
         excursion_card_payments_enabled:
           type: string
           nullable: true
+        future_card_charge_enabled:
+          type: string
+          nullable: true
+        future_card_charge_consent_version:
+          type: string
+          nullable: true
+        card_checkout_hold_minutes:
+          type: string
+          nullable: true
+        payment_grace_minutes:
+          type: string
+          nullable: true
         payment_deadline_bank_hours:
           type: string
           nullable: true
@@ -3964,6 +5227,14 @@ components:
         deposit_percentage:
           type: string
         excursion_card_payments_enabled:
+          type: string
+        future_card_charge_enabled:
+          type: string
+        future_card_charge_consent_version:
+          type: string
+        card_checkout_hold_minutes:
+          type: string
+        payment_grace_minutes:
           type: string
         payment_deadline_bank_hours:
           type: string
@@ -4150,11 +5421,14 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        active:
+          type: boolean
       required:
         - id
         - name
         - city
         - sortOrder
+        - active
     ExcursionPickupPoint:
       type: object
       properties:

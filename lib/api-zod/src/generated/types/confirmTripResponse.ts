@@ -10,5 +10,7 @@ export interface ConfirmTripResponse {
   ok: boolean;
   status: string;
   balanceRequestsCreated: number;
-  alreadyRequested: number;
+  cardCharged: number;
+  actionRequired: number;
+  skipped: number;
 }

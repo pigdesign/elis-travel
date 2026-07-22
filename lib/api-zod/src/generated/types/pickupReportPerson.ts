@@ -14,4 +14,6 @@ export interface PickupReportPerson {
   referente: string;
   phone?: string | null;
   paymentStatus: string;
+  servizioCasa: boolean;
+  homePickupAddress: string | null;
 }

@@ -6,16 +6,22 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ExcursionExtra } from "./excursionExtra";
+import type { ExcursionInputCategory } from "./excursionInputCategory";
 import type { ExcursionInputDepositType } from "./excursionInputDepositType";
 import type { ExcursionInputProvinceSurcharges } from "./excursionInputProvinceSurcharges";
+import type { ExcursionInputStatus } from "./excursionInputStatus";
 import type { ScheduleDay } from "./scheduleDay";
 
 export interface ExcursionInput {
   name?: string;
   location?: string;
+  /** Data di compatibilità, derivata da departureAt nel fuso Europe/Rome */
   date?: string;
-  status?: string;
-  category?: string;
+  /** Obbligatorio in creazione e quando si modifica la data; deve includere un offset */
+  departureAt?: Date | null;
+  /** Il PATCH generico consente soltanto draft↔open; conferma, completamento, annullamento e archiviazione usano comandi dedicati */
+  status?: ExcursionInputStatus;
+  category?: ExcursionInputCategory;
   tags?: string[];
   vehicleId?: string | null;
   currentCapacity?: number;

@@ -9,7 +9,8 @@ import {
   type Excursion,
   type AgeRange,
 } from "@workspace/db/schema";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { eq, and, asc, getTableColumns, inArray, sql } from "drizzle-orm";
+import { endOfDayInRome } from "./excursion-time";
 
 // ---------------------------------------------------------------------------
 // Motore di calcolo prezzi Gite v2.
@@ -18,7 +19,9 @@ import { eq, and, asc, inArray } from "drizzle-orm";
 // in centesimi; le configurazioni (numeric del DB) sono in euro.
 // ---------------------------------------------------------------------------
 
-export function eurosToCents(value: string | number | null | undefined): number {
+export function eurosToCents(
+  value: string | number | null | undefined,
+): number {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
@@ -27,6 +30,11 @@ export type ParticipantType = "adult" | "child" | "patient" | "companion";
 
 export type QuoteParticipantInput = {
   type: ParticipantType;
+  // Dati anagrafici facoltativi nel solo preventivo. La route di prenotazione
+  // li valida invece come obbligatori prima di creare qualsiasi riga nel DB.
+  // Il motore prezzi li ignora intenzionalmente.
+  firstName?: string;
+  lastName?: string;
   ageRangeId?: string | null;
   pickupPointId?: string | null;
 };
@@ -74,6 +82,12 @@ export type PricingPickupPoint = {
 
 export type PricingContext = {
   excursion: Excursion;
+  /**
+   * Versione MVCC letta dalla stessa SELECT della gita. A differenza di
+   * updatedAt non attraversa la conversione PostgreSQL timestamp -> JS Date,
+   * che tronca i microsecondi e produce falsi conflitti ottimistici.
+   */
+  excursionRowVersion: string;
   isRident: boolean;
   ageRanges: AgeRange[];
   // prezzo per fascia (cents); fascia assente = prezzo adulto pieno
@@ -103,13 +117,19 @@ export function pickupSurchargeCents(
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 }
 
-export async function loadPricingContext(excursionId: string): Promise<PricingContext | null> {
-  const [excursion] = await db
-    .select()
+export async function loadPricingContext(
+  excursionId: string,
+): Promise<PricingContext | null> {
+  const [excursionRow] = await db
+    .select({
+      ...getTableColumns(excursionsTable),
+      rowVersion: sql<string>`${excursionsTable}.xmin::text`,
+    })
     .from(excursionsTable)
     .where(eq(excursionsTable.id, excursionId))
     .limit(1);
-  if (!excursion) return null;
+  if (!excursionRow) return null;
+  const { rowVersion: excursionRowVersion, ...excursion } = excursionRow;
 
   const ageRanges = await db
     .select()
@@ -163,13 +183,18 @@ export async function loadPricingContext(excursionId: string): Promise<PricingCo
     province: p.province,
     pickupTime: p.pickupTime,
     sortOrder: p.sortOrder,
-    surchargeCents: pickupSurchargeCents(p.surcharge, p.province, excursion.provinceSurcharges),
+    surchargeCents: pickupSurchargeCents(
+      p.surcharge,
+      p.province,
+      excursion.provinceSurcharges,
+    ),
     mapsUrl: p.mapsUrl,
     active: p.active,
   }));
 
   return {
     excursion,
+    excursionRowVersion,
     isRident: excursion.category === "rident",
     ageRanges,
     agePriceCents,
@@ -184,6 +209,10 @@ export async function loadPricingContext(excursionId: string): Promise<PricingCo
 export type PaymentSettings = {
   depositPercentage: number | null;
   cardPaymentsEnabled: boolean;
+  futureCardChargeEnabled: boolean;
+  futureCardChargeConsentVersion: string | null;
+  cardCheckoutHoldMinutes: number;
+  paymentGraceMinutes: number;
   bankHours: number;
   officeHours: number;
   balanceHours: number;
@@ -204,6 +233,10 @@ export type PaymentSettings = {
 const PAYMENT_SETTING_KEYS = [
   "deposit_percentage",
   "excursion_card_payments_enabled",
+  "future_card_charge_enabled",
+  "future_card_charge_consent_version",
+  "card_checkout_hold_minutes",
+  "payment_grace_minutes",
   "payment_deadline_bank_hours",
   "payment_deadline_office_hours",
   "payment_deadline_balance_hours",
@@ -226,6 +259,19 @@ function intOr(value: string | undefined, fallback: number): number {
   return Number.isInteger(n) && n > 0 ? n : fallback;
 }
 
+function nonNegativeIntOr(value: string | undefined, fallback: number): number {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
+}
+
+export function cardPaymentsEnabledFromSetting(
+  value: string | undefined,
+): boolean {
+  // Fail-closed: presenza delle credenziali Stripe non equivale ad
+  // autorizzazione operativa ad accettare pagamenti.
+  return value === "true";
+}
+
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   const rows = await db
     .select({ key: settingsTable.key, value: settingsTable.value })
@@ -235,8 +281,20 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
 
   const pct = Number(map.deposit_percentage);
   return {
-    depositPercentage: Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : null,
-    cardPaymentsEnabled: map.excursion_card_payments_enabled !== "false",
+    depositPercentage:
+      Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : null,
+    cardPaymentsEnabled: cardPaymentsEnabledFromSetting(
+      map.excursion_card_payments_enabled,
+    ),
+    // L'addebito futuro resta spento finche amministrazione e testo di consenso
+    // non sono entrambi configurati (integrazione Iubenda prevista a parte).
+    futureCardChargeEnabled:
+      map.future_card_charge_enabled === "true" &&
+      Boolean(map.future_card_charge_consent_version?.trim()),
+    futureCardChargeConsentVersion:
+      map.future_card_charge_consent_version?.trim() || null,
+    cardCheckoutHoldMinutes: intOr(map.card_checkout_hold_minutes, 30),
+    paymentGraceMinutes: nonNegativeIntOr(map.payment_grace_minutes, 120),
     bankHours: intOr(map.payment_deadline_bank_hours, 48),
     officeHours: intOr(map.payment_deadline_office_hours, 48),
     balanceHours: intOr(map.payment_deadline_balance_hours, 48),
@@ -263,8 +321,13 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
 // ---------------------------------------------------------------------------
 
 function daysUntilDeparture(excursion: Excursion, now: Date): number {
-  const departure = new Date(`${excursion.date}T00:00:00`);
-  return Math.floor((departure.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  // departureAt e la fonte autorevole. Il fallback mantiene leggibili soltanto
+  // le gite storiche create prima della migrazione.
+  const departure =
+    excursion.departureAt ?? new Date(`${excursion.date}T00:00:00`);
+  return Math.floor(
+    (departure.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
+  );
 }
 
 export function isDepositAvailable(
@@ -273,15 +336,20 @@ export function isDepositAvailable(
   now: Date = new Date(),
 ): boolean {
   if (!excursion.depositEnabled) return false;
-  // Dopo la conferma l'acconto resta disponibile solo se configurato
-  if (excursion.status === "confirmed" && !excursion.depositAvailableAfterConfirm) return false;
+  // Una gita gia confermata richiede sempre il totale per le nuove prenotazioni.
+  if (excursion.status === "confirmed") return false;
   // Data limite acconto della gita
-  if (excursion.depositDeadlineDate && now > new Date(`${excursion.depositDeadlineDate}T23:59:59`)) {
+  const depositDeadline = excursion.depositDeadlineDate
+    ? endOfDayInRome(excursion.depositDeadlineDate)
+    : null;
+  if (depositDeadline && now > depositDeadline) {
     return false;
   }
   // Vicino alla partenza: solo pagamento completo
-  const fullOnlyDays = excursion.fullPaymentOnlyDaysBefore ?? settings.fullOnlyDaysBefore;
-  if (fullOnlyDays > 0 && daysUntilDeparture(excursion, now) < fullOnlyDays) return false;
+  const fullOnlyDays =
+    excursion.fullPaymentOnlyDaysBefore ?? settings.fullOnlyDaysBefore;
+  if (fullOnlyDays > 0 && daysUntilDeparture(excursion, now) < fullOnlyDays)
+    return false;
   return true;
 }
 
@@ -318,9 +386,18 @@ export function computePaymentDeadline(opts: {
   const { from, hours, excursion, hardLimitDate } = opts;
   let deadline = new Date(from.getTime() + hours * 60 * 60 * 1000);
 
-  const caps: Date[] = [new Date(`${excursion.date}T23:59:59`)];
-  if (excursion.bookingCloseDate) caps.push(new Date(`${excursion.bookingCloseDate}T23:59:59`));
-  if (hardLimitDate) caps.push(new Date(`${hardLimitDate}T23:59:59`));
+  const legacyDepartureCap = endOfDayInRome(excursion.date);
+  const caps: Date[] = excursion.departureAt
+    ? [excursion.departureAt]
+    : legacyDepartureCap
+      ? [legacyDepartureCap]
+      : [];
+  const bookingCloseCap = excursion.bookingCloseDate
+    ? endOfDayInRome(excursion.bookingCloseDate)
+    : null;
+  if (bookingCloseCap) caps.push(bookingCloseCap);
+  const hardLimit = hardLimitDate ? endOfDayInRome(hardLimitDate) : null;
+  if (hardLimit) caps.push(hardLimit);
 
   for (const cap of caps) {
     if (Number.isFinite(cap.getTime()) && cap < deadline) deadline = cap;
@@ -347,7 +424,9 @@ export function buildQuote(
     throw new QuoteError("Serve almeno un partecipante.");
   }
   if (participants.length > MAX_PARTICIPANTS_PER_BOOKING) {
-    throw new QuoteError(`Massimo ${MAX_PARTICIPANTS_PER_BOOKING} partecipanti per prenotazione.`);
+    throw new QuoteError(
+      `Massimo ${MAX_PARTICIPANTS_PER_BOOKING} partecipanti per prenotazione.`,
+    );
   }
 
   const pointById = new Map(ctx.pickupPoints.map((p) => [p.id, p]));
@@ -367,7 +446,9 @@ export function buildQuote(
         throw new QuoteError("Punto di raccolta non valido per questa gita.");
       }
       if (!bookingPoint.active) {
-        throw new QuoteError("Il punto di raccolta selezionato non è più disponibile.");
+        throw new QuoteError(
+          "Il punto di raccolta selezionato non è più disponibile.",
+        );
       }
     }
   }
@@ -379,16 +460,24 @@ export function buildQuote(
 
     if (isRident) {
       if (p.type !== "patient" && p.type !== "companion") {
-        throw new QuoteError("Tipo partecipante non valido per una gita Rident.");
+        throw new QuoteError(
+          "Tipo partecipante non valido per una gita Rident.",
+        );
       }
-      const configured = p.type === "patient" ? excursion.patientPrice : excursion.companionPrice;
-      basePriceCents = configured !== null ? eurosToCents(configured) : adultPriceCents;
+      const configured =
+        p.type === "patient"
+          ? excursion.patientPrice
+          : excursion.companionPrice;
+      basePriceCents =
+        configured !== null ? eurosToCents(configured) : adultPriceCents;
     } else {
       if (p.type === "adult") {
         basePriceCents = adultPriceCents;
       } else if (p.type === "child") {
         if (!p.ageRangeId) {
-          throw new QuoteError(`Seleziona la fascia età per il bambino ${idx + 1}.`);
+          throw new QuoteError(
+            `Seleziona la fascia età per il bambino ${idx + 1}.`,
+          );
         }
         const range = rangeById.get(p.ageRangeId);
         if (!range) {
@@ -398,7 +487,9 @@ export function buildQuote(
         ageRangeLabel = range.label;
         basePriceCents = ctx.agePriceCents.get(range.id) ?? adultPriceCents;
       } else {
-        throw new QuoteError("Tipo partecipante non valido per una gita normale.");
+        throw new QuoteError(
+          "Tipo partecipante non valido per una gita normale.",
+        );
       }
     }
 
@@ -406,14 +497,18 @@ export function buildQuote(
     let point: PricingPickupPoint | null = bookingPoint;
     if (isRident && hasPickupPoints) {
       if (!p.pickupPointId) {
-        throw new QuoteError(`Seleziona il punto di raccolta per il partecipante ${idx + 1}.`);
+        throw new QuoteError(
+          `Seleziona il punto di raccolta per il partecipante ${idx + 1}.`,
+        );
       }
       point = pointById.get(p.pickupPointId) ?? null;
       if (!point) {
         throw new QuoteError("Punto di raccolta non valido per questa gita.");
       }
       if (!point.active) {
-        throw new QuoteError("Uno dei punti di raccolta selezionati non è più disponibile.");
+        throw new QuoteError(
+          "Uno dei punti di raccolta selezionati non è più disponibile.",
+        );
       }
     }
 
@@ -440,14 +535,21 @@ export function buildQuote(
 
   const totalCents = quoted.reduce((sum, p) => sum + p.finalPriceCents, 0);
   const depositAllowed = isDepositAvailable(excursion, settings, now);
-  const depositCents = depositAmountCents(excursion, settings, totalCents, quoted.length);
+  const depositCents = depositAmountCents(
+    excursion,
+    settings,
+    totalCents,
+    quoted.length,
+  );
 
   let paymentType = input.paymentType;
   if (paymentType !== "deposit" && paymentType !== "full") {
     throw new QuoteError("Tipo di pagamento non valido.");
   }
   if (paymentType === "deposit" && !depositAllowed) {
-    throw new QuoteError("L'acconto non è più disponibile per questa gita: è richiesto il pagamento completo.");
+    throw new QuoteError(
+      "L'acconto non è più disponibile per questa gita: è richiesto il pagamento completo.",
+    );
   }
 
   const amountDueCents = paymentType === "deposit" ? depositCents : totalCents;
@@ -470,17 +572,88 @@ export function availablePaymentMethods(
   stripeConfigured: boolean,
 ): { card: boolean; bankTransfer: boolean; office: boolean } {
   return {
-    card: excursion.payCardEnabled && settings.cardPaymentsEnabled && stripeConfigured,
-    bankTransfer: excursion.payBankTransferEnabled,
-    office: excursion.payOfficeEnabled,
+    card:
+      excursion.payCardEnabled &&
+      settings.cardPaymentsEnabled &&
+      stripeConfigured,
+    // Fail closed: non proponiamo un metodo che il cliente non potrebbe
+    // completare con le informazioni presenti nella stessa piattaforma.
+    bankTransfer:
+      excursion.payBankTransferEnabled && Boolean(settings.iban?.trim()),
+    office:
+      excursion.payOfficeEnabled && Boolean(settings.officeAddress?.trim()),
   };
 }
 
-// Codice prenotazione breve per causale bonifico ed email (es. "ET-7K4F9Q").
+export const STRIPE_MINIMUM_EUR_CHARGE_CENTS = 50;
+
+/** Stripe non accetta addebiti EUR inferiori a 0,50 euro. */
+export function isStripeChargeAmountSupported(amountCents: number): boolean {
+  return (
+    Number.isSafeInteger(amountCents) &&
+    amountCents >= STRIPE_MINIMUM_EUR_CHARGE_CENTS
+  );
+}
+
+/** Un totale realmente nullo non deve aprire alcun flusso di pagamento. */
+export function isNoPaymentRequired(input: {
+  totalCents: number;
+  amountDueCents: number;
+}): boolean {
+  return input.totalCents === 0 && input.amountDueCents === 0;
+}
+
+export function quotedAmountSnapshotDecision(input: {
+  quotedTotalCents: unknown;
+  quotedAmountDueCents: unknown;
+  authoritativeTotalCents: number;
+  authoritativeAmountDueCents: number;
+}): "match" | "missing" | "changed" {
+  if (
+    !Number.isSafeInteger(input.quotedTotalCents) ||
+    !Number.isSafeInteger(input.quotedAmountDueCents) ||
+    Number(input.quotedTotalCents) < 0 ||
+    Number(input.quotedAmountDueCents) < 0
+  ) {
+    return "missing";
+  }
+  return input.quotedTotalCents === input.authoritativeTotalCents &&
+    input.quotedAmountDueCents === input.authoritativeAmountDueCents
+    ? "match"
+    : "changed";
+}
+
+export function quoteAmountsForBookingAttempt(input: {
+  persisted?: { totalCents: number; amountDueCents: number } | null;
+  current: { totalCents: number; amountDueCents: number };
+}): { totalCents: number; amountDueCents: number } {
+  return input.persisted ?? input.current;
+}
+
+/**
+ * Per un acconto carta prima della conferma l'unico flusso ammesso e il
+ * salvataggio off-session esplicitamente autorizzato; non va degradato a un
+ * addebito immediato se il kill switch e spento o il consenso non e configurato.
+ */
+export function requiresSavedCardAuthorization(input: {
+  paymentMethod: string | null;
+  paymentType: string;
+  excursionStatus: string;
+  depositAllowed: boolean;
+}): boolean {
+  return (
+    input.paymentMethod === "card" &&
+    input.paymentType === "deposit" &&
+    input.excursionStatus === "open" &&
+    input.depositAllowed
+  );
+}
+
+// Codice prenotazione breve per causale bonifico ed email (es. "ET-7K4F9Q2M").
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // senza 0/O/1/I
 export function generateBookingCode(): string {
   let code = "";
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
   }
   return `ET-${code}`;

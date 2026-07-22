@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ExcursionExtra } from "./excursionExtra";
+import type { ExcursionSummaryCategory } from "./excursionSummaryCategory";
 import type { ExcursionSummaryProvinceSurcharges } from "./excursionSummaryProvinceSurcharges";
+import type { ExcursionSummaryStatus } from "./excursionSummaryStatus";
 import type { ScheduleDay } from "./scheduleDay";
 
 export interface ExcursionSummary {
@@ -14,8 +16,10 @@ export interface ExcursionSummary {
   name: string;
   location: string;
   date: string;
-  status: string;
-  category: string;
+  /** Istante di partenza; visualizzato e inserito nel fuso Europe/Rome */
+  departureAt?: Date | null;
+  status: ExcursionSummaryStatus;
+  category: ExcursionSummaryCategory;
   tags?: string[];
   currentCapacity: number;
   minThreshold: number;

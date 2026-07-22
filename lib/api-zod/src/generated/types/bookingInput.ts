@@ -5,17 +5,55 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingInputPaymentMethod } from "./bookingInputPaymentMethod";
+import type { BookingInputPaymentStatus } from "./bookingInputPaymentStatus";
+import type { ManualBookingParticipantInput } from "./manualBookingParticipantInput";
 
 export interface BookingInput {
+  /** Identificativo stabile riutilizzato nei retry dello stesso comando amministrativo */
+  clientCommandId: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
   customerName: string;
   customerId?: string;
   email?: string | null;
   phone?: string | null;
-  /** @minimum 1 */
-  adults?: number;
-  /** @minimum 0 */
-  children?: number;
-  seats?: number;
-  paymentStatus?: string;
+  /** Opt-in esplicito alle comunicazioni cliente collegate alla prenotazione (istruzioni, conferma gita, saldo e annullamento); richiede email valorizzata. I promemoria automatici dipendono inoltre dall'attivazione globale. La notifica amministrativa viene inviata comunque */
+  sendCustomerEmail?: boolean;
+  /**
+   * @minItems 1
+   * @maxItems 100
+   */
+  participants: ManualBookingParticipantInput[];
+  /** Per una gita già confermata sono ammessi soltanto full_requested e paid */
+  paymentStatus: BookingInputPaymentStatus;
+  /**
+   * Con valore zero la prenotazione deve essere paid ed è registrata come gratuita senza movimento di pagamento
+   * @minimum 0
+   */
+  totalAmountCents: number;
+  /**
+   * Importo della richiesta o dell'incasso corrente; deve coincidere col totale nei flussi full ed essere zero solo per una prenotazione gratuita
+   * @minimum 0
+   */
+  paymentAmountCents: number;
+  /** Obbligatorio salvo prenotazione gratuita, che non ha metodo di pagamento */
+  paymentMethod: BookingInputPaymentMethod;
+  /** Obbligatoria per deposit_requested e full_requested e strettamente precedente alla partenza */
+  paymentDeadline?: Date | null;
+  /**
+   * CRO/TRN o riferimento ricevuta/cassa, obbligatorio per deposit e paid salvo prenotazione gratuita
+   * @maxLength 500
+   */
+  transactionReference?: string | null;
+  /** Punto comune obbligatorio per una gita standard con punti attivi */
+  pickupPointId?: string | null;
   servizioCasa?: boolean | null;
+  /**
+   * Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti
+   * @maxLength 500
+   */
+  homePickupAddress?: string | null;
 }

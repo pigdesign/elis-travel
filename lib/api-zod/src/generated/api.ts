@@ -305,8 +305,21 @@ export const ListExcursionsResponseItem = zod.object({
   name: zod.string(),
   location: zod.string(),
   date: zod.string(),
-  status: zod.string(),
-  category: zod.string(),
+  departureAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Istante di partenza; visualizzato e inserito nel fuso Europe\/Rome",
+    ),
+  status: zod.enum([
+    "draft",
+    "open",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "archived",
+  ]),
+  category: zod.enum(["standard", "rident"]),
   tags: zod.array(zod.string()).optional(),
   currentCapacity: zod.number(),
   minThreshold: zod.number(),
@@ -382,73 +395,91 @@ export const ListExcursionsResponse = zod.array(ListExcursionsResponseItem);
 /**
  * @summary Crea nuova gita
  */
-export const CreateExcursionBody = zod.object({
-  name: zod.string().optional(),
-  location: zod.string().optional(),
-  date: zod.string().optional(),
-  status: zod.string().optional(),
-  category: zod.string().optional(),
-  tags: zod.array(zod.string()).optional(),
-  vehicleId: zod.string().nullish(),
-  currentCapacity: zod.number().optional(),
-  minThreshold: zod.number().optional(),
-  vehicleFixedCost: zod.string().optional(),
-  mealCostPerPerson: zod.string().optional(),
-  entranceCostPerPerson: zod.string().optional(),
-  extraCostPerPerson: zod.string().optional(),
-  extras: zod
-    .array(
-      zod.object({
-        name: zod.string(),
-        price: zod.number(),
-      }),
-    )
-    .optional(),
-  pricePerPerson: zod.string().optional(),
-  provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
-  switchThreshold: zod.number().nullish(),
-  switchVehicleId: zod.string().nullish(),
-  switchVehicleAdditionalCost: zod.string().nullish(),
-  operationalNotes: zod.string().nullish(),
-  coverImageUrl: zod.string().nullish(),
-  schedule: zod
-    .array(
-      zod.object({
-        dayNumber: zod.number(),
-        title: zod.string().nullish(),
-        imageUrl: zod.string().nullish(),
-        activities: zod.array(
-          zod.object({
-            time: zod.string().nullish(),
-            title: zod.string(),
-            description: zod.string().nullish(),
-          }),
-        ),
-      }),
-    )
-    .nullish(),
-  included: zod.string().nullish(),
-  excluded: zod.string().nullish(),
-  generalInfo: zod.string().nullish(),
-  patientPrice: zod.string().nullish(),
-  companionPrice: zod.string().nullish(),
-  returnDate: zod.string().nullish(),
-  bookingCloseDate: zod.string().nullish(),
-  depositEnabled: zod.boolean().optional(),
-  depositType: zod.enum(["percent", "fixed"]).optional(),
-  depositValue: zod.string().nullish(),
-  depositAvailableAfterConfirm: zod.boolean().optional(),
-  depositDeadlineDate: zod.string().nullish(),
-  balanceDeadlineDate: zod.string().nullish(),
-  balanceHoursOverride: zod.number().nullish(),
-  payCardEnabled: zod.boolean().optional(),
-  payBankTransferEnabled: zod.boolean().optional(),
-  payOfficeEnabled: zod.boolean().optional(),
-  bankTransferHoursOverride: zod.number().nullish(),
-  officeHoursOverride: zod.number().nullish(),
-  fullPaymentOnlyDaysBefore: zod.number().nullish(),
-  waitlistEnabled: zod.boolean().optional(),
-});
+export const CreateExcursionBody = zod
+  .object({
+    name: zod.string().optional(),
+    location: zod.string().optional(),
+    date: zod
+      .string()
+      .optional()
+      .describe(
+        "Data di compatibilità, derivata da departureAt nel fuso Europe\/Rome",
+      ),
+    departureAt: zod.coerce
+      .date()
+      .nullish()
+      .describe(
+        "Obbligatorio in creazione e quando si modifica la data; deve includere un offset",
+      ),
+    status: zod
+      .enum(["draft", "open"])
+      .optional()
+      .describe(
+        "Il PATCH generico consente soltanto draft↔open; conferma, completamento, annullamento e archiviazione usano comandi dedicati",
+      ),
+    category: zod.enum(["standard", "rident"]).optional(),
+    tags: zod.array(zod.string()).optional(),
+    vehicleId: zod.string().nullish(),
+    currentCapacity: zod.number().optional(),
+    minThreshold: zod.number().optional(),
+    vehicleFixedCost: zod.string().optional(),
+    mealCostPerPerson: zod.string().optional(),
+    entranceCostPerPerson: zod.string().optional(),
+    extraCostPerPerson: zod.string().optional(),
+    extras: zod
+      .array(
+        zod.object({
+          name: zod.string(),
+          price: zod.number(),
+        }),
+      )
+      .optional(),
+    pricePerPerson: zod.string().optional(),
+    provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
+    switchThreshold: zod.number().nullish(),
+    switchVehicleId: zod.string().nullish(),
+    switchVehicleAdditionalCost: zod.string().nullish(),
+    operationalNotes: zod.string().nullish(),
+    coverImageUrl: zod.string().nullish(),
+    schedule: zod
+      .array(
+        zod.object({
+          dayNumber: zod.number(),
+          title: zod.string().nullish(),
+          imageUrl: zod.string().nullish(),
+          activities: zod.array(
+            zod.object({
+              time: zod.string().nullish(),
+              title: zod.string(),
+              description: zod.string().nullish(),
+            }),
+          ),
+        }),
+      )
+      .nullish(),
+    included: zod.string().nullish(),
+    excluded: zod.string().nullish(),
+    generalInfo: zod.string().nullish(),
+    patientPrice: zod.string().nullish(),
+    companionPrice: zod.string().nullish(),
+    returnDate: zod.string().nullish(),
+    bookingCloseDate: zod.string().nullish(),
+    depositEnabled: zod.boolean().optional(),
+    depositType: zod.enum(["percent", "fixed"]).optional(),
+    depositValue: zod.string().nullish(),
+    depositAvailableAfterConfirm: zod.boolean().optional(),
+    depositDeadlineDate: zod.string().nullish(),
+    balanceDeadlineDate: zod.string().nullish(),
+    balanceHoursOverride: zod.number().nullish(),
+    payCardEnabled: zod.boolean().optional(),
+    payBankTransferEnabled: zod.boolean().optional(),
+    payOfficeEnabled: zod.boolean().optional(),
+    bankTransferHoursOverride: zod.number().nullish(),
+    officeHoursOverride: zod.number().nullish(),
+    fullPaymentOnlyDaysBefore: zod.number().nullish(),
+    waitlistEnabled: zod.boolean().optional(),
+  })
+  .and(zod.object({}).passthrough());
 
 /**
  * @summary Dettaglio gita con prenotazioni
@@ -457,14 +488,29 @@ export const GetExcursionParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
+export const getExcursionResponseTwoBookingsItemHomePickupAddressMax = 500;
+
 export const GetExcursionResponse = zod
   .object({
     id: zod.string().uuid(),
     name: zod.string(),
     location: zod.string(),
     date: zod.string(),
-    status: zod.string(),
-    category: zod.string(),
+    departureAt: zod.coerce
+      .date()
+      .nullish()
+      .describe(
+        "Istante di partenza; visualizzato e inserito nel fuso Europe\/Rome",
+      ),
+    status: zod.enum([
+      "draft",
+      "open",
+      "confirmed",
+      "completed",
+      "cancelled",
+      "archived",
+    ]),
+    category: zod.enum(["standard", "rident"]),
     tags: zod.array(zod.string()).optional(),
     currentCapacity: zod.number(),
     minThreshold: zod.number(),
@@ -551,6 +597,13 @@ export const GetExcursionResponse = zod
           paymentStatus: zod.string(),
           bookedAt: zod.coerce.date(),
           servizioCasa: zod.boolean().nullish(),
+          homePickupAddress: zod
+            .string()
+            .max(getExcursionResponseTwoBookingsItemHomePickupAddressMax)
+            .nullish()
+            .describe(
+              "Snapshot dell'indirizzo indicato per il ritiro a domicilio",
+            ),
           pickupPointId: zod.string().uuid().nullish(),
           cancelledAt: zod.coerce.date().nullish(),
           bookingCode: zod.string().nullish(),
@@ -560,6 +613,18 @@ export const GetExcursionResponse = zod
           amountDueCents: zod.number().nullish(),
           amountPaidCents: zod.number().nullish(),
           paymentDeadline: zod.coerce.date().nullish(),
+          workflowVersion: zod.number().optional(),
+          customerNotificationsEnabled: zod
+            .boolean()
+            .describe(
+              "True quando il cliente ha autorizzato le comunicazioni automatiche per questa prenotazione",
+            ),
+          seatStatus: zod.string().optional(),
+          seatHoldExpiresAt: zod.coerce.date().nullish(),
+          seatReleasedAt: zod.coerce.date().nullish(),
+          seatReleaseReason: zod.string().nullish(),
+          cancellationRequestedAt: zod.coerce.date().nullish(),
+          cancellationRequestStatus: zod.string().nullish(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date(),
         }),
@@ -577,9 +642,25 @@ export const UpdateExcursionParams = zod.object({
 export const UpdateExcursionBody = zod.object({
   name: zod.string().optional(),
   location: zod.string().optional(),
-  date: zod.string().optional(),
-  status: zod.string().optional(),
-  category: zod.string().optional(),
+  date: zod
+    .string()
+    .optional()
+    .describe(
+      "Data di compatibilità, derivata da departureAt nel fuso Europe\/Rome",
+    ),
+  departureAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Obbligatorio in creazione e quando si modifica la data; deve includere un offset",
+    ),
+  status: zod
+    .enum(["draft", "open"])
+    .optional()
+    .describe(
+      "Il PATCH generico consente soltanto draft↔open; conferma, completamento, annullamento e archiviazione usano comandi dedicati",
+    ),
+  category: zod.enum(["standard", "rident"]).optional(),
   tags: zod.array(zod.string()).optional(),
   vehicleId: zod.string().nullish(),
   currentCapacity: zod.number().optional(),
@@ -647,8 +728,21 @@ export const UpdateExcursionResponse = zod.object({
   name: zod.string(),
   location: zod.string(),
   date: zod.string(),
-  status: zod.string(),
-  category: zod.string(),
+  departureAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Istante di partenza; visualizzato e inserito nel fuso Europe\/Rome",
+    ),
+  status: zod.enum([
+    "draft",
+    "open",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "archived",
+  ]),
+  category: zod.enum(["standard", "rident"]),
   tags: zod.array(zod.string()).optional(),
   currentCapacity: zod.number(),
   minThreshold: zod.number(),
@@ -738,40 +832,126 @@ export const AddExcursionBookingParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
-export const addExcursionBookingBodyChildrenMin = 0;
+export const addExcursionBookingBodyCustomerNameMax = 200;
+
+export const addExcursionBookingBodySendCustomerEmailDefault = false;
+export const addExcursionBookingBodyParticipantsItemFirstNameMax = 100;
+
+export const addExcursionBookingBodyParticipantsItemLastNameMax = 100;
+
+export const addExcursionBookingBodyParticipantsMax = 100;
+
+export const addExcursionBookingBodyTotalAmountCentsMin = 0;
+
+export const addExcursionBookingBodyPaymentAmountCentsMin = 0;
+
+export const addExcursionBookingBodyTransactionReferenceMax = 500;
+
+export const addExcursionBookingBodyHomePickupAddressMax = 500;
 
 export const AddExcursionBookingBody = zod.object({
-  customerName: zod.string(),
+  clientCommandId: zod
+    .string()
+    .uuid()
+    .describe(
+      "Identificativo stabile riutilizzato nei retry dello stesso comando amministrativo",
+    ),
+  customerName: zod.string().min(1).max(addExcursionBookingBodyCustomerNameMax),
   customerId: zod.string().optional(),
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
-  adults: zod.number().min(1).optional(),
-  children: zod.number().min(addExcursionBookingBodyChildrenMin).optional(),
-  seats: zod.number().optional(),
-  paymentStatus: zod.string().optional(),
+  sendCustomerEmail: zod
+    .boolean()
+    .default(addExcursionBookingBodySendCustomerEmailDefault)
+    .describe(
+      "Opt-in esplicito alle comunicazioni cliente collegate alla prenotazione (istruzioni, conferma gita, saldo e annullamento); richiede email valorizzata. I promemoria automatici dipendono inoltre dall'attivazione globale. La notifica amministrativa viene inviata comunque",
+    ),
+  participants: zod
+    .array(
+      zod.object({
+        type: zod.enum(["adult", "child", "patient", "companion"]),
+        firstName: zod
+          .string()
+          .min(1)
+          .max(addExcursionBookingBodyParticipantsItemFirstNameMax),
+        lastName: zod
+          .string()
+          .min(1)
+          .max(addExcursionBookingBodyParticipantsItemLastNameMax),
+        ageRangeId: zod
+          .string()
+          .uuid()
+          .nullish()
+          .describe(
+            "Obbligatorio per i bambini quando sono configurate fasce età attive",
+          ),
+        pickupPointId: zod
+          .string()
+          .uuid()
+          .nullish()
+          .describe(
+            "Obbligatorio per ciascun partecipante RIDENT quando esistono punti attivi",
+          ),
+      }),
+    )
+    .min(1)
+    .max(addExcursionBookingBodyParticipantsMax),
+  paymentStatus: zod
+    .enum(["deposit_requested", "full_requested", "deposit", "paid"])
+    .describe(
+      "Per una gita già confermata sono ammessi soltanto full_requested e paid",
+    ),
+  totalAmountCents: zod
+    .number()
+    .min(addExcursionBookingBodyTotalAmountCentsMin)
+    .describe(
+      "Con valore zero la prenotazione deve essere paid ed è registrata come gratuita senza movimento di pagamento",
+    ),
+  paymentAmountCents: zod
+    .number()
+    .min(addExcursionBookingBodyPaymentAmountCentsMin)
+    .describe(
+      "Importo della richiesta o dell'incasso corrente; deve coincidere col totale nei flussi full ed essere zero solo per una prenotazione gratuita",
+    ),
+  paymentMethod: zod
+    .enum(["bank_transfer", "office"])
+    .nullable()
+    .describe(
+      "Obbligatorio salvo prenotazione gratuita, che non ha metodo di pagamento",
+    ),
+  paymentDeadline: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Obbligatoria per deposit_requested e full_requested e strettamente precedente alla partenza",
+    ),
+  transactionReference: zod
+    .string()
+    .max(addExcursionBookingBodyTransactionReferenceMax)
+    .nullish()
+    .describe(
+      "CRO\/TRN o riferimento ricevuta\/cassa, obbligatorio per deposit e paid salvo prenotazione gratuita",
+    ),
+  pickupPointId: zod
+    .string()
+    .uuid()
+    .nullish()
+    .describe(
+      "Punto comune obbligatorio per una gita standard con punti attivi",
+    ),
   servizioCasa: zod.boolean().nullish(),
+  homePickupAddress: zod
+    .string()
+    .max(addExcursionBookingBodyHomePickupAddressMax)
+    .nullish()
+    .describe(
+      "Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti",
+    ),
 });
 
-/**
- * @summary Aggiorna stato pagamento prenotazione
- */
-export const UpdateExcursionBookingPaymentParams = zod.object({
-  id: zod.coerce.string().uuid(),
-  bookingId: zod.coerce.string().uuid(),
-});
+export const addExcursionBookingResponseHomePickupAddressMax = 500;
 
-export const UpdateExcursionBookingPaymentBody = zod.object({
-  paymentStatus: zod.enum([
-    "pending",
-    "deposit_requested",
-    "deposit",
-    "full_requested",
-    "paid",
-    "refunded",
-  ]),
-});
-
-export const UpdateExcursionBookingPaymentResponse = zod.object({
+export const AddExcursionBookingResponse = zod.object({
   id: zod.string().uuid(),
   excursionId: zod.string().uuid(),
   customerId: zod.string().nullish(),
@@ -784,6 +964,11 @@ export const UpdateExcursionBookingPaymentResponse = zod.object({
   paymentStatus: zod.string(),
   bookedAt: zod.coerce.date(),
   servizioCasa: zod.boolean().nullish(),
+  homePickupAddress: zod
+    .string()
+    .max(addExcursionBookingResponseHomePickupAddressMax)
+    .nullish()
+    .describe("Snapshot dell'indirizzo indicato per il ritiro a domicilio"),
   pickupPointId: zod.string().uuid().nullish(),
   cancelledAt: zod.coerce.date().nullish(),
   bookingCode: zod.string().nullish(),
@@ -793,6 +978,18 @@ export const UpdateExcursionBookingPaymentResponse = zod.object({
   amountDueCents: zod.number().nullish(),
   amountPaidCents: zod.number().nullish(),
   paymentDeadline: zod.coerce.date().nullish(),
+  workflowVersion: zod.number().optional(),
+  customerNotificationsEnabled: zod
+    .boolean()
+    .describe(
+      "True quando il cliente ha autorizzato le comunicazioni automatiche per questa prenotazione",
+    ),
+  seatStatus: zod.string().optional(),
+  seatHoldExpiresAt: zod.coerce.date().nullish(),
+  seatReleasedAt: zod.coerce.date().nullish(),
+  seatReleaseReason: zod.string().nullish(),
+  cancellationRequestedAt: zod.coerce.date().nullish(),
+  cancellationRequestStatus: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -816,7 +1013,24 @@ export const CreatePublicExcursionBookingParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
+export const createPublicExcursionBookingBodyParticipantsItemFirstNameMax = 100;
+
+export const createPublicExcursionBookingBodyParticipantsItemLastNameMax = 100;
+
+export const createPublicExcursionBookingBodyQuotedTotalCentsMin = 0;
+
+export const createPublicExcursionBookingBodyQuotedAmountDueCentsMin = 0;
+
+export const createPublicExcursionBookingBodyHomePickupAddressMax = 500;
+
 export const CreatePublicExcursionBookingBody = zod.object({
+  bookingAttemptId: zod
+    .string()
+    .uuid()
+    .optional()
+    .describe(
+      "Chiave idempotente generata dal browser e riutilizzata nei retry dello stesso tentativo",
+    ),
   firstName: zod.string(),
   lastName: zod.string(),
   email: zod.string(),
@@ -824,6 +1038,14 @@ export const CreatePublicExcursionBookingBody = zod.object({
   participants: zod.array(
     zod.object({
       type: zod.enum(["adult", "child", "patient", "companion"]),
+      firstName: zod
+        .string()
+        .min(1)
+        .max(createPublicExcursionBookingBodyParticipantsItemFirstNameMax),
+      lastName: zod
+        .string()
+        .min(1)
+        .max(createPublicExcursionBookingBodyParticipantsItemLastNameMax),
       ageRangeId: zod.string().uuid().nullish(),
       pickupPointId: zod.string().uuid().nullish(),
     }),
@@ -831,12 +1053,68 @@ export const CreatePublicExcursionBookingBody = zod.object({
   pickupPointId: zod.string().uuid().nullish(),
   paymentType: zod.enum(["deposit", "full"]),
   paymentMethod: zod.enum(["card", "bank_transfer", "office"]),
+  quotedTotalCents: zod
+    .number()
+    .min(createPublicExcursionBookingBodyQuotedTotalCentsMin)
+    .describe("Totale dell'ultimo preventivo server accettato dal cliente"),
+  quotedAmountDueCents: zod
+    .number()
+    .min(createPublicExcursionBookingBodyQuotedAmountDueCentsMin)
+    .describe(
+      "Importo dovuto dell'ultimo preventivo server accettato dal cliente",
+    ),
+  futureChargeConsent: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation",
+    ),
   consents: zod.object({
     terms: zod.boolean(),
     privacy: zod.boolean(),
     media: zod.boolean().optional(),
   }),
   servizioCasa: zod.boolean().nullish(),
+  homePickupAddress: zod
+    .string()
+    .max(createPublicExcursionBookingBodyHomePickupAddressMax)
+    .nullish()
+    .describe(
+      "Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti",
+    ),
+});
+
+export const CreatePublicExcursionBookingResponse = zod.object({
+  id: zod.string().uuid(),
+  bookingCode: zod.string(),
+  seats: zod.number(),
+  totalCents: zod.number(),
+  amountDueCents: zod.number(),
+  paymentType: zod.enum(["deposit", "full"]),
+  paymentMethod: zod.enum(["card", "bank_transfer", "office"]).nullable(),
+  paymentStatus: zod.string(),
+  paymentDeadline: zod.coerce.date().nullable(),
+  paymentGraceUntil: zod.coerce.date().nullish(),
+  message: zod.string(),
+  bank: zod
+    .object({
+      iban: zod.string().nullish(),
+      beneficiary: zod.string().nullish(),
+      bank: zod.string().nullish(),
+      causale: zod.string(),
+    })
+    .optional(),
+  office: zod
+    .object({
+      address: zod.string().nullish(),
+      openingHours: zod.string().nullish(),
+    })
+    .optional(),
+  stripeClientSecret: zod.string().nullish(),
+  stripeSetupClientSecret: zod.string().nullish(),
+  cardFlow: zod
+    .enum(["pay_now", "save_for_confirmation", "no_payment_required"])
+    .optional(),
 });
 
 /**
@@ -856,7 +1134,24 @@ export const ConfirmPublicExcursionBookingPaymentResponse = zod.object({
 });
 
 /**
- * @summary Conferma carta salvata dopo SetupIntent (legacy, prenotazioni pre-v2)
+ * @summary Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+ */
+export const ConfirmPublicExcursionBookingCardSetupParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const ConfirmPublicExcursionBookingCardSetupBody = zod.object({
+  setupIntentId: zod.string(),
+});
+
+export const ConfirmPublicExcursionBookingCardSetupResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @deprecated
+ * @summary Conferma carta salvata dopo SetupIntent (endpoint legacy protetto)
  */
 export const ConfirmPublicExcursionBookingCardParams = zod.object({
   id: zod.coerce.string().uuid(),
@@ -937,6 +1232,8 @@ export const GetExcursionPickupReportResponse = zod.object({
           referente: zod.string(),
           phone: zod.string().nullish(),
           paymentStatus: zod.string(),
+          servizioCasa: zod.boolean(),
+          homePickupAddress: zod.string().nullable(),
         }),
       ),
       patients: zod.number(),
@@ -947,6 +1244,20 @@ export const GetExcursionPickupReportResponse = zod.object({
     }),
   ),
   totalPeople: zod.number(),
+  missingParticipantDetails: zod.array(
+    zod.object({
+      bookingId: zod.string().uuid(),
+      bookingCode: zod.string().nullish(),
+      customerName: zod.string(),
+      referente: zod.string(),
+      phone: zod.string().nullish(),
+      seats: zod.number(),
+      servizioCasa: zod.boolean(),
+      homePickupAddress: zod.string().nullable(),
+      participantsDetailed: zod.literal(false),
+      warning: zod.string(),
+    }),
+  ),
 });
 
 /**
@@ -960,7 +1271,207 @@ export const ConfirmTripResponse = zod.object({
   ok: zod.boolean(),
   status: zod.string(),
   balanceRequestsCreated: zod.number(),
-  alreadyRequested: zod.number(),
+  cardCharged: zod.number(),
+  actionRequired: zod.number(),
+  skipped: zod.number(),
+});
+
+/**
+ * Comando idempotente; accetta una gita confermata già partita e blocca la chiusura se restano attività economiche, anagrafiche o Stripe aperte.
+ * @summary Completa amministrativamente una gita dopo i controlli finali
+ */
+export const CompleteExcursionTripParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const CompleteExcursionTripResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  location: zod.string(),
+  date: zod.string(),
+  departureAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Istante di partenza; visualizzato e inserito nel fuso Europe\/Rome",
+    ),
+  status: zod.enum([
+    "draft",
+    "open",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "archived",
+  ]),
+  category: zod.enum(["standard", "rident"]),
+  tags: zod.array(zod.string()).optional(),
+  currentCapacity: zod.number(),
+  minThreshold: zod.number(),
+  adherentsCount: zod.number(),
+  depositsCount: zod.number(),
+  balancesCount: zod.number(),
+  pendingRequestsCount: zod.number(),
+  vehicleFixedCost: zod.string().optional(),
+  mealCostPerPerson: zod.string().optional(),
+  entranceCostPerPerson: zod.string().optional(),
+  extraCostPerPerson: zod.string().optional(),
+  extras: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  pricePerPerson: zod.string(),
+  provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
+  vehicleId: zod.string().nullish(),
+  switchThreshold: zod.number().nullish(),
+  switchVehicleId: zod.string().nullish(),
+  switchVehicleAdditionalCost: zod.string().nullish(),
+  operationalNotes: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
+  schedule: zod
+    .array(
+      zod.object({
+        dayNumber: zod.number(),
+        title: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        activities: zod.array(
+          zod.object({
+            time: zod.string().nullish(),
+            title: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        ),
+      }),
+    )
+    .nullish(),
+  included: zod.string().nullish(),
+  excluded: zod.string().nullish(),
+  generalInfo: zod.string().nullish(),
+  ricaviStimati: zod.number(),
+  costiVariabili: zod.number(),
+  costiTotali: zod.number(),
+  margineNetto: zod.number(),
+  patientPrice: zod.string().nullish(),
+  companionPrice: zod.string().nullish(),
+  returnDate: zod.string().nullish(),
+  bookingCloseDate: zod.string().nullish(),
+  depositEnabled: zod.boolean().optional(),
+  depositType: zod.string().optional(),
+  depositValue: zod.string().nullish(),
+  depositAvailableAfterConfirm: zod.boolean().optional(),
+  depositDeadlineDate: zod.string().nullish(),
+  balanceDeadlineDate: zod.string().nullish(),
+  balanceHoursOverride: zod.number().nullish(),
+  payCardEnabled: zod.boolean().optional(),
+  payBankTransferEnabled: zod.boolean().optional(),
+  payOfficeEnabled: zod.boolean().optional(),
+  bankTransferHoursOverride: zod.number().nullish(),
+  officeHoursOverride: zod.number().nullish(),
+  fullPaymentOnlyDaysBefore: zod.number().nullish(),
+  waitlistEnabled: zod.boolean().optional(),
+  confirmedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * Libera i posti e pianifica rimborsi o attività manuali senza passare dal PATCH generico.
+ * @summary Annulla una gita tramite il workflow finanziario dedicato
+ */
+export const CancelExcursionTripParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const CancelExcursionTripResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  location: zod.string(),
+  date: zod.string(),
+  departureAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Istante di partenza; visualizzato e inserito nel fuso Europe\/Rome",
+    ),
+  status: zod.enum([
+    "draft",
+    "open",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "archived",
+  ]),
+  category: zod.enum(["standard", "rident"]),
+  tags: zod.array(zod.string()).optional(),
+  currentCapacity: zod.number(),
+  minThreshold: zod.number(),
+  adherentsCount: zod.number(),
+  depositsCount: zod.number(),
+  balancesCount: zod.number(),
+  pendingRequestsCount: zod.number(),
+  vehicleFixedCost: zod.string().optional(),
+  mealCostPerPerson: zod.string().optional(),
+  entranceCostPerPerson: zod.string().optional(),
+  extraCostPerPerson: zod.string().optional(),
+  extras: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  pricePerPerson: zod.string(),
+  provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
+  vehicleId: zod.string().nullish(),
+  switchThreshold: zod.number().nullish(),
+  switchVehicleId: zod.string().nullish(),
+  switchVehicleAdditionalCost: zod.string().nullish(),
+  operationalNotes: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
+  schedule: zod
+    .array(
+      zod.object({
+        dayNumber: zod.number(),
+        title: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        activities: zod.array(
+          zod.object({
+            time: zod.string().nullish(),
+            title: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        ),
+      }),
+    )
+    .nullish(),
+  included: zod.string().nullish(),
+  excluded: zod.string().nullish(),
+  generalInfo: zod.string().nullish(),
+  ricaviStimati: zod.number(),
+  costiVariabili: zod.number(),
+  costiTotali: zod.number(),
+  margineNetto: zod.number(),
+  patientPrice: zod.string().nullish(),
+  companionPrice: zod.string().nullish(),
+  returnDate: zod.string().nullish(),
+  bookingCloseDate: zod.string().nullish(),
+  depositEnabled: zod.boolean().optional(),
+  depositType: zod.string().optional(),
+  depositValue: zod.string().nullish(),
+  depositAvailableAfterConfirm: zod.boolean().optional(),
+  depositDeadlineDate: zod.string().nullish(),
+  balanceDeadlineDate: zod.string().nullish(),
+  balanceHoursOverride: zod.number().nullish(),
+  payCardEnabled: zod.boolean().optional(),
+  payBankTransferEnabled: zod.boolean().optional(),
+  payOfficeEnabled: zod.boolean().optional(),
+  bankTransferHoursOverride: zod.number().nullish(),
+  officeHoursOverride: zod.number().nullish(),
+  fullPaymentOnlyDaysBefore: zod.number().nullish(),
+  waitlistEnabled: zod.boolean().optional(),
+  confirmedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });
 
 /**
@@ -978,6 +1489,14 @@ export const ExpireOverdueBookingsResponse = zod.object({
   ok: zod.boolean(),
   expired: zod.number(),
   releasedSeats: zod.number(),
+  requiresCancellationDecision: zod
+    .number()
+    .describe(
+      "Prenotazioni scadute con fondi o riferimenti finanziari che richiedono una decisione amministrativa prima di liberare i posti",
+    ),
+  stripeCancellationsScheduled: zod
+    .number()
+    .describe("Operazioni di cleanup Stripe pianificate dalla verifica"),
 });
 
 /**
@@ -987,8 +1506,16 @@ export const MarkPaymentRequestPaidParams = zod.object({
   requestId: zod.coerce.string().uuid(),
 });
 
+export const markPaymentRequestPaidBodyTransactionReferenceMax = 500;
+
 export const MarkPaymentRequestPaidBody = zod.object({
-  transactionReference: zod.string().optional(),
+  transactionReference: zod
+    .string()
+    .min(1)
+    .max(markPaymentRequestPaidBodyTransactionReferenceMax)
+    .describe(
+      "CRO\/TRN del bonifico oppure riferimento univoco della ricevuta\/cassa",
+    ),
 });
 
 export const MarkPaymentRequestPaidResponse = zod.object({
@@ -1016,19 +1543,27 @@ export const UpdateBookingDeadlineParams = zod.object({
 });
 
 export const UpdateBookingDeadlineBody = zod.object({
+  paymentRequestId: zod
+    .string()
+    .uuid()
+    .describe("Obbligazione attiva più recente da prorogare"),
   deadline: zod.coerce.date(),
 });
 
 export const UpdateBookingDeadlineResponse = zod.object({
-  ok: zod.boolean().optional(),
+  ok: zod.boolean(),
+  deadline: zod.coerce.date(),
+  graceUntil: zod.coerce.date(),
 });
 
 /**
- * @summary Dettaglio completo prenotazione (partecipanti, consensi, pagamenti)
+ * @summary Dettaglio completo prenotazione e storico amministrativo
  */
 export const GetAdminBookingDetailsParams = zod.object({
   bookingId: zod.coerce.string().uuid(),
 });
+
+export const getAdminBookingDetailsResponseBookingHomePickupAddressMax = 500;
 
 export const GetAdminBookingDetailsResponse = zod.object({
   booking: zod.object({
@@ -1044,6 +1579,11 @@ export const GetAdminBookingDetailsResponse = zod.object({
     paymentStatus: zod.string(),
     bookedAt: zod.coerce.date(),
     servizioCasa: zod.boolean().nullish(),
+    homePickupAddress: zod
+      .string()
+      .max(getAdminBookingDetailsResponseBookingHomePickupAddressMax)
+      .nullish()
+      .describe("Snapshot dell'indirizzo indicato per il ritiro a domicilio"),
     pickupPointId: zod.string().uuid().nullish(),
     cancelledAt: zod.coerce.date().nullish(),
     bookingCode: zod.string().nullish(),
@@ -1053,6 +1593,18 @@ export const GetAdminBookingDetailsResponse = zod.object({
     amountDueCents: zod.number().nullish(),
     amountPaidCents: zod.number().nullish(),
     paymentDeadline: zod.coerce.date().nullish(),
+    workflowVersion: zod.number().optional(),
+    customerNotificationsEnabled: zod
+      .boolean()
+      .describe(
+        "True quando il cliente ha autorizzato le comunicazioni automatiche per questa prenotazione",
+      ),
+    seatStatus: zod.string().optional(),
+    seatHoldExpiresAt: zod.coerce.date().nullish(),
+    seatReleasedAt: zod.coerce.date().nullish(),
+    seatReleaseReason: zod.string().nullish(),
+    cancellationRequestedAt: zod.coerce.date().nullish(),
+    cancellationRequestStatus: zod.string().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -1060,7 +1612,9 @@ export const GetAdminBookingDetailsResponse = zod.object({
     zod.object({
       id: zod.string().uuid(),
       participantType: zod.string(),
+      ageRangeId: zod.string().uuid().nullish(),
       ageRangeLabel: zod.string().nullish(),
+      pickupPointId: zod.string().uuid().nullish(),
       pickupPointName: zod.string().nullish(),
       basePriceCents: zod.number(),
       pickupSurchargeCents: zod.number(),
@@ -1090,12 +1644,345 @@ export const GetAdminBookingDetailsResponse = zod.object({
       status: zod.string(),
       method: zod.string().nullish(),
       deadline: zod.coerce.date().nullish(),
+      graceUntil: zod.coerce.date().nullish(),
+      stripeCheckoutSessionId: zod.string().nullish(),
       paidAt: zod.coerce.date().nullish(),
       transactionReference: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
+  paymentAttempts: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      paymentRequestId: zod.string().uuid(),
+      provider: zod.string(),
+      status: zod.enum([
+        "pending",
+        "processing",
+        "cancellation_pending",
+        "succeeded",
+        "failed",
+        "cancelled",
+      ]),
+      amountCents: zod.number(),
+      stripePaymentIntentId: zod.string().nullish(),
+      lastErrorCode: zod.string().nullish(),
+      lastErrorMessage: zod.string().nullish(),
+      completedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  cancellationCases: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      bookingId: zod.string().uuid(),
+      excursionId: zod.string().uuid().nullish(),
+      source: zod.enum(["customer", "admin", "excursion"]),
+      status: zod.enum([
+        "pending",
+        "rejected",
+        "superseded",
+        "approved",
+        "refunding",
+        "manual_required",
+        "completed",
+      ]),
+      requestReason: zod.string().nullish(),
+      decisionReason: zod.string().nullish(),
+      openedByAdminUserId: zod.string().nullish(),
+      openedByAdminName: zod.string().nullish(),
+      decidedByAdminUserId: zod.string().nullish(),
+      decidedByAdminName: zod.string().nullish(),
+      refundableAtDecisionCents: zod.number().nullish(),
+      approvedRefundCents: zod.number().nullish(),
+      requestedAt: zod.coerce.date(),
+      decidedAt: zod.coerce.date().nullish(),
+      completedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  refunds: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      bookingId: zod.string().uuid(),
+      paymentRequestId: zod.string().uuid().nullish(),
+      paymentAttemptId: zod.string().uuid().nullish(),
+      cancellationCaseId: zod.string().uuid().nullish(),
+      amountCents: zod.number(),
+      reason: zod.string(),
+      status: zod.enum([
+        "pending",
+        "processing",
+        "succeeded",
+        "failed",
+        "manual_required",
+      ]),
+      provider: zod.string(),
+      providerReference: zod
+        .string()
+        .nullish()
+        .describe("Riferimento operativo del provider o del rimborso offline"),
+      stripePaymentIntentId: zod.string().nullish(),
+      stripeRefundId: zod.string().nullish(),
+      lastErrorCode: zod.string().nullish(),
+      lastErrorMessage: zod.string().nullish(),
+      attemptCount: zod.number(),
+      maxAttempts: zod.number(),
+      nextAttemptAt: zod.coerce.date(),
+      lastAttemptAt: zod.coerce.date().nullish(),
+      completedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  cleanupJobs: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      bookingId: zod.string().uuid().nullish(),
+      operation: zod.string(),
+      stripeResourceId: zod.string(),
+      status: zod.enum([
+        "pending",
+        "processing",
+        "failed",
+        "succeeded",
+        "manual_required",
+      ]),
+      attemptCount: zod.number(),
+      maxAttempts: zod.number(),
+      nextAttemptAt: zod.coerce.date(),
+      lastAttemptAt: zod.coerce.date().nullish(),
+      lastErrorCode: zod.string().nullish(),
+      lastErrorMessage: zod.string().nullish(),
+      manualCompletionReference: zod.string().nullish(),
+      completedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  economicSummary: zod.object({
+    totalAmountCents: zod.number().nullable(),
+    paidAmountCents: zod.number(),
+    balanceAmountCents: zod.number().nullable(),
+    approvedRefundAmountCents: zod.number(),
+    registeredRefundAmountCents: zod.number(),
+    refundedAmountCents: zod.number(),
+    pendingRefundAmountCents: zod.number(),
+    failedRefundAmountCents: zod.number(),
+    manualRefundRequiredAmountCents: zod.number(),
+    remainingApprovedRefundAmountCents: zod.number(),
+    penaltyAmountCents: zod.number(),
+    netCollectedAmountCents: zod.number(),
+  }),
   participantsDetailed: zod.boolean(),
+});
+
+/**
+ * Il numero di righe deve coincidere con i posti già occupati. Il comando non modifica importi, pagamenti o posti. Le righe già registrate devono conservare il proprio id: vengono aggiornate in-place affinché gli snapshot prezzo storici non siano mai riassegnati per posizione a un'altra riga.
+ * @summary Completa o corregge atomicamente i partecipanti di una prenotazione
+ */
+export const ReplaceAdminBookingParticipantsParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const replaceAdminBookingParticipantsBodyParticipantsItemOneFirstNameMax = 100;
+
+export const replaceAdminBookingParticipantsBodyParticipantsItemOneLastNameMax = 100;
+
+export const replaceAdminBookingParticipantsBodyParticipantsMax = 100;
+
+export const ReplaceAdminBookingParticipantsBody = zod.object({
+  participants: zod
+    .array(
+      zod
+        .object({
+          type: zod.enum(["adult", "child", "patient", "companion"]),
+          firstName: zod
+            .string()
+            .min(1)
+            .max(
+              replaceAdminBookingParticipantsBodyParticipantsItemOneFirstNameMax,
+            ),
+          lastName: zod
+            .string()
+            .min(1)
+            .max(
+              replaceAdminBookingParticipantsBodyParticipantsItemOneLastNameMax,
+            ),
+          ageRangeId: zod
+            .string()
+            .uuid()
+            .nullish()
+            .describe(
+              "Obbligatorio per i bambini quando sono configurate fasce età attive",
+            ),
+          pickupPointId: zod
+            .string()
+            .uuid()
+            .nullish()
+            .describe(
+              "Obbligatorio per ciascun partecipante RIDENT quando esistono punti attivi",
+            ),
+        })
+        .and(
+          zod.object({
+            id: zod
+              .string()
+              .uuid()
+              .optional()
+              .describe(
+                "Obbligatorio per ogni riga partecipante già esistente; assente solo per completare righe legacy mancanti",
+              ),
+          }),
+        ),
+    )
+    .min(1)
+    .max(replaceAdminBookingParticipantsBodyParticipantsMax),
+  pickupPointId: zod
+    .string()
+    .uuid()
+    .nullish()
+    .describe(
+      "Punto comune per una gita standard; per RIDENT il punto è su ogni partecipante",
+    ),
+});
+
+export const ReplaceAdminBookingParticipantsResponse = zod.object({
+  ok: zod.boolean(),
+  alreadyApplied: zod.boolean(),
+  participantsDetailed: zod.boolean(),
+  participants: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      participantType: zod.string(),
+      ageRangeId: zod.string().uuid().nullish(),
+      ageRangeLabel: zod.string().nullish(),
+      pickupPointId: zod.string().uuid().nullish(),
+      pickupPointName: zod.string().nullish(),
+      basePriceCents: zod.number(),
+      pickupSurchargeCents: zod.number(),
+      finalPriceCents: zod.number(),
+      firstName: zod.string().nullish(),
+      lastName: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      dataCompleted: zod.boolean(),
+      sortOrder: zod.number(),
+    }),
+  ),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * Registra un caso pendente senza annullare ancora la prenotazione. Il clientCommandId deve restare stabile durante i retry dello stesso comando.
+ * @summary Apre un caso di cancellazione amministrativa
+ */
+export const OpenAdminBookingCancellationParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const openAdminBookingCancellationBodyReasonMax = 1000;
+
+export const OpenAdminBookingCancellationBody = zod.object({
+  clientCommandId: zod
+    .string()
+    .uuid()
+    .describe("Identificativo stabile durante i retry dello stesso comando"),
+  reason: zod.string().max(openAdminBookingCancellationBodyReasonMax).nullish(),
+});
+
+export const OpenAdminBookingCancellationResponse = zod.object({
+  ok: zod.boolean(),
+  cancellationCaseId: zod.string().uuid(),
+  status: zod.string(),
+  alreadyOpen: zod.boolean(),
+});
+
+/**
+ * Risolve il caso pendente identificato esplicitamente nel body.
+ * @summary Approva o rifiuta una cancellazione
+ */
+export const ResolveAdminBookingCancellationParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const resolveAdminBookingCancellationBodyRefundAmountCentsMin = 0;
+
+export const resolveAdminBookingCancellationBodyNoteMax = 2000;
+
+export const ResolveAdminBookingCancellationBody = zod.object({
+  cancellationCaseId: zod.string().uuid(),
+  decision: zod.enum(["approve", "reject"]),
+  refundAmountCents: zod
+    .number()
+    .min(resolveAdminBookingCancellationBodyRefundAmountCentsMin)
+    .optional(),
+  note: zod
+    .string()
+    .max(resolveAdminBookingCancellationBodyNoteMax)
+    .nullish()
+    .describe(
+      "Obbligatoria per un rifiuto o quando il rimborso approvato applica una penale",
+    ),
+});
+
+export const ResolveAdminBookingCancellationResponse = zod.object({
+  ok: zod.boolean(),
+  cancellationCaseId: zod.string().uuid(),
+  status: zod.enum(["approved", "rejected", "completed"]),
+  refundIds: zod.array(zod.string().uuid()),
+  manualRefundIds: zod.array(zod.string().uuid()),
+});
+
+/**
+ * @summary Registra il completamento di un rimborso offline
+ */
+export const CompleteAdminRefundManuallyParams = zod.object({
+  refundId: zod.coerce.string().uuid(),
+});
+
+export const completeAdminRefundManuallyBodyReferenceMax = 500;
+
+export const CompleteAdminRefundManuallyBody = zod.object({
+  reference: zod
+    .string()
+    .min(1)
+    .max(completeAdminRefundManuallyBodyReferenceMax),
+});
+
+export const CompleteAdminRefundManuallyResponse = zod.object({
+  ok: zod.boolean(),
+  bookingId: zod.string().uuid(),
+  cancellationCaseId: zod.string().uuid(),
+  alreadyCompleted: zod.boolean(),
+});
+
+/**
+ * @summary Chiude un cleanup Stripe dopo verifica manuale esterna
+ */
+export const CompleteStripeCleanupJobManuallyParams = zod.object({
+  jobId: zod.coerce.string().uuid(),
+});
+
+export const completeStripeCleanupJobManuallyBodyReferenceMax = 500;
+
+export const CompleteStripeCleanupJobManuallyBody = zod.object({
+  reference: zod
+    .string()
+    .min(1)
+    .max(completeStripeCleanupJobManuallyBodyReferenceMax)
+    .describe(
+      "Identificativo della verifica manuale effettuata nella dashboard Stripe",
+    ),
+});
+
+export const CompleteStripeCleanupJobManuallyResponse = zod.object({
+  ok: zod.boolean(),
+  jobId: zod.string().uuid(),
+  bookingId: zod.string().uuid().nullable(),
+  alreadyCompleted: zod.boolean(),
+  manualCompletionReference: zod.string().nullable(),
 });
 
 /**
@@ -1115,8 +2002,21 @@ export const UpdateExcursionVehicleResponse = zod.object({
   name: zod.string(),
   location: zod.string(),
   date: zod.string(),
-  status: zod.string(),
-  category: zod.string(),
+  departureAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Istante di partenza; visualizzato e inserito nel fuso Europe\/Rome",
+    ),
+  status: zod.enum([
+    "draft",
+    "open",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "archived",
+  ]),
+  category: zod.enum(["standard", "rident"]),
   tags: zod.array(zod.string()).optional(),
   currentCapacity: zod.number(),
   minThreshold: zod.number(),
@@ -1287,6 +2187,7 @@ export const ListExcursionPickupPointsResponseItem = zod.object({
     address: zod.string().nullish(),
     province: zod.string().nullish(),
     sortOrder: zod.number(),
+    active: zod.boolean(),
   }),
 });
 export const ListExcursionPickupPointsResponse = zod.array(
@@ -1336,6 +2237,7 @@ export const UpdateExcursionPickupPointResponse = zod.object({
     address: zod.string().nullish(),
     province: zod.string().nullish(),
     sortOrder: zod.number(),
+    active: zod.boolean(),
   }),
 });
 
@@ -1804,6 +2706,7 @@ export const ListPublicCatalogResponse = zod.object({
       name: zod.string(),
       location: zod.string().nullish(),
       date: zod.string().nullish(),
+      departureAt: zod.coerce.date().nullish(),
       coverImageUrl: zod.string().nullish(),
       status: zod.string().nullish(),
       currentCapacity: zod.number().nullish(),
@@ -1874,6 +2777,7 @@ export const GetPublicExcursionResponse = zod.object({
   name: zod.string(),
   location: zod.string().nullish(),
   date: zod.string().nullish(),
+  departureAt: zod.coerce.date().nullish(),
   pricePerPerson: zod.string().nullish(),
   currentCapacity: zod.number().nullish(),
   minThreshold: zod.number().nullish(),
@@ -1915,6 +2819,12 @@ export const GetPublicExcursionResponse = zod.object({
     )
     .nullish(),
   cardPaymentsEnabled: zod.boolean().optional(),
+  cardFlow: zod
+    .enum(["pay_now", "save_for_confirmation", "unavailable_for_deposit"])
+    .optional()
+    .describe(
+      "Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto",
+    ),
   tripType: zod.enum(["standard", "rident"]).optional(),
   adultLabel: zod.string().optional(),
   ageRanges: zod
@@ -1958,10 +2868,28 @@ export const QuotePublicExcursionParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
+export const quotePublicExcursionBodyParticipantsItemFirstNameMax = 100;
+
+export const quotePublicExcursionBodyParticipantsItemLastNameMax = 100;
+
 export const QuotePublicExcursionBody = zod.object({
   participants: zod.array(
     zod.object({
       type: zod.enum(["adult", "child", "patient", "companion"]),
+      firstName: zod
+        .string()
+        .max(quotePublicExcursionBodyParticipantsItemFirstNameMax)
+        .optional()
+        .describe(
+          "Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo",
+        ),
+      lastName: zod
+        .string()
+        .max(quotePublicExcursionBodyParticipantsItemLastNameMax)
+        .optional()
+        .describe(
+          "Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo",
+        ),
       ageRangeId: zod.string().uuid().nullish(),
       pickupPointId: zod.string().uuid().nullish(),
     }),
@@ -2002,6 +2930,7 @@ export const ListPublicRidentResponse = zod.object({
       name: zod.string(),
       location: zod.string().nullish(),
       date: zod.string().nullish(),
+      departureAt: zod.coerce.date().nullish(),
       coverImageUrl: zod.string().nullish(),
       status: zod.string().nullish(),
       currentCapacity: zod.number().nullish(),
@@ -2042,6 +2971,10 @@ export const GetAdminSettingsResponse = zod.object({
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
+  future_card_charge_enabled: zod.string().nullish(),
+  future_card_charge_consent_version: zod.string().nullish(),
+  card_checkout_hold_minutes: zod.string().nullish(),
+  payment_grace_minutes: zod.string().nullish(),
   payment_deadline_bank_hours: zod.string().nullish(),
   payment_deadline_office_hours: zod.string().nullish(),
   payment_deadline_balance_hours: zod.string().nullish(),
@@ -2066,6 +2999,10 @@ export const UpdateAdminSettingsBody = zod.object({
   payment_notes: zod.string().optional(),
   deposit_percentage: zod.string().optional(),
   excursion_card_payments_enabled: zod.string().optional(),
+  future_card_charge_enabled: zod.string().optional(),
+  future_card_charge_consent_version: zod.string().optional(),
+  card_checkout_hold_minutes: zod.string().optional(),
+  payment_grace_minutes: zod.string().optional(),
   payment_deadline_bank_hours: zod.string().optional(),
   payment_deadline_office_hours: zod.string().optional(),
   payment_deadline_balance_hours: zod.string().optional(),
@@ -2087,6 +3024,10 @@ export const UpdateAdminSettingsResponse = zod.object({
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
+  future_card_charge_enabled: zod.string().nullish(),
+  future_card_charge_consent_version: zod.string().nullish(),
+  card_checkout_hold_minutes: zod.string().nullish(),
+  payment_grace_minutes: zod.string().nullish(),
   payment_deadline_bank_hours: zod.string().nullish(),
   payment_deadline_office_hours: zod.string().nullish(),
   payment_deadline_balance_hours: zod.string().nullish(),

@@ -12,6 +12,12 @@ const SETTING_KEYS = [
   "payment_notes",
   "deposit_percentage",
   "excursion_card_payments_enabled",
+  // Addebito futuro carta: attivo solo con una versione consenso esplicita.
+  "future_card_charge_enabled",
+  "future_card_charge_consent_version",
+  // Durata checkout carta abbandonato e tolleranza amministrativa globale.
+  "card_checkout_hold_minutes",
+  "payment_grace_minutes",
   // Gite v2 — scadenze pagamento in ore (override per gita sulle colonne excursions)
   "payment_deadline_bank_hours",
   "payment_deadline_office_hours",

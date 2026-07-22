@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PublicBankInstructions } from "./publicBankInstructions";
+import type { PublicBookingResponseCardFlow } from "./publicBookingResponseCardFlow";
 import type { PublicBookingResponsePaymentMethod } from "./publicBookingResponsePaymentMethod";
 import type { PublicBookingResponsePaymentType } from "./publicBookingResponsePaymentType";
 import type { PublicOfficeInstructions } from "./publicOfficeInstructions";
@@ -19,9 +20,12 @@ export interface PublicBookingResponse {
   paymentType: PublicBookingResponsePaymentType;
   paymentMethod: PublicBookingResponsePaymentMethod;
   paymentStatus: string;
-  paymentDeadline: string;
+  paymentDeadline: Date | null;
+  paymentGraceUntil?: Date | null;
   message: string;
   bank?: PublicBankInstructions;
   office?: PublicOfficeInstructions;
   stripeClientSecret?: string | null;
+  stripeSetupClientSecret?: string | null;
+  cardFlow?: PublicBookingResponseCardFlow;
 }

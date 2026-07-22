@@ -19,6 +19,11 @@ export interface Booking {
   paymentStatus: string;
   bookedAt: Date;
   servizioCasa?: boolean | null;
+  /**
+   * Snapshot dell'indirizzo indicato per il ritiro a domicilio
+   * @maxLength 500
+   */
+  homePickupAddress?: string | null;
   pickupPointId?: string | null;
   cancelledAt?: Date | null;
   bookingCode?: string | null;
@@ -28,6 +33,15 @@ export interface Booking {
   amountDueCents?: number | null;
   amountPaidCents?: number | null;
   paymentDeadline?: Date | null;
+  workflowVersion?: number;
+  /** True quando il cliente ha autorizzato le comunicazioni automatiche per questa prenotazione */
+  customerNotificationsEnabled: boolean;
+  seatStatus?: string;
+  seatHoldExpiresAt?: Date | null;
+  seatReleasedAt?: Date | null;
+  seatReleaseReason?: string | null;
+  cancellationRequestedAt?: Date | null;
+  cancellationRequestStatus?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
