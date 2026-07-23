@@ -5,20 +5,39 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingParticipantInput } from "./bookingParticipantInput";
 import type { PublicBookingConsents } from "./publicBookingConsents";
 import type { PublicBookingInputPaymentMethod } from "./publicBookingInputPaymentMethod";
 import type { PublicBookingInputPaymentType } from "./publicBookingInputPaymentType";
-import type { QuoteParticipantInput } from "./quoteParticipantInput";
 
 export interface PublicBookingInput {
+  /** Chiave idempotente generata dal browser e riutilizzata nei retry dello stesso tentativo */
+  bookingAttemptId?: string;
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  participants: QuoteParticipantInput[];
+  participants: BookingParticipantInput[];
   pickupPointId?: string | null;
   paymentType: PublicBookingInputPaymentType;
   paymentMethod: PublicBookingInputPaymentMethod;
+  /**
+   * Totale dell'ultimo preventivo server accettato dal cliente
+   * @minimum 0
+   */
+  quotedTotalCents: number;
+  /**
+   * Importo dovuto dell'ultimo preventivo server accettato dal cliente
+   * @minimum 0
+   */
+  quotedAmountDueCents: number;
+  /** Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation */
+  futureChargeConsent?: boolean;
   consents: PublicBookingConsents;
   servizioCasa?: boolean | null;
+  /**
+   * Obbligatorio quando servizioCasa è true; ignorato e normalizzato a null altrimenti
+   * @maxLength 500
+   */
+  homePickupAddress?: string | null;
 }

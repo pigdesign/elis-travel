@@ -13,6 +13,10 @@ export interface SettingsInput {
   payment_notes?: string;
   deposit_percentage?: string;
   excursion_card_payments_enabled?: string;
+  future_card_charge_enabled?: string;
+  future_card_charge_consent_version?: string;
+  card_checkout_hold_minutes?: string;
+  payment_grace_minutes?: string;
   payment_deadline_bank_hours?: string;
   payment_deadline_office_hours?: string;
   payment_deadline_balance_hours?: string;

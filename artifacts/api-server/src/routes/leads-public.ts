@@ -1,17 +1,31 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, leadNotesTable, offersTable, offerImagesTable, offerDocumentsTable, excursionsTable, excursionBookingsTable, customersTable, excursionPickupPointsTable, pickupLocationsTable, settingsTable } from "@workspace/db/schema";
-import { eq, and, ne, desc, sql, or, asc } from "drizzle-orm";
 import {
-  dispatchExcursionBookingCancellationEmails,
-  dispatchExcursionBookingEmails,
-  dispatchCardSavedEmail,
-  buildCardSavedCustomerEmail,
-} from "../services/excursion-booking-emails";
+  leadsTable,
+  leadNotesTable,
+  offersTable,
+  offerImagesTable,
+  offerDocumentsTable,
+  excursionsTable,
+  excursionBookingsTable,
+  customersTable,
+  excursionPickupPointsTable,
+  pickupLocationsTable,
+} from "@workspace/db/schema";
+import { eq, and, ne, desc, gt, isNotNull, sql, or, asc } from "drizzle-orm";
+import { dispatchCardSavedEmailV2 } from "../services/excursion-booking-emails-v2";
 import { verifyBookingCancellationToken } from "../services/booking-cancellation-token";
 import { publicFormsLimiter } from "../middlewares/rateLimiter";
 import { stripe } from "../services/stripe";
 import { logger } from "../lib/logger";
+import {
+  applySuccessfulCardSetup,
+  CardSetupVerificationError,
+} from "../services/excursion-card-setup";
+import {
+  BookingCancellationError,
+  requestBookingCancellation,
+} from "../services/booking-cancellations";
 import {
   loadPricingContext,
   getPaymentSettings,
@@ -21,14 +35,12 @@ import {
   QuoteError,
   type QuoteParticipantInput,
 } from "../services/excursion-pricing";
+import {
+  endOfDayInRome,
+  isDepartureOpenForBooking,
+} from "../services/excursion-time";
 
 const router = Router();
-
-const CARD_PAYMENTS_SETTING_KEY = "excursion_card_payments_enabled";
-
-function isCardPaymentEnabled(value: string | null | undefined): boolean {
-  return value !== "false";
-}
 
 // Differenza di prezzo a persona (euro, positivo o negativo) per la provincia
 // data; 0 se assente o non valida.
@@ -54,23 +66,40 @@ function slugify(input: string): string {
 function getSiteOrigin(req: import("express").Request): string {
   const envOrigin = process.env.PUBLIC_SITE_URL;
   if (envOrigin) return envOrigin.replace(/\/$/, "");
-  const forwardedHost = (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
-  const forwardedProto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  const forwardedHost =
+    (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
+  const forwardedProto =
+    (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
   return `${forwardedProto}://${forwardedHost}`;
 }
 
 router.get("/sitemap.xml", async (req, res) => {
   try {
     const origin = getSiteOrigin(req);
+    const now = new Date();
     const offers = await db
-      .select({ id: offersTable.id, name: offersTable.name, updatedAt: offersTable.updatedAt })
+      .select({
+        id: offersTable.id,
+        name: offersTable.name,
+        updatedAt: offersTable.updatedAt,
+      })
       .from(offersTable)
       .where(eq(offersTable.status, "published"));
     const excursions = await db
-      .select({ id: excursionsTable.id, name: excursionsTable.name, updatedAt: excursionsTable.updatedAt })
+      .select({
+        id: excursionsTable.id,
+        name: excursionsTable.name,
+        updatedAt: excursionsTable.updatedAt,
+      })
       .from(excursionsTable)
-      // Tutte le gite confermate (standard + Rident): entrambe in sitemap.
-      .where(eq(excursionsTable.status, "confirmed"));
+      // Solo gite confermate non ancora partite (standard + Rident).
+      .where(
+        and(
+          eq(excursionsTable.status, "confirmed"),
+          isNotNull(excursionsTable.departureAt),
+          gt(excursionsTable.departureAt, now),
+        ),
+      );
 
     const staticUrls = [
       { loc: "/", priority: "1.0", changefreq: "daily" },
@@ -82,7 +111,15 @@ router.get("/sitemap.xml", async (req, res) => {
 
     const xmlEscape = (s: string) =>
       s.replace(/[<>&'"]/g, (c) =>
-        c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c === "'" ? "&apos;" : "&quot;",
+        c === "<"
+          ? "&lt;"
+          : c === ">"
+            ? "&gt;"
+            : c === "&"
+              ? "&amp;"
+              : c === "'"
+                ? "&apos;"
+                : "&quot;",
       );
 
     const urls: string[] = [];
@@ -94,7 +131,9 @@ router.get("/sitemap.xml", async (req, res) => {
     for (const o of offers) {
       const slug = slugify(o.name);
       const path = slug ? `/offerte/${slug}-${o.id}` : `/offerte/${o.id}`;
-      const lastmod = o.updatedAt ? new Date(o.updatedAt).toISOString() : undefined;
+      const lastmod = o.updatedAt
+        ? new Date(o.updatedAt).toISOString()
+        : undefined;
       urls.push(
         `  <url><loc>${xmlEscape(origin + path)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}<changefreq>weekly</changefreq><priority>0.8</priority></url>`,
       );
@@ -102,7 +141,9 @@ router.get("/sitemap.xml", async (req, res) => {
     for (const e of excursions) {
       const slug = slugify(e.name);
       const path = slug ? `/gite/${slug}-${e.id}` : `/gite/${e.id}`;
-      const lastmod = e.updatedAt ? new Date(e.updatedAt).toISOString() : undefined;
+      const lastmod = e.updatedAt
+        ? new Date(e.updatedAt).toISOString()
+        : undefined;
       urls.push(
         `  <url><loc>${xmlEscape(origin + path)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}<changefreq>weekly</changefreq><priority>0.8</priority></url>`,
       );
@@ -137,10 +178,21 @@ router.get("/catalog/products/destinations", async (_req, res) => {
 
 router.get("/catalog/excursions/locations", async (_req, res) => {
   try {
+    const now = new Date();
     const rows = await db
       .selectDistinct({ location: excursionsTable.location })
       .from(excursionsTable)
-      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "standard")))
+      .where(
+        and(
+          or(
+            eq(excursionsTable.status, "open"),
+            eq(excursionsTable.status, "confirmed"),
+          ),
+          eq(excursionsTable.category, "standard"),
+          isNotNull(excursionsTable.departureAt),
+          gt(excursionsTable.departureAt, now),
+        ),
+      )
       .orderBy(excursionsTable.location);
     const locations = rows
       .map((r) => r.location)
@@ -154,10 +206,21 @@ router.get("/catalog/excursions/locations", async (_req, res) => {
 
 router.get("/catalog/excursions/months", async (_req, res) => {
   try {
+    const now = new Date();
     const rows = await db
       .select({ date: excursionsTable.date })
       .from(excursionsTable)
-      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "standard")))
+      .where(
+        and(
+          or(
+            eq(excursionsTable.status, "open"),
+            eq(excursionsTable.status, "confirmed"),
+          ),
+          eq(excursionsTable.category, "standard"),
+          isNotNull(excursionsTable.departureAt),
+          gt(excursionsTable.departureAt, now),
+        ),
+      )
       .orderBy(excursionsTable.date);
     const monthSet = new Set<string>();
     for (const r of rows) {
@@ -178,6 +241,7 @@ router.get("/catalog/excursions/months", async (_req, res) => {
 
 router.get("/catalog/products", async (_req, res) => {
   try {
+    const now = new Date();
     const offers = await db
       .select({
         id: offersTable.id,
@@ -204,6 +268,7 @@ router.get("/catalog/products", async (_req, res) => {
         name: excursionsTable.name,
         location: excursionsTable.location,
         date: excursionsTable.date,
+        departureAt: excursionsTable.departureAt,
         coverImageUrl: excursionsTable.coverImageUrl,
         pricePerPerson: excursionsTable.pricePerPerson,
         currentCapacity: excursionsTable.currentCapacity,
@@ -213,7 +278,17 @@ router.get("/catalog/products", async (_req, res) => {
         tags: excursionsTable.tags,
       })
       .from(excursionsTable)
-      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "standard")))
+      .where(
+        and(
+          or(
+            eq(excursionsTable.status, "open"),
+            eq(excursionsTable.status, "confirmed"),
+          ),
+          eq(excursionsTable.category, "standard"),
+          isNotNull(excursionsTable.departureAt),
+          gt(excursionsTable.departureAt, now),
+        ),
+      )
       .orderBy(excursionsTable.date);
 
     res.json({ offers, excursions });
@@ -227,12 +302,14 @@ router.get("/catalog/products", async (_req, res) => {
 // Categoria distinta dalle standard, quindi fuori dall'elenco/filtri di /gite.
 router.get("/catalog/rident", async (_req, res) => {
   try {
+    const now = new Date();
     const excursions = await db
       .select({
         id: excursionsTable.id,
         name: excursionsTable.name,
         location: excursionsTable.location,
         date: excursionsTable.date,
+        departureAt: excursionsTable.departureAt,
         coverImageUrl: excursionsTable.coverImageUrl,
         pricePerPerson: excursionsTable.pricePerPerson,
         currentCapacity: excursionsTable.currentCapacity,
@@ -242,7 +319,17 @@ router.get("/catalog/rident", async (_req, res) => {
         tags: excursionsTable.tags,
       })
       .from(excursionsTable)
-      .where(and(or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed")), eq(excursionsTable.category, "rident")))
+      .where(
+        and(
+          or(
+            eq(excursionsTable.status, "open"),
+            eq(excursionsTable.status, "confirmed"),
+          ),
+          eq(excursionsTable.category, "rident"),
+          isNotNull(excursionsTable.departureAt),
+          gt(excursionsTable.departureAt, now),
+        ),
+      )
       .orderBy(excursionsTable.date);
 
     res.json({ excursions });
@@ -291,16 +378,31 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
     }
 
     const images = await db
-      .select({ id: offerImagesTable.id, imageUrl: offerImagesTable.imageUrl, sortOrder: offerImagesTable.sortOrder })
+      .select({
+        id: offerImagesTable.id,
+        imageUrl: offerImagesTable.imageUrl,
+        sortOrder: offerImagesTable.sortOrder,
+      })
       .from(offerImagesTable)
       .where(eq(offerImagesTable.offerId, id))
-      .orderBy(asc(offerImagesTable.sortOrder), asc(offerImagesTable.createdAt));
+      .orderBy(
+        asc(offerImagesTable.sortOrder),
+        asc(offerImagesTable.createdAt),
+      );
 
     const documents = await db
-      .select({ id: offerDocumentsTable.id, documentUrl: offerDocumentsTable.documentUrl, fileName: offerDocumentsTable.fileName, sortOrder: offerDocumentsTable.sortOrder })
+      .select({
+        id: offerDocumentsTable.id,
+        documentUrl: offerDocumentsTable.documentUrl,
+        fileName: offerDocumentsTable.fileName,
+        sortOrder: offerDocumentsTable.sortOrder,
+      })
       .from(offerDocumentsTable)
       .where(eq(offerDocumentsTable.offerId, id))
-      .orderBy(asc(offerDocumentsTable.sortOrder), asc(offerDocumentsTable.createdAt));
+      .orderBy(
+        asc(offerDocumentsTable.sortOrder),
+        asc(offerDocumentsTable.createdAt),
+      );
 
     const { status: _status, ...publicOffer } = offer;
     res.json({ ...publicOffer, images, documents });
@@ -319,6 +421,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         name: excursionsTable.name,
         location: excursionsTable.location,
         date: excursionsTable.date,
+        departureAt: excursionsTable.departureAt,
         pricePerPerson: excursionsTable.pricePerPerson,
         provinceSurcharges: excursionsTable.provinceSurcharges,
         currentCapacity: excursionsTable.currentCapacity,
@@ -333,7 +436,15 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         generalInfo: excursionsTable.generalInfo,
       })
       .from(excursionsTable)
-      .where(and(eq(excursionsTable.id, id), or(eq(excursionsTable.status, "open"), eq(excursionsTable.status, "confirmed"))))
+      .where(
+        and(
+          eq(excursionsTable.id, id),
+          or(
+            eq(excursionsTable.status, "open"),
+            eq(excursionsTable.status, "confirmed"),
+          ),
+        ),
+      )
       .limit(1);
 
     if (!excursion) {
@@ -352,7 +463,13 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
         province: pickupLocationsTable.province,
       })
       .from(excursionPickupPointsTable)
-      .innerJoin(pickupLocationsTable, eq(excursionPickupPointsTable.pickupLocationId, pickupLocationsTable.id))
+      .innerJoin(
+        pickupLocationsTable,
+        eq(
+          excursionPickupPointsTable.pickupLocationId,
+          pickupLocationsTable.id,
+        ),
+      )
       .where(eq(excursionPickupPointsTable.excursionId, id))
       .orderBy(asc(excursionPickupPointsTable.sortOrder));
 
@@ -383,18 +500,39 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
     });
 
     const depositAllowed = isDepositAvailable(ctx.excursion, settings);
-    const methods = availablePaymentMethods(ctx.excursion, settings, Boolean(stripe));
+    const methods = availablePaymentMethods(
+      ctx.excursion,
+      settings,
+      Boolean(stripe),
+    );
+    const cardFlow =
+      ctx.excursion.status === "open" && depositAllowed && methods.card
+        ? settings.futureCardChargeEnabled &&
+          Boolean(settings.futureCardChargeConsentVersion?.trim())
+          ? "save_for_confirmation"
+          : "unavailable_for_deposit"
+        : "pay_now";
     const thresholdReached =
-      (excursion.adherentsCount ?? 0) >= Math.max(excursion.minThreshold ?? 1, 1);
-    const bookingClosed = ctx.excursion.bookingCloseDate
-      ? new Date() > new Date(`${ctx.excursion.bookingCloseDate}T23:59:59`)
-      : false;
+      (excursion.adherentsCount ?? 0) >=
+      Math.max(excursion.minThreshold ?? 1, 1);
+    const bookingCloseAt = ctx.excursion.bookingCloseDate
+      ? endOfDayInRome(ctx.excursion.bookingCloseDate)
+      : null;
+    const now = new Date();
+    const bookingClosed =
+      !isDepartureOpenForBooking(ctx.excursion.departureAt, now) ||
+      Boolean(bookingCloseAt && now > bookingCloseAt);
 
-    const { status: _status, provinceSurcharges: _ps, ...publicExcursion } = excursion;
+    const {
+      status: _status,
+      provinceSurcharges: _ps,
+      ...publicExcursion
+    } = excursion;
     res.json({
       ...publicExcursion,
       pickupPoints: pickupPointsPublic,
       cardPaymentsEnabled: methods.card,
+      cardFlow,
       // ---- Gite v2 ----
       tripType: isRident ? "rident" : "standard",
       adultLabel: `Adulti (${settings.adultMinAge}+ anni)`,
@@ -405,7 +543,9 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
             label: r.label,
             minAge: r.minAge,
             maxAge: r.maxAge,
-            price: (ctx.agePriceCents.get(r.id) ?? Math.round(Number(excursion.pricePerPerson ?? 0) * 100)) / 100,
+            price:
+              (ctx.agePriceCents.get(r.id) ??
+                Math.round(Number(excursion.pricePerPerson ?? 0) * 100)) / 100,
           })),
       patientPrice: isRident
         ? Number(ctx.excursion.patientPrice ?? excursion.pricePerPerson ?? 0)
@@ -426,7 +566,11 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       minThreshold: excursion.minThreshold,
       spotsLeft:
         (excursion.currentCapacity ?? 0) > 0
-          ? Math.max((excursion.currentCapacity ?? 0) - (excursion.adherentsCount ?? 0), 0)
+          ? Math.max(
+              (excursion.currentCapacity ?? 0) -
+                (excursion.adherentsCount ?? 0),
+              0,
+            )
           : null,
       bookingClosed,
       officeAddress: settings.officeAddress,
@@ -450,7 +594,12 @@ router.post("/excursions/:id/quote", publicFormsLimiter, async (req, res) => {
     };
 
     const ctx = await loadPricingContext(id);
-    if (!ctx || (ctx.excursion.status !== "open" && ctx.excursion.status !== "confirmed")) {
+    if (
+      !ctx ||
+      (ctx.excursion.status !== "open" &&
+        ctx.excursion.status !== "confirmed") ||
+      !isDepartureOpenForBooking(ctx.excursion.departureAt)
+    ) {
       res.status(404).json({ error: "Gita non trovata." });
       return;
     }
@@ -461,7 +610,12 @@ router.post("/excursions/:id/quote", publicFormsLimiter, async (req, res) => {
       {
         participants: participants ?? [],
         pickupPointId: pickupPointId ?? null,
-        paymentType: paymentType === "deposit" ? "deposit" : "full",
+        paymentType:
+          ctx.excursion.status === "confirmed"
+            ? "full"
+            : paymentType === "deposit"
+              ? "deposit"
+              : "full",
       },
       settings,
     );
@@ -525,13 +679,19 @@ router.post("/leads", publicFormsLimiter, async (req, res) => {
       return;
     }
     if (message && message.length > 2000) {
-      res.status(400).json({ error: "Messaggio troppo lungo (max 2000 caratteri)." });
+      res
+        .status(400)
+        .json({ error: "Messaggio troppo lungo (max 2000 caratteri)." });
       return;
     }
 
     let parsedOfferId: string | null = offerId ?? null;
     let parsedExcursionId: string | null = excursionId ?? null;
-    if (productRef && typeof productRef === "string" && productRef.includes(":")) {
+    if (
+      productRef &&
+      typeof productRef === "string" &&
+      productRef.includes(":")
+    ) {
       const [kind, refId] = productRef.split(":");
       if (kind === "offer") parsedOfferId = refId;
       else if (kind === "excursion") parsedExcursionId = refId;
@@ -545,7 +705,12 @@ router.post("/leads", publicFormsLimiter, async (req, res) => {
       const [offer] = await db
         .select({ id: offersTable.id })
         .from(offersTable)
-        .where(and(eq(offersTable.id, parsedOfferId), eq(offersTable.status, "published")))
+        .where(
+          and(
+            eq(offersTable.id, parsedOfferId),
+            eq(offersTable.status, "published"),
+          ),
+        )
         .limit(1);
       if (offer) {
         resolvedOfferId = offer.id;
@@ -615,119 +780,48 @@ router.post("/leads", publicFormsLimiter, async (req, res) => {
 
 // Prenotazione pubblica: spostata in excursion-booking-public.ts (Gite v2).
 
-// Called by frontend after stripe.confirmSetup succeeds (in-page or via return_url redirect)
-router.post("/excursions/:id/book/:bookingId/card-confirmed", async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const { setupIntentId } = req.body as { setupIntentId?: string };
-
-    if (!setupIntentId) {
-      res.status(400).json({ error: "setupIntentId mancante." });
-      return;
-    }
-
-    const [booking] = await db
-      .select({
-        id: excursionBookingsTable.id,
-        excursionId: excursionBookingsTable.excursionId,
-        customerName: excursionBookingsTable.customerName,
-        email: excursionBookingsTable.email,
-        phone: excursionBookingsTable.phone,
-        seats: excursionBookingsTable.seats,
-        adults: excursionBookingsTable.adults,
-        children: excursionBookingsTable.children,
-        servizioCasa: excursionBookingsTable.servizioCasa,
-        paymentStatus: excursionBookingsTable.paymentStatus,
-        amountDueCents: excursionBookingsTable.amountDueCents,
-        stripeSetupIntentId: excursionBookingsTable.stripeSetupIntentId,
-        cancelledAt: excursionBookingsTable.cancelledAt,
-      })
-      .from(excursionBookingsTable)
-      .where(eq(excursionBookingsTable.id, bookingId))
-      .limit(1);
-
-    if (!booking) {
-      res.status(404).json({ error: "Prenotazione non trovata." });
-      return;
-    }
-    if (booking.cancelledAt) {
-      res.status(400).json({ error: "Prenotazione annullata." });
-      return;
-    }
-    // Already confirmed (idempotent)
-    if (booking.paymentStatus === "card_saved") {
-      res.json({ ok: true });
-      return;
-    }
-
-    if (!stripe) {
-      res.status(503).json({ error: "Pagamenti non configurati." });
-      return;
-    }
-
-    // Verify SetupIntent with Stripe
-    const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
-    if (setupIntent.status !== "succeeded") {
-      res.status(400).json({ error: "Il pagamento non è stato autorizzato correttamente." });
-      return;
-    }
-    const paymentMethodId = typeof setupIntent.payment_method === "string"
-      ? setupIntent.payment_method
-      : setupIntent.payment_method?.id ?? null;
-
-    if (!paymentMethodId) {
-      res.status(400).json({ error: "Metodo di pagamento non trovato." });
-      return;
-    }
-
-    const [excursion] = await db
-      .select({
-        id: excursionsTable.id,
-        name: excursionsTable.name,
-        location: excursionsTable.location,
-        date: excursionsTable.date,
-        pricePerPerson: excursionsTable.pricePerPerson,
-      })
-      .from(excursionsTable)
-      .where(eq(excursionsTable.id, booking.excursionId))
-      .limit(1);
-
-    await db
-      .update(excursionBookingsTable)
-      .set({
-        stripePaymentMethodId: paymentMethodId,
-        paymentStatus: "card_saved",
-        updatedAt: new Date(),
-      })
-      .where(eq(excursionBookingsTable.id, bookingId));
-
-    if (booking.email && excursion) {
-      dispatchCardSavedEmail({
-        bookingId: booking.id,
-        customerName: booking.customerName,
-        customerEmail: booking.email,
-        customerPhone: booking.phone ?? null,
-        seats: booking.seats,
-        adults: booking.adults,
-        children: booking.children,
-        servizioCasa: booking.servizioCasa,
-        amountDueCents: booking.amountDueCents ?? 0,
-        excursion: {
-          id: excursion.id,
-          name: excursion.name,
-          location: excursion.location,
-          date: excursion.date,
-          pricePerPerson: excursion.pricePerPerson,
-        },
+// Endpoint legacy mantenuto temporaneamente per i client gia distribuiti. Usa
+// ora le stesse verifiche rigorose del percorso v2 card-setup-confirmed.
+router.post(
+  "/excursions/:id/book/:bookingId/card-confirmed",
+  publicFormsLimiter,
+  async (req, res) => {
+    try {
+      const { id: excursionId, bookingId } = req.params as {
+        id: string;
+        bookingId: string;
+      };
+      res.setHeader("Deprecation", "true");
+      res.setHeader(
+        "Link",
+        `</api/excursions/${encodeURIComponent(excursionId)}/book/${encodeURIComponent(bookingId)}/card-setup-confirmed>; rel="successor-version"`,
+      );
+      const { setupIntentId } = req.body as { setupIntentId?: string };
+      if (!setupIntentId) {
+        res.status(400).json({ error: "setupIntentId mancante." });
+        return;
+      }
+      if (!stripe) {
+        res.status(503).json({ error: "Pagamenti non configurati." });
+        return;
+      }
+      const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+      const applied = await applySuccessfulCardSetup(setupIntent, {
+        bookingId,
+        excursionId,
       });
+      await dispatchCardSavedEmailV2(applied.bookingId);
+      res.json({ ok: true });
+    } catch (err) {
+      if (err instanceof CardSetupVerificationError) {
+        res.status(err.statusCode).json({ error: err.message });
+        return;
+      }
+      logger.error({ err }, "card-confirmed endpoint failed");
+      res.status(500).json({ error: "Errore interno del server." });
     }
-
-    res.json({ ok: true });
-  } catch (err) {
-    logger.error({ err }, "card-confirmed endpoint failed");
-    res.status(500).json({ error: "Errore interno del server." });
-  }
-});
+  },
+);
 
 function escapeHtmlSimple(input: string): string {
   return input
@@ -781,6 +875,10 @@ router.get("/excursions/bookings/:id/cancel", async (req, res) => {
         id: excursionBookingsTable.id,
         seats: excursionBookingsTable.seats,
         cancelledAt: excursionBookingsTable.cancelledAt,
+        amountPaidCents: excursionBookingsTable.amountPaidCents,
+        cancellationRequestedAt: excursionBookingsTable.cancellationRequestedAt,
+        cancellationRequestStatus:
+          excursionBookingsTable.cancellationRequestStatus,
         excursionName: excursionsTable.name,
         excursionLocation: excursionsTable.location,
         excursionDate: excursionsTable.date,
@@ -813,6 +911,19 @@ router.get("/excursions/bookings/:id/cancel", async (req, res) => {
       res.status(page.status).type("text/html").send(page.html);
       return;
     }
+    if (
+      booking.cancellationRequestedAt &&
+      booking.cancellationRequestStatus === "pending"
+    ) {
+      const page = renderCancellationPage({
+        status: 200,
+        title: "Richiesta già ricevuta",
+        heading: "Richiesta di annullamento in verifica",
+        body: `<p>Abbiamo già ricevuto la richiesta per <strong>${escapeHtmlSimple(booking.excursionName)}</strong>. La prenotazione e i posti restano attivi finché l'amministrazione non completa la verifica economica.</p>`,
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
 
     const dateLabel = (() => {
       try {
@@ -839,11 +950,18 @@ router.get("/excursions/bookings/:id/cancel", async (req, res) => {
           <li>${escapeHtmlSimple(booking.excursionLocation)} — ${escapeHtmlSimple(dateLabel)}</li>
           <li>Posti: <strong>${booking.seats}</strong></li>
         </ul>
-        <p>L'operazione non è reversibile. I posti torneranno disponibili per altri clienti.</p>
+        ${
+          booking.amountPaidCents > 0
+            ? "<p>Poiché risulta già un pagamento, invierai una richiesta all'amministrazione. I posti non verranno liberati finché non saranno verificate penali ed eventuale rimborso.</p>"
+            : "<p>L'operazione non è reversibile. I posti torneranno disponibili per altri clienti.</p>"
+        }
       `,
       showForm: {
         actionUrl: `/api/excursions/bookings/${encodeURIComponent(id)}/cancel?token=${encodeURIComponent(token)}`,
-        submitLabel: "Conferma annullamento",
+        submitLabel:
+          booking.amountPaidCents > 0
+            ? "Invia richiesta di annullamento"
+            : "Conferma annullamento",
       },
     });
     res.status(page.status).type("text/html").send(page.html);
@@ -856,7 +974,8 @@ router.get("/excursions/bookings/:id/cancel", async (req, res) => {
 router.post("/excursions/bookings/:id/cancel", async (req, res) => {
   try {
     const id = req.params.id as string;
-    const token = ((req.query.token as string) || (req.body?.token as string) || "");
+    const token =
+      (req.query.token as string) || (req.body?.token as string) || "";
     if (!verifyBookingCancellationToken(id, token)) {
       const page = renderCancellationPage({
         status: 403,
@@ -868,87 +987,12 @@ router.post("/excursions/bookings/:id/cancel", async (req, res) => {
       return;
     }
 
-    const result = await db.transaction(async (tx) => {
-      const [booking] = await tx
-        .select({
-          id: excursionBookingsTable.id,
-          excursionId: excursionBookingsTable.excursionId,
-          seats: excursionBookingsTable.seats,
-          paymentStatus: excursionBookingsTable.paymentStatus,
-          cancelledAt: excursionBookingsTable.cancelledAt,
-          customerName: excursionBookingsTable.customerName,
-          email: excursionBookingsTable.email,
-          phone: excursionBookingsTable.phone,
-          stripePaymentMethodId: excursionBookingsTable.stripePaymentMethodId,
-          stripeCustomerId: excursionBookingsTable.stripeCustomerId,
-        })
-        .from(excursionBookingsTable)
-        .where(eq(excursionBookingsTable.id, id))
-        .limit(1);
+    const result = await requestBookingCancellation(
+      id,
+      "Richiesta dal link cliente",
+    );
 
-      if (!booking) return { kind: "notfound" as const };
-      if (booking.cancelledAt) return { kind: "already" as const, booking };
-
-      const now = new Date();
-      const updatedBooking = await tx
-        .update(excursionBookingsTable)
-        .set({ cancelledAt: now, updatedAt: now })
-        .where(
-          and(
-            eq(excursionBookingsTable.id, id),
-            sql`${excursionBookingsTable.cancelledAt} IS NULL`,
-          ),
-        )
-        .returning();
-
-      if (updatedBooking.length === 0) {
-        return { kind: "already" as const, booking };
-      }
-
-      const isDeposit = booking.paymentStatus === "deposit";
-      const isPaid = booking.paymentStatus === "paid";
-
-      const [excursion] = await tx
-        .update(excursionsTable)
-        .set({
-          adherentsCount: sql`GREATEST(${excursionsTable.adherentsCount} - ${booking.seats}, 0)`,
-          depositsCount: isDeposit
-            ? sql`GREATEST(${excursionsTable.depositsCount} - ${booking.seats}, 0)`
-            : excursionsTable.depositsCount,
-          balancesCount: isPaid
-            ? sql`GREATEST(${excursionsTable.balancesCount} - ${booking.seats}, 0)`
-            : excursionsTable.balancesCount,
-          updatedAt: now,
-        })
-        .where(eq(excursionsTable.id, booking.excursionId))
-        .returning({
-          id: excursionsTable.id,
-          name: excursionsTable.name,
-          location: excursionsTable.location,
-          date: excursionsTable.date,
-        });
-
-      return { kind: "ok" as const, booking, excursion };
-    });
-
-    // Detach Stripe PaymentMethod if card was saved (fire-and-forget)
-    if (result.kind === "ok" && result.booking.stripePaymentMethodId && stripe) {
-      stripe.paymentMethods.detach(result.booking.stripePaymentMethodId).catch((err) => {
-        logger.warn({ err, bookingId: result.booking.id }, "Failed to detach Stripe PaymentMethod on cancellation");
-      });
-    }
-
-    if (result.kind === "notfound") {
-      const page = renderCancellationPage({
-        status: 404,
-        title: "Prenotazione non trovata",
-        heading: "Prenotazione non trovata",
-        body: "<p>Non abbiamo trovato la prenotazione richiesta.</p>",
-      });
-      res.status(page.status).type("text/html").send(page.html);
-      return;
-    }
-    if (result.kind === "already") {
+    if (result.kind === "cancelled" && result.alreadyCancelled) {
       const page = renderCancellationPage({
         status: 200,
         title: "Prenotazione già annullata",
@@ -958,24 +1002,26 @@ router.post("/excursions/bookings/:id/cancel", async (req, res) => {
       res.status(page.status).type("text/html").send(page.html);
       return;
     }
-
-    if (result.excursion) {
-      dispatchExcursionBookingCancellationEmails({
-        bookingId: result.booking.id,
-        customerName: result.booking.customerName,
-        customerEmail: result.booking.email ?? null,
-        customerPhone: result.booking.phone ?? null,
-        seats: result.booking.seats,
-        excursion: {
-          id: result.excursion.id,
-          name: result.excursion.name,
-          location: result.excursion.location,
-          date: result.excursion.date,
-        },
+    if (result.kind === "requested") {
+      const page = renderCancellationPage({
+        status: 202,
+        title: "Richiesta ricevuta",
+        heading: "Richiesta di annullamento ricevuta",
+        body: "<p>L'amministrazione verificherà le condizioni economiche e l'eventuale rimborso. Fino alla conclusione della verifica la prenotazione e i posti restano attivi.</p>",
       });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
     }
-
-    const excursionName = result.excursion?.name || "la tua gita";
+    const [bookingContext] = await db
+      .select({ excursionName: excursionsTable.name })
+      .from(excursionBookingsTable)
+      .innerJoin(
+        excursionsTable,
+        eq(excursionBookingsTable.excursionId, excursionsTable.id),
+      )
+      .where(eq(excursionBookingsTable.id, id))
+      .limit(1);
+    const excursionName = bookingContext?.excursionName || "la tua gita";
     const page = renderCancellationPage({
       status: 200,
       title: "Prenotazione annullata",
@@ -984,6 +1030,16 @@ router.post("/excursions/bookings/:id/cancel", async (req, res) => {
     });
     res.status(page.status).type("text/html").send(page.html);
   } catch (err) {
+    if (err instanceof BookingCancellationError) {
+      const page = renderCancellationPage({
+        status: err.statusCode,
+        title: "Annullamento non disponibile",
+        heading: "Impossibile annullare la prenotazione",
+        body: `<p>${escapeHtmlSimple(err.message)}</p>`,
+      });
+      res.status(page.status).type("text/html").send(page.html);
+      return;
+    }
     console.error("Booking cancellation failed:", err);
     res.status(500).type("text/plain").send("Errore interno del server.");
   }

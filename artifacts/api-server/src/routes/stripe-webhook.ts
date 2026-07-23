@@ -1,12 +1,27 @@
 import { type Request, type Response } from "express";
 import { stripe } from "../services/stripe";
-import { db } from "@workspace/db";
-import { excursionBookingsTable } from "@workspace/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { applySuccessfulCardPayment } from "../services/excursion-payments";
+import {
+  applySuccessfulCardPayment,
+  markCancelledCardPaymentAttempt,
+  markFailedCardPaymentAttempt,
+} from "../services/excursion-payments";
+import { reconcileStripeRefund } from "../services/booking-refunds";
+import {
+  reconcileBookingCancellation,
+  reconcileCancellationForRefund,
+} from "../services/booking-cancellations";
+import {
+  applySuccessfulCardSetup,
+  CardSetupVerificationError,
+} from "../services/excursion-card-setup";
+import { dispatchCardSavedEmailV2 } from "../services/excursion-booking-emails-v2";
+import { minimizeSavedCardDataForBooking } from "../services/excursion-confirmation";
 
-export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
+export async function stripeWebhookHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -26,7 +41,11 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(
+      req.body as Buffer,
+      sig,
+      webhookSecret,
+    );
   } catch (err) {
     logger.warn({ err }, "Stripe webhook signature verification failed");
     res.status(400).send("Invalid signature");
@@ -38,9 +57,27 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
     // applySuccessfulCardPayment è idempotente rispetto alla conferma in pagina.
     if (event.type === "payment_intent.succeeded") {
       const intent = event.data.object;
-      if (intent.metadata?.source === "elis-travel" || intent.metadata?.bookingId) {
+      if (
+        intent.metadata?.source === "elis-travel" ||
+        intent.metadata?.bookingId
+      ) {
         const applied = await applySuccessfulCardPayment(intent);
-        if (applied && !applied.alreadyApplied) {
+        if (applied) {
+          await reconcileBookingCancellation(applied.bookingId);
+          if (!applied.refundInitiated) {
+            await minimizeSavedCardDataForBooking(applied.bookingId);
+          }
+        }
+        if (applied?.refundInitiated) {
+          logger.warn(
+            {
+              bookingId: applied.bookingId,
+              type: applied.requestType,
+              refundStatus: applied.refundStatus,
+            },
+            "Pagamento arrivato dopo il rilascio posti: rimborso avviato",
+          );
+        } else if (applied && !applied.alreadyApplied) {
           logger.info(
             { bookingId: applied.bookingId, type: applied.requestType },
             "Pagamento carta applicato via webhook",
@@ -54,9 +91,15 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
     if (event.type === "payment_intent.payment_failed") {
       const intent = event.data.object;
       const bookingId = intent.metadata?.bookingId;
+      await markFailedCardPaymentAttempt(intent);
+      if (bookingId) await reconcileBookingCancellation(bookingId);
       if (bookingId) {
         logger.warn(
-          { bookingId, paymentIntentId: intent.id, lastError: intent.last_payment_error?.code },
+          {
+            bookingId,
+            paymentIntentId: intent.id,
+            lastError: intent.last_payment_error?.code,
+          },
           "Pagamento carta fallito (l'utente può riprovare in pagina)",
         );
       }
@@ -64,56 +107,85 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
       return;
     }
 
-    // Fallback for setup_intent.succeeded in case the frontend card-confirmed endpoint was not reached
+    if (event.type === "payment_intent.canceled") {
+      const intent = event.data.object;
+      await markCancelledCardPaymentAttempt(intent);
+      if (intent.metadata?.bookingId) {
+        await reconcileBookingCancellation(intent.metadata.bookingId);
+      }
+      logger.info(
+        {
+          bookingId: intent.metadata?.bookingId,
+          paymentIntentId: intent.id,
+          reason: intent.cancellation_reason,
+        },
+        "Tentativo carta cancellato",
+      );
+      res.json({ received: true });
+      return;
+    }
+
+    if (
+      event.type === "refund.created" ||
+      event.type === "refund.updated" ||
+      event.type === "refund.failed"
+    ) {
+      const refund = event.data.object;
+      const reconciled = await reconcileStripeRefund(refund);
+      if (reconciled) {
+        await reconcileCancellationForRefund(reconciled.refundId);
+        logger.info(
+          {
+            refundId: reconciled.refundId,
+            stripeRefundId: reconciled.stripeRefundId,
+            status: reconciled.status,
+          },
+          "Stato rimborso Stripe riconciliato",
+        );
+      }
+      res.json({ received: true });
+      return;
+    }
+
+    // SetupIntent: stesso percorso verificato dell'endpoint browser. Il webhook
+    // non si fida del solo bookingId nei metadata.
     if (event.type === "setup_intent.succeeded") {
       const setupIntent = event.data.object;
-      const bookingId = setupIntent.metadata?.bookingId;
-      if (!bookingId) {
-        res.json({ received: true });
-        return;
+      if (
+        setupIntent.metadata?.source === "elis-travel" &&
+        setupIntent.metadata?.flow === "save_for_confirmation"
+      ) {
+        try {
+          const applied = await applySuccessfulCardSetup(setupIntent);
+          await dispatchCardSavedEmailV2(applied.bookingId);
+          if (!applied.alreadyApplied) {
+            logger.info(
+              { bookingId: applied.bookingId },
+              "Carta salvata applicata via webhook SetupIntent",
+            );
+          }
+        } catch (error) {
+          if (!(error instanceof CardSetupVerificationError)) throw error;
+          logger.warn(
+            {
+              err: error,
+              setupIntentId: setupIntent.id,
+              verificationCode: error.code,
+            },
+            "SetupIntent ignorato: verifiche di associazione fallite",
+          );
+        }
       }
-
-      const paymentMethodId = typeof setupIntent.payment_method === "string"
-        ? setupIntent.payment_method
-        : setupIntent.payment_method?.id ?? null;
-
-      if (!paymentMethodId) {
-        res.json({ received: true });
-        return;
-      }
-
-      const [booking] = await db
-        .select({
-          id: excursionBookingsTable.id,
-          paymentStatus: excursionBookingsTable.paymentStatus,
-        })
-        .from(excursionBookingsTable)
-        .where(
-          and(
-            eq(excursionBookingsTable.id, bookingId),
-            isNull(excursionBookingsTable.cancelledAt),
-          ),
-        )
-        .limit(1);
-
-      // Only update if not already confirmed (card-confirmed endpoint handles the primary path)
-      if (booking && booking.paymentStatus === "pending_card") {
-        await db
-          .update(excursionBookingsTable)
-          .set({
-            stripePaymentMethodId: paymentMethodId,
-            paymentStatus: "card_saved",
-            updatedAt: new Date(),
-          })
-          .where(eq(excursionBookingsTable.id, bookingId));
-
-        logger.info({ bookingId }, "Booking updated to card_saved via webhook fallback");
-      }
+      res.json({ received: true });
+      return;
     }
 
     res.json({ received: true });
   } catch (err) {
-    logger.error({ err, eventType: event.type }, "Error processing Stripe webhook event");
+    logger.error(
+      { err, eventType: event.type },
+      "Error processing Stripe webhook event",
+    );
     res.status(500).json({ error: "Webhook processing failed" });
   }
 }

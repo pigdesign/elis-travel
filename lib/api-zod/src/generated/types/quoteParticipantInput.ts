@@ -9,6 +9,16 @@ import type { QuoteParticipantInputType } from "./quoteParticipantInputType";
 
 export interface QuoteParticipantInput {
   type: QuoteParticipantInputType;
+  /**
+   * Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo
+   * @maxLength 100
+   */
+  firstName?: string;
+  /**
+   * Facoltativo nel preventivo; non partecipa mai al calcolo del prezzo
+   * @maxLength 100
+   */
+  lastName?: string;
   ageRangeId?: string | null;
   pickupPointId?: string | null;
 }

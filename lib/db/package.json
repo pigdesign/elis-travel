@@ -9,9 +9,7 @@
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
-    "push:local": "DATABASE_URL='postgresql://neondb_owner:npg_3myR6swJFlnx@ep-gentle-paper-ali0sf8n-pooler.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require' drizzle-kit push --config ./drizzle.config.ts",
-    "push:prod": "DATABASE_URL='postgresql://neondb_owner:npg_3myR6swJFlnx@ep-holy-paper-al6gdk3o-pooler.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require' drizzle-kit push --config ./drizzle.config.ts"
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

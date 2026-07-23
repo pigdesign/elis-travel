@@ -18,12 +18,21 @@ import type {
 
 import type {
   AdminBookingDetails,
+  AdminBookingParticipantReplaceInput,
+  AdminBookingParticipantReplaceResponse,
+  AdminCancellationOpenInput,
+  AdminCancellationOpenResponse,
+  AdminCancellationResolutionInput,
+  AdminCancellationResolutionResponse,
+  AdminManualRefundCompletionInput,
+  AdminManualRefundCompletionResponse,
+  AdminStripeCleanupManualCompletionInput,
+  AdminStripeCleanupManualCompletionResponse,
   AdminUser,
   AgeRange,
   AgeRangeInput,
   Booking,
   BookingInput,
-  BookingPaymentStatusUpdate,
   CardConfirmedInput,
   CardConfirmedResponse,
   ConfirmPublicExcursionBookingPayment200,
@@ -43,6 +52,7 @@ import type {
   ErrorResponse,
   ExcursionAgePriceRow,
   ExcursionAgePricesInput,
+  ExcursionCreateInput,
   ExcursionDetail,
   ExcursionInput,
   ExcursionPickupPoint,
@@ -1446,14 +1456,14 @@ export const getCreateExcursionUrl = () => {
 };
 
 export const createExcursion = async (
-  excursionInput: ExcursionInput,
+  excursionCreateInput: ExcursionCreateInput,
   options?: RequestInit,
 ): Promise<ExcursionSummary> => {
   return customFetch<ExcursionSummary>(getCreateExcursionUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(excursionInput),
+    body: JSON.stringify(excursionCreateInput),
   });
 };
 
@@ -1464,14 +1474,14 @@ export const getCreateExcursionMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createExcursion>>,
     TError,
-    { data: BodyType<ExcursionInput> },
+    { data: BodyType<ExcursionCreateInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof createExcursion>>,
   TError,
-  { data: BodyType<ExcursionInput> },
+  { data: BodyType<ExcursionCreateInput> },
   TContext
 > => {
   const mutationKey = ["createExcursion"];
@@ -1485,7 +1495,7 @@ export const getCreateExcursionMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof createExcursion>>,
-    { data: BodyType<ExcursionInput> }
+    { data: BodyType<ExcursionCreateInput> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -1498,7 +1508,7 @@ export const getCreateExcursionMutationOptions = <
 export type CreateExcursionMutationResult = NonNullable<
   Awaited<ReturnType<typeof createExcursion>>
 >;
-export type CreateExcursionMutationBody = BodyType<ExcursionInput>;
+export type CreateExcursionMutationBody = BodyType<ExcursionCreateInput>;
 export type CreateExcursionMutationError = ErrorType<unknown>;
 
 /**
@@ -1511,14 +1521,14 @@ export const useCreateExcursion = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createExcursion>>,
     TError,
-    { data: BodyType<ExcursionInput> },
+    { data: BodyType<ExcursionCreateInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof createExcursion>>,
   TError,
-  { data: BodyType<ExcursionInput> },
+  { data: BodyType<ExcursionCreateInput> },
   TContext
 > => {
   return useMutation(getCreateExcursionMutationOptions(options));
@@ -1632,7 +1642,7 @@ export const updateExcursion = async (
 };
 
 export const getUpdateExcursionMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1673,13 +1683,13 @@ export type UpdateExcursionMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateExcursion>>
 >;
 export type UpdateExcursionMutationBody = BodyType<ExcursionInput>;
-export type UpdateExcursionMutationError = ErrorType<unknown>;
+export type UpdateExcursionMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Aggiorna gita
  */
 export const useUpdateExcursion = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1803,7 +1813,7 @@ export const addExcursionBooking = async (
 };
 
 export const getAddExcursionBookingMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1844,13 +1854,13 @@ export type AddExcursionBookingMutationResult = NonNullable<
   Awaited<ReturnType<typeof addExcursionBooking>>
 >;
 export type AddExcursionBookingMutationBody = BodyType<BookingInput>;
-export type AddExcursionBookingMutationError = ErrorType<unknown>;
+export type AddExcursionBookingMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Aggiungi prenotazione
  */
 export const useAddExcursionBooking = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1867,114 +1877,6 @@ export const useAddExcursionBooking = <
   TContext
 > => {
   return useMutation(getAddExcursionBookingMutationOptions(options));
-};
-
-/**
- * @summary Aggiorna stato pagamento prenotazione
- */
-export const getUpdateExcursionBookingPaymentUrl = (
-  id: string,
-  bookingId: string,
-) => {
-  return `/api/admin/excursions/${id}/bookings/${bookingId}`;
-};
-
-export const updateExcursionBookingPayment = async (
-  id: string,
-  bookingId: string,
-  bookingPaymentStatusUpdate: BookingPaymentStatusUpdate,
-  options?: RequestInit,
-): Promise<Booking> => {
-  return customFetch<Booking>(
-    getUpdateExcursionBookingPaymentUrl(id, bookingId),
-    {
-      ...options,
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(bookingPaymentStatusUpdate),
-    },
-  );
-};
-
-export const getUpdateExcursionBookingPaymentMutationOptions = <
-  TError = ErrorType<ErrorResponse>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateExcursionBookingPayment>>,
-    TError,
-    {
-      id: string;
-      bookingId: string;
-      data: BodyType<BookingPaymentStatusUpdate>;
-    },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof updateExcursionBookingPayment>>,
-  TError,
-  { id: string; bookingId: string; data: BodyType<BookingPaymentStatusUpdate> },
-  TContext
-> => {
-  const mutationKey = ["updateExcursionBookingPayment"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof updateExcursionBookingPayment>>,
-    {
-      id: string;
-      bookingId: string;
-      data: BodyType<BookingPaymentStatusUpdate>;
-    }
-  > = (props) => {
-    const { id, bookingId, data } = props ?? {};
-
-    return updateExcursionBookingPayment(id, bookingId, data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type UpdateExcursionBookingPaymentMutationResult = NonNullable<
-  Awaited<ReturnType<typeof updateExcursionBookingPayment>>
->;
-export type UpdateExcursionBookingPaymentMutationBody =
-  BodyType<BookingPaymentStatusUpdate>;
-export type UpdateExcursionBookingPaymentMutationError =
-  ErrorType<ErrorResponse>;
-
-/**
- * @summary Aggiorna stato pagamento prenotazione
- */
-export const useUpdateExcursionBookingPayment = <
-  TError = ErrorType<ErrorResponse>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateExcursionBookingPayment>>,
-    TError,
-    {
-      id: string;
-      bookingId: string;
-      data: BodyType<BookingPaymentStatusUpdate>;
-    },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof updateExcursionBookingPayment>>,
-  TError,
-  { id: string; bookingId: string; data: BodyType<BookingPaymentStatusUpdate> },
-  TContext
-> => {
-  return useMutation(getUpdateExcursionBookingPaymentMutationOptions(options));
 };
 
 /**
@@ -2278,7 +2180,111 @@ export const useConfirmPublicExcursionBookingPayment = <
 };
 
 /**
- * @summary Conferma carta salvata dopo SetupIntent (legacy, prenotazioni pre-v2)
+ * @summary Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+ */
+export const getConfirmPublicExcursionBookingCardSetupUrl = (
+  id: string,
+  bookingId: string,
+) => {
+  return `/api/excursions/${id}/book/${bookingId}/card-setup-confirmed`;
+};
+
+export const confirmPublicExcursionBookingCardSetup = async (
+  id: string,
+  bookingId: string,
+  cardConfirmedInput: CardConfirmedInput,
+  options?: RequestInit,
+): Promise<CardConfirmedResponse> => {
+  return customFetch<CardConfirmedResponse>(
+    getConfirmPublicExcursionBookingCardSetupUrl(id, bookingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(cardConfirmedInput),
+    },
+  );
+};
+
+export const getConfirmPublicExcursionBookingCardSetupMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmPublicExcursionBookingCardSetup>>,
+    TError,
+    { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmPublicExcursionBookingCardSetup>>,
+  TError,
+  { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+  TContext
+> => {
+  const mutationKey = ["confirmPublicExcursionBookingCardSetup"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmPublicExcursionBookingCardSetup>>,
+    { id: string; bookingId: string; data: BodyType<CardConfirmedInput> }
+  > = (props) => {
+    const { id, bookingId, data } = props ?? {};
+
+    return confirmPublicExcursionBookingCardSetup(
+      id,
+      bookingId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmPublicExcursionBookingCardSetupMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmPublicExcursionBookingCardSetup>>
+>;
+export type ConfirmPublicExcursionBookingCardSetupMutationBody =
+  BodyType<CardConfirmedInput>;
+export type ConfirmPublicExcursionBookingCardSetupMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+ */
+export const useConfirmPublicExcursionBookingCardSetup = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmPublicExcursionBookingCardSetup>>,
+    TError,
+    { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmPublicExcursionBookingCardSetup>>,
+  TError,
+  { id: string; bookingId: string; data: BodyType<CardConfirmedInput> },
+  TContext
+> => {
+  return useMutation(
+    getConfirmPublicExcursionBookingCardSetupMutationOptions(options),
+  );
+};
+
+/**
+ * @deprecated
+ * @summary Conferma carta salvata dopo SetupIntent (endpoint legacy protetto)
  */
 export const getConfirmPublicExcursionBookingCardUrl = (
   id: string,
@@ -2356,7 +2362,8 @@ export type ConfirmPublicExcursionBookingCardMutationError =
   ErrorType<ErrorResponse>;
 
 /**
- * @summary Conferma carta salvata dopo SetupIntent (legacy, prenotazioni pre-v2)
+ * @deprecated
+ * @summary Conferma carta salvata dopo SetupIntent (endpoint legacy protetto)
  */
 export const useConfirmPublicExcursionBookingCard = <
   TError = ErrorType<ErrorResponse>,
@@ -2733,6 +2740,176 @@ export const useConfirmTrip = <
 };
 
 /**
+ * Comando idempotente; accetta una gita confermata già partita e blocca la chiusura se restano attività economiche, anagrafiche o Stripe aperte.
+ * @summary Completa amministrativamente una gita dopo i controlli finali
+ */
+export const getCompleteExcursionTripUrl = (id: string) => {
+  return `/api/admin/excursions/${id}/complete-trip`;
+};
+
+export const completeExcursionTrip = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ExcursionSummary> => {
+  return customFetch<ExcursionSummary>(getCompleteExcursionTripUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCompleteExcursionTripMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeExcursionTrip>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeExcursionTrip>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["completeExcursionTrip"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeExcursionTrip>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return completeExcursionTrip(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteExcursionTripMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeExcursionTrip>>
+>;
+
+export type CompleteExcursionTripMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Completa amministrativamente una gita dopo i controlli finali
+ */
+export const useCompleteExcursionTrip = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeExcursionTrip>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeExcursionTrip>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getCompleteExcursionTripMutationOptions(options));
+};
+
+/**
+ * Libera i posti e pianifica rimborsi o attività manuali senza passare dal PATCH generico.
+ * @summary Annulla una gita tramite il workflow finanziario dedicato
+ */
+export const getCancelExcursionTripUrl = (id: string) => {
+  return `/api/admin/excursions/${id}/cancel-trip`;
+};
+
+export const cancelExcursionTrip = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ExcursionSummary> => {
+  return customFetch<ExcursionSummary>(getCancelExcursionTripUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCancelExcursionTripMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelExcursionTrip>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelExcursionTrip>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["cancelExcursionTrip"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelExcursionTrip>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cancelExcursionTrip(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelExcursionTripMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelExcursionTrip>>
+>;
+
+export type CancelExcursionTripMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Annulla una gita tramite il workflow finanziario dedicato
+ */
+export const useCancelExcursionTrip = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelExcursionTrip>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cancelExcursionTrip>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getCancelExcursionTripMutationOptions(options));
+};
+
+/**
  * @summary Marca scadute le prenotazioni oltre scadenza (liberando i posti solo se richiesto)
  */
 export const getExpireOverdueBookingsUrl = (id: string) => {
@@ -2832,7 +3009,7 @@ export const getMarkPaymentRequestPaidUrl = (requestId: string) => {
 
 export const markPaymentRequestPaid = async (
   requestId: string,
-  markPaymentRequestPaidBody?: MarkPaymentRequestPaidBody,
+  markPaymentRequestPaidBody: MarkPaymentRequestPaidBody,
   options?: RequestInit,
 ): Promise<MarkPaymentRequestPaid200> => {
   return customFetch<MarkPaymentRequestPaid200>(
@@ -3093,7 +3270,7 @@ export const useUpdateBookingDeadline = <
 };
 
 /**
- * @summary Dettaglio completo prenotazione (partecipanti, consensi, pagamenti)
+ * @summary Dettaglio completo prenotazione e storico amministrativo
  */
 export const getGetAdminBookingDetailsUrl = (bookingId: string) => {
   return `/api/admin/bookings/${bookingId}/details`;
@@ -3158,7 +3335,7 @@ export type GetAdminBookingDetailsQueryResult = NonNullable<
 export type GetAdminBookingDetailsQueryError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Dettaglio completo prenotazione (partecipanti, consensi, pagamenti)
+ * @summary Dettaglio completo prenotazione e storico amministrativo
  */
 
 export function useGetAdminBookingDetails<
@@ -3188,6 +3365,474 @@ export function useGetAdminBookingDetails<
 }
 
 /**
+ * Il numero di righe deve coincidere con i posti già occupati. Il comando non modifica importi, pagamenti o posti. Le righe già registrate devono conservare il proprio id: vengono aggiornate in-place affinché gli snapshot prezzo storici non siano mai riassegnati per posizione a un'altra riga.
+ * @summary Completa o corregge atomicamente i partecipanti di una prenotazione
+ */
+export const getReplaceAdminBookingParticipantsUrl = (bookingId: string) => {
+  return `/api/admin/bookings/${bookingId}/participants`;
+};
+
+export const replaceAdminBookingParticipants = async (
+  bookingId: string,
+  adminBookingParticipantReplaceInput: AdminBookingParticipantReplaceInput,
+  options?: RequestInit,
+): Promise<AdminBookingParticipantReplaceResponse> => {
+  return customFetch<AdminBookingParticipantReplaceResponse>(
+    getReplaceAdminBookingParticipantsUrl(bookingId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminBookingParticipantReplaceInput),
+    },
+  );
+};
+
+export const getReplaceAdminBookingParticipantsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replaceAdminBookingParticipants>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminBookingParticipantReplaceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof replaceAdminBookingParticipants>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminBookingParticipantReplaceInput> },
+  TContext
+> => {
+  const mutationKey = ["replaceAdminBookingParticipants"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof replaceAdminBookingParticipants>>,
+    { bookingId: string; data: BodyType<AdminBookingParticipantReplaceInput> }
+  > = (props) => {
+    const { bookingId, data } = props ?? {};
+
+    return replaceAdminBookingParticipants(bookingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReplaceAdminBookingParticipantsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof replaceAdminBookingParticipants>>
+>;
+export type ReplaceAdminBookingParticipantsMutationBody =
+  BodyType<AdminBookingParticipantReplaceInput>;
+export type ReplaceAdminBookingParticipantsMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Completa o corregge atomicamente i partecipanti di una prenotazione
+ */
+export const useReplaceAdminBookingParticipants = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replaceAdminBookingParticipants>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminBookingParticipantReplaceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof replaceAdminBookingParticipants>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminBookingParticipantReplaceInput> },
+  TContext
+> => {
+  return useMutation(
+    getReplaceAdminBookingParticipantsMutationOptions(options),
+  );
+};
+
+/**
+ * Registra un caso pendente senza annullare ancora la prenotazione. Il clientCommandId deve restare stabile durante i retry dello stesso comando.
+ * @summary Apre un caso di cancellazione amministrativa
+ */
+export const getOpenAdminBookingCancellationUrl = (bookingId: string) => {
+  return `/api/admin/bookings/${bookingId}/cancellation`;
+};
+
+export const openAdminBookingCancellation = async (
+  bookingId: string,
+  adminCancellationOpenInput: AdminCancellationOpenInput,
+  options?: RequestInit,
+): Promise<AdminCancellationOpenResponse> => {
+  return customFetch<AdminCancellationOpenResponse>(
+    getOpenAdminBookingCancellationUrl(bookingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminCancellationOpenInput),
+    },
+  );
+};
+
+export const getOpenAdminBookingCancellationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof openAdminBookingCancellation>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminCancellationOpenInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof openAdminBookingCancellation>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminCancellationOpenInput> },
+  TContext
+> => {
+  const mutationKey = ["openAdminBookingCancellation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof openAdminBookingCancellation>>,
+    { bookingId: string; data: BodyType<AdminCancellationOpenInput> }
+  > = (props) => {
+    const { bookingId, data } = props ?? {};
+
+    return openAdminBookingCancellation(bookingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type OpenAdminBookingCancellationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof openAdminBookingCancellation>>
+>;
+export type OpenAdminBookingCancellationMutationBody =
+  BodyType<AdminCancellationOpenInput>;
+export type OpenAdminBookingCancellationMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Apre un caso di cancellazione amministrativa
+ */
+export const useOpenAdminBookingCancellation = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof openAdminBookingCancellation>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminCancellationOpenInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof openAdminBookingCancellation>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminCancellationOpenInput> },
+  TContext
+> => {
+  return useMutation(getOpenAdminBookingCancellationMutationOptions(options));
+};
+
+/**
+ * Risolve il caso pendente identificato esplicitamente nel body.
+ * @summary Approva o rifiuta una cancellazione
+ */
+export const getResolveAdminBookingCancellationUrl = (bookingId: string) => {
+  return `/api/admin/bookings/${bookingId}/cancellation/resolve`;
+};
+
+export const resolveAdminBookingCancellation = async (
+  bookingId: string,
+  adminCancellationResolutionInput: AdminCancellationResolutionInput,
+  options?: RequestInit,
+): Promise<AdminCancellationResolutionResponse> => {
+  return customFetch<AdminCancellationResolutionResponse>(
+    getResolveAdminBookingCancellationUrl(bookingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminCancellationResolutionInput),
+    },
+  );
+};
+
+export const getResolveAdminBookingCancellationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveAdminBookingCancellation>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminCancellationResolutionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resolveAdminBookingCancellation>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminCancellationResolutionInput> },
+  TContext
+> => {
+  const mutationKey = ["resolveAdminBookingCancellation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resolveAdminBookingCancellation>>,
+    { bookingId: string; data: BodyType<AdminCancellationResolutionInput> }
+  > = (props) => {
+    const { bookingId, data } = props ?? {};
+
+    return resolveAdminBookingCancellation(bookingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResolveAdminBookingCancellationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resolveAdminBookingCancellation>>
+>;
+export type ResolveAdminBookingCancellationMutationBody =
+  BodyType<AdminCancellationResolutionInput>;
+export type ResolveAdminBookingCancellationMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Approva o rifiuta una cancellazione
+ */
+export const useResolveAdminBookingCancellation = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveAdminBookingCancellation>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminCancellationResolutionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resolveAdminBookingCancellation>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminCancellationResolutionInput> },
+  TContext
+> => {
+  return useMutation(
+    getResolveAdminBookingCancellationMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Registra il completamento di un rimborso offline
+ */
+export const getCompleteAdminRefundManuallyUrl = (refundId: string) => {
+  return `/api/admin/refunds/${refundId}/complete-manually`;
+};
+
+export const completeAdminRefundManually = async (
+  refundId: string,
+  adminManualRefundCompletionInput: AdminManualRefundCompletionInput,
+  options?: RequestInit,
+): Promise<AdminManualRefundCompletionResponse> => {
+  return customFetch<AdminManualRefundCompletionResponse>(
+    getCompleteAdminRefundManuallyUrl(refundId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminManualRefundCompletionInput),
+    },
+  );
+};
+
+export const getCompleteAdminRefundManuallyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeAdminRefundManually>>,
+    TError,
+    { refundId: string; data: BodyType<AdminManualRefundCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeAdminRefundManually>>,
+  TError,
+  { refundId: string; data: BodyType<AdminManualRefundCompletionInput> },
+  TContext
+> => {
+  const mutationKey = ["completeAdminRefundManually"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeAdminRefundManually>>,
+    { refundId: string; data: BodyType<AdminManualRefundCompletionInput> }
+  > = (props) => {
+    const { refundId, data } = props ?? {};
+
+    return completeAdminRefundManually(refundId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteAdminRefundManuallyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeAdminRefundManually>>
+>;
+export type CompleteAdminRefundManuallyMutationBody =
+  BodyType<AdminManualRefundCompletionInput>;
+export type CompleteAdminRefundManuallyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Registra il completamento di un rimborso offline
+ */
+export const useCompleteAdminRefundManually = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeAdminRefundManually>>,
+    TError,
+    { refundId: string; data: BodyType<AdminManualRefundCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeAdminRefundManually>>,
+  TError,
+  { refundId: string; data: BodyType<AdminManualRefundCompletionInput> },
+  TContext
+> => {
+  return useMutation(getCompleteAdminRefundManuallyMutationOptions(options));
+};
+
+/**
+ * @summary Chiude un cleanup Stripe dopo verifica manuale esterna
+ */
+export const getCompleteStripeCleanupJobManuallyUrl = (jobId: string) => {
+  return `/api/admin/stripe-cleanup-jobs/${jobId}/complete-manually`;
+};
+
+export const completeStripeCleanupJobManually = async (
+  jobId: string,
+  adminStripeCleanupManualCompletionInput: AdminStripeCleanupManualCompletionInput,
+  options?: RequestInit,
+): Promise<AdminStripeCleanupManualCompletionResponse> => {
+  return customFetch<AdminStripeCleanupManualCompletionResponse>(
+    getCompleteStripeCleanupJobManuallyUrl(jobId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminStripeCleanupManualCompletionInput),
+    },
+  );
+};
+
+export const getCompleteStripeCleanupJobManuallyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeStripeCleanupJobManually>>,
+    TError,
+    { jobId: string; data: BodyType<AdminStripeCleanupManualCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeStripeCleanupJobManually>>,
+  TError,
+  { jobId: string; data: BodyType<AdminStripeCleanupManualCompletionInput> },
+  TContext
+> => {
+  const mutationKey = ["completeStripeCleanupJobManually"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeStripeCleanupJobManually>>,
+    { jobId: string; data: BodyType<AdminStripeCleanupManualCompletionInput> }
+  > = (props) => {
+    const { jobId, data } = props ?? {};
+
+    return completeStripeCleanupJobManually(jobId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteStripeCleanupJobManuallyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeStripeCleanupJobManually>>
+>;
+export type CompleteStripeCleanupJobManuallyMutationBody =
+  BodyType<AdminStripeCleanupManualCompletionInput>;
+export type CompleteStripeCleanupJobManuallyMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Chiude un cleanup Stripe dopo verifica manuale esterna
+ */
+export const useCompleteStripeCleanupJobManually = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeStripeCleanupJobManually>>,
+    TError,
+    { jobId: string; data: BodyType<AdminStripeCleanupManualCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeStripeCleanupJobManually>>,
+  TError,
+  { jobId: string; data: BodyType<AdminStripeCleanupManualCompletionInput> },
+  TContext
+> => {
+  return useMutation(
+    getCompleteStripeCleanupJobManuallyMutationOptions(options),
+  );
+};
+
+/**
  * @summary Cambia veicolo gita
  */
 export const getUpdateExcursionVehicleUrl = (id: string) => {
@@ -3208,7 +3853,7 @@ export const updateExcursionVehicle = async (
 };
 
 export const getUpdateExcursionVehicleMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3249,13 +3894,13 @@ export type UpdateExcursionVehicleMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateExcursionVehicle>>
 >;
 export type UpdateExcursionVehicleMutationBody = BodyType<VehicleUpdateInput>;
-export type UpdateExcursionVehicleMutationError = ErrorType<unknown>;
+export type UpdateExcursionVehicleMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Cambia veicolo gita
  */
 export const useUpdateExcursionVehicle = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

@@ -10,4 +10,8 @@ export type ExpireOverdueBookings200 = {
   ok: boolean;
   expired: number;
   releasedSeats: number;
+  /** Prenotazioni scadute con fondi o riferimenti finanziari che richiedono una decisione amministrativa prima di liberare i posti */
+  requiresCancellationDecision: number;
+  /** Operazioni di cleanup Stripe pianificate dalla verifica */
+  stripeCancellationsScheduled: number;
 };

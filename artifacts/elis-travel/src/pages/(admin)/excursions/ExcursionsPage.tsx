@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useListExcursions } from "@workspace/api-client-react";
 import type { ExcursionSummary } from "@workspace/api-client-react";
+import { formatDepartureInRome } from "@/lib/excursion-time";
 
 const MONTHS = [
   { value: "01", label: "Gennaio" },
@@ -46,6 +47,12 @@ function formatEur(n: number) {
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatExcursionDeparture(exc: ExcursionSummary) {
+  return formatDepartureInRome(exc.departureAt, {
+    month: "short",
+  }) ?? `${formatDate(exc.date)} · ora mancante`;
 }
 
 function AdherentsBar({ adherents, threshold, capacity }: { adherents: number; threshold: number; capacity: number }) {
@@ -147,7 +154,7 @@ function ExcursionRow({ exc }: { exc: ExcursionSummary }) {
         <td className="py-3 px-2 text-sm text-muted-foreground whitespace-nowrap">
           <div className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
-            {formatDate(exc.date)}
+            {formatExcursionDeparture(exc)}
           </div>
         </td>
         <td className="py-3 px-2">

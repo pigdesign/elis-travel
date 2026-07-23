@@ -7,5 +7,10 @@
  */
 
 export type MarkPaymentRequestPaidBody = {
-  transactionReference?: string;
+  /**
+   * CRO/TRN del bonifico oppure riferimento univoco della ricevuta/cassa
+   * @minLength 1
+   * @maxLength 500
+   */
+  transactionReference: string;
 };

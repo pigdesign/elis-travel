@@ -9,6 +9,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "env DATABASE_URL=postgresql://test:test@127.0.0.1:1/elis_test node --import tsx --test src/services/*.test.ts",
     "seed:admin": "tsx src/seed-admin.ts",
     "migrate:sessions": "tsx src/migrate-sessions.ts",
     "migrate:last-sync-at": "tsx src/migrate-last-sync-at.ts",
@@ -16,6 +17,7 @@
     "migrate:offer-images": "tsx src/migrate-offer-images.ts",
     "migrate:offer-documents": "tsx src/migrate-offer-documents.ts",
     "migrate:stripe": "tsx src/migrate-stripe.ts",
+    "migrate:booking-flow": "tsx src/migrate-booking-flow.ts",
     "seed:demo": "tsx src/seed-demo.ts"
   },
   "dependencies": {

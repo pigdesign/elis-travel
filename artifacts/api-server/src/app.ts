@@ -22,6 +22,19 @@ const PgSession = connectPgSimple(session);
 
 const app: Express = express();
 
+function safeRequestPath(rawUrl?: string): string | undefined {
+  const pathOnly = rawUrl?.split("?")[0];
+  if (!pathOnly) return pathOnly;
+  // I vecchi link al portale contenevano il bearer token nel path. I nuovi
+  // link usano il fragment (che il browser non invia al server), ma oscuriamo
+  // anche gli URL legacy per evitare che credenziali ancora valide finiscano
+  // nei log applicativi.
+  return pathOnly.replace(
+    /^\/prenotazione\/[^/]+/,
+    "/prenotazione/[token-redacted]",
+  );
+}
+
 app.set("trust proxy", 1);
 
 app.use(
@@ -51,7 +64,7 @@ app.use(
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url: safeRequestPath(req.url),
         };
       },
       res(res) {

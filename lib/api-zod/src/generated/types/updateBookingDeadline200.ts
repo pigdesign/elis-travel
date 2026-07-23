@@ -7,5 +7,7 @@
  */
 
 export type UpdateBookingDeadline200 = {
-  ok?: boolean;
+  ok: boolean;
+  deadline: Date;
+  graceUntil: Date;
 };

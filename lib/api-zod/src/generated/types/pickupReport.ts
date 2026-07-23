@@ -7,9 +7,11 @@
  */
 import type { PickupReportExcursion } from "./pickupReportExcursion";
 import type { PickupReportGroup } from "./pickupReportGroup";
+import type { PickupReportMissingParticipantDetails } from "./pickupReportMissingParticipantDetails";
 
 export interface PickupReport {
   excursion: PickupReportExcursion;
   groups: PickupReportGroup[];
   totalPeople: number;
+  missingParticipantDetails: PickupReportMissingParticipantDetails[];
 }

@@ -58,3 +58,8 @@ local-file/
 
 # Ignora file di ambiente locale
 .env.local
+
+# Helper locali con connessioni database: non devono entrare nei commit o nei deploy.
+test-db.ts
+test-excursions.ts
+seed-excursion-details.ts

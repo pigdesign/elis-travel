@@ -9,7 +9,9 @@
 export interface AdminBookingParticipant {
   id: string;
   participantType: string;
+  ageRangeId?: string | null;
   ageRangeLabel?: string | null;
+  pickupPointId?: string | null;
   pickupPointName?: string | null;
   basePriceCents: number;
   pickupSurchargeCents: number;

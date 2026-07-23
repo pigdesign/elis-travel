@@ -11,6 +11,7 @@ export interface PublicExcursionCard {
   name: string;
   location?: string | null;
   date?: string | null;
+  departureAt?: Date | null;
   coverImageUrl?: string | null;
   status?: string | null;
   currentCapacity?: number | null;

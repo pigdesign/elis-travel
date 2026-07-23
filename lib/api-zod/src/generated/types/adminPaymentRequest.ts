@@ -14,6 +14,8 @@ export interface AdminPaymentRequest {
   status: string;
   method?: string | null;
   deadline?: Date | null;
+  graceUntil?: Date | null;
+  stripeCheckoutSessionId?: string | null;
   paidAt?: Date | null;
   transactionReference?: string | null;
   createdAt: Date;

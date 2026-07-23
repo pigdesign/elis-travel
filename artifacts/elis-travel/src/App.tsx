@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +16,7 @@ import { RidentPage } from "@/pages/(public)/RidentPage";
 import { PrivacyPolicyPage } from "@/pages/(public)/PrivacyPolicyPage";
 import { CookiePolicyPage } from "@/pages/(public)/CookiePolicyPage";
 import { TermsConditionsPage } from "@/pages/(public)/TermsConditionsPage";
+import { BookingPortalPage } from "@/pages/(public)/BookingPortalPage";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
 import { CookieBanner } from "@/components/layout/CookieBanner";
@@ -27,9 +29,66 @@ import { OfferDetailPage } from "@/pages/(admin)/offers/OfferDetailPage";
 import { LeadsPage } from "@/pages/(admin)/leads/LeadsPage";
 import { CustomersPage } from "@/pages/(admin)/customers/CustomersPage";
 import { SettingsPage } from "@/pages/(admin)/settings/SettingsPage";
-import { PosterPreviewPage, type PosterSourceKind } from "@/pages/(admin)/pdf/PosterPreviewPage";
+import {
+  PosterPreviewPage,
+  type PosterSourceKind,
+} from "@/pages/(admin)/pdf/PosterPreviewPage";
+import {
+  BOOKING_PORTAL_SESSION_KEY,
+  cleanBookingPortalPath,
+  selectBookingPortalToken,
+} from "@/lib/booking-portal-token";
+import { captureStripeReturnFromWindow } from "@/lib/booking-stripe-recovery";
 
 const queryClient = new QueryClient();
+
+function readBookingPortalToken(legacyToken?: string): string {
+  if (typeof window === "undefined") return legacyToken ?? "";
+
+  let sessionToken: string | null = null;
+  try {
+    sessionToken = window.sessionStorage.getItem(BOOKING_PORTAL_SESSION_KEY);
+  } catch {
+    // Alcuni browser possono disabilitare lo storage: il link resta comunque
+    // utilizzabile nella navigazione corrente.
+  }
+
+  const queryToken = new URLSearchParams(window.location.search).get("token");
+  const fragmentToken = new URLSearchParams(
+    window.location.hash.replace(/^#/, ""),
+  ).get("token");
+  const token = selectBookingPortalToken({
+    queryToken: fragmentToken ?? queryToken,
+    legacyToken,
+    sessionToken,
+  });
+
+  if (token) {
+    try {
+      window.sessionStorage.setItem(BOOKING_PORTAL_SESSION_KEY, token);
+    } catch {
+      // Nessun fallback persistente: il token resta nello state React.
+    }
+  }
+
+  if (
+    fragmentToken ||
+    queryToken ||
+    legacyToken ||
+    window.location.search ||
+    window.location.hash
+  ) {
+    const cleanPath = cleanBookingPortalPath(window.location.pathname);
+    window.history.replaceState(window.history.state, "", cleanPath);
+  }
+
+  return token;
+}
+
+function BookingPortalRoute({ legacyToken }: { legacyToken?: string }) {
+  const [token] = useState(() => readBookingPortalToken(legacyToken));
+  return <BookingPortalPage token={token} />;
+}
 
 function Router() {
   return (
@@ -41,13 +100,19 @@ function Router() {
       </Route>
       <Route path="/gite" component={PublicExcursionsPage} />
       <Route path="/gite/:slug">
-        {(params) => <PublicExcursionDetailPage excursionIdOrSlug={params.slug} />}
+        {(params) => (
+          <PublicExcursionDetailPage excursionIdOrSlug={params.slug} />
+        )}
       </Route>
       <Route path="/rident" component={RidentPage} />
       <Route path="/contatti" component={ContactsPage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/cookie-policy" component={CookiePolicyPage} />
       <Route path="/termini-e-condizioni" component={TermsConditionsPage} />
+      <Route path="/prenotazione/:token">
+        {(params) => <BookingPortalRoute legacyToken={params.token} />}
+      </Route>
+      <Route path="/prenotazione">{() => <BookingPortalRoute />}</Route>
 
       <Route path="/admin/login" component={LoginPage} />
 
@@ -56,7 +121,10 @@ function Router() {
           {/* Anteprima locandina: fuori da AdminLayout per stampare la pagina pulita */}
           <Route path="/pdf/:kind/:id">
             {(params) => (
-              <PosterPreviewPage kind={params.kind as PosterSourceKind} id={params.id} />
+              <PosterPreviewPage
+                kind={params.kind as PosterSourceKind}
+                id={params.id}
+              />
             )}
           </Route>
           <Route>
@@ -89,6 +157,10 @@ function Router() {
 }
 
 function App() {
+  // Deve avvenire prima del mount delle route: Stripe aggiunge temporaneamente
+  // il client secret all'URL di ritorno, che viene catturato in memoria e subito
+  // rimosso dalla barra del browser.
+  captureStripeReturnFromWindow();
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ageRangesTable, bookingParticipantsTable, excursionAgePricesTable } from "@workspace/db/schema";
+import {
+  ageRangesTable,
+  bookingParticipantsTable,
+  excursionAgePricesTable,
+  excursionsTable,
+} from "@workspace/db/schema";
 import { eq, asc, count, and, inArray } from "drizzle-orm";
 
 const router = Router();
@@ -8,6 +13,11 @@ const router = Router();
 function parseAge(input: unknown): number | null {
   const n = Number(input);
   return Number.isInteger(n) && n >= 0 && n <= 120 ? n : null;
+}
+
+function parseSortOrder(input: unknown): number | null {
+  const n = Number(input);
+  return Number.isSafeInteger(n) ? n : null;
 }
 
 router.get("/age-ranges", async (_req, res) => {
@@ -32,14 +42,22 @@ router.post("/age-ranges", async (req, res) => {
       active?: boolean;
       sortOrder?: number;
     };
-    if (!label?.trim()) {
+    if (typeof label !== "string" || !label.trim()) {
       res.status(400).json({ error: "L'etichetta è obbligatoria." });
       return;
     }
     const min = parseAge(minAge);
     const max = parseAge(maxAge);
     if (min === null || max === null || min > max) {
-      res.status(400).json({ error: "Età minima e massima non valide (min ≤ max)." });
+      res
+        .status(400)
+        .json({ error: "Età minima e massima non valide (min ≤ max)." });
+      return;
+    }
+    const parsedSortOrder =
+      sortOrder === undefined ? 0 : parseSortOrder(sortOrder);
+    if (parsedSortOrder === null) {
+      res.status(400).json({ error: "Ordine non valido." });
       return;
     }
     const [row] = await db
@@ -49,7 +67,7 @@ router.post("/age-ranges", async (req, res) => {
         minAge: min,
         maxAge: max,
         active: active !== false,
-        sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+        sortOrder: parsedSortOrder,
       })
       .returning();
     res.status(201).json(row);
@@ -69,49 +87,79 @@ router.patch("/age-ranges/:id", async (req, res) => {
       active?: boolean;
       sortOrder?: number;
     };
-    const updates: Partial<typeof ageRangesTable.$inferInsert> = {
-      updatedAt: new Date(),
-    };
+    const updates: Partial<typeof ageRangesTable.$inferInsert> = {};
     if (label !== undefined) {
-      if (!label.trim()) {
+      if (typeof label !== "string" || !label.trim()) {
         res.status(400).json({ error: "L'etichetta è obbligatoria." });
         return;
       }
       updates.label = label.trim();
     }
+    let parsedMin: number | undefined;
     if (minAge !== undefined) {
       const min = parseAge(minAge);
       if (min === null) {
         res.status(400).json({ error: "Età minima non valida." });
         return;
       }
-      updates.minAge = min;
+      parsedMin = min;
     }
+    let parsedMax: number | undefined;
     if (maxAge !== undefined) {
       const max = parseAge(maxAge);
       if (max === null) {
         res.status(400).json({ error: "Età massima non valida." });
         return;
       }
-      updates.maxAge = max;
+      parsedMax = max;
     }
     if (active !== undefined) updates.active = active === true;
-    if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+    if (sortOrder !== undefined) {
+      const parsedSortOrder = parseSortOrder(sortOrder);
+      if (parsedSortOrder === null) {
+        res.status(400).json({ error: "Ordine non valido." });
+        return;
+      }
+      updates.sortOrder = parsedSortOrder;
+    }
 
-    const [row] = await db
-      .update(ageRangesTable)
-      .set(updates)
-      .where(eq(ageRangesTable.id, id))
-      .returning();
-    if (!row) {
+    const result = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(ageRangesTable)
+        .where(eq(ageRangesTable.id, id))
+        .for("update")
+        .limit(1);
+      if (!current) return { kind: "not_found" as const };
+
+      const effectiveMin = parsedMin ?? current.minAge;
+      const effectiveMax = parsedMax ?? current.maxAge;
+      if (effectiveMin > effectiveMax) {
+        return { kind: "invalid_range" as const };
+      }
+
+      const [row] = await tx
+        .update(ageRangesTable)
+        .set({
+          ...updates,
+          ...(parsedMin !== undefined ? { minAge: parsedMin } : {}),
+          ...(parsedMax !== undefined ? { maxAge: parsedMax } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(ageRangesTable.id, id))
+        .returning();
+      return { kind: "updated" as const, row };
+    });
+
+    if (result.kind === "not_found") {
       res.status(404).json({ error: "Fascia età non trovata." });
       return;
     }
-    if (row.minAge > row.maxAge) {
+    if (result.kind === "invalid_range") {
       res.status(400).json({ error: "Età minima maggiore della massima." });
       return;
     }
-    res.json(row);
+    res.json(result.row);
   } catch (err) {
     console.error("Age range update failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -205,14 +253,22 @@ router.put("/excursions/:id/age-prices", async (req, res) => {
         continue;
       }
       const n = Number(String(row.price).replace(",", "."));
-      if (!Number.isFinite(n) || n < 0) {
-        res.status(400).json({ error: "Prezzo fascia non valido (deve essere ≥ 0)." });
+      if (
+        !Number.isFinite(n) ||
+        n < 0 ||
+        !Number.isSafeInteger(Math.round(n * 100))
+      ) {
+        res.status(400).json({
+          error:
+            "Prezzo fascia non valido (deve essere ≥ 0 e rappresentabile in centesimi).",
+        });
         return;
       }
       toSet.push({ ageRangeId: row.ageRangeId, price: n.toFixed(2) });
     }
 
     await db.transaction(async (tx) => {
+      const changedAt = new Date();
       if (toClear.length > 0) {
         await tx
           .delete(excursionAgePricesTable)
@@ -226,12 +282,25 @@ router.put("/excursions/:id/age-prices", async (req, res) => {
       for (const row of toSet) {
         await tx
           .insert(excursionAgePricesTable)
-          .values({ excursionId: id, ageRangeId: row.ageRangeId, price: row.price })
+          .values({
+            excursionId: id,
+            ageRangeId: row.ageRangeId,
+            price: row.price,
+          })
           .onConflictDoUpdate({
-            target: [excursionAgePricesTable.excursionId, excursionAgePricesTable.ageRangeId],
-            set: { price: row.price, updatedAt: new Date() },
+            target: [
+              excursionAgePricesTable.excursionId,
+              excursionAgePricesTable.ageRangeId,
+            ],
+            set: { price: row.price, updatedAt: changedAt },
           });
       }
+      // Il preventivo pubblico usa xmin della gita come versione ottimistica.
+      // Prezzi figli e riga padre devono quindi cambiare nella stessa tx.
+      await tx
+        .update(excursionsTable)
+        .set({ updatedAt: changedAt })
+        .where(eq(excursionsTable.id, id));
     });
     res.json({ ok: true });
   } catch (err) {
