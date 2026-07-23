@@ -509,6 +509,15 @@ export function buildQuote(
     }
 
     const pickupSurcharge = point?.surchargeCents ?? 0;
+    const finalPriceCents = basePriceCents + pickupSurcharge;
+    // La variazione di prezzo per provincia (positivo = supplemento, negativo =
+    // sconto) si somma al prezzo base. Uno sconto non può superare il prezzo
+    // base: il prezzo finale non può scendere sotto zero → preventivo rifiutato.
+    if (finalPriceCents < 0) {
+      throw new QuoteError(
+        "La variazione di prezzo della provincia non può superare il prezzo base del partecipante.",
+      );
+    }
     return {
       type: p.type,
       ageRangeId,
@@ -517,8 +526,7 @@ export function buildQuote(
       pickupPointName: point?.name ?? null,
       basePriceCents,
       pickupSurchargeCents: pickupSurcharge,
-      // Uno sconto sul punto non può portare il prezzo finale sotto zero.
-      finalPriceCents: Math.max(0, basePriceCents + pickupSurcharge),
+      finalPriceCents,
       sortOrder: idx,
     };
   });

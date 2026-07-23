@@ -17,6 +17,7 @@ import {
   requiresSavedCardAuthorization,
   type PaymentSettings,
   type PricingContext,
+  type PricingPickupPoint,
 } from "./excursion-pricing";
 
 test("la carta resta disabilitata finché il kill switch non è esplicitamente true", () => {
@@ -66,6 +67,112 @@ function excursion(overrides: Partial<Excursion> = {}): Excursion {
     ...overrides,
   } as Excursion;
 }
+
+const POINT_A = "10000000-0000-4000-8000-000000000001";
+const POINT_B = "10000000-0000-4000-8000-000000000002";
+
+function pickupPoint(
+  overrides: Partial<PricingPickupPoint> = {},
+): PricingPickupPoint {
+  return {
+    id: POINT_A,
+    name: "Imperia Centro",
+    city: "Imperia",
+    province: "IM",
+    pickupTime: null,
+    sortOrder: 0,
+    surchargeCents: 0,
+    mapsUrl: null,
+    active: true,
+    ...overrides,
+  };
+}
+
+test("la variazione prezzo per provincia si somma o sottrae al prezzo base (gita standard)", () => {
+  const contextWith = (surchargeCents: number): PricingContext => ({
+    excursion: excursion({ pricePerPerson: "150" }),
+    excursionRowVersion: "1",
+    isRident: false,
+    ageRanges: [],
+    agePriceCents: new Map(),
+    pickupPoints: [pickupPoint({ surchargeCents })],
+  });
+  const finalFor = (surchargeCents: number) =>
+    buildQuote(
+      contextWith(surchargeCents),
+      {
+        participants: [{ type: "adult" }],
+        pickupPointId: POINT_A,
+        paymentType: "full",
+      },
+      settings,
+      new Date("2026-08-01T00:00:00Z"),
+    ).participants[0].finalPriceCents;
+
+  assert.equal(finalFor(1_000), 16_000); // base 150 + supplemento 10 = 160
+  assert.equal(finalFor(-2_000), 13_000); // base 150 - sconto 20 = 130
+  assert.equal(finalFor(0), 15_000); // provincia non configurata = 150
+});
+
+test("uno sconto per provincia superiore al prezzo base viene rifiutato", () => {
+  const context: PricingContext = {
+    excursion: excursion({ pricePerPerson: "150" }),
+    excursionRowVersion: "1",
+    isRident: false,
+    ageRanges: [],
+    agePriceCents: new Map(),
+    pickupPoints: [pickupPoint({ surchargeCents: -20_000 })], // -200 su base 150
+  };
+  assert.throws(
+    () =>
+      buildQuote(
+        context,
+        {
+          participants: [{ type: "adult" }],
+          pickupPointId: POINT_A,
+          paymentType: "full",
+        },
+        settings,
+        new Date("2026-08-01T00:00:00Z"),
+      ),
+    /prezzo base/,
+  );
+});
+
+test("in una gita RIDENT la variazione di provincia è calcolata per singolo partecipante", () => {
+  const context: PricingContext = {
+    excursion: excursion({
+      category: "rident",
+      pricePerPerson: "150",
+      patientPrice: "150",
+    }),
+    excursionRowVersion: "1",
+    isRident: true,
+    ageRanges: [],
+    agePriceCents: new Map(),
+    pickupPoints: [
+      pickupPoint({ id: POINT_A, province: "IM", surchargeCents: 1_000 }),
+      pickupPoint({ id: POINT_B, province: "SV", surchargeCents: -2_000 }),
+    ],
+  };
+  const quote = buildQuote(
+    context,
+    {
+      participants: [
+        { type: "patient", pickupPointId: POINT_A },
+        { type: "patient", pickupPointId: POINT_B },
+      ],
+      paymentType: "full",
+    },
+    settings,
+    new Date("2026-08-01T00:00:00Z"),
+  );
+  const finalByPoint = Object.fromEntries(
+    quote.participants.map((p) => [p.pickupPointId, p.finalPriceCents]),
+  );
+  assert.equal(finalByPoint[POINT_A], 16_000); // +10 → 160
+  assert.equal(finalByPoint[POINT_B], 13_000); // -20 → 130
+});
 
 test("conversione euro in centesimi arrotonda una sola volta", () => {
   assert.equal(eurosToCents("12.345"), 1235);

@@ -92,8 +92,9 @@ type FormState = {
   extras: ExtraRow[];
   // "Altri costi": costi fissi a carico dell'agenzia (NON per persona).
   otherCosts: ExtraRow[];
-  // Supplemento a persona per provincia dei punti di raccolta (sigla → euro,
-  // stringa perché input controllato). Vuoto o "0" = nessun supplemento.
+  // Variazione prezzo a persona per provincia dei punti di raccolta (sigla →
+  // euro, stringa perché input controllato; positivo = supplemento, negativo =
+  // sconto). Vuoto o "0" = nessuna variazione.
   provinceSurcharges: Record<string, string>;
   currentCapacity: string;
   minThreshold: string;
@@ -699,39 +700,68 @@ function PickupPointsSection({
         </p>
       )}
 
-      {/* Supplementi per provincia: una riga per provincia dei punti scelti. */}
+      {/* Variazione prezzo per provincia: una riga per provincia dei punti scelti. */}
       {provinceCodes.length > 0 && (
         <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Supplementi / sconti per provincia
+            Variazione prezzo per provincia
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Differenza di prezzo a persona per chi parte da un punto della
-            provincia: positivo = supplemento, negativo = sconto. Si imposta una
-            volta per provincia (vale per tutti i suoi punti) e si salva con
-            "Salva modifiche". Vuoto o 0 = nessuna differenza.
+            Variazione tariffaria a persona in base alla provincia di raccolta:
+            positivo = supplemento, negativo = sconto. Si imposta una volta per
+            provincia (vale per tutti i suoi punti) e si salva con "Salva
+            modifiche". Vuoto o 0 = nessuna variazione. Uno sconto non può
+            superare il prezzo base del partecipante.
           </p>
-          {provinceCodes.map((code) => (
-            <div key={code} className="flex items-center gap-2">
-              <span className="flex-1 text-sm text-foreground">
-                {provinceName(code)}
-                <span className="text-xs text-muted-foreground ml-1">
-                  ({code})
+          {provinceCodes.map((code) => {
+            const rawSurcharge = surcharges[code] ?? "";
+            const surchargeValue = Number(rawSurcharge.replace(",", "."));
+            const surchargeKind =
+              rawSurcharge.trim() === "" ||
+              !Number.isFinite(surchargeValue) ||
+              surchargeValue === 0
+                ? null
+                : surchargeValue > 0
+                  ? "supplemento"
+                  : "sconto";
+            return (
+              <div key={code} className="flex items-center gap-2">
+                <span className="flex-1 text-sm text-foreground">
+                  {provinceName(code)}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({code})
+                  </span>
                 </span>
-              </span>
-              <span className="text-xs text-muted-foreground">€</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={surcharges[code] ?? ""}
-                onChange={(e) => onSurchargeChange(code, e.target.value)}
-                placeholder="0"
-                className="w-20 px-2 py-1 border border-border rounded-lg text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
-                data-testid={`input-province-surcharge-${code}`}
-              />
-              <span className="text-xs text-muted-foreground">/persona</span>
-            </div>
-          ))}
+                <span
+                  className={`w-20 text-right text-[10px] font-semibold uppercase tracking-wider ${
+                    surchargeKind === "supplemento"
+                      ? "text-emerald-700"
+                      : surchargeKind === "sconto"
+                        ? "text-accent"
+                        : "text-transparent"
+                  }`}
+                  data-testid={`badge-province-surcharge-${code}`}
+                >
+                  {surchargeKind === "supplemento"
+                    ? "Supplemento"
+                    : surchargeKind === "sconto"
+                      ? "Sconto"
+                      : "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">€</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={surcharges[code] ?? ""}
+                  onChange={(e) => onSurchargeChange(code, e.target.value)}
+                  placeholder="0"
+                  className="w-20 px-2 py-1 border border-border rounded-lg text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  data-testid={`input-province-surcharge-${code}`}
+                />
+                <span className="text-xs text-muted-foreground">/persona</span>
+              </div>
+            );
+          })}
           {surchargeError && (
             <p className="text-xs text-red-600">{surchargeError}</p>
           )}
