@@ -88,19 +88,16 @@ export class QuoteError extends Error {
   }
 }
 
-// Supplemento del punto per la gita: override sul punto, altrimenti provincia.
+// Differenza di prezzo del punto per la gita: dipende SOLO dalla provincia del
+// punto (positivo = supplemento, negativo = sconto). Il prezzo si imposta una
+// volta per provincia; non esiste più un valore per singolo punto.
 export function pickupSurchargeCents(
-  pointSurcharge: string | null,
   province: string | null,
   provinceSurcharges: Record<string, number> | null | undefined,
 ): number {
-  if (pointSurcharge !== null && pointSurcharge !== undefined) {
-    const cents = eurosToCents(pointSurcharge);
-    if (cents >= 0) return cents;
-  }
   if (!province) return 0;
   const n = Number(provinceSurcharges?.[province] ?? 0);
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
+  return Number.isFinite(n) && n !== 0 ? Math.round(n * 100) : 0;
 }
 
 export async function loadPricingContext(excursionId: string): Promise<PricingContext | null> {
@@ -163,7 +160,7 @@ export async function loadPricingContext(excursionId: string): Promise<PricingCo
     province: p.province,
     pickupTime: p.pickupTime,
     sortOrder: p.sortOrder,
-    surchargeCents: pickupSurchargeCents(p.surcharge, p.province, excursion.provinceSurcharges),
+    surchargeCents: pickupSurchargeCents(p.province, excursion.provinceSurcharges),
     mapsUrl: p.mapsUrl,
     active: p.active,
   }));
@@ -355,21 +352,24 @@ export function buildQuote(
   const adultPriceCents = eurosToCents(excursion.pricePerPerson);
   const hasPickupPoints = ctx.pickupPoints.length > 0;
 
-  // Punto di raccolta unico della prenotazione (solo gite normali)
+  // Risolve+valida un punto di raccolta dal suo id.
+  const resolvePoint = (rawId: string): PricingPickupPoint => {
+    const pt = pointById.get(rawId);
+    if (!pt) throw new QuoteError("Punto di raccolta non valido per questa gita.");
+    if (!pt.active) throw new QuoteError("Uno dei punti di raccolta selezionati non è più disponibile.");
+    return pt;
+  };
+
+  // Gite normali: "punti divisi" quando almeno un partecipante porta il proprio punto.
+  // In tal caso ogni partecipante sceglie il suo (come le Rident); altrimenti vale
+  // il punto unico della prenotazione (input.pickupPointId) per tutti.
+  const perParticipantPickup = !isRident && participants.some((p) => !!p.pickupPointId);
   let bookingPoint: PricingPickupPoint | null = null;
-  if (!isRident) {
-    if (hasPickupPoints) {
-      if (!input.pickupPointId) {
-        throw new QuoteError("Seleziona il punto di raccolta.");
-      }
-      bookingPoint = pointById.get(input.pickupPointId) ?? null;
-      if (!bookingPoint) {
-        throw new QuoteError("Punto di raccolta non valido per questa gita.");
-      }
-      if (!bookingPoint.active) {
-        throw new QuoteError("Il punto di raccolta selezionato non è più disponibile.");
-      }
+  if (!isRident && hasPickupPoints && !perParticipantPickup) {
+    if (!input.pickupPointId) {
+      throw new QuoteError("Seleziona il punto di raccolta.");
     }
+    bookingPoint = resolvePoint(input.pickupPointId);
   }
 
   const quoted: QuotedParticipant[] = participants.map((p, idx) => {
@@ -402,19 +402,15 @@ export function buildQuote(
       }
     }
 
-    // Punto di raccolta: per persona su Rident, unico per prenotazione altrimenti
+    // Punto di raccolta del partecipante:
+    // - Rident o gite normali con "punti divisi": ognuno sceglie il suo (obbligatorio).
+    // - Gite normali "tutti insieme": il punto unico della prenotazione.
     let point: PricingPickupPoint | null = bookingPoint;
-    if (isRident && hasPickupPoints) {
+    if (hasPickupPoints && (isRident || perParticipantPickup)) {
       if (!p.pickupPointId) {
         throw new QuoteError(`Seleziona il punto di raccolta per il partecipante ${idx + 1}.`);
       }
-      point = pointById.get(p.pickupPointId) ?? null;
-      if (!point) {
-        throw new QuoteError("Punto di raccolta non valido per questa gita.");
-      }
-      if (!point.active) {
-        throw new QuoteError("Uno dei punti di raccolta selezionati non è più disponibile.");
-      }
+      point = resolvePoint(p.pickupPointId);
     }
 
     const pickupSurcharge = point?.surchargeCents ?? 0;
@@ -426,7 +422,8 @@ export function buildQuote(
       pickupPointName: point?.name ?? null,
       basePriceCents,
       pickupSurchargeCents: pickupSurcharge,
-      finalPriceCents: basePriceCents + pickupSurcharge,
+      // Uno sconto sul punto non può portare il prezzo finale sotto zero.
+      finalPriceCents: Math.max(0, basePriceCents + pickupSurcharge),
       sortOrder: idx,
     };
   });

@@ -4,17 +4,13 @@ import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.webp"
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
-import { useListLeads, useListExcursions } from "@workspace/api-client-react";
+import { useListLeads } from "@workspace/api-client-react";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, navigate] = useLocation();
   const { state, logout } = useAuth();
   const { data: leads = [] } = useListLeads();
-  const { data: excursions = [] } = useListExcursions();
   const newLeadsCount = leads.filter((l) => l.status === "new").length;
-  const activeAdherentsTotal = excursions
-    .filter((e) => e.status !== "completed" && e.status !== "cancelled")
-    .reduce((sum, e) => sum + (e.adherentsCount ?? 0), 0);
 
   useEffect(() => {
     if (state.status === "unauthenticated") {
@@ -88,11 +84,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 {item.matchPath === "/admin/leads" && newLeadsCount > 0 && (
                   <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-sm">
                     {newLeadsCount}
-                  </span>
-                )}
-                {item.matchPath === "/admin/excursions" && activeAdherentsTotal > 0 && (
-                  <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-sm">
-                    {activeAdherentsTotal}
                   </span>
                 )}
               </button>

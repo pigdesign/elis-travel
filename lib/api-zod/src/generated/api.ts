@@ -324,6 +324,13 @@ export const ListExcursionsResponseItem = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),
@@ -404,6 +411,15 @@ export const CreateExcursionBody = zod.object({
       }),
     )
     .optional(),
+  otherCosts: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    )
+    .optional(),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string().optional(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   switchThreshold: zod.number().nullish(),
@@ -482,6 +498,13 @@ export const GetExcursionResponse = zod
         price: zod.number(),
       }),
     ),
+    otherCosts: zod.array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    ),
+    otherCostsTotal: zod.string().optional(),
     pricePerPerson: zod.string(),
     provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
     vehicleId: zod.string().nullish(),
@@ -596,6 +619,15 @@ export const UpdateExcursionBody = zod.object({
       }),
     )
     .optional(),
+  otherCosts: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    )
+    .optional(),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string().optional(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   switchThreshold: zod.number().nullish(),
@@ -666,6 +698,13 @@ export const UpdateExcursionResponse = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),
@@ -1134,6 +1173,13 @@ export const UpdateExcursionVehicleResponse = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),

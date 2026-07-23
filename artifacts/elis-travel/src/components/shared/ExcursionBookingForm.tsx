@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/shared/Button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -101,7 +101,9 @@ function pickupOptionLabel(p: NonNullable<PublicExcursionDetail["pickupPoints"]>
   if (p.province) parts.push(`(${p.province})`);
   if (p.pickupTime) parts.push(`· ore ${p.pickupTime}`);
   const surcharge = p.surcharge ?? 0;
-  parts.push(surcharge > 0 ? `· supplemento ${formatEuro(Math.round(surcharge * 100))}` : "· nessun supplemento");
+  if (surcharge > 0) parts.push(`· supplemento ${formatEuro(Math.round(surcharge * 100))}`);
+  else if (surcharge < 0) parts.push(`· sconto ${formatEuro(Math.round(-surcharge * 100))}`);
+  else parts.push("· nessun supplemento");
   return parts.join(" ");
 }
 
@@ -233,6 +235,8 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
   const [childAgeRangeIds, setChildAgeRangeIds] = useState<string[]>([]);
   const [pickupPointId, setPickupPointId] = useState("");
   const [servizioCasa, setServizioCasa] = useState(false);
+  // Gite normali: false = tutti allo stesso punto (default); true = un punto per partecipante.
+  const [splitPickup, setSplitPickup] = useState(false);
   // Gite RIDENT
   const [patients, setPatients] = useState(1);
   const [companions, setCompanions] = useState(0);
@@ -255,6 +259,16 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
   const children = childAgeRangeIds.length;
   const totalPeople = isRident ? patients + companions : adults + children;
   const maxPeople = spotsLeft !== null ? spotsLeft : undefined;
+
+  // Tiene i punti per-partecipante allineati al numero di partecipanti (Rident e "punti divisi").
+  useEffect(() => {
+    setParticipantPickups((prev) => {
+      if (prev.length === totalPeople) return prev;
+      const next = prev.slice(0, totalPeople);
+      while (next.length < totalPeople) next.push("");
+      return next;
+    });
+  }, [totalPeople]);
 
   const setChildrenCount = (n: number) => {
     setChildAgeRangeIds((prev) => {
@@ -286,8 +300,15 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
       return list;
     }
     return [
-      ...Array.from({ length: adults }, () => ({ type: "adult" as const })),
-      ...childAgeRangeIds.map((rangeId) => ({ type: "child" as const, ageRangeId: rangeId || null })),
+      ...Array.from({ length: adults }, (_, i) => ({
+        type: "adult" as const,
+        pickupPointId: splitPickup ? participantPickups[i] || null : null,
+      })),
+      ...childAgeRangeIds.map((rangeId, i) => ({
+        type: "child" as const,
+        ageRangeId: rangeId || null,
+        pickupPointId: splitPickup ? participantPickups[adults + i] || null : null,
+      })),
     ];
   };
 
@@ -307,7 +328,15 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
       for (let i = 0; i < childAgeRangeIds.length; i++) {
         if (!childAgeRangeIds[i]) return `Seleziona la fascia età per il bambino ${i + 1}.`;
       }
-      if (hasPickupPoints && !pickupPointId) return "Seleziona il punto di raccolta.";
+      if (hasPickupPoints) {
+        if (splitPickup) {
+          for (let i = 0; i < totalPeople; i++) {
+            if (!participantPickups[i]) return `Seleziona il punto di raccolta per il partecipante ${i + 1}.`;
+          }
+        } else if (!pickupPointId) {
+          return "Seleziona il punto di raccolta.";
+        }
+      }
     }
     if (maxPeople !== undefined && totalPeople > maxPeople) {
       return `Sono rimasti solo ${maxPeople} posti disponibili.`;
@@ -329,7 +358,7 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
     try {
       const q = await quotePublicExcursion(excursionId, {
         participants: buildParticipants(),
-        pickupPointId: !isRident && pickupPointId ? pickupPointId : null,
+        pickupPointId: !isRident && !splitPickup && pickupPointId ? pickupPointId : null,
         paymentType,
       });
       setQuote(q);
@@ -352,7 +381,7 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
         email: email.trim(),
         phone: phone.trim(),
         participants: buildParticipants(),
-        pickupPointId: !isRident && pickupPointId ? pickupPointId : null,
+        pickupPointId: !isRident && !splitPickup && pickupPointId ? pickupPointId : null,
         paymentType,
         paymentMethod,
         consents: { terms: termsAccepted, privacy: privacyAccepted, media: mediaAccepted },
@@ -590,7 +619,9 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
                   {p.pickupPointName && (
                     <span className="ml-2 text-xs text-muted-foreground">
                       raccolta {p.pickupPointName}
-                      {p.pickupSurchargeCents > 0 ? ` (+${formatEuro(p.pickupSurchargeCents)})` : ""}
+                      {p.pickupSurchargeCents !== 0
+                        ? ` (${p.pickupSurchargeCents > 0 ? "+" : "−"}${formatEuro(Math.abs(p.pickupSurchargeCents))})`
+                        : ""}
                     </span>
                   )}
                 </div>
@@ -843,25 +874,100 @@ export function ExcursionBookingForm({ excursion }: { excursion: PublicExcursion
             )}
 
             {hasPickupPoints && (
-              <div>
-                <label htmlFor="bk-pickup" className="mb-1.5 block text-xs font-semibold text-foreground">
-                  Punto di raccolta *
+              <div className="space-y-3">
+                {/* Tutti allo stesso punto (default) oppure un punto per partecipante */}
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-[#f7faf9] px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={!splitPickup}
+                    onChange={(e) => {
+                      const sameForAll = e.target.checked;
+                      setSplitPickup(!sameForAll);
+                      if (!sameForAll) {
+                        // Passaggio a "punti divisi": precompilo tutti col punto comune scelto.
+                        setParticipantPickups(
+                          Array.from({ length: totalPeople }, () => pickupPointId || ""),
+                        );
+                      }
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                    data-testid="checkbox-same-pickup"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-foreground">Tutti allo stesso punto di raccolta</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Disattiva se i partecipanti partono da punti diversi.
+                    </span>
+                  </div>
                 </label>
-                <select
-                  id="bk-pickup"
-                  required
-                  value={pickupPointId}
-                  onChange={(e) => setPickupPointId(e.target.value)}
-                  className={inputCls}
-                  data-testid="select-booking-pickup"
-                >
-                  <option value="">— Seleziona punto di raccolta —</option>
-                  {points.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {pickupOptionLabel(p)}
-                    </option>
-                  ))}
-                </select>
+
+                {!splitPickup ? (
+                  <div>
+                    <label htmlFor="bk-pickup" className="mb-1.5 block text-xs font-semibold text-foreground">
+                      Punto di raccolta *
+                    </label>
+                    <select
+                      id="bk-pickup"
+                      required
+                      value={pickupPointId}
+                      onChange={(e) => setPickupPointId(e.target.value)}
+                      className={inputCls}
+                      data-testid="select-booking-pickup"
+                    >
+                      <option value="">— Seleziona punto di raccolta —</option>
+                      {points.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {pickupOptionLabel(p)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-foreground">Punto di raccolta di ogni partecipante *</span>
+                      {totalPeople > 1 && participantPickups[0] && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setParticipantPickups((prev) => Array.from({ length: totalPeople }, () => prev[0] || ""))
+                          }
+                          className="shrink-0 text-xs font-semibold text-accent hover:underline"
+                          data-testid="button-apply-pickup-all"
+                        >
+                          Applica il primo a tutti
+                        </button>
+                      )}
+                    </div>
+                    {Array.from({ length: totalPeople }, (_, i) => {
+                      const label = i < adults ? `Adulto ${i + 1}` : `Bambino ${i - adults + 1}`;
+                      return (
+                        <div key={i} className="rounded-2xl border border-slate-200 bg-[#f7faf9] px-4 py-3">
+                          <div className="mb-1.5 text-xs font-medium text-muted-foreground">{label}</div>
+                          <select
+                            value={participantPickups[i] ?? ""}
+                            onChange={(e) =>
+                              setParticipantPickups((prev) => {
+                                const next = [...prev];
+                                next[i] = e.target.value;
+                                return next;
+                              })
+                            }
+                            className={inputCls}
+                            data-testid={`select-participant-pickup-std-${i}`}
+                          >
+                            <option value="">— Seleziona punto di raccolta —</option>
+                            {points.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {pickupOptionLabel(p)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 

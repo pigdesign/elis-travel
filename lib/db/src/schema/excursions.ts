@@ -18,6 +18,10 @@ import { pickupLocationsTable } from "./pickup-locations";
 // Voce di costo "Extra" nominata, salvata nella colonna jsonb `extras`.
 export type ExcursionExtra = { name: string; price: number };
 
+// Voce "Altri costi": costo fisso a carico dell'agenzia (NON per persona),
+// salvata nella colonna jsonb `other_costs`. Stessa forma degli extra.
+export type ExcursionOtherCost = { name: string; price: number };
+
 export const excursionVehiclesTable = pgTable("excursion_vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -69,6 +73,15 @@ export const excursionsTable = pgTable("excursions", {
   // La somma dei price viene tenuta sincronizzata in extraCostPerPerson, che
   // resta la fonte usata da margine/conto economico/report.
   extras: jsonb("extras").$type<ExcursionExtra[]>().notNull().default([]),
+  // Voci "Altri costi": costi fissi a carico dell'agenzia (NON per persona,
+  // es. focaccia offerta a tutti durante il viaggio). La somma dei price è
+  // tenuta sincronizzata in otherCostsTotal, fonte usata da margine/conto
+  // economico: viene sottratta UNA sola volta, mai moltiplicata per gli aderenti.
+  otherCosts: jsonb("other_costs").$type<ExcursionOtherCost[]>().notNull().default([]),
+  otherCostsTotal: numeric("other_costs_total", {
+    precision: 10,
+    scale: 2,
+  }).default("0"),
   pricePerPerson: numeric("price_per_person", {
     precision: 10,
     scale: 2,

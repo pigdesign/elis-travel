@@ -224,7 +224,7 @@ export function BookingDetailsModal({
                             <td className="py-2 px-3 text-muted-foreground">{p.pickupPointName ?? "—"}</td>
                             <td className="py-2 px-3 text-right">{formatEurCents(p.basePriceCents)}</td>
                             <td className="py-2 px-3 text-right">
-                              {p.pickupSurchargeCents > 0 ? formatEurCents(p.pickupSurchargeCents) : "—"}
+                              {p.pickupSurchargeCents !== 0 ? formatEurCents(p.pickupSurchargeCents) : "—"}
                             </td>
                             <td className="py-2 px-3 text-right font-medium">{formatEurCents(p.finalPriceCents)}</td>
                             <td className="py-2 px-3 text-center">

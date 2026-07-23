@@ -2070,6 +2070,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExcursionExtra"
+        otherCosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExcursionExtra"
+        otherCostsTotal:
+          type: string
         pricePerPerson:
           type: string
         provinceSurcharges:
@@ -2188,6 +2194,7 @@ components:
         - pendingRequestsCount
         - pricePerPerson
         - extras
+        - otherCosts
         - ricaviStimati
         - costiVariabili
         - costiTotali
@@ -2652,6 +2659,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExcursionExtra"
+        otherCosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExcursionExtra"
+        otherCostsTotal:
+          type: string
         pricePerPerson:
           type: string
         provinceSurcharges:

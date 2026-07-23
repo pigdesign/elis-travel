@@ -66,11 +66,13 @@ function calcFinancials(e: typeof excursionsTable.$inferSelect) {
   const entrance = parseFloat(e.entranceCostPerPerson ?? "0");
   const extra = parseFloat(e.extraCostPerPerson ?? "0");
   const vehicleCost = parseFloat(e.vehicleFixedCost ?? "0");
+  // Altri costi: fissi a carico dell'agenzia, sottratti UNA sola volta (NON per persona).
+  const otherCosts = parseFloat(e.otherCostsTotal ?? "0");
   const count = e.adherentsCount;
 
   const ricaviStimati = price * count;
   const costiVariabili = (meal + entrance + extra) * count;
-  const costiTotali = costiVariabili + vehicleCost;
+  const costiTotali = costiVariabili + vehicleCost + otherCosts;
   const margineNetto = ricaviStimati - costiTotali;
 
   return { ricaviStimati, costiVariabili, costiTotali, margineNetto };
@@ -99,8 +101,14 @@ function sumExtras(extras: ExcursionExtra[]): string {
   return extras.reduce((s, e) => s + e.price, 0).toFixed(2);
 }
 
-// Supplementi per provincia: chiavi = sigle valide (2 lettere), valori = euro > 0.
-// Le voci a 0 o non valide vengono scartate: assenza dalla mappa = nessun supplemento.
+// "Altri costi": stesse regole e stessa forma degli extra ({ name, price }).
+// La loro somma (otherCostsTotal) è un costo fisso, non moltiplicato per gli aderenti.
+const normalizeOtherCosts = normalizeExtras;
+const sumOtherCosts = sumExtras;
+
+// Valori per provincia: chiavi = sigle valide (2 lettere), valori = euro ≠ 0
+// (positivo = supplemento, negativo = sconto). Le voci a 0 o non valide vengono
+// scartate: assenza dalla mappa = nessuna differenza di prezzo.
 function normalizeProvinceSurcharges(input: unknown): Record<string, number> {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
   const out: Record<string, number> = {};
@@ -108,7 +116,7 @@ function normalizeProvinceSurcharges(input: unknown): Record<string, number> {
     const code = key.trim().toUpperCase();
     if (!/^[A-Z]{2}$/.test(code)) continue;
     const n = Number(value);
-    if (!Number.isFinite(n) || n <= 0) continue;
+    if (!Number.isFinite(n) || n === 0) continue;
     out[code] = n;
   }
   return out;
@@ -171,6 +179,8 @@ router.post("/excursions", async (req, res) => {
 
     // Le voci extra sono la fonte: extraCostPerPerson è la loro somma.
     const extras = normalizeExtras(body.extras);
+    // Le voci "Altri costi" sono la fonte: otherCostsTotal è la loro somma.
+    const otherCosts = normalizeOtherCosts(body.otherCosts);
 
     const [created] = await db
       .insert(excursionsTable)
@@ -193,6 +203,8 @@ router.post("/excursions", async (req, res) => {
         entranceCostPerPerson: body.entranceCostPerPerson ?? "0",
         extras,
         extraCostPerPerson: extras.length > 0 ? sumExtras(extras) : (body.extraCostPerPerson ?? "0"),
+        otherCosts,
+        otherCostsTotal: sumOtherCosts(otherCosts),
         pricePerPerson: body.pricePerPerson ?? "0",
         provinceSurcharges: normalizeProvinceSurcharges(body.provinceSurcharges),
         switchThreshold: body.switchThreshold ?? null,
@@ -304,7 +316,7 @@ router.patch("/excursions/:id", async (req, res) => {
       "currentCapacity", "minThreshold", "adherentsCount",
       "depositsCount", "balancesCount", "vehicleFixedCost",
       "mealCostPerPerson", "entranceCostPerPerson", "extraCostPerPerson",
-      "extras",
+      "extras", "otherCosts",
       "pricePerPerson", "provinceSurcharges", "switchThreshold", "switchVehicleId",
       "switchVehicleAdditionalCost", "operationalNotes", "coverImageUrl",
       "schedule", "included", "excluded", "generalInfo",
@@ -339,6 +351,13 @@ router.patch("/excursions/:id", async (req, res) => {
       const extras = normalizeExtras(body.extras);
       allowed.extras = extras;
       allowed.extraCostPerPerson = sumExtras(extras);
+    }
+
+    // Altri costi: la lista è la fonte; otherCostsTotal viene ricalcolato come somma.
+    if ("otherCosts" in body) {
+      const otherCosts = normalizeOtherCosts(body.otherCosts);
+      allowed.otherCosts = otherCosts;
+      allowed.otherCostsTotal = sumOtherCosts(otherCosts);
     }
 
     if ("provinceSurcharges" in body) {
@@ -1047,11 +1066,12 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
   }
 });
 
-// Supplemento per punto (euro): null/vuoto = fallback sul supplemento provincia.
+// Valore per punto (euro, positivo = supplemento o negativo = sconto):
+// null/vuoto = nessun override → fallback sul valore della provincia.
 function normalizeSurchargeInput(input: string | null | undefined): string | null {
   if (input === null || input === undefined || String(input).trim() === "") return null;
   const n = Number(String(input).replace(",", "."));
-  if (!Number.isFinite(n) || n < 0) return null;
+  if (!Number.isFinite(n)) return null;
   return n.toFixed(2);
 }
 
