@@ -401,9 +401,9 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                                 {[pp.city, pp.address].filter(Boolean).join(" · ")}
                               </div>
                             </div>
-                            {(pp.surcharge ?? 0) > 0 && (
+                            {(pp.surcharge ?? 0) !== 0 && (
                               <div className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-sm font-semibold text-accent">
-                                +{formatEuro(pp.surcharge ?? 0)}/persona
+                                {(pp.surcharge ?? 0) > 0 ? "+" : "−"}{formatEuro(Math.abs(pp.surcharge ?? 0))}/persona
                               </div>
                             )}
                             {pp.pickupTime && (

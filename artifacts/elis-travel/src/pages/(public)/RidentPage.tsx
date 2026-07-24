@@ -1,16 +1,15 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useSearch, useLocation } from "wouter";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useListPublicRident } from "@workspace/api-client-react";
 import { Loader2 } from "lucide-react";
 import { useSeo } from "@/lib/seo";
-import { ExcursionCard, ProgrammaModal, MonthCombobox, getExcursionMonth } from "@/components/shared/excursion-catalog";
+import { RidentRow, MonthCombobox, getExcursionMonth } from "@/components/shared/excursion-catalog";
 
 export function RidentPage() {
   const { data, isLoading } = useListPublicRident();
   const excursions = data?.excursions ?? [];
-  const [programmaId, setProgrammaId] = useState<string | null>(null);
 
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -108,9 +107,9 @@ export function RidentPage() {
                 : "Nessuna gita Rident in programma al momento."}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <div className="flex flex-col gap-4 max-w-4xl mx-auto">
               {filtered.map((ex) => (
-                <ExcursionCard key={ex.id} ex={ex} onViewProgram={setProgrammaId} />
+                <RidentRow key={ex.id} ex={ex} />
               ))}
             </div>
           )}
@@ -118,10 +117,6 @@ export function RidentPage() {
       </section>
 
       <Footer />
-
-      {programmaId && (
-        <ProgrammaModal excursionId={programmaId} onClose={() => setProgrammaId(null)} />
-      )}
     </div>
   );
 }

@@ -32,6 +32,8 @@ export interface ExcursionSummary {
   entranceCostPerPerson?: string;
   extraCostPerPerson?: string;
   extras: ExcursionExtra[];
+  otherCosts: ExcursionExtra[];
+  otherCostsTotal?: string;
   pricePerPerson: string;
   provinceSurcharges?: ExcursionSummaryProvinceSurcharges;
   vehicleId?: string | null;

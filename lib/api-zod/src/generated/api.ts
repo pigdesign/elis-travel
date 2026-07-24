@@ -337,6 +337,13 @@ export const ListExcursionsResponseItem = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),
@@ -434,6 +441,15 @@ export const CreateExcursionBody = zod
         }),
       )
       .optional(),
+    otherCosts: zod
+      .array(
+        zod.object({
+          name: zod.string(),
+          price: zod.number(),
+        }),
+      )
+      .optional(),
+    otherCostsTotal: zod.string().optional(),
     pricePerPerson: zod.string().optional(),
     provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
     switchThreshold: zod.number().nullish(),
@@ -528,6 +544,13 @@ export const GetExcursionResponse = zod
         price: zod.number(),
       }),
     ),
+    otherCosts: zod.array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    ),
+    otherCostsTotal: zod.string().optional(),
     pricePerPerson: zod.string(),
     provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
     vehicleId: zod.string().nullish(),
@@ -677,6 +700,15 @@ export const UpdateExcursionBody = zod.object({
       }),
     )
     .optional(),
+  otherCosts: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        price: zod.number(),
+      }),
+    )
+    .optional(),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string().optional(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   switchThreshold: zod.number().nullish(),
@@ -760,6 +792,13 @@ export const UpdateExcursionResponse = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),
@@ -1321,6 +1360,13 @@ export const CompleteExcursionTripResponse = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),
@@ -1420,6 +1466,13 @@ export const CancelExcursionTripResponse = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),
@@ -2034,6 +2087,13 @@ export const UpdateExcursionVehicleResponse = zod.object({
       price: zod.number(),
     }),
   ),
+  otherCosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      price: zod.number(),
+    }),
+  ),
+  otherCostsTotal: zod.string().optional(),
   pricePerPerson: zod.string(),
   provinceSurcharges: zod.record(zod.string(), zod.number()).optional(),
   vehicleId: zod.string().nullish(),
@@ -2178,7 +2238,6 @@ export const ListExcursionPickupPointsResponseItem = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number(),
-  surcharge: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   location: zod.object({
     id: zod.string().uuid(),
@@ -2205,7 +2264,6 @@ export const AddExcursionPickupPointBody = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number().optional(),
-  surcharge: zod.string().nullish(),
 });
 
 /**
@@ -2219,7 +2277,6 @@ export const UpdateExcursionPickupPointParams = zod.object({
 export const UpdateExcursionPickupPointBody = zod.object({
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number().optional(),
-  surcharge: zod.string().nullish(),
 });
 
 export const UpdateExcursionPickupPointResponse = zod.object({
@@ -2228,7 +2285,6 @@ export const UpdateExcursionPickupPointResponse = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number(),
-  surcharge: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   location: zod.object({
     id: zod.string().uuid(),

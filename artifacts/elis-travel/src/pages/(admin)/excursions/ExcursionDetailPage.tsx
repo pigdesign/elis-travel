@@ -1675,6 +1675,8 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const entranceCost = parseFloat(exc.entranceCostPerPerson ?? "0");
   const extraCost = parseFloat(exc.extraCostPerPerson ?? "0");
   const vehicleCost = parseFloat(exc.vehicleFixedCost ?? "0");
+  // Altri costi: fissi a carico dell'agenzia (non per persona), non incidono sul margine/persona.
+  const otherCostsTotal = parseFloat(exc.otherCostsTotal ?? "0");
   const marginePerPersona = price - mealCost - entranceCost - extraCost;
   const capacityMax =
     exc.currentCapacity > 0
@@ -1714,9 +1716,13 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     .map((b) => ({
       name: b.customerName,
       phone: b.phone ?? "",
+      // Prenotazione "a punti divisi": pickupPointId è null ma la gita ha punti →
+      // i punti sono per-partecipante, visibili nel dettaglio della prenotazione.
       pickup: b.pickupPointId
         ? (pickupPointById.get(b.pickupPointId) ?? "")
-        : "",
+        : excursionPickupPoints && excursionPickupPoints.length > 0
+          ? "Punti diversi"
+          : "",
       adults: b.adults,
       children: b.children,
       servizioCasa: !!b.servizioCasa,
@@ -2324,6 +2330,27 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                 <span>Costi variabili</span>
                 <span>– {formatEur(exc.costiVariabili)}</span>
               </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Altri costi</span>
+                <span>– {formatEur(otherCostsTotal)}</span>
+              </div>
+              {exc.otherCosts && exc.otherCosts.length > 0 && (
+                <div className="pl-3 space-y-1">
+                  {exc.otherCosts.map((oc, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between text-xs text-muted-foreground/70"
+                    >
+                      <span className="truncate pr-2">
+                        {oc.name?.trim() || "Voce"}
+                      </span>
+                      <span className="shrink-0">
+                        – {formatEur(Number(oc.price) || 0)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="h-px bg-border/50 my-2" />
               <div className="flex justify-between font-semibold text-base">
                 <span>Margine netto</span>

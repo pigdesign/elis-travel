@@ -610,9 +610,16 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       (p) => p.type === "child",
     ).length;
     // Gite normali: il punto unico della prenotazione resta anche sulla colonna legacy
-    const bookingPickupPointId = ctx.isRident
-      ? null
-      : (quote.participants[0]?.pickupPointId ?? null);
+    // Punto a livello prenotazione solo se TUTTI i partecipanti condividono lo stesso
+    // (gite normali "tutti insieme"); se i punti differiscono resta null → "punti divisi",
+    // e i punti restano per-partecipante in booking_participants.
+    const distinctPickups = new Set(
+      quote.participants.map((p) => p.pickupPointId ?? ""),
+    );
+    const bookingPickupPointId =
+      ctx.isRident || distinctPickups.size !== 1
+        ? null
+        : (quote.participants[0]?.pickupPointId ?? null);
 
     const result = await db.transaction(async (tx) => {
       // Serializza esclusivamente i retry dello stesso tentativo. L'advisory

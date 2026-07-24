@@ -91,6 +91,8 @@ export interface ExcursionSummary {
   entranceCostPerPerson?: string;
   extraCostPerPerson?: string;
   extras: ExcursionExtra[];
+  otherCosts: ExcursionExtra[];
+  otherCostsTotal?: string;
   pricePerPerson: string;
   provinceSurcharges?: ExcursionSummaryProvinceSurcharges;
   vehicleId?: string | null;
@@ -832,6 +834,8 @@ export interface ExcursionInput {
   entranceCostPerPerson?: string;
   extraCostPerPerson?: string;
   extras?: ExcursionExtra[];
+  otherCosts?: ExcursionExtra[];
+  otherCostsTotal?: string;
   pricePerPerson?: string;
   provinceSurcharges?: ExcursionInputProvinceSurcharges;
   switchThreshold?: number | null;
@@ -1511,7 +1515,6 @@ export interface ExcursionPickupPoint {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder: number;
-  surcharge?: string | null;
   createdAt: string;
   location: ExcursionPickupPointLocation;
 }
@@ -1520,13 +1523,11 @@ export interface ExcursionPickupPointInput {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder?: number;
-  surcharge?: string | null;
 }
 
 export interface ExcursionPickupPointUpdate {
   pickupTime?: string | null;
   sortOrder?: number;
-  surcharge?: string | null;
 }
 
 export type ListCustomersParams = {

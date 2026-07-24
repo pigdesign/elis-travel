@@ -343,6 +343,113 @@ export function ExcursionCard({ ex, onViewProgram }: { ex: PublicExcursionCard; 
   );
 }
 
+/** Restituisce le parti della data per il "blocco calendario": giorno, mese abbreviato, anno. */
+function getDateParts(value?: string | null): { day: string; month: string; year: string } | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    day: d.toLocaleDateString("it-IT", { day: "numeric" }),
+    month: d.toLocaleDateString("it-IT", { month: "short" }).replace(".", ""),
+    year: d.toLocaleDateString("it-IT", { year: "numeric" }),
+  };
+}
+
+/**
+ * Riga orizzontale per l'elenco delle gite Rident.
+ * Layout a lista: blocco data prominente a sinistra, info al centro, CTA a destra.
+ * Niente immagine né destinazione — sono tutte gite Rident nello stesso luogo.
+ */
+export function RidentRow({ ex }: { ex: PublicExcursionCard }) {
+  const dateParts = getDateParts(ex.date);
+  const price = formatPrice(ex.pricePerPerson);
+  const statusBadge = getStatusBadge(ex);
+  const bookable = isBookable(ex);
+  const capacity = ex.currentCapacity ?? 0;
+  const adherents = ex.adherentsCount ?? 0;
+  const remaining = capacity > 0 ? capacity - adherents : null;
+  const detailUrl = buildSlugUrl("gite", ex.id, ex.name);
+
+  // La pagina Rident usa la palette "verdone" dell'hero: rimappa l'azzurro
+  // dello stato "In raccolta adesioni" sul verde petrolio, lasciando invariati
+  // gli altri stati (confermata = emerald, ultimi posti = accent).
+  const badgeClassName = statusBadge?.className.replace(
+    "bg-sky-500 text-white",
+    "bg-[#0a6a70] text-white",
+  );
+
+  return (
+    <article className="bg-white border border-border rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 sm:p-5 transition-shadow hover:shadow-md">
+      {/* Blocco data — verdone coerente con l'hero */}
+      {dateParts && (
+        <div className="flex sm:flex-col items-center justify-center gap-2 sm:gap-0 shrink-0 sm:w-24 rounded-xl bg-[#0b4f54]/[0.06] border border-[#0b4f54]/15 px-4 py-3 text-[#0b4f54]">
+          <span className="text-3xl sm:text-4xl font-serif font-bold leading-none">{dateParts.day}</span>
+          <span className="text-sm font-semibold uppercase tracking-wide sm:mt-1">{dateParts.month}</span>
+          <span className="text-xs text-muted-foreground">{dateParts.year}</span>
+        </div>
+      )}
+
+      {/* Info centrale */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+          <Link href={detailUrl} className="min-w-0">
+            <h2 className="text-lg font-serif font-bold text-foreground leading-snug truncate hover:text-[#0b4f54] transition-colors">
+              {ex.name}
+            </h2>
+          </Link>
+          {statusBadge && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${badgeClassName}`}>
+              {statusBadge.icon}
+              {statusBadge.label}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-x-5 gap-y-1 flex-wrap text-sm">
+          {capacity > 0 && remaining !== null && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Users className="w-4 h-4 text-accent shrink-0" />
+              {remaining <= 0
+                ? "Posti esauriti"
+                : remaining <= 5
+                ? <span className="font-semibold text-accent">Ultimi {remaining} {remaining === 1 ? "posto" : "posti"}!</span>
+                : `${remaining} posti disponibili`}
+            </span>
+          )}
+          {price && (
+            <span className="flex items-center gap-1.5 text-foreground">
+              <Euro className="w-4 h-4 text-accent shrink-0" />
+              <span className="font-bold">da {price} €</span>
+              <span className="text-xs text-muted-foreground">a persona</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="flex items-center gap-2 shrink-0 sm:justify-end">
+        {bookable ? (
+          <Link href={detailUrl}>
+            <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a6a70] hover:bg-[#084f54] text-white font-bold text-sm transition-colors shadow-sm shadow-[#0b4f54]/20 whitespace-nowrap">
+              <Users className="w-4 h-4" />
+              Prenota un posto
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+        ) : (
+          <Link href={`/contatti?excursionId=${encodeURIComponent(ex.id)}`}>
+            <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a6a70] hover:bg-[#084f54] text-white font-bold text-sm transition-colors shadow-sm shadow-[#0b4f54]/20 whitespace-nowrap">
+              <Tag className="w-4 h-4" />
+              Richiedi informazioni
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+        )}
+      </div>
+    </article>
+  );
+}
+
 export function MonthCombobox({
   months,
   value,

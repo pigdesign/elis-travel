@@ -211,11 +211,13 @@ function calcFinancials(e: typeof excursionsTable.$inferSelect) {
   const entrance = parseFloat(e.entranceCostPerPerson ?? "0");
   const extra = parseFloat(e.extraCostPerPerson ?? "0");
   const vehicleCost = parseFloat(e.vehicleFixedCost ?? "0");
+  // Altri costi: fissi a carico dell'agenzia, sottratti UNA sola volta (NON per persona).
+  const otherCosts = parseFloat(e.otherCostsTotal ?? "0");
   const count = e.adherentsCount;
 
   const ricaviStimati = price * count;
   const costiVariabili = (meal + entrance + extra) * count;
-  const costiTotali = costiVariabili + vehicleCost;
+  const costiTotali = costiVariabili + vehicleCost + otherCosts;
   const margineNetto = ricaviStimati - costiTotali;
 
   return { ricaviStimati, costiVariabili, costiTotali, margineNetto };
@@ -244,8 +246,14 @@ function sumExtras(extras: ExcursionExtra[]): string {
   return extras.reduce((s, e) => s + e.price, 0).toFixed(2);
 }
 
-// Supplementi per provincia: chiavi = sigle valide (2 lettere), valori = euro > 0.
-// Le voci a 0 o non valide vengono scartate: assenza dalla mappa = nessun supplemento.
+// "Altri costi": stesse regole e stessa forma degli extra ({ name, price }).
+// La loro somma (otherCostsTotal) è un costo fisso, non moltiplicato per gli aderenti.
+const normalizeOtherCosts = normalizeExtras;
+const sumOtherCosts = sumExtras;
+
+// Valori per provincia: chiavi = sigle valide (2 lettere), valori = euro ≠ 0
+// (positivo = supplemento, negativo = sconto). Le voci a 0 o non valide vengono
+// scartate: assenza dalla mappa = nessuna differenza di prezzo.
 function normalizeProvinceSurcharges(input: unknown): Record<string, number> {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
   const out: Record<string, number> = {};
@@ -253,7 +261,7 @@ function normalizeProvinceSurcharges(input: unknown): Record<string, number> {
     const code = key.trim().toUpperCase();
     if (!/^[A-Z]{2}$/.test(code)) continue;
     const n = Number(value);
-    if (!Number.isFinite(n) || n <= 0) continue;
+    if (!Number.isFinite(n) || n === 0) continue;
     out[code] = n;
   }
   return out;
@@ -354,6 +362,8 @@ router.post("/excursions", async (req, res) => {
 
     // Le voci extra sono la fonte: extraCostPerPerson è la loro somma.
     const extras = normalizeExtras(body.extras);
+    // Le voci "Altri costi" sono la fonte: otherCostsTotal è la loro somma.
+    const otherCosts = normalizeOtherCosts(body.otherCosts);
 
     const [created] = await db
       .insert(excursionsTable)
@@ -383,6 +393,8 @@ router.post("/excursions", async (req, res) => {
           extras.length > 0
             ? sumExtras(extras)
             : (body.extraCostPerPerson ?? "0"),
+        otherCosts,
+        otherCostsTotal: sumOtherCosts(otherCosts),
         pricePerPerson: body.pricePerPerson ?? "0",
         provinceSurcharges: normalizeProvinceSurcharges(
           body.provinceSurcharges,
@@ -454,7 +466,6 @@ router.get("/excursions/:id", async (req, res) => {
           pickupLocationId: excursionPickupPointsTable.pickupLocationId,
           pickupTime: excursionPickupPointsTable.pickupTime,
           sortOrder: excursionPickupPointsTable.sortOrder,
-          surcharge: excursionPickupPointsTable.surcharge,
           createdAt: excursionPickupPointsTable.createdAt,
           location: {
             id: pickupLocationsTable.id,
@@ -687,6 +698,7 @@ router.patch("/excursions/:id", async (req, res) => {
       "entranceCostPerPerson",
       "extraCostPerPerson",
       "extras",
+      "otherCosts",
       "pricePerPerson",
       "provinceSurcharges",
       "switchThreshold",
@@ -896,6 +908,13 @@ router.patch("/excursions/:id", async (req, res) => {
       const extras = normalizeExtras(body.extras);
       allowed.extras = extras;
       allowed.extraCostPerPerson = sumExtras(extras);
+    }
+
+    // Altri costi: la lista è la fonte; otherCostsTotal viene ricalcolato come somma.
+    if ("otherCosts" in body) {
+      const otherCosts = normalizeOtherCosts(body.otherCosts);
+      allowed.otherCosts = otherCosts;
+      allowed.otherCostsTotal = sumOtherCosts(otherCosts);
     }
 
     if ("provinceSurcharges" in body) {
@@ -2243,7 +2262,6 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
         pickupLocationId: excursionPickupPointsTable.pickupLocationId,
         pickupTime: excursionPickupPointsTable.pickupTime,
         sortOrder: excursionPickupPointsTable.sortOrder,
-        surcharge: excursionPickupPointsTable.surcharge,
         createdAt: excursionPickupPointsTable.createdAt,
         location: {
           id: pickupLocationsTable.id,
@@ -2272,44 +2290,16 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
   }
 });
 
-// Supplemento per punto (euro): null/vuoto = fallback sul supplemento provincia.
-function parseSurchargeInput(input: unknown): {
-  valid: boolean;
-  value: string | null;
-} {
-  if (input === null || input === undefined || String(input).trim() === "") {
-    return { valid: true, value: null };
-  }
-  const n = Number(String(input).replace(",", "."));
-  if (
-    !Number.isFinite(n) ||
-    n < 0 ||
-    !Number.isSafeInteger(Math.round(n * 100))
-  ) {
-    return { valid: false, value: null };
-  }
-  return { valid: true, value: n.toFixed(2) };
-}
-
 router.post("/excursions/:id/pickup-points", async (req, res) => {
   try {
     const { id } = req.params;
-    const { pickupLocationId, pickupTime, sortOrder, surcharge } = req.body as {
+    const { pickupLocationId, pickupTime, sortOrder } = req.body as {
       pickupLocationId?: string;
       pickupTime?: string;
       sortOrder?: number;
-      surcharge?: string | null;
     };
     if (!pickupLocationId) {
       res.status(400).json({ error: "pickupLocationId è obbligatorio." });
-      return;
-    }
-    const parsedSurcharge = parseSurchargeInput(surcharge);
-    if (!parsedSurcharge.valid) {
-      res.status(400).json({
-        error:
-          "Supplemento non valido: usa un importo maggiore o uguale a zero.",
-      });
       return;
     }
     const [loc] = await db
@@ -2330,7 +2320,6 @@ router.post("/excursions/:id/pickup-points", async (req, res) => {
           pickupLocationId,
           pickupTime: pickupTime?.trim() || null,
           sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
-          surcharge: parsedSurcharge.value,
         })
         .returning();
       await tx
@@ -2349,27 +2338,14 @@ router.post("/excursions/:id/pickup-points", async (req, res) => {
 router.patch("/excursions/:id/pickup-points/:ppId", async (req, res) => {
   try {
     const { id, ppId } = req.params;
-    const { pickupTime, sortOrder, surcharge } = req.body as {
+    const { pickupTime, sortOrder } = req.body as {
       pickupTime?: string | null;
       sortOrder?: number;
-      surcharge?: string | null;
     };
     const updates: Partial<typeof excursionPickupPointsTable.$inferInsert> = {};
     if (pickupTime !== undefined)
       updates.pickupTime = pickupTime?.trim() || null;
     if (sortOrder !== undefined) updates.sortOrder = sortOrder;
-    if (surcharge !== undefined) {
-      const parsedSurcharge = parseSurchargeInput(surcharge);
-      if (!parsedSurcharge.valid) {
-        res.status(400).json({
-          error:
-            "Supplemento non valido: usa un importo maggiore o uguale a zero.",
-        });
-        return;
-      }
-      updates.surcharge = parsedSurcharge.value;
-    }
-
     const row = await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(excursionPickupPointsTable)

@@ -42,13 +42,14 @@ import {
 
 const router = Router();
 
-// Supplemento a persona (euro) per la provincia data; 0 se assente o non valido.
+// Differenza di prezzo a persona (euro, positivo o negativo) per la provincia
+// data; 0 se assente o non valida.
 function provinceSurchargeFor(
   surcharges: Record<string, number> | null | undefined,
   province: string,
 ): number {
   const n = Number(surcharges?.[province] ?? 0);
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  return Number.isFinite(n) && n !== 0 ? n : 0;
 }
 
 function slugify(input: string): string {

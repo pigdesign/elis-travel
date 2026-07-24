@@ -63,10 +63,7 @@ const CATEGORY_OPTIONS = [
   { value: "rident", label: "Rident — sezione dedicata" },
 ] as const;
 
-const EXCURSION_INPUT_STATUSES = new Set<string>([
-  "draft",
-  "open",
-]);
+const EXCURSION_INPUT_STATUSES = new Set<string>(["draft", "open"]);
 
 function isExcursionInputStatus(value: string): value is ExcursionInputStatus {
   return EXCURSION_INPUT_STATUSES.has(value);
@@ -93,8 +90,11 @@ type FormState = {
   mealCostPerPerson: string;
   entranceCostPerPerson: string;
   extras: ExtraRow[];
-  // Supplemento a persona per provincia dei punti di raccolta (sigla → euro,
-  // stringa perché input controllato). Vuoto o "0" = nessun supplemento.
+  // "Altri costi": costi fissi a carico dell'agenzia (NON per persona).
+  otherCosts: ExtraRow[];
+  // Variazione prezzo a persona per provincia dei punti di raccolta (sigla →
+  // euro, stringa perché input controllato; positivo = supplemento, negativo =
+  // sconto). Vuoto o "0" = nessuna variazione.
   provinceSurcharges: Record<string, string>;
   currentCapacity: string;
   minThreshold: string;
@@ -147,6 +147,7 @@ function emptyState(): FormState {
     mealCostPerPerson: "0",
     entranceCostPerPerson: "0",
     extras: [],
+    otherCosts: [],
     provinceSurcharges: {},
     currentCapacity: "0",
     minThreshold: "1",
@@ -200,6 +201,16 @@ function extrasFromExcursion(
   return [];
 }
 
+// Ricava le righe "Altri costi" dalla gita (campo nuovo, nessun fallback legacy).
+function otherCostsFromExcursion(
+  exc: ExcursionDetail | ExcursionSummary,
+): ExtraRow[] {
+  return (exc.otherCosts ?? []).map((c) => ({
+    name: c.name ?? "",
+    price: String(c.price ?? 0),
+  }));
+}
+
 function fromExcursion(
   exc: ExcursionDetail | ExcursionSummary,
   opts?: { clearDate?: boolean },
@@ -219,6 +230,7 @@ function fromExcursion(
     mealCostPerPerson: exc.mealCostPerPerson ?? "0",
     entranceCostPerPerson: exc.entranceCostPerPerson ?? "0",
     extras: extrasFromExcursion(exc),
+    otherCosts: otherCostsFromExcursion(exc),
     provinceSurcharges: Object.fromEntries(
       Object.entries(exc.provinceSurcharges ?? {}).map(([code, value]) => [
         code,
@@ -294,6 +306,13 @@ function toPayload(s: FormState): ExcursionCreateInput {
     }))
     .filter((r) => r.name !== "" || r.price !== 0);
   const extraTotal = extras.reduce((sum, r) => sum + r.price, 0);
+  // Altri costi: costi fissi a carico dell'agenzia; il totale lo ricalcola il server.
+  const otherCosts = s.otherCosts
+    .map((r) => ({
+      name: r.name.trim(),
+      price: Number(normalizeDecimal(r.price)),
+    }))
+    .filter((r) => r.name !== "" || r.price !== 0);
   const departureAt = romeLocalDateTimeToIso(s.date, s.departureTime);
   if (!departureAt) {
     throw new Error(
@@ -314,13 +333,14 @@ function toPayload(s: FormState): ExcursionCreateInput {
     entranceCostPerPerson: normalizeDecimal(s.entranceCostPerPerson),
     extras,
     extraCostPerPerson: extraTotal.toFixed(2),
-    // Solo i supplementi > 0: l'assenza dalla mappa equivale a 0.
+    otherCosts,
+    // Solo i valori ≠ 0 (positivo = supplemento, negativo = sconto): assenza dalla mappa = 0.
     provinceSurcharges: Object.fromEntries(
       Object.entries(s.provinceSurcharges)
         .map(
           ([code, value]) => [code, Number(normalizeDecimal(value))] as const,
         )
-        .filter(([, n]) => Number.isFinite(n) && n > 0),
+        .filter(([, n]) => Number.isFinite(n) && n !== 0),
     ),
     currentCapacity: Math.max(0, parseInt(s.currentCapacity, 10) || 0),
     minThreshold: Math.max(0, parseInt(s.minThreshold, 10) || 0),
@@ -607,28 +627,6 @@ function PickupPointsSection({
                 placeholder="Orario"
                 className="w-20 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
-              <span className="text-[11px] text-muted-foreground shrink-0">
-                +€
-              </span>
-              <input
-                type="text"
-                inputMode="decimal"
-                defaultValue={pp.surcharge ?? ""}
-                onBlur={(e) => {
-                  const t = e.target.value.trim();
-                  if (t !== (pp.surcharge ?? "")) {
-                    updateTime({
-                      id: excursionId,
-                      ppId: pp.id,
-                      data: { surcharge: t || null },
-                    });
-                  }
-                }}
-                placeholder="prov."
-                title="Supplemento specifico di questo punto (a persona). Vuoto = vale il supplemento della provincia."
-                className="w-14 px-2 py-1 border border-border rounded-lg text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
-                data-testid={`input-point-surcharge-${pp.id}`}
-              />
               <button
                 type="button"
                 onClick={() => removePoint({ id: excursionId, ppId: pp.id })}
@@ -702,39 +700,68 @@ function PickupPointsSection({
         </p>
       )}
 
-      {/* Supplementi per provincia: una riga per provincia dei punti scelti. */}
+      {/* Variazione prezzo per provincia: una riga per provincia dei punti scelti. */}
       {provinceCodes.length > 0 && (
         <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Supplementi per provincia
+            Variazione prezzo per provincia
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Maggiorazione a persona per chi parte da un punto di raccolta della
-            provincia. Si imposta una volta per provincia (vale per tutti i suoi
-            punti) e si salva con "Salva modifiche". Lascia vuoto o 0 per nessun
-            supplemento.
+            Variazione tariffaria a persona in base alla provincia di raccolta:
+            positivo = supplemento, negativo = sconto. Si imposta una volta per
+            provincia (vale per tutti i suoi punti) e si salva con "Salva
+            modifiche". Vuoto o 0 = nessuna variazione. Uno sconto non può
+            superare il prezzo base del partecipante.
           </p>
-          {provinceCodes.map((code) => (
-            <div key={code} className="flex items-center gap-2">
-              <span className="flex-1 text-sm text-foreground">
-                {provinceName(code)}
-                <span className="text-xs text-muted-foreground ml-1">
-                  ({code})
+          {provinceCodes.map((code) => {
+            const rawSurcharge = surcharges[code] ?? "";
+            const surchargeValue = Number(rawSurcharge.replace(",", "."));
+            const surchargeKind =
+              rawSurcharge.trim() === "" ||
+              !Number.isFinite(surchargeValue) ||
+              surchargeValue === 0
+                ? null
+                : surchargeValue > 0
+                  ? "supplemento"
+                  : "sconto";
+            return (
+              <div key={code} className="flex items-center gap-2">
+                <span className="flex-1 text-sm text-foreground">
+                  {provinceName(code)}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({code})
+                  </span>
                 </span>
-              </span>
-              <span className="text-xs text-muted-foreground">+ €</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={surcharges[code] ?? ""}
-                onChange={(e) => onSurchargeChange(code, e.target.value)}
-                placeholder="0"
-                className="w-20 px-2 py-1 border border-border rounded-lg text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
-                data-testid={`input-province-surcharge-${code}`}
-              />
-              <span className="text-xs text-muted-foreground">/persona</span>
-            </div>
-          ))}
+                <span
+                  className={`w-20 text-right text-[10px] font-semibold uppercase tracking-wider ${
+                    surchargeKind === "supplemento"
+                      ? "text-emerald-700"
+                      : surchargeKind === "sconto"
+                        ? "text-accent"
+                        : "text-transparent"
+                  }`}
+                  data-testid={`badge-province-surcharge-${code}`}
+                >
+                  {surchargeKind === "supplemento"
+                    ? "Supplemento"
+                    : surchargeKind === "sconto"
+                      ? "Sconto"
+                      : "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">€</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={surcharges[code] ?? ""}
+                  onChange={(e) => onSurchargeChange(code, e.target.value)}
+                  placeholder="0"
+                  className="w-20 px-2 py-1 border border-border rounded-lg text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  data-testid={`input-province-surcharge-${code}`}
+                />
+                <span className="text-xs text-muted-foreground">/persona</span>
+              </div>
+            );
+          })}
           {surchargeError && (
             <p className="text-xs text-red-600">{surchargeError}</p>
           )}
@@ -877,6 +904,28 @@ export function ExcursionFormModal({
     return sum + (Number.isFinite(n) ? n : 0);
   }, 0);
 
+  const addOtherCost = () =>
+    setForm((p) => ({
+      ...p,
+      otherCosts: [...p.otherCosts, { name: "", price: "" }],
+    }));
+  const removeOtherCost = (i: number) =>
+    setForm((p) => ({
+      ...p,
+      otherCosts: p.otherCosts.filter((_, idx) => idx !== i),
+    }));
+  const updateOtherCost = (i: number, key: keyof ExtraRow, value: string) =>
+    setForm((p) => ({
+      ...p,
+      otherCosts: p.otherCosts.map((r, idx) =>
+        idx === i ? { ...r, [key]: value } : r,
+      ),
+    }));
+  const otherCostTotal = form.otherCosts.reduce((sum, r) => {
+    const n = Number(String(r.price).replace(",", "."));
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     const checkDecimalNonNeg = (key: keyof FormState, label: string) => {
@@ -918,14 +967,23 @@ export function ExcursionFormModal({
       return isNaN(n) || n < 0;
     });
     if (badExtra) errs.extras = "Prezzo extra non valido (≥ 0).";
+    const badOtherCost = form.otherCosts.some((r) => {
+      const raw = r.price.trim();
+      if (raw === "") return false;
+      const n = Number(raw.replace(",", "."));
+      return isNaN(n) || n < 0;
+    });
+    if (badOtherCost)
+      errs.otherCosts = "Prezzo “Altri costi” non valido (≥ 0).";
     const badSurcharge = Object.values(form.provinceSurcharges).some((raw) => {
       const t = raw.trim();
       if (t === "") return false;
       const n = Number(t.replace(",", "."));
-      return isNaN(n) || n < 0;
+      return isNaN(n);
     });
     if (badSurcharge)
-      errs.provinceSurcharges = "Supplemento provincia non valido (≥ 0).";
+      errs.provinceSurcharges =
+        "Valore provincia non valido (inserisci un numero, anche negativo).";
     checkDecimalNonNeg("vehicleFixedCost", "Costo mezzo");
     checkDecimalNonNeg(
       "switchVehicleAdditionalCost",
@@ -1299,6 +1357,102 @@ export function ExcursionFormModal({
               {fieldErrors.extras && (
                 <p className="text-xs text-red-600 mt-1">
                   {fieldErrors.extras}
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* Sezione: Altri costi — costi fissi a carico dell'agenzia (NON per persona) */}
+          <section className="space-y-3">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Altri costi
+              </h4>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Costi fissi a carico dell'agenzia, <strong>non</strong> a
+                persona (es. focaccia offerta a tutti durante il viaggio).
+                Rientrano nel margine netto ma non nel costo per persona.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-foreground">
+                  Voci di costo
+                </label>
+                {form.otherCosts.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    Totale:{" "}
+                    {otherCostTotal.toLocaleString("it-IT", {
+                      style: "currency",
+                      currency: "EUR",
+                    })}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {form.otherCosts.map((row, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nome (es. Focaccia, Omaggio)"
+                      value={row.name}
+                      onChange={(e) =>
+                        updateOtherCost(i, "name", e.target.value)
+                      }
+                      className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid={`input-excursion-othercost-name-${i}`}
+                    />
+                    <div className="relative w-28 shrink-0">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={row.price}
+                        onChange={(e) =>
+                          updateOtherCost(i, "price", e.target.value)
+                        }
+                        className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
+                        data-testid={`input-excursion-othercost-price-${i}`}
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                        €
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeOtherCost(i)}
+                      className="p-2 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                      title="Rimuovi voce"
+                      data-testid={`button-remove-othercost-${i}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {form.otherCosts.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Nessun altro costo. Aggiungine uno per i costi a carico
+                    dell'agenzia (non a persona).
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={addOtherCost}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-dashed border-border text-primary hover:bg-primary/5 transition-colors"
+                data-testid="button-add-othercost"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Aggiungi voce
+              </button>
+
+              {fieldErrors.otherCosts && (
+                <p className="text-xs text-red-600 mt-1">
+                  {fieldErrors.otherCosts}
                 </p>
               )}
             </div>

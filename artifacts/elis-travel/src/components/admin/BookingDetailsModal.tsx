@@ -1411,7 +1411,7 @@ export function BookingDetailsModal({
                             <td className="py-2 px-3 text-right">
                               {!freeBooking && !participantPricesAvailable
                                 ? "n/d"
-                                : p.pickupSurchargeCents > 0
+                                : p.pickupSurchargeCents !== 0
                                   ? formatEurCents(p.pickupSurchargeCents)
                                   : "—"}
                             </td>
