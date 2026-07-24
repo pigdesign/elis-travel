@@ -4905,8 +4905,8 @@ components:
         province:
           type: string
           nullable: true
-        # Supplemento in euro a persona per questo punto: override del punto
-        # per questa gita, altrimenti supplemento provincia; 0 se assente.
+        # Variazione in euro a persona risolta dalla provincia del punto:
+        # positiva = supplemento, negativa = sconto, 0 se assente.
         surcharge:
           type: number
         pickupTime:
@@ -5459,11 +5459,6 @@ components:
           nullable: true
         sortOrder:
           type: integer
-        # Supplemento specifico del punto per questa gita (euro, stringa decimale);
-        # null = fallback sul supplemento provincia della gita.
-        surcharge:
-          type: string
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -5487,9 +5482,6 @@ components:
           nullable: true
         sortOrder:
           type: integer
-        surcharge:
-          type: string
-          nullable: true
       required:
         - pickupLocationId
     ExcursionPickupPointUpdate:
@@ -5500,6 +5492,3 @@ components:
           nullable: true
         sortOrder:
           type: integer
-        surcharge:
-          type: string
-          nullable: true

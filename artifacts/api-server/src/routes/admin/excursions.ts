@@ -466,7 +466,6 @@ router.get("/excursions/:id", async (req, res) => {
           pickupLocationId: excursionPickupPointsTable.pickupLocationId,
           pickupTime: excursionPickupPointsTable.pickupTime,
           sortOrder: excursionPickupPointsTable.sortOrder,
-          surcharge: excursionPickupPointsTable.surcharge,
           createdAt: excursionPickupPointsTable.createdAt,
           location: {
             id: pickupLocationsTable.id,
@@ -2263,7 +2262,6 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
         pickupLocationId: excursionPickupPointsTable.pickupLocationId,
         pickupTime: excursionPickupPointsTable.pickupTime,
         sortOrder: excursionPickupPointsTable.sortOrder,
-        surcharge: excursionPickupPointsTable.surcharge,
         createdAt: excursionPickupPointsTable.createdAt,
         location: {
           id: pickupLocationsTable.id,
@@ -2292,41 +2290,16 @@ router.get("/excursions/:id/pickup-points", async (req, res) => {
   }
 });
 
-// Valore per punto (euro, positivo = supplemento o negativo = sconto):
-// null/vuoto = nessun override → fallback sul valore della provincia.
-function parseSurchargeInput(input: unknown): {
-  valid: boolean;
-  value: string | null;
-} {
-  if (input === null || input === undefined || String(input).trim() === "") {
-    return { valid: true, value: null };
-  }
-  const n = Number(String(input).replace(",", "."));
-  if (!Number.isFinite(n) || !Number.isSafeInteger(Math.round(n * 100))) {
-    return { valid: false, value: null };
-  }
-  return { valid: true, value: n.toFixed(2) };
-}
-
 router.post("/excursions/:id/pickup-points", async (req, res) => {
   try {
     const { id } = req.params;
-    const { pickupLocationId, pickupTime, sortOrder, surcharge } = req.body as {
+    const { pickupLocationId, pickupTime, sortOrder } = req.body as {
       pickupLocationId?: string;
       pickupTime?: string;
       sortOrder?: number;
-      surcharge?: string | null;
     };
     if (!pickupLocationId) {
       res.status(400).json({ error: "pickupLocationId è obbligatorio." });
-      return;
-    }
-    const parsedSurcharge = parseSurchargeInput(surcharge);
-    if (!parsedSurcharge.valid) {
-      res.status(400).json({
-        error:
-          "Supplemento non valido: usa un importo maggiore o uguale a zero.",
-      });
       return;
     }
     const [loc] = await db
@@ -2347,7 +2320,6 @@ router.post("/excursions/:id/pickup-points", async (req, res) => {
           pickupLocationId,
           pickupTime: pickupTime?.trim() || null,
           sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
-          surcharge: parsedSurcharge.value,
         })
         .returning();
       await tx
@@ -2366,27 +2338,14 @@ router.post("/excursions/:id/pickup-points", async (req, res) => {
 router.patch("/excursions/:id/pickup-points/:ppId", async (req, res) => {
   try {
     const { id, ppId } = req.params;
-    const { pickupTime, sortOrder, surcharge } = req.body as {
+    const { pickupTime, sortOrder } = req.body as {
       pickupTime?: string | null;
       sortOrder?: number;
-      surcharge?: string | null;
     };
     const updates: Partial<typeof excursionPickupPointsTable.$inferInsert> = {};
     if (pickupTime !== undefined)
       updates.pickupTime = pickupTime?.trim() || null;
     if (sortOrder !== undefined) updates.sortOrder = sortOrder;
-    if (surcharge !== undefined) {
-      const parsedSurcharge = parseSurchargeInput(surcharge);
-      if (!parsedSurcharge.valid) {
-        res.status(400).json({
-          error:
-            "Supplemento non valido: usa un importo maggiore o uguale a zero.",
-        });
-        return;
-      }
-      updates.surcharge = parsedSurcharge.value;
-    }
-
     const row = await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(excursionPickupPointsTable)

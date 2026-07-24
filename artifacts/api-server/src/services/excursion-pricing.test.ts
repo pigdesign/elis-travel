@@ -174,6 +174,45 @@ test("in una gita RIDENT la variazione di provincia è calcolata per singolo par
   assert.equal(finalByPoint[POINT_B], 13_000); // -20 → 130
 });
 
+test("in una gita standard con punti divisi ogni partecipante riceve la sua tariffa", () => {
+  const context: PricingContext = {
+    excursion: excursion({ pricePerPerson: "150" }),
+    excursionRowVersion: "1",
+    isRident: false,
+    ageRanges: [],
+    agePriceCents: new Map(),
+    pickupPoints: [
+      pickupPoint({ id: POINT_A, province: "IM", surchargeCents: 1_000 }),
+      pickupPoint({ id: POINT_B, province: "SV", surchargeCents: -2_000 }),
+    ],
+  };
+  const quote = buildQuote(
+    context,
+    {
+      participants: [
+        { type: "adult", pickupPointId: POINT_A },
+        { type: "adult", pickupPointId: POINT_B },
+      ],
+      pickupPointId: null,
+      paymentType: "full",
+    },
+    settings,
+    new Date("2026-08-01T00:00:00Z"),
+  );
+
+  assert.deepEqual(
+    quote.participants.map((p) => ({
+      pickupPointId: p.pickupPointId,
+      finalPriceCents: p.finalPriceCents,
+    })),
+    [
+      { pickupPointId: POINT_A, finalPriceCents: 16_000 },
+      { pickupPointId: POINT_B, finalPriceCents: 13_000 },
+    ],
+  );
+  assert.equal(quote.totalCents, 29_000);
+});
+
 test("conversione euro in centesimi arrotonda una sola volta", () => {
   assert.equal(eurosToCents("12.345"), 1235);
   assert.equal(eurosToCents(null), 0);

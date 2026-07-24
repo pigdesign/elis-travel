@@ -158,7 +158,6 @@ export async function loadPricingContext(
       id: excursionPickupPointsTable.id,
       pickupTime: excursionPickupPointsTable.pickupTime,
       sortOrder: excursionPickupPointsTable.sortOrder,
-      surcharge: excursionPickupPointsTable.surcharge,
       name: pickupLocationsTable.name,
       city: pickupLocationsTable.city,
       province: pickupLocationsTable.province,

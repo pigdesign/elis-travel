@@ -265,8 +265,10 @@ export const excursionPickupPointsTable = pgTable("excursion_pickup_points", {
     .references(() => pickupLocationsTable.id, { onDelete: "cascade" }),
   pickupTime: text("pickup_time"),
   sortOrder: integer("sort_order").notNull().default(0),
-  // Supplemento specifico del punto per questa gita (euro, a persona).
-  // Null = fallback sul supplemento provincia (excursions.provinceSurcharges).
+  // Campo storico, non più usato per il calcolo o esposto dalle API. Le
+  // variazioni tariffarie sono esclusivamente per provincia, in
+  // excursions.provinceSurcharges. Manteniamo la colonna per non distruggere
+  // dati pregressi durante la transizione.
   surcharge: numeric("surcharge", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

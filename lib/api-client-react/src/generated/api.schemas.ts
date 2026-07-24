@@ -1515,7 +1515,6 @@ export interface ExcursionPickupPoint {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder: number;
-  surcharge?: string | null;
   createdAt: string;
   location: ExcursionPickupPointLocation;
 }
@@ -1524,13 +1523,11 @@ export interface ExcursionPickupPointInput {
   pickupLocationId: string;
   pickupTime?: string | null;
   sortOrder?: number;
-  surcharge?: string | null;
 }
 
 export interface ExcursionPickupPointUpdate {
   pickupTime?: string | null;
   sortOrder?: number;
-  surcharge?: string | null;
 }
 
 export type ListCustomersParams = {

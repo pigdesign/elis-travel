@@ -2238,7 +2238,6 @@ export const ListExcursionPickupPointsResponseItem = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number(),
-  surcharge: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   location: zod.object({
     id: zod.string().uuid(),
@@ -2265,7 +2264,6 @@ export const AddExcursionPickupPointBody = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number().optional(),
-  surcharge: zod.string().nullish(),
 });
 
 /**
@@ -2279,7 +2277,6 @@ export const UpdateExcursionPickupPointParams = zod.object({
 export const UpdateExcursionPickupPointBody = zod.object({
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number().optional(),
-  surcharge: zod.string().nullish(),
 });
 
 export const UpdateExcursionPickupPointResponse = zod.object({
@@ -2288,7 +2285,6 @@ export const UpdateExcursionPickupPointResponse = zod.object({
   pickupLocationId: zod.string().uuid(),
   pickupTime: zod.string().nullish(),
   sortOrder: zod.number(),
-  surcharge: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   location: zod.object({
     id: zod.string().uuid(),

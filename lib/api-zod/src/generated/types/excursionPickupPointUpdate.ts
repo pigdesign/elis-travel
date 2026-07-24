@@ -9,5 +9,4 @@
 export interface ExcursionPickupPointUpdate {
   pickupTime?: string | null;
   sortOrder?: number;
-  surcharge?: string | null;
 }
