@@ -12,6 +12,7 @@ import { OffersPage as PublicOffersPage } from "@/pages/(public)/OffersPage";
 import { OfferDetailPage as PublicOfferDetailPage } from "@/pages/(public)/OfferDetailPage";
 import { ExcursionsPage as PublicExcursionsPage } from "@/pages/(public)/ExcursionsPage";
 import { ExcursionDetailPage as PublicExcursionDetailPage } from "@/pages/(public)/ExcursionDetailPage";
+import { ExcursionPosterPage } from "@/pages/(public)/ExcursionPosterPage";
 import { RidentPage } from "@/pages/(public)/RidentPage";
 import { PrivacyPolicyPage } from "@/pages/(public)/PrivacyPolicyPage";
 import { CookiePolicyPage } from "@/pages/(public)/CookiePolicyPage";
@@ -99,6 +100,11 @@ function Router() {
         {(params) => <PublicOfferDetailPage offerIdOrSlug={params.slug} />}
       </Route>
       <Route path="/gite" component={PublicExcursionsPage} />
+      {/* Sorgente della scheda PDF: la apre il browser headless lato server,
+          non è pensata per la navigazione (vedi ExcursionPosterPage). */}
+      <Route path="/locandina/gita/:slug">
+        {(params) => <ExcursionPosterPage excursionIdOrSlug={params.slug} />}
+      </Route>
       <Route path="/gite/:slug">
         {(params) => (
           <PublicExcursionDetailPage excursionIdOrSlug={params.slug} />

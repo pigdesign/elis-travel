@@ -1036,6 +1036,15 @@
 
 /* ---------- Stampa ---------- */
 
+/* Pagina PDF autonoma (ExcursionPosterPage): il browser headless parte senza
+   localStorage, quindi cookie banner e toast — che sono montati globalmente in
+   App.tsx, fuori dalle route — comparirebbero nel PDF. Qui resta visibile solo
+   il poster, sia a schermo che in stampa. Include i portali su <body> (Radix). */
+body.poster-standalone > #root > *:not(.poster-root),
+body.poster-standalone > *:not(#root) {
+  display: none !important;
+}
+
 .poster-break {
   break-after: page;
 }

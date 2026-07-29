@@ -2,6 +2,7 @@ import type {
   ExcursionDetail,
   ExcursionPickupPoint,
   OfferDetail,
+  PublicExcursionDetail,
   ScheduleDay,
   SettingsResponse,
 } from "@workspace/api-client-react";
@@ -160,10 +161,29 @@ function normalizePayment(settings?: SettingsResponse): PosterModel["payment"] {
   return hasData ? payment : null;
 }
 
-export function buildPosterFromExcursion(
-  excursion: ExcursionDetail,
-  pickupPoints: ExcursionPickupPoint[],
-  settings?: SettingsResponse,
+/**
+ * Campi della gita che finiscono in locandina, comuni al tipo admin
+ * (ExcursionDetail) e a quello pubblico (PublicExcursionDetail).
+ */
+interface ExcursionPosterSource {
+  name: string;
+  date?: string | null;
+  pricePerPerson?: string | null;
+  coverImageUrl?: string | null;
+  schedule?: ScheduleDay[] | null;
+  included?: string | null;
+  excluded?: string | null;
+  generalInfo?: string | null;
+}
+
+/**
+ * Corpo condiviso dalle due varianti (admin e pubblica): garantisce che la
+ * locandina scaricata dal sito sia identica a quella stampata dall'admin.
+ */
+function buildExcursionPoster(
+  excursion: ExcursionPosterSource,
+  pickupPoints: PosterPickupPoint[],
+  payment: PosterModel["payment"],
 ): PosterModel {
   const startDate = parseDate(excursion.date);
   const days = normalizeDays(excursion.schedule, startDate);
@@ -183,7 +203,20 @@ export function buildPosterFromExcursion(
     included: splitLines(excursion.included),
     excluded: splitLines(excursion.excluded),
     description: excursion.generalInfo?.trim() || null,
-    pickupPoints: [...pickupPoints]
+    pickupPoints,
+    galleryImages: [],
+    payment,
+  };
+}
+
+export function buildPosterFromExcursion(
+  excursion: ExcursionDetail,
+  pickupPoints: ExcursionPickupPoint[],
+  settings?: SettingsResponse,
+): PosterModel {
+  return buildExcursionPoster(
+    excursion,
+    [...pickupPoints]
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((pp) => ({
         name: pp.location.name,
@@ -191,9 +224,30 @@ export function buildPosterFromExcursion(
         address: pp.location.address ?? null,
         time: pp.pickupTime ?? null,
       })),
-    galleryImages: [],
-    payment: normalizePayment(settings),
-  };
+    normalizePayment(settings),
+  );
+}
+
+/**
+ * Variante pubblica: stessi template e stesso layout, dati presi dall'endpoint
+ * pubblico della gita. Il blocco "come prenotare" resta fuori perché IBAN e
+ * beneficiario non sono esposti sull'API pubblica.
+ */
+export function buildPosterFromPublicExcursion(
+  excursion: PublicExcursionDetail,
+): PosterModel {
+  return buildExcursionPoster(
+    excursion,
+    [...(excursion.pickupPoints ?? [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((pp) => ({
+        name: pp.name,
+        city: pp.city,
+        address: pp.address ?? null,
+        time: pp.pickupTime ?? null,
+      })),
+    null,
+  );
 }
 
 export function buildPosterFromOffer(

@@ -19,6 +19,7 @@ import {
   Clock,
   Bus,
   Info,
+  Download,
   X as XIcon,
 } from "lucide-react";
 
@@ -223,6 +224,17 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
         <Ticket className="h-4 w-4" />
         Prenota un posto
       </a>
+
+      {excursion && (
+        <a
+          href={`/api/catalog/products/excursions/${excursion.id}/pdf`}
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/30 bg-white px-5 py-3.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
+          data-testid="button-download-pdf"
+        >
+          <Download className="h-4 w-4" />
+          Scarica il PDF della gita
+        </a>
+      )}
     </div>
   );
 

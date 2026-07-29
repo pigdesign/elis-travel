@@ -18,6 +18,18 @@ export const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limit per la generazione PDF delle locandine: il primo download di una
+// gita avvia un Chromium headless, quindi va tenuto fuori portata di chi
+// volesse usarlo per esaurire la memoria del container. Le richieste servite
+// dalla cache passano comunque da qui, perciò il limite è generoso.
+export const posterPdfLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 30,
+  message: { error: "Troppi download. Riprova tra qualche minuto." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Rate limit per lead e prenotazioni (es. 10 richieste ogni ora)
 export const publicFormsLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

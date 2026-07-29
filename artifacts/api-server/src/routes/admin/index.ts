@@ -10,6 +10,7 @@ import ageRangesRouter from "./age-ranges";
 import bookingPaymentsRouter from "./booking-payments";
 import emailOutboxRouter from "./email-outbox";
 import bookingCancellationsRouter from "./booking-cancellations";
+import posterDiagnosticsRouter from "./poster-diagnostics";
 
 const adminRouter = Router();
 
@@ -24,5 +25,6 @@ adminRouter.use(ageRangesRouter);
 adminRouter.use(bookingPaymentsRouter);
 adminRouter.use(emailOutboxRouter);
 adminRouter.use(bookingCancellationsRouter);
+adminRouter.use(posterDiagnosticsRouter);
 
 export default adminRouter;

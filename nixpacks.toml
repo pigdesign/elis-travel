@@ -1,0 +1,13 @@
+# Chromium per la generazione dei PDF delle locandine
+# (api-server/src/services/poster-pdf.ts). Usiamo il chromium di nixpkgs con
+# puppeteer-core invece del Chromium scaricato da puppeteer: pesa meno e ha già
+# le librerie di sistema che servono.
+#
+# "..." conserva i pacchetti che nixpacks rileva da solo (node, pnpm).
+[phases.setup]
+nixPkgs = ["...", "chromium"]
+
+[variables]
+# puppeteer-core non scarica browser, ma la variabile evita sorprese se in
+# futuro entrasse in gioco il pacchetto "puppeteer" completo.
+PUPPETEER_SKIP_DOWNLOAD = "true"

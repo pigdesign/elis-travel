@@ -15,7 +15,8 @@ import {
 import { eq, and, ne, desc, gt, isNotNull, sql, or, asc } from "drizzle-orm";
 import { dispatchCardSavedEmailV2 } from "../services/excursion-booking-emails-v2";
 import { verifyBookingCancellationToken } from "../services/booking-cancellation-token";
-import { publicFormsLimiter } from "../middlewares/rateLimiter";
+import { publicFormsLimiter, posterPdfLimiter } from "../middlewares/rateLimiter";
+import { getExcursionPosterPdf } from "../services/poster-pdf";
 import { stripe } from "../services/stripe";
 import { logger } from "../lib/logger";
 import {
@@ -579,6 +580,91 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
   } catch (err) {
     console.error("Public excursion detail fetch failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+/** "Gita - Weekend a Praga.pdf", senza caratteri vietati nei filesystem. */
+function posterFileName(name: string): string {
+  const clean = name
+    .replace(/[\\/:*?"<>|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  return `Gita - ${clean || "Elis Travel"}.pdf`;
+}
+
+/**
+ * Scheda PDF della gita: stessa impaginazione dell'anteprima admin, stampata
+ * lato server così il file è identico per chiunque lo scarichi.
+ */
+router.get("/catalog/products/excursions/:id/pdf", posterPdfLimiter, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+
+    // Stessa regola di visibilità del dettaglio pubblico: niente PDF per le
+    // gite non pubblicate.
+    const [excursion] = await db
+      .select({
+        id: excursionsTable.id,
+        name: excursionsTable.name,
+        updatedAt: excursionsTable.updatedAt,
+      })
+      .from(excursionsTable)
+      .where(
+        and(
+          eq(excursionsTable.id, id),
+          or(
+            eq(excursionsTable.status, "open"),
+            eq(excursionsTable.status, "confirmed"),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (!excursion) {
+      res.status(404).json({ error: "Gita non trovata." });
+      return;
+    }
+
+    // I punti di raccolta compaiono in locandina ma non toccano
+    // excursions.updated_at: entrano nella revisione per non servire da cache
+    // un PDF con fermate vecchie.
+    const [pickupRevision] = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+        lastCreatedAt: sql<string | null>`max(${excursionPickupPointsTable.createdAt})`,
+      })
+      .from(excursionPickupPointsTable)
+      .where(eq(excursionPickupPointsTable.excursionId, id));
+
+    const revision = [
+      excursion.updatedAt?.toISOString() ?? "",
+      pickupRevision?.count ?? 0,
+      pickupRevision?.lastCreatedAt ?? "",
+    ].join("|");
+
+    const pdf = await getExcursionPosterPdf(id, revision);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Length", String(pdf.byteLength));
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${posterFileName(excursion.name).replace(/"/g, "")}"; ` +
+        `filename*=UTF-8''${encodeURIComponent(posterFileName(excursion.name))}`,
+    );
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.end(pdf);
+  } catch (err) {
+    // Il visitatore non deve trovare un vicolo cieco se Chromium manca o va in
+    // errore: lo mandiamo sulla stessa locandina, che si apre con la finestra
+    // di stampa del browser. L'errore resta nei log (e in
+    // /api/admin/poster-diagnostics) perché il ripiego non lo nasconda.
+    logger.error({ err, id: req.params.id }, "Generazione PDF locandina fallita");
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
+    res.redirect(302, `/locandina/gita/${req.params.id}?stampa=1`);
   }
 });
 
