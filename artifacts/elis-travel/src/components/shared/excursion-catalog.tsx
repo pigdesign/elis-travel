@@ -102,14 +102,14 @@ export function ProgrammaModal({ excursionId, onClose }: { excursionId: string; 
 
       {/* Panel */}
       <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-border shrink-0">
+        <div className="flex items-start justify-between px-5 md:px-8 pt-5 md:pt-6 pb-4 border-b border-border shrink-0">
           <div>
             <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Programma</p>
-            <h2 className="text-lg font-serif font-bold text-foreground leading-snug pr-6">
+            <h2 className="text-lg md:text-xl font-serif font-bold text-foreground leading-snug pr-6">
               {excursion?.name ?? "…"}
             </h2>
           </div>
@@ -124,7 +124,7 @@ export function ProgrammaModal({ excursionId, onClose }: { excursionId: string; 
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-5 py-4">
+        <div className="overflow-y-auto flex-1 px-5 md:px-8 py-4 md:py-6">
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -184,15 +184,15 @@ export function ProgrammaModal({ excursionId, onClose }: { excursionId: string; 
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 px-5 py-4 border-t border-border shrink-0">
+        <div className="flex gap-2 md:gap-3 md:justify-end px-5 md:px-8 py-4 border-t border-border shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-muted-foreground transition-colors"
+            className="flex-1 md:flex-none md:min-w-[160px] px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-muted-foreground transition-colors"
           >
             Chiudi
           </button>
-          <Link href={detailUrl} className="flex-1" onClick={onClose}>
+          <Link href={detailUrl} className="flex-1 md:flex-none md:min-w-[200px]" onClick={onClose}>
             <button
               type="button"
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm transition-colors"

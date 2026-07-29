@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Button } from "@/components/shared/Button";
 
 export function AdventureHero() {
@@ -46,12 +47,14 @@ export function AdventureHero() {
               lascia i pensieri a casa e lascia che ti guidiamo verso le
               meraviglie più spettacolari del mondo.
             </p>
-            <Button
-              size="lg"
-              className="h-14 rounded-full bg-accent px-8 text-base text-accent-foreground shadow-xl shadow-accent/20 hover:bg-accent/90 md:h-16 md:px-10 md:text-lg"
-            >
-              Prenota la tua avventura
-            </Button>
+            <Link href="/offerte">
+              <Button
+                size="lg"
+                className="h-14 rounded-full bg-accent px-8 text-base text-accent-foreground shadow-xl shadow-accent/20 hover:bg-accent/90 md:h-16 md:px-10 md:text-lg"
+              >
+                Prenota la tua avventura
+              </Button>
+            </Link>
           </div>
         </motion.div>
       </div>

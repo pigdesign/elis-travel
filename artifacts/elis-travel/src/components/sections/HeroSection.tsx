@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Button } from "@/components/shared/Button";
-import { Play } from "lucide-react";
 import heroBg from "@/assets/hero.webp";
 
 export function HeroSection() {
@@ -48,13 +48,16 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
             className="flex flex-col sm:flex-row items-start sm:items-center justify-start gap-4 border-0 border-solid border-black bg-transparent relative"
           >
-            <Button size="lg" className="h-14 px-8 w-full sm:w-auto bg-primary hover:bg-primary/90 text-white text-[17px] font-bold">
-              Scopri i tour
-            </Button>
-            <Button size="lg" variant="outline" className="h-14 px-8 text-base w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm">
-              <Play className="w-5 h-5 mr-2" />
-              Guarda il video
-            </Button>
+            <Link href="/offerte" className="w-full sm:w-auto">
+              <Button size="lg" className="h-14 px-8 w-full sm:w-auto bg-primary hover:bg-primary/90 text-white text-[17px] font-bold">
+                Scopri le offerte
+              </Button>
+            </Link>
+            <Link href="/gite" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="h-14 px-8 text-base w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm">
+                Scopri le Gite
+              </Button>
+            </Link>
           </motion.div>
         </div>
       </div>

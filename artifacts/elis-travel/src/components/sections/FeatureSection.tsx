@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Button } from "@/components/shared/Button";
 import { CheckCircle2 } from "lucide-react";
 
@@ -47,9 +48,11 @@ export function FeatureSection() {
               </div>
             </div>
 
-            <Button size="lg" className="h-14 px-8 text-base bg-primary hover:bg-primary/90 text-white">
-              Scopri di più
-            </Button>
+            <Link href="/gite">
+              <Button size="lg" className="h-14 px-8 text-base bg-primary hover:bg-primary/90 text-white">
+                Scopri le gite ElisTravel
+              </Button>
+            </Link>
           </motion.div>
 
           {/* Right: Images */}
