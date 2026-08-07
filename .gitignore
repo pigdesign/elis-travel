@@ -58,6 +58,9 @@ local-file/
 
 # Ignora file di ambiente locale
 .env.local
+# Qualsiasi copia o backup: contengono le stesse credenziali dell'originale.
+.env.local.*
+.env.*.bak
 
 # Helper locali con connessioni database: non devono entrare nei commit o nei deploy.
 test-db.ts

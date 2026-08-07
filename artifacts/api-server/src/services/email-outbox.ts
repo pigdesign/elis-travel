@@ -175,6 +175,7 @@ type LeasedEmail = typeof emailOutboxTable.$inferSelect;
 async function leaseBatch(
   workerId: string,
   batchSize: number,
+  dedupeKey?: string,
 ): Promise<LeasedEmail[]> {
   const now = new Date();
   const leaseExpiresAt = new Date(now.getTime() + 5 * 60 * 1000);
@@ -185,6 +186,10 @@ async function leaseBatch(
       .from(emailOutboxTable)
       .where(
         and(
+          // Il lease mirato serve alla consegna immediata (§ enqueueAndDeliverNow):
+          // prende una riga precisa invece della testa della coda, che e FIFO e
+          // metterebbe un magic link dietro a tutto cio che era gia in attesa.
+          dedupeKey ? eq(emailOutboxTable.dedupeKey, dedupeKey) : undefined,
           lte(emailOutboxTable.nextAttemptAt, now),
           sql`${emailOutboxTable.attemptCount} < ${emailOutboxTable.maxAttempts}`,
           or(
@@ -327,6 +332,88 @@ async function shouldSuppress(entry: LeasedEmail): Promise<boolean> {
   );
 }
 
+type DeliveryOutcome = "sent" | "suppressed" | "failed";
+
+/**
+ * Consegna una riga gia in lease. Estratta dal ciclo del batch perche la
+ * corsia prioritaria (enqueueAndDeliverNow) deve usare esattamente la stessa
+ * logica di soppressione, marcatura e retry: duplicarla significherebbe
+ * ritrovarsi due comportamenti divergenti sul percorso piu delicato.
+ * Non solleva: l'esito e nel valore di ritorno.
+ */
+async function deliverLeasedEntry(
+  entry: LeasedEmail,
+  workerId: string,
+): Promise<DeliveryOutcome> {
+  try {
+    if (await shouldSuppress(entry)) {
+      await db
+        .update(emailOutboxTable)
+        .set({
+          status: "cancelled",
+          lastError:
+            "Messaggio non piu applicabile allo stato della prenotazione.",
+          leaseOwner: null,
+          leaseExpiresAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(emailOutboxTable.id, entry.id),
+            eq(emailOutboxTable.leaseOwner, workerId),
+          ),
+        );
+      return "suppressed";
+    }
+    await sendEmail(messageFromPayload(entry.payload));
+    const now = new Date();
+    await db
+      .update(emailOutboxTable)
+      .set({
+        status: "sent",
+        sentAt: now,
+        lastError: null,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(emailOutboxTable.id, entry.id),
+          eq(emailOutboxTable.status, "processing"),
+          eq(emailOutboxTable.leaseOwner, workerId),
+        ),
+      );
+    return "sent";
+  } catch (error) {
+    const now = new Date();
+    const detail = error instanceof Error ? error.message : String(error);
+    await db
+      .update(emailOutboxTable)
+      .set({
+        status: "failed",
+        lastError: detail.slice(0, 2_000),
+        nextAttemptAt: new Date(
+          now.getTime() + retryDelayMs(entry.attemptCount),
+        ),
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(emailOutboxTable.id, entry.id),
+          eq(emailOutboxTable.leaseOwner, workerId),
+        ),
+      );
+    logger.warn(
+      { err: error, emailOutboxId: entry.id, eventType: entry.eventType },
+      "Invio email outbox fallito; verra ritentato",
+    );
+    return "failed";
+  }
+}
+
 export async function processEmailOutboxBatch(opts?: {
   workerId?: string;
   batchSize?: number;
@@ -342,74 +429,55 @@ export async function processEmailOutboxBatch(opts?: {
   let failed = 0;
 
   for (const entry of batch) {
-    try {
-      if (await shouldSuppress(entry)) {
-        await db
-          .update(emailOutboxTable)
-          .set({
-            status: "cancelled",
-            lastError:
-              "Messaggio non piu applicabile allo stato della prenotazione.",
-            leaseOwner: null,
-            leaseExpiresAt: null,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(emailOutboxTable.id, entry.id),
-              eq(emailOutboxTable.leaseOwner, workerId),
-            ),
-          );
-        continue;
-      }
-      await sendEmail(messageFromPayload(entry.payload));
-      const now = new Date();
-      await db
-        .update(emailOutboxTable)
-        .set({
-          status: "sent",
-          sentAt: now,
-          lastError: null,
-          leaseOwner: null,
-          leaseExpiresAt: null,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(emailOutboxTable.id, entry.id),
-            eq(emailOutboxTable.status, "processing"),
-            eq(emailOutboxTable.leaseOwner, workerId),
-          ),
-        );
-      sent += 1;
-    } catch (error) {
-      const now = new Date();
-      const detail = error instanceof Error ? error.message : String(error);
-      await db
-        .update(emailOutboxTable)
-        .set({
-          status: "failed",
-          lastError: detail.slice(0, 2_000),
-          nextAttemptAt: new Date(
-            now.getTime() + retryDelayMs(entry.attemptCount),
-          ),
-          leaseOwner: null,
-          leaseExpiresAt: null,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(emailOutboxTable.id, entry.id),
-            eq(emailOutboxTable.leaseOwner, workerId),
-          ),
-        );
-      logger.warn(
-        { err: error, emailOutboxId: entry.id, eventType: entry.eventType },
-        "Invio email outbox fallito; verra ritentato",
-      );
-      failed += 1;
-    }
+    const outcome = await deliverLeasedEntry(entry, workerId);
+    if (outcome === "sent") sent += 1;
+    else if (outcome === "failed") failed += 1;
   }
 
   return { leased: batch.length, sent, failed };
+}
+
+/**
+ * Tenta la consegna immediata di una singola riga dell'outbox, identificata
+ * dalla sua dedupeKey. Pensata per le email di autenticazione, dove l'utente
+ * e fermo davanti allo schermo: il poller di manutenzione gira ogni 30 secondi
+ * e mette l'invio email in coda DOPO rimborsi, pulizia Stripe e riconciliazioni,
+ * quindi l'attesa percepita sarebbe di decine di secondi.
+ *
+ * Non solleva mai e non va attesa dal chiamante: se fallisce, o se il processo
+ * muore prima di completare, la riga resta nell'outbox e il poller la recupera
+ * (il lease scade dopo 5 minuti). La durabilita non dipende da questa funzione.
+ */
+export async function deliverOutboxEntryNow(dedupeKey: string): Promise<void> {
+  if (!isEmailConfigured()) return;
+  const workerId = `now-${process.pid}-${randomUUID()}`;
+  try {
+    const [entry] = await leaseBatch(workerId, 1, dedupeKey);
+    // Nessuna riga: il poller l'ha gia presa, oppure e gia stata inviata.
+    // In entrambi i casi non c'e nulla da fare qui.
+    if (!entry) return;
+    await deliverLeasedEntry(entry, workerId);
+  } catch (error) {
+    logger.warn(
+      { err: error, dedupeKey },
+      "Consegna immediata fallita; il messaggio resta in carico al poller",
+    );
+  }
+}
+
+/**
+ * Accoda un messaggio e ne avvia subito la consegna, senza attendere il poller.
+ *
+ * La consegna parte in background di proposito: la risposta HTTP non deve
+ * dipendere dall'esito dell'invio, sia per non far attendere l'utente sia
+ * perche un tempo di risposta diverso fra "account esistente" e "account
+ * inesistente" rivelerebbe quali indirizzi sono registrati.
+ */
+export async function enqueueAndDeliverNow(
+  input: EnqueueEmailInput,
+): Promise<boolean> {
+  const enqueued = await enqueueEmail(input);
+  if (!enqueued) return false;
+  void deliverOutboxEntryNow(input.dedupeKey);
+  return true;
 }

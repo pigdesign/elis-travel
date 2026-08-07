@@ -15,6 +15,10 @@ import {
   ensureBookingAccessToken,
 } from "./booking-access-token";
 import { isPaymentBlockedByCancellation } from "./booking-cancellation-guard";
+import {
+  inviteSections,
+  prepareBookingInvite,
+} from "./customer-account-provisioning";
 
 // ---------------------------------------------------------------------------
 // Email transazionali Gite v2. I dispatcher costruiscono uno snapshot del
@@ -22,14 +26,13 @@ import { isPaymentBlockedByCancellation } from "./booking-cancellation-guard";
 // invio, retry e deduplicazione.
 // ---------------------------------------------------------------------------
 
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+// Impaginazione e dati agenzia vivono in email-layout.ts: li condividiamo con
+// le email dell'area clienti. L'alias `wrap` mantiene invariati i punti di uso.
+import {
+  agency,
+  escapeHtml,
+  wrapEmailHtml as wrap,
+} from "./email-layout";
 
 function euro(cents: number): string {
   return (cents / 100).toLocaleString("it-IT", {
@@ -58,14 +61,6 @@ function formatDateTimeIt(d: Date): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function agency() {
-  return {
-    name: process.env.AGENCY_NAME || "Elis Travel",
-    email: process.env.AGENCY_CONTACT_EMAIL || "info@elis-travel.it",
-    phone: process.env.AGENCY_CONTACT_PHONE || null,
-  };
 }
 
 const PARTICIPANT_LABELS: Record<string, string> = {
@@ -237,15 +232,6 @@ function baseSummary(ctx: LoadedBooking): { text: string[]; html: string[] } {
   return { text, html };
 }
 
-function wrap(subjectTitle: string, bodyHtml: string): string {
-  const a = agency();
-  return `<!doctype html><html lang="it"><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#14242b;line-height:1.55;max-width:640px;margin:0 auto;padding:24px;">
-  <h2 style="color:#0b5b60;">${escapeHtml(subjectTitle)}</h2>
-  ${bodyHtml}
-  <p style="margin-top:28px;font-size:13px;color:#5b6b72;">${escapeHtml(a.name)}${a.phone ? ` · ${escapeHtml(a.phone)}` : ""} · ${escapeHtml(a.email)}</p>
-  </body></html>`;
-}
-
 async function queueBuiltEmail(opts: {
   bookingId: string;
   eventType: string;
@@ -347,6 +333,7 @@ async function buildCardSavedEmail(
   const access = await ensureBookingAccessToken(bookingId);
   const portalUrl = buildBookingPortalUrl(access.token);
   const amount = booking.amountDueCents ?? 0;
+  const cardInvite = inviteSections(await prepareBookingInvite(bookingId));
   const subject = `Carta salvata, nessun addebito — ${excursion.name}`;
   const text = [
     `Ciao ${booking.customerName},`,
@@ -357,13 +344,15 @@ async function buildCardSavedEmail(
     ...summary.text,
     "",
     `Consulta la prenotazione: ${portalUrl}`,
+    ...cardInvite.text,
   ].join("\n");
   const html = wrap(
     "Carta salvata, nessun addebito",
     `<p>Ciao ${escapeHtml(booking.customerName)},<br/>la carta è stata salvata correttamente e <strong>non è stato effettuato alcun addebito</strong>.</p>
      <p>Se la gita verrà confermata, ElisTravel addebiterà l'acconto di <strong>${escapeHtml(euro(amount))}</strong> secondo l'autorizzazione fornita. Se la gita non verrà confermata, non verrà addebitato nulla.</p>
      ${summary.html.join("")}
-     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Consulta la prenotazione</a></p>`,
+     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Consulta la prenotazione</a></p>
+     ${cardInvite.html}`,
   );
   return {
     to: booking.email!,
@@ -788,9 +777,14 @@ async function buildInstructionsCustomerEmail(
       .filter(Boolean)
       .join("<br/>")}</p>`;
   }
+  // Richiamo all'area clienti: agganciato a QUESTA prenotazione e mai
+  // bloccante — se fallisce, la conferma parte comunque senza il riquadro.
+  const invite = inviteSections(await prepareBookingInvite(bookingId));
+
   textLines.push(
     ``,
     `Gestisci la prenotazione o richiedi l'annullamento: ${portalUrl}`,
+    ...invite.text,
     ``,
     `A presto!`,
   );
@@ -803,7 +797,8 @@ async function buildInstructionsCustomerEmail(
      ${summary.html.join("")}
      <p>${escapeHtml(amountLabel)}: <strong>${escapeHtml(euro(booking.amountDueCents ?? 0))}</strong>${deadline ? `<br/>Scadenza pagamento: <strong>${escapeHtml(deadline)}</strong>` : ""}${tolerance ? `<br/>${escapeHtml(tolerance)}` : ""}</p>
      ${methodHtml}
-     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Gestisci prenotazione / richiedi annullamento</a></p>`,
+     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Gestisci prenotazione / richiedi annullamento</a></p>
+     ${invite.html}`,
   );
   return {
     to: booking.email!,

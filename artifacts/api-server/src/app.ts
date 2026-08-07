@@ -13,6 +13,7 @@ import { ftpImageProxy } from "./routes/ftp-image-proxy";
 import { logger } from "./lib/logger";
 import { globalLimiter } from "./middlewares/rateLimiter";
 import { siteGate } from "./middlewares/siteGate";
+import { isCustomerSessionPath } from "./services/session-routing";
 
 if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET must be set in production");
@@ -101,24 +102,65 @@ if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET environment variable is required.");
 }
 
-app.use(
-  session({
-    store: new PgSession({
-      pool: sessionPool,
-      tableName: "admin_sessions",
-    }),
-    name: "elis.sid",
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    proxy: true,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: "lax",
-    },
+// Due sessioni distinte: admin e area clienti hanno durate diverse (7 giorni
+// contro 90) e maxAge e una proprieta del cookie, non della singola chiave di
+// sessione, quindi un unico middleware non puo servire entrambe.
+//
+// Il dispatch e un if/else esplicito e non due app.use() con path diversi, per
+// due ragioni. Primo: garantisce per costruzione che su una richiesta giri UNA
+// sola sessione, mentre due middleware sovrapposti si sovrascriverebbero
+// req.session a vicenda. Secondo, ed e il motivo pratico: elencare i path admin
+// significherebbe indovinarli tutti, e non sono solo /api/auth e /api/admin —
+// /api/storage/uploads/* e protetto da requireAuth e si romperebbe con 401.
+// Qui l'unica lista da mantenere e quella dei path clienti, che introduciamo noi
+// e conosciamo per intero; tutto il resto conserva esattamente il comportamento
+// attuale. Il predicato vive in services/session-routing.ts perche e testato.
+const adminSession = session({
+  store: new PgSession({
+    pool: sessionPool,
+    tableName: "admin_sessions",
   }),
+  name: "elis.sid",
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  proxy: true,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: "lax",
+  },
+});
+
+// Sessione dell'area clienti: cookie, tabella e durata indipendenti da quelli
+// admin, cosi lo staff che prova il sito pubblico non perde la sessione di
+// backoffice (e viceversa). `rolling` non e il default e va richiesto: rinnova
+// la scadenza a ogni richiesta. Lo store implementa touch(), quindi anche la
+// colonna expire viene estesa nonostante resave: false.
+const customerSession = session({
+  store: new PgSession({
+    pool: sessionPool,
+    tableName: "customer_sessions",
+  }),
+  name: "elis.cust",
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  proxy: true,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 90 * 24 * 60 * 60 * 1000,
+    sameSite: "lax",
+  },
+});
+
+app.use((req, res, next) =>
+  isCustomerSessionPath(req.path)
+    ? customerSession(req, res, next)
+    : adminSession(req, res, next),
 );
 
 // Proxy immagini: inoltra /ftp-image/* all'origine Aruba così gli URL già in DB

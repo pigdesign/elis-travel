@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CustomerAuthProvider } from "@/contexts/CustomerAuthContext";
 import { HomePage } from "@/pages/(public)/HomePage";
 import { ContactsPage } from "@/pages/(public)/ContactsPage";
 import { OffersPage as PublicOffersPage } from "@/pages/(public)/OffersPage";
@@ -18,6 +19,9 @@ import { PrivacyPolicyPage } from "@/pages/(public)/PrivacyPolicyPage";
 import { CookiePolicyPage } from "@/pages/(public)/CookiePolicyPage";
 import { TermsConditionsPage } from "@/pages/(public)/TermsConditionsPage";
 import { BookingPortalPage } from "@/pages/(public)/BookingPortalPage";
+import { AccountLoginPage } from "@/pages/(public)/AccountLoginPage";
+import { AccountHomePage } from "@/pages/(public)/AccountHomePage";
+import { RequireCustomer } from "@/components/customer/RequireCustomer";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
 import { CookieBanner } from "@/components/layout/CookieBanner";
@@ -120,6 +124,17 @@ function Router() {
       </Route>
       <Route path="/prenotazione">{() => <BookingPortalRoute />}</Route>
 
+      {/* Area clienti. /accedi serve sia la richiesta del link sia
+          l'atterraggio da /accedi#token=... */}
+      <Route path="/accedi" component={AccountLoginPage} />
+      <Route path="/area-clienti">
+        {() => (
+          <RequireCustomer>
+            <AccountHomePage />
+          </RequireCustomer>
+        )}
+      </Route>
+
       <Route path="/admin/login" component={LoginPage} />
 
       <Route path="/admin" nest>
@@ -170,13 +185,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
+        <CustomerAuthProvider>
+          <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
           <Toaster />
           <CookieBanner />
-        </TooltipProvider>
+          </TooltipProvider>
+        </CustomerAuthProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
