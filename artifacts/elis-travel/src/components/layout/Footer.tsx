@@ -34,6 +34,7 @@ export function Footer() {
                 { label: 'Offerte & Pacchetti', href: '/offerte' },
                 { label: 'Gite di Gruppo', href: '/gite' },
                 { label: 'Contattaci', href: '/contatti' },
+                { label: 'Area clienti', href: '/accedi' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-white/70 hover:text-accent transition-colors text-sm flex items-center gap-2">

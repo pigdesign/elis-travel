@@ -1,5 +1,7 @@
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 import { useLocation } from "wouter";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 
 /**
  * Panoramica dell'area clienti — versione minima della Fase 1.
@@ -19,7 +21,8 @@ export function AccountHomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      <div className="mx-auto max-w-3xl px-4 py-12">
+      <Header solid />
+      <div className="mx-auto max-w-3xl px-4 pb-16 pt-28">
         <header className="flex items-start justify-between gap-4 mb-10">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
@@ -42,21 +45,32 @@ export function AccountHomePage() {
           </button>
         </header>
 
-        <section className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
-          <h2 className="font-semibold text-foreground mb-2">
-            Il tuo account è attivo
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Da qui potrai consultare i tuoi viaggi, i pagamenti e le scadenze.
-            Stiamo completando queste sezioni: nel frattempo continui a gestire
-            ogni prenotazione dal link che ti abbiamo inviato via email.
-          </p>
-        </section>
+        <nav className="grid gap-4 sm:grid-cols-2">
+          <a
+            href="/area-clienti/viaggi"
+            className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm transition-colors hover:border-primary/40"
+          >
+            <h2 className="font-semibold text-foreground">I miei viaggi</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Prenotazioni in arrivo, passate e annullate, con le scadenze di
+              pagamento.
+            </p>
+          </a>
+          <div className="rounded-2xl border border-dashed border-border/60 bg-white/60 p-6">
+            <h2 className="font-semibold text-muted-foreground">
+              Pagamenti e documenti
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              In arrivo. Per ora trovi gli importi dentro ogni prenotazione.
+            </p>
+          </div>
+        </nav>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
           Per assistenza scrivi a info@elis-travel.it
         </p>
       </div>
+      <Footer />
     </div>
   );
 }

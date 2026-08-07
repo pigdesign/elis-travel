@@ -6,6 +6,8 @@ import {
   bookingParticipantsTable,
   excursionBookingsTable,
   excursionsTable,
+  customerAccountBookingsTable,
+  customerAccountsTable,
   paymentAttemptsTable,
   paymentRequestsTable,
 } from "@workspace/db/schema";
@@ -22,7 +24,9 @@ import {
 } from "drizzle-orm";
 import { publicFormsLimiter } from "../middlewares/rateLimiter";
 import { logger } from "../lib/logger";
+import { resolveBookingAccess } from "../services/booking-access";
 import { verifyBookingAccessToken } from "../services/booking-access-token";
+import { recordAccountEvent } from "../services/customer-auth-throttle";
 import {
   availablePaymentMethods,
   getPaymentSettings,
@@ -55,9 +59,25 @@ function bookingToken(req: Request): string {
   return value.trim().slice(0, 512);
 }
 
+function requestedBookingId(req: Request): string | null {
+  const value = req.header("x-booking-id")?.trim() ?? "";
+  // Solo UUID: il valore finisce in una query e in un confronto di proprieta.
+  return /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+}
+
+/**
+ * Autorizza la richiesta al portale per token oppure per sessione cliente.
+ *
+ * I chiamanti restano invariati: la doppia via e risolta qui dentro, cosi il
+ * punto di decisione resta uno solo per tutti e cinque gli endpoint.
+ */
 async function authorizedBooking(req: Request) {
-  const verified = await verifyBookingAccessToken(bookingToken(req));
-  if (!verified) return null;
+  const access = await resolveBookingAccess({
+    token: bookingToken(req),
+    bookingId: requestedBookingId(req),
+    accountId: req.session?.customerAccount?.accountId ?? null,
+  });
+  if (!access) return null;
   const [row] = await db
     .select({ booking: excursionBookingsTable, excursion: excursionsTable })
     .from(excursionBookingsTable)
@@ -65,7 +85,7 @@ async function authorizedBooking(req: Request) {
       excursionsTable,
       eq(excursionBookingsTable.excursionId, excursionsTable.id),
     )
-    .where(eq(excursionBookingsTable.id, verified.bookingId))
+    .where(eq(excursionBookingsTable.id, access.bookingId))
     .limit(1);
   return row ?? null;
 }
@@ -113,6 +133,66 @@ async function portalPaymentStillAllowed(input: {
     return !deadline || deadline >= new Date();
   });
 }
+
+/**
+ * Collega al proprio account la prenotazione aperta con il link ricevuto.
+ *
+ * Il possesso del bearer token dimostra di aver ricevuto l'email di QUELLA
+ * prenotazione: e una prova crittografica, non un confronto di stringhe. E'
+ * questo che permette di risolvere con un clic i casi che un collegamento
+ * automatico sbaglierebbe — il capogruppo che prenota per venti persone, il
+ * figlio che prenota per i genitori, l'indirizzo condiviso in famiglia.
+ */
+router.post("/booking-portal/claim", async (req, res) => {
+  const accountId = req.session?.customerAccount?.accountId ?? null;
+  if (!accountId) {
+    res.status(401).json({ error: "Accedi alla tua area personale." });
+    return;
+  }
+
+  // Il claim richiede il TOKEN, non basta la sessione: senza, chiunque
+  // autenticato potrebbe rivendicare una prenotazione altrui indovinandone
+  // l'identificativo.
+  const verified = await verifyBookingAccessToken(bookingToken(req));
+  if (!verified) {
+    res.status(403).json({
+      error: "Link della prenotazione non valido o scaduto.",
+    });
+    return;
+  }
+
+  const [account] = await db
+    .select({ status: customerAccountsTable.status })
+    .from(customerAccountsTable)
+    .where(eq(customerAccountsTable.id, accountId))
+    .limit(1);
+  if (!account || account.status !== "active") {
+    res.status(403).json({ error: "Account non attivo." });
+    return;
+  }
+
+  const inserted = await db
+    .insert(customerAccountBookingsTable)
+    .values({
+      accountId,
+      bookingId: verified.bookingId,
+      linkedVia: "portal_token",
+    })
+    .onConflictDoNothing()
+    .returning({ id: customerAccountBookingsTable.id });
+
+  if (inserted.length > 0) {
+    await recordAccountEvent({
+      eventType: "booking_linked",
+      accountId,
+      ip: req.ip ?? null,
+      detail: { bookingId: verified.bookingId, via: "portal_token" },
+    });
+  }
+
+  // Gia collegata: esito identico, l'operazione e idempotente.
+  res.json({ ok: true, alreadyLinked: inserted.length === 0 });
+});
 
 router.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store");

@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
+import { ClaimBookingBanner } from "@/components/customer/ClaimBookingBanner";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { useSeo } from "@/lib/seo";
@@ -181,8 +182,22 @@ function cancellationCopy(status: string | null): {
   }
 }
 
+/**
+ * Le due vie di accesso al portale: il link ricevuto via email e la sessione
+ * dell'area clienti. Quando c'e il token vince lui — i link gia inviati devono
+ * continuare a funzionare identici anche per chi si e creato un account.
+ */
+export type PortalAuth = { token: string; bookingId: string | null };
+
+function portalAuthHeaders(auth: PortalAuth): Record<string, string> {
+  if (auth.token) return { "x-booking-token": auth.token };
+  // Senza token si passa dalla sessione: l'identificativo serve al server per
+  // verificare che questo account possieda davvero questa prenotazione.
+  return auth.bookingId ? { "x-booking-id": auth.bookingId } : {};
+}
+
 async function portalRequest<T>(
-  token: string,
+  auth: PortalAuth,
   path = "",
   init?: RequestInit,
 ): Promise<T> {
@@ -190,10 +205,11 @@ async function portalRequest<T>(
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "x-booking-token": token,
+      ...portalAuthHeaders(auth),
       ...(init?.headers ?? {}),
     },
-    credentials: "same-origin",
+    // La sessione cliente viaggia col cookie: serve includerlo.
+    credentials: "include",
   });
   const data = (await response.json().catch(() => ({}))) as T & {
     error?: string;
@@ -230,13 +246,13 @@ async function retryPortalStripeReconciliation(
 }
 
 function PortalCardPayment({
-  token,
+  auth,
   paymentIntentId,
   amountCents,
   onPaid,
   onResolutionFailure,
 }: {
-  token: string;
+  auth: PortalAuth;
   paymentIntentId: string;
   amountCents: number;
   onPaid: () => Promise<void>;
@@ -282,7 +298,7 @@ function PortalCardPayment({
       redirectStatus: "succeeded",
     });
     try {
-      await portalRequest(token, "/payment-confirmed", {
+      await portalRequest(auth, "/payment-confirmed", {
         method: "POST",
         body: JSON.stringify({ paymentIntentId: intent.id }),
       });
@@ -331,13 +347,23 @@ function PortalCardPayment({
   );
 }
 
-export function BookingPortalPage({ token }: { token: string }) {
+export function BookingPortalPage({
+  token,
+  bookingId = null,
+}: {
+  token: string;
+  bookingId?: string | null;
+}) {
   useSeo({
     title: "Gestisci prenotazione",
     description:
       "Area riservata per gestire il pagamento della prenotazione Elis Travel.",
     noindex: true,
   });
+  const auth = useMemo<PortalAuth>(
+    () => ({ token, bookingId }),
+    [token, bookingId],
+  );
   const [data, setData] = useState<PortalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyMethod, setBusyMethod] = useState<PaymentMethod | null>(null);
@@ -383,7 +409,7 @@ export function BookingPortalPage({ token }: { token: string }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    const next = await portalRequest<PortalData>(token);
+    const next = await portalRequest<PortalData>(auth);
     setData(next);
     setSelectedMethod(
       (current) =>
@@ -405,7 +431,7 @@ export function BookingPortalPage({ token }: { token: string }) {
       ) {
         try {
           await retryPortalStripeReconciliation(() =>
-            portalRequest(token, "/payment-confirmed", {
+            portalRequest(auth, "/payment-confirmed", {
               method: "POST",
               body: JSON.stringify({
                 paymentIntentId: stripeRecovery.signal!.intentId,
@@ -436,7 +462,7 @@ export function BookingPortalPage({ token }: { token: string }) {
             clientSecret: string | null;
             paymentIntentId: string;
             status: string;
-          }>(token, "/payment-intent", {
+          }>(auth, "/payment-intent", {
             method: "POST",
             body: JSON.stringify({
               paymentRequestId: context.paymentRequestId,
@@ -497,7 +523,7 @@ export function BookingPortalPage({ token }: { token: string }) {
     setBusyMethod(method);
     setError(null);
     try {
-      await portalRequest(token, "/payment-method", {
+      await portalRequest(auth, "/payment-method", {
         method: "POST",
         body: JSON.stringify({
           paymentRequestId: data.paymentRequest.id,
@@ -527,7 +553,7 @@ export function BookingPortalPage({ token }: { token: string }) {
         clientSecret: string | null;
         paymentIntentId: string;
         status: string;
-      }>(token, "/payment-intent", {
+      }>(auth, "/payment-intent", {
         method: "POST",
         body: JSON.stringify({
           paymentRequestId: data.paymentRequest.id,
@@ -590,7 +616,7 @@ export function BookingPortalPage({ token }: { token: string }) {
     setCancellationMessage(null);
     try {
       const result = await portalRequest<{ kind: "requested" | "cancelled" }>(
-        token,
+        auth,
         "/cancellation",
         {
           method: "POST",
@@ -655,8 +681,8 @@ export function BookingPortalPage({ token }: { token: string }) {
 
   return (
     <div className="min-h-screen bg-[#f5f8f7]">
-      <Header />
-      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:py-16">
+      <Header solid />
+      <main className="mx-auto max-w-4xl px-4 pb-12 pt-28 sm:px-6 lg:pb-16">
         {loading ? (
           <div className="flex min-h-[360px] items-center justify-center">
             <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -706,6 +732,10 @@ export function BookingPortalPage({ token }: { token: string }) {
                 {data.booking.seats === 1 ? "persona" : "persone"}
               </div>
             </section>
+
+            {/* Dopo la scheda, non prima: chi apre il link deve vedere prima
+                di quale prenotazione si tratta, poi l'invito a collegarla. */}
+            <ClaimBookingBanner token={token} />
 
             {cancellationMessage && (
               <p className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
@@ -873,7 +903,7 @@ export function BookingPortalPage({ token }: { token: string }) {
                             options={{ clientSecret, locale: "it" }}
                           >
                             <PortalCardPayment
-                              token={token}
+                              auth={auth}
                               paymentIntentId={paymentIntentId}
                               amountCents={data.paymentRequest.amountCents}
                               onPaid={async () => {

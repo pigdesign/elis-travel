@@ -10,6 +10,7 @@ import { buildAccountAccessUrl } from "./customer-auth-emails";
 import { escapeHtml } from "./email-layout";
 import { issueCustomerAuthToken } from "./customer-auth-token";
 import { recordAccountEvent } from "./customer-auth-throttle";
+import { splitCustomerName } from "./customer-name";
 
 // ---------------------------------------------------------------------------
 // Creazione dell'account "ombra" a partire da una prenotazione.
@@ -52,6 +53,8 @@ async function findAccountByEmail(email: string) {
 export async function ensureShadowAccount(input: {
   email: string;
   createdVia?: "booking" | "admin";
+  /** Nome dal form di prenotazione, usato SOLO alla creazione. */
+  fullName?: string | null;
 }): Promise<typeof customerAccountsTable.$inferSelect | null> {
   const email = normalizeAccountEmail(input.email);
   if (!email) return null;
@@ -59,12 +62,18 @@ export async function ensureShadowAccount(input: {
   const existing = await findAccountByEmail(email);
   if (existing) return existing;
 
+  // Il nome viene registrato solo qui, alla creazione: un account che esiste
+  // gia non deve essere riscritto dalla prenotazione di un altro.
+  const { firstName, lastName } = splitCustomerName(input.fullName);
+
   const [created] = await db
     .insert(customerAccountsTable)
     .values({
       email,
       status: "pending",
       createdVia: input.createdVia ?? "booking",
+      firstName,
+      lastName,
     })
     // Due prenotazioni simultanee con lo stesso indirizzo: la seconda non deve
     // fallire, deve semplicemente ritrovare la riga dell'altra.
@@ -92,6 +101,7 @@ export async function prepareBookingInvite(
       .select({
         id: excursionBookingsTable.id,
         email: excursionBookingsTable.email,
+        customerName: excursionBookingsTable.customerName,
       })
       .from(excursionBookingsTable)
       .where(eq(excursionBookingsTable.id, bookingId))
@@ -102,6 +112,7 @@ export async function prepareBookingInvite(
     const account = await ensureShadowAccount({
       email: booking.email,
       createdVia: "booking",
+      fullName: booking.customerName,
     });
     if (!account || account.status === "blocked") return null;
     // Un indirizzo che rimbalza non riceverebbe comunque il messaggio: inutile

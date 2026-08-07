@@ -21,6 +21,7 @@ import { TermsConditionsPage } from "@/pages/(public)/TermsConditionsPage";
 import { BookingPortalPage } from "@/pages/(public)/BookingPortalPage";
 import { AccountLoginPage } from "@/pages/(public)/AccountLoginPage";
 import { AccountHomePage } from "@/pages/(public)/AccountHomePage";
+import { AccountTripsPage } from "@/pages/(public)/AccountTripsPage";
 import { RequireCustomer } from "@/components/customer/RequireCustomer";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
@@ -90,9 +91,19 @@ function readBookingPortalToken(legacyToken?: string): string {
   return token;
 }
 
+function readBookingIdFromQuery(): string | null {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("b") ?? "";
+  // Solo UUID: finisce in un header e in un confronto di proprieta lato server.
+  return /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+}
+
 function BookingPortalRoute({ legacyToken }: { legacyToken?: string }) {
+  // Entrambi letti una sola volta al montaggio: readBookingPortalToken ripulisce
+  // l'URL, quindi una seconda lettura non troverebbe piu nulla.
+  const [bookingId] = useState(() => readBookingIdFromQuery());
   const [token] = useState(() => readBookingPortalToken(legacyToken));
-  return <BookingPortalPage token={token} />;
+  return <BookingPortalPage token={token} bookingId={bookingId} />;
 }
 
 function Router() {
@@ -131,6 +142,13 @@ function Router() {
         {() => (
           <RequireCustomer>
             <AccountHomePage />
+          </RequireCustomer>
+        )}
+      </Route>
+      <Route path="/area-clienti/viaggi">
+        {() => (
+          <RequireCustomer>
+            <AccountTripsPage />
           </RequireCustomer>
         )}
       </Route>

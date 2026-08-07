@@ -5,6 +5,7 @@ import {
   readAccountTokenFromLocation,
   stripTokenFromUrl,
 } from "@/lib/account-access-token";
+import { Header } from "@/components/layout/Header";
 import logoImg from "@assets/logo2.webp";
 
 type Phase =
@@ -81,8 +82,10 @@ export function AccountLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/5 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/5">
+      <Header solid />
+      <div className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-4 pb-16 pt-28">
+       <div className="w-full">
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-border/50">
           <div className="flex flex-col items-center mb-8">
             <img
@@ -188,6 +191,7 @@ export function AccountLoginPage() {
           )}
         </div>
       </div>
+       </div>
     </div>
   );
 }

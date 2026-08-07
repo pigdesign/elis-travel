@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import {
   customerAccountBookingsTable,
   customerAccountsTable,
+  excursionBookingsTable,
   normalizeAccountEmail,
 } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -23,6 +24,11 @@ import {
   checkMagicLinkThrottle,
   recordAccountEvent,
 } from "../services/customer-auth-throttle";
+import {
+  isBookingScope,
+  listAccountBookings,
+} from "../services/account-bookings";
+import { splitCustomerName } from "../services/customer-name";
 
 const router = Router();
 
@@ -249,6 +255,25 @@ router.post("/account/magic-link/consume", async (req, res) => {
         linkedVia: "invite_token",
       })
       .onConflictDoNothing();
+
+    // Se l'account non ha ancora un nome, lo prende dalla prenotazione appena
+    // collegata: serve a rivolgersi al cliente per nome invece che con
+    // un'etichetta generica. Riempie solo i campi vuoti, non sovrascrive mai
+    // un profilo gia compilato.
+    if (!account.firstName && !account.lastName) {
+      const [linkedBooking] = await db
+        .select({ customerName: excursionBookingsTable.customerName })
+        .from(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.id, consumed.bookingId))
+        .limit(1);
+      const nome = splitCustomerName(linkedBooking?.customerName);
+      if (nome.firstName) {
+        await db
+          .update(customerAccountsTable)
+          .set({ ...nome, updatedAt: new Date() })
+          .where(eq(customerAccountsTable.id, account.id));
+      }
+    }
     await recordAccountEvent({
       eventType: "booking_linked",
       accountId: account.id,
@@ -305,6 +330,28 @@ router.post("/account/logout", async (req, res) => {
 
 router.get("/account/me", requireCustomer, (req, res) => {
   res.json({ account: accountSummary(req.customerAccount!) });
+});
+
+/**
+ * Elenco dei viaggi dell'account.
+ *
+ * Senza `scope` restituisce tutto: la panoramica ha bisogno dell'insieme
+ * completo per calcolare "cosa manca" senza fare tre chiamate.
+ */
+router.get("/account/bookings", requireCustomer, async (req, res) => {
+  const raw = req.query.scope;
+  if (raw !== undefined && !isBookingScope(raw)) {
+    res.status(400).json({
+      error: "Filtro non valido. Valori ammessi: upcoming, past, cancelled.",
+    });
+    return;
+  }
+
+  const bookings = await listAccountBookings({
+    accountId: req.customerAccount!.id,
+    scope: raw,
+  });
+  res.json({ bookings });
 });
 
 export default router;
