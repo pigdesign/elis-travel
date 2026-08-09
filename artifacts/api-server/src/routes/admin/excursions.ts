@@ -73,6 +73,10 @@ import {
   getPaymentSettings,
 } from "../../services/excursion-pricing";
 import { validateExcursionAdminInput } from "../../services/excursion-admin-validation";
+import {
+  calcFinancials,
+  type ExcursionRevenue,
+} from "../../services/excursion-financials";
 
 const VALID_PAYMENT_STATUSES = [
   "pending",
@@ -205,22 +209,48 @@ async function getPendingRequestsCounts(
   return new Map(rows.map((row) => [row.excursionId, row.count ?? 0]));
 }
 
-function calcFinancials(e: typeof excursionsTable.$inferSelect) {
-  const price = parseFloat(e.pricePerPerson ?? "0");
-  const meal = parseFloat(e.mealCostPerPerson ?? "0");
-  const entrance = parseFloat(e.entranceCostPerPerson ?? "0");
-  const extra = parseFloat(e.extraCostPerPerson ?? "0");
-  const vehicleCost = parseFloat(e.vehicleFixedCost ?? "0");
-  // Altri costi: fissi a carico dell'agenzia, sottratti UNA sola volta (NON per persona).
-  const otherCosts = parseFloat(e.otherCostsTotal ?? "0");
-  const count = e.adherentsCount;
+/**
+ * Ricavi di una gita presi dalle prenotazioni che occupano un posto: stesso
+ * filtro dei posti occupati (`getOccupiedSeatsInTransaction`), quindi niente
+ * annullate né posti rilasciati. Il calcolo sta in `calcFinancials`.
+ */
+async function getExcursionRevenues(
+  excursionId?: string,
+): Promise<Map<string, ExcursionRevenue>> {
+  const rows = await db
+    .select({
+      excursionId: excursionBookingsTable.excursionId,
+      totalCents: sql<number>`coalesce(sum(${excursionBookingsTable.totalAmountCents}), 0)::int`,
+      legacySeats: sql<number>`coalesce(sum(case when ${excursionBookingsTable.totalAmountCents} is null then ${excursionBookingsTable.seats} else 0 end), 0)::int`,
+    })
+    .from(excursionBookingsTable)
+    .where(
+      and(
+        isNull(excursionBookingsTable.cancelledAt),
+        inArray(excursionBookingsTable.seatStatus, ["held", "confirmed"]),
+        excursionId
+          ? eq(excursionBookingsTable.excursionId, excursionId)
+          : undefined,
+      ),
+    )
+    .groupBy(excursionBookingsTable.excursionId);
 
-  const ricaviStimati = price * count;
-  const costiVariabili = (meal + entrance + extra) * count;
-  const costiTotali = costiVariabili + vehicleCost + otherCosts;
-  const margineNetto = ricaviStimati - costiTotali;
+  return new Map(
+    rows.map((row) => [
+      row.excursionId,
+      {
+        totalCents: row.totalCents ?? 0,
+        legacySeats: row.legacySeats ?? 0,
+      },
+    ]),
+  );
+}
 
-  return { ricaviStimati, costiVariabili, costiTotali, margineNetto };
+async function getExcursionRevenue(
+  excursionId: string,
+): Promise<ExcursionRevenue> {
+  const revenues = await getExcursionRevenues(excursionId);
+  return revenues.get(excursionId) ?? { totalCents: 0, legacySeats: 0 };
 }
 
 // Sanitizza le voci "extra": scarta righe non valide/vuote, forza price >= 0.
@@ -286,14 +316,18 @@ function normalizeTags(input: unknown): string[] {
 
 router.get("/excursions", async (_req, res) => {
   try {
-    const [excursions, pendingCounts] = await Promise.all([
+    const [excursions, pendingCounts, revenues] = await Promise.all([
       db.select().from(excursionsTable).orderBy(desc(excursionsTable.date)),
       getPendingRequestsCounts(),
+      getExcursionRevenues(),
     ]);
 
     const result = excursions.map((e) => ({
       ...e,
-      ...calcFinancials(e),
+      ...calcFinancials(
+        e,
+        revenues.get(e.id) ?? { totalCents: 0, legacySeats: 0 },
+      ),
       pendingRequestsCount: pendingCounts.get(e.id) ?? 0,
     }));
 
@@ -429,7 +463,8 @@ router.post("/excursions", async (req, res) => {
 
     res.status(201).json({
       ...created,
-      ...calcFinancials(created),
+      // Gita appena creata: non può avere prenotazioni, inutile interrogarle.
+      ...calcFinancials(created, { totalCents: 0, legacySeats: 0 }),
       pendingRequestsCount: 0,
     });
   } catch (err) {
@@ -453,45 +488,47 @@ router.get("/excursions/:id", async (req, res) => {
       return;
     }
 
-    const [bookings, pickupPoints, pendingRequestsCount] = await Promise.all([
-      db
-        .select()
-        .from(excursionBookingsTable)
-        .where(eq(excursionBookingsTable.excursionId, id))
-        .orderBy(desc(excursionBookingsTable.bookedAt)),
-      db
-        .select({
-          id: excursionPickupPointsTable.id,
-          excursionId: excursionPickupPointsTable.excursionId,
-          pickupLocationId: excursionPickupPointsTable.pickupLocationId,
-          pickupTime: excursionPickupPointsTable.pickupTime,
-          sortOrder: excursionPickupPointsTable.sortOrder,
-          createdAt: excursionPickupPointsTable.createdAt,
-          location: {
-            id: pickupLocationsTable.id,
-            name: pickupLocationsTable.name,
-            city: pickupLocationsTable.city,
-            address: pickupLocationsTable.address,
-            province: pickupLocationsTable.province,
-            sortOrder: pickupLocationsTable.sortOrder,
-          },
-        })
-        .from(excursionPickupPointsTable)
-        .innerJoin(
-          pickupLocationsTable,
-          eq(
-            excursionPickupPointsTable.pickupLocationId,
-            pickupLocationsTable.id,
-          ),
-        )
-        .where(eq(excursionPickupPointsTable.excursionId, id))
-        .orderBy(asc(excursionPickupPointsTable.sortOrder)),
-      getPendingRequestsCount(id),
-    ]);
+    const [bookings, pickupPoints, pendingRequestsCount, revenue] =
+      await Promise.all([
+        db
+          .select()
+          .from(excursionBookingsTable)
+          .where(eq(excursionBookingsTable.excursionId, id))
+          .orderBy(desc(excursionBookingsTable.bookedAt)),
+        db
+          .select({
+            id: excursionPickupPointsTable.id,
+            excursionId: excursionPickupPointsTable.excursionId,
+            pickupLocationId: excursionPickupPointsTable.pickupLocationId,
+            pickupTime: excursionPickupPointsTable.pickupTime,
+            sortOrder: excursionPickupPointsTable.sortOrder,
+            createdAt: excursionPickupPointsTable.createdAt,
+            location: {
+              id: pickupLocationsTable.id,
+              name: pickupLocationsTable.name,
+              city: pickupLocationsTable.city,
+              address: pickupLocationsTable.address,
+              province: pickupLocationsTable.province,
+              sortOrder: pickupLocationsTable.sortOrder,
+            },
+          })
+          .from(excursionPickupPointsTable)
+          .innerJoin(
+            pickupLocationsTable,
+            eq(
+              excursionPickupPointsTable.pickupLocationId,
+              pickupLocationsTable.id,
+            ),
+          )
+          .where(eq(excursionPickupPointsTable.excursionId, id))
+          .orderBy(asc(excursionPickupPointsTable.sortOrder)),
+        getPendingRequestsCount(id),
+        getExcursionRevenue(id),
+      ]);
 
     res.json({
       ...excursion,
-      ...calcFinancials(excursion),
+      ...calcFinancials(excursion, revenue),
       pendingRequestsCount,
       bookings,
       pickupPoints,
@@ -515,10 +552,13 @@ router.post("/excursions/:id/cancel-trip", async (req, res) => {
       res.status(404).json({ error: "Gita non trovata." });
       return;
     }
-    const pendingRequestsCount = await getPendingRequestsCount(id);
+    const [pendingRequestsCount, revenue] = await Promise.all([
+      getPendingRequestsCount(id),
+      getExcursionRevenue(id),
+    ]);
     res.json({
       ...cancelled,
-      ...calcFinancials(cancelled),
+      ...calcFinancials(cancelled, revenue),
       pendingRequestsCount,
       cancellation,
     });
@@ -629,10 +669,13 @@ router.post("/excursions/:id/complete-trip", async (req, res) => {
       return;
     }
 
-    const pendingRequestsCount = await getPendingRequestsCount(id);
+    const [pendingRequestsCount, revenue] = await Promise.all([
+      getPendingRequestsCount(id),
+      getExcursionRevenue(id),
+    ]);
     res.json({
       ...completion.row,
-      ...calcFinancials(completion.row),
+      ...calcFinancials(completion.row, revenue),
       pendingRequestsCount,
       alreadyApplied: completion.alreadyApplied,
     });
@@ -1075,8 +1118,15 @@ router.patch("/excursions/:id", async (req, res) => {
     }
     const updated = updateResult.row;
 
-    const pendingRequestsCount = await getPendingRequestsCount(id);
-    res.json({ ...updated, ...calcFinancials(updated), pendingRequestsCount });
+    const [pendingRequestsCount, revenue] = await Promise.all([
+      getPendingRequestsCount(id),
+      getExcursionRevenue(id),
+    ]);
+    res.json({
+      ...updated,
+      ...calcFinancials(updated, revenue),
+      pendingRequestsCount,
+    });
   } catch (err) {
     if (err instanceof Error && err.message === "EXCURSION_DEPARTED") {
       res.status(409).json({
@@ -2061,10 +2111,13 @@ router.patch("/excursions/:id/vehicle", async (req, res) => {
       return;
     }
 
-    const pendingRequestsCount = await getPendingRequestsCount(id);
+    const [pendingRequestsCount, revenue] = await Promise.all([
+      getPendingRequestsCount(id),
+      getExcursionRevenue(id),
+    ]);
     res.json({
       ...result.updated,
-      ...calcFinancials(result.updated),
+      ...calcFinancials(result.updated, revenue),
       pendingRequestsCount,
     });
   } catch (err) {
