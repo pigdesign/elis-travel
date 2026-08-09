@@ -15,7 +15,7 @@ export function HeroSection() {
           className="w-full h-full object-cover"
         />
       </div>
-      <div className="container relative z-20 mx-auto px-4 md:px-8 mt-20">
+      <div className="container relative z-20 mx-auto px-4 md:px-8 mt-20 lg:mt-14">
         <div className="max-w-4xl mx-0 text-center text-white">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -23,21 +23,24 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-left"
           >
-            <span className="inline-block py-1 px-3 rounded-full backdrop-blur-md border border-white/30 tracking-widest uppercase mb-6 text-[#ffffff] bg-[#fa8d34] border-t-[#ffffff00] border-r-[#ffffff00] border-b-[#ffffff00] border-l-[#ffffff00] border-t-[3px] border-r-[3px] border-b-[3px] border-l-[3px] font-bold text-[16px]">Esplora con noi</span>
+            <span className="inline-block py-1 px-3 rounded-full backdrop-blur-md border border-white/30 tracking-widest uppercase mb-6 lg:mb-4 text-[#ffffff] bg-[#fa8d34] border-t-[#ffffff00] border-r-[#ffffff00] border-b-[#ffffff00] border-l-[#ffffff00] border-t-[3px] border-r-[3px] border-b-[3px] border-l-[3px] font-bold text-[16px]">Esplora con noi</span>
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-            className="text-white drop-shadow-2xl font-black text-left mb-[30px] text-6xl md:text-8xl lg:text-[100px] xl:text-[130px] leading-tight md:leading-[1.1] lg:leading-[126px]"
+            /* Da lg in su la misura segue anche l'altezza della finestra: su un
+               13" (1280x800) il titolo da 130px mangiava mezzo schermo. Il cap a
+               130px lascia invariato l'aspetto sui monitor grandi. */
+            className="text-white drop-shadow-2xl font-black text-left mb-[30px] lg:mb-5 text-6xl md:text-8xl lg:text-[min(9vw,13.5vh,130px)] leading-tight md:leading-[1.1] lg:leading-[0.95]"
           >Parti. Scopri. Ricorda.</motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-            className="text-lg md:text-xl mb-10 max-w-2xl mx-0 leading-relaxed text-left font-bold bg-[transparent] text-[#ffffff]"
+            className="text-lg md:text-xl mb-10 lg:mb-8 max-w-2xl mx-0 leading-relaxed text-left font-bold bg-[transparent] text-[#ffffff]"
           >
             Esperienze di viaggio organizzate con cura, per trasformare ogni partenza in un ricordo da portare con te.
           </motion.p>
