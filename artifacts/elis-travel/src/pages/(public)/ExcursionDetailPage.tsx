@@ -3,8 +3,12 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { ScheduleTimeline } from "@/components/shared/ScheduleTimeline";
-import { ExcursionBookingForm } from "@/components/shared/ExcursionBookingForm";
-import { useEffect } from "react";
+import {
+  ExcursionBookingForm,
+  isCheckoutStep,
+  type BookingStep,
+} from "@/components/shared/ExcursionBookingForm";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useGetPublicExcursion } from "@workspace/api-client-react";
 import { useSeo, extractIdFromSlug, buildSlugUrl, truncate } from "@/lib/seo";
@@ -62,6 +66,24 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
   const excursionId = extractIdFromSlug(excursionIdOrSlug);
   const { data: excursion, isLoading, isError, error } = useGetPublicExcursion(excursionId);
   const [, setLocation] = useLocation();
+
+  // Quando la prenotazione arriva al pagamento la pagina smette di presentare
+  // la gita: chi sta pagando ha già scelto, e i blocchi promozionali (con i
+  // loro "Prenota un posto") diventano solo un invito a sbagliare.
+  const [bookingStep, setBookingStep] = useState<BookingStep>("form");
+  const inCheckout = isCheckoutStep(bookingStep);
+  // Stabile: il form la usa come dipendenza di un effect.
+  const handleStepChange = useCallback((next: BookingStep) => {
+    setBookingStep(next);
+  }, []);
+
+  // Entrando nel pagamento la pagina si accorcia di colpo: senza questo, chi
+  // aveva scrollato resta appeso a un punto che non esiste più.
+  const bookingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!inCheckout) return;
+    bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [inCheckout]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -338,20 +360,31 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                   </p>
                 </div>
 
-                <div className="relative z-20 hidden self-end lg:block lg:translate-y-24">
-                  {priceCard}
-                </div>
+                {/* Durante il pagamento sparisce anche la card prezzo: il suo
+                    "Prenota un posto" ripartirebbe da capo una prenotazione già
+                    in corso. */}
+                {!inCheckout && (
+                  <div className="relative z-20 hidden self-end lg:block lg:translate-y-24">
+                    {priceCard}
+                  </div>
+                )}
               </div>
             </div>
           </section>
 
           <section className="relative z-20 pb-10 pt-2 md:pt-4 lg:pt-0">
             <div className="container mx-auto max-w-6xl px-4 md:px-8">
-              <div className="mx-auto mb-6 max-w-xl lg:hidden">
-                {priceCard}
-              </div>
+              {!inCheckout && (
+                <div className="mx-auto mb-6 max-w-xl lg:hidden">
+                  {priceCard}
+                </div>
+              )}
 
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)]">
+              <div
+                className={`grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)] ${
+                  inCheckout ? "hidden" : ""
+                }`}
+              >
                 <div className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_14px_40px_rgba(20,36,43,0.08)] backdrop-blur-sm md:p-6">
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     {quickFacts.map((fact) => {
@@ -383,14 +416,18 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
             <div className="container mx-auto max-w-6xl px-4 md:px-8">
               <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)]">
                 <div className="space-y-8">
-                  <ScheduleTimeline
-                    days={scheduleDays}
-                    title="Programma della giornata"
-                    mainVisual={mainVisual}
-                    imageAlt={excursion?.name}
-                  />
+                  {!inCheckout && (
+                    <ScheduleTimeline
+                      days={scheduleDays}
+                      title="Programma della giornata"
+                      mainVisual={mainVisual}
+                      imageAlt={excursion?.name}
+                    />
+                  )}
 
-                  {excursion.pickupPoints && excursion.pickupPoints.length > 0 && (
+                  {!inCheckout &&
+                    excursion.pickupPoints &&
+                    excursion.pickupPoints.length > 0 && (
                     <div className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)] md:p-8">
                       <h2 className="mb-4 flex items-center gap-2 text-xl font-serif font-bold text-foreground">
                         <Bus className="h-5 w-5 text-primary" />
@@ -434,10 +471,19 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                     </div>
                   )}
 
-                  <ExcursionBookingForm excursion={excursion} />
+                  <div ref={bookingRef} className="scroll-mt-28">
+                    <ExcursionBookingForm
+                      excursion={excursion}
+                      onStepChange={handleStepChange}
+                    />
+                  </div>
                 </div>
 
-                <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+                <aside
+                  className={`space-y-6 lg:sticky lg:top-24 lg:self-start ${
+                    inCheckout ? "hidden" : ""
+                  }`}
+                >
                   {includedItems.length > 0 && (
                     <div className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)]">
                       <h2 className="mb-4 text-xl font-serif font-bold text-foreground">

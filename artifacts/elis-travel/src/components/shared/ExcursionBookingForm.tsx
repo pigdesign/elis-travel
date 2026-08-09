@@ -516,7 +516,22 @@ function StripeSetupStep({
 // Form principale
 // ---------------------------------------------------------------------------
 
-type Step = "form" | "summary" | "stripe" | "instructions" | "done";
+export type BookingStep =
+  | "form"
+  | "summary"
+  | "stripe"
+  | "instructions"
+  | "done";
+type Step = BookingStep;
+
+/**
+ * Dagli step operativi in poi la prenotazione è già partita: la pagina attorno
+ * deve smettere di presentare la gita (programma, punti di raccolta, cosa
+ * include) e lasciare campo libero al pagamento.
+ */
+export function isCheckoutStep(step: BookingStep): boolean {
+  return step === "stripe" || step === "instructions" || step === "done";
+}
 type BookingParticipantDraftInput = QuoteParticipantInput & {
   firstName: string;
   lastName: string;
@@ -524,8 +539,11 @@ type BookingParticipantDraftInput = QuoteParticipantInput & {
 
 export function ExcursionBookingForm({
   excursion,
+  onStepChange,
 }: {
   excursion: PublicExcursionDetail;
+  /** Segnala alla pagina a che punto è la prenotazione (vedi isCheckoutStep). */
+  onStepChange?: (step: BookingStep) => void;
 }) {
   const queryClient = useQueryClient();
   const excursionId = excursion.id;
@@ -631,6 +649,10 @@ export function ExcursionBookingForm({
   const [bookingAttemptId] = useState(createBookingAttemptId);
 
   const [step, setStep] = useState<Step>("form");
+
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [booking, setBooking] = useState<PublicBookingResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -1971,37 +1993,8 @@ export function ExcursionBookingForm({
 
             {hasPickupPoints && (
               <div className="space-y-3">
-                {/* Tutti allo stesso punto (default) oppure un punto per partecipante */}
-                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-[#f7faf9] px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={!splitPickup}
-                    onChange={(e) => {
-                      const sameForAll = e.target.checked;
-                      setSplitPickup(!sameForAll);
-                      if (!sameForAll) {
-                        // Passaggio a "punti divisi": precompilo tutti col punto comune scelto.
-                        setParticipantPickups(
-                          Array.from(
-                            { length: totalPeople },
-                            () => pickupPointId || "",
-                          ),
-                        );
-                      }
-                    }}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
-                    data-testid="checkbox-same-pickup"
-                  />
-                  <div>
-                    <span className="text-sm font-semibold text-foreground">
-                      Tutti allo stesso punto di raccolta
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      Disattiva se i partecipanti partono da punti diversi.
-                    </span>
-                  </div>
-                </label>
-
+                {/* Il punto unico è il caso normale e sta in cima; la scelta per
+                    partecipante è un'opzione che si attiva sotto. */}
                 {!splitPickup ? (
                   <div>
                     <label
@@ -2089,6 +2082,37 @@ export function ExcursionBookingForm({
                     })}
                   </div>
                 )}
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-[#f7faf9] px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={splitPickup}
+                    onChange={(e) => {
+                      const split = e.target.checked;
+                      setSplitPickup(split);
+                      if (split) {
+                        // Si parte dal punto comune già scelto: chi prenota
+                        // cambia solo le persone che partono da un altro punto.
+                        setParticipantPickups((prev) =>
+                          Array.from(
+                            { length: totalPeople },
+                            (_, i) => prev[i] || pickupPointId || "",
+                          ),
+                        );
+                      }
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                    data-testid="checkbox-split-pickup"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-foreground">
+                      Assegna punti di raccolta differenti
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Attiva se i partecipanti partono da punti diversi.
+                    </span>
+                  </div>
+                </label>
               </div>
             )}
           </div>
