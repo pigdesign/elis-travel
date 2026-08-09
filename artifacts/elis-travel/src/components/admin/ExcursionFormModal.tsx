@@ -19,6 +19,7 @@ import {
   useAddExcursionPickupPoint,
   useDeleteExcursionPickupPoint,
   useUpdateExcursionPickupPoint,
+  useListAgeRanges,
   useListExcursionAgePrices,
   useUpdateExcursionAgePrices,
   getGetExcursionQueryKey,
@@ -400,48 +401,29 @@ function toPayload(s: FormState): ExcursionCreateInput {
   };
 }
 
-// ---- Prezzi per fascia età (solo modifica, gite standard) ----
+// ---- Prezzi per fascia età (gite standard) ----
 
+// Componente controllato: i valori vivono nel form e partono col bottone di
+// salvataggio generale, anche quando la gita non esiste ancora. Le fasce
+// arrivano dalle Impostazioni, quindi si possono compilare già in creazione.
 function AgePricesSection({
-  excursionId,
   adultPrice,
+  values,
+  onChange,
 }: {
-  excursionId: string;
   adultPrice: string;
+  values: Record<string, string>;
+  onChange: (ageRangeId: string, value: string) => void;
 }) {
-  const queryClient = useQueryClient();
-  const { data: rows = [], isLoading } = useListExcursionAgePrices(excursionId);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [savedFlash, setSavedFlash] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (rows.length > 0 && !loaded) {
-      setValues(
-        Object.fromEntries(rows.map((r) => [r.ageRangeId, r.price ?? ""])),
-      );
-      setLoaded(true);
-    }
-  }, [rows, loaded]);
-
-  const { mutateAsync: savePrices, isPending } = useUpdateExcursionAgePrices({
-    mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({
-          queryKey: getListExcursionAgePricesQueryKey(excursionId),
-        });
-        setSavedFlash(true);
-        setTimeout(() => setSavedFlash(false), 2000);
-      },
-    },
-  });
+  const { data: allRanges = [], isLoading } = useListAgeRanges();
+  const ranges = useMemo(() => allRanges.filter((r) => r.active), [allRanges]);
 
   if (isLoading) {
     return (
       <p className="text-xs text-muted-foreground">Caricamento fasce età…</p>
     );
   }
-  if (rows.length === 0) {
+  if (ranges.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
         Nessuna fascia età attiva: configurale nelle Impostazioni.
@@ -453,12 +435,11 @@ function AgePricesSection({
     <div className="space-y-2">
       <p className="text-[11px] text-muted-foreground">
         Gli adulti pagano il prezzo base ({adultPrice || "0"} €). Per ogni
-        fascia: 0 = gratuito, vuoto = stesso prezzo adulto. Salvataggio separato
-        dal resto del form.
+        fascia: 0 = gratuito, vuoto = stesso prezzo adulto.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {rows.map((r) => (
-          <div key={r.ageRangeId}>
+        {ranges.map((r) => (
+          <div key={r.id}>
             <label className="block text-xs font-medium text-foreground mb-1">
               {r.label}
             </label>
@@ -467,13 +448,8 @@ function AgePricesSection({
                 type="number"
                 step="0.01"
                 min="0"
-                value={values[r.ageRangeId] ?? ""}
-                onChange={(e) =>
-                  setValues((prev) => ({
-                    ...prev,
-                    [r.ageRangeId]: e.target.value,
-                  }))
-                }
+                value={values[r.id] ?? ""}
+                onChange={(e) => onChange(r.id, e.target.value)}
                 placeholder="= adulto"
                 className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 data-testid={`input-age-price-${r.label.replace(/\s+/g, "-")}`}
@@ -485,66 +461,55 @@ function AgePricesSection({
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() =>
-            void savePrices({
-              id: excursionId,
-              data: {
-                prices: rows.map((r) => ({
-                  ageRangeId: r.ageRangeId,
-                  price:
-                    (values[r.ageRangeId] ?? "").trim() === ""
-                      ? null
-                      : values[r.ageRangeId],
-                })),
-              },
-            })
-          }
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
-          data-testid="button-save-age-prices"
-        >
-          {isPending ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Save className="w-3.5 h-3.5" />
-          )}
-          Salva prezzi fasce
-        </button>
-        {savedFlash && (
-          <span className="text-xs font-medium text-emerald-700">Salvato!</span>
-        )}
-      </div>
     </div>
   );
 }
 
-// ---- Pickup points section (edit mode only) ----
+// ---- Punti di raccolta ----
 
+/** Punto scelto prima che la gita esista: sul server non c'è ancora nulla. */
+export type DraftPickupPoint = {
+  pickupLocationId: string;
+  pickupTime: string | null;
+};
+
+/**
+ * In modifica i punti stanno sul server e ogni aggiunta/rimozione parte subito.
+ * In creazione la gita non ha ancora un id: gli stessi comandi lavorano sulla
+ * lista `draftPoints`, che il form invia dopo aver creato la gita. La UI (e i
+ * supplementi per provincia che ne derivano) è identica nei due casi.
+ */
 function PickupPointsSection({
   excursionId,
+  draftPoints,
+  onDraftChange,
   surcharges,
   onSurchargeChange,
   surchargeError,
 }: {
-  excursionId: string;
+  excursionId?: string;
+  draftPoints: DraftPickupPoint[];
+  onDraftChange: (next: DraftPickupPoint[]) => void;
   surcharges: Record<string, string>;
   onSurchargeChange: (code: string, value: string) => void;
   surchargeError?: string;
 }) {
   const queryClient = useQueryClient();
   const { data: allLocations = [] } = useListPickupLocations();
-  const { data: points = [], isLoading } =
-    useListExcursionPickupPoints(excursionId);
+  const { data: serverPoints = [], isLoading: isLoadingServer } =
+    useListExcursionPickupPoints(excursionId ?? "", {
+      query: {
+        enabled: !!excursionId,
+        queryKey: getListExcursionPickupPointsQueryKey(excursionId ?? ""),
+      },
+    });
 
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [newTime, setNewTime] = useState("");
 
   const invalidate = () =>
     void queryClient.invalidateQueries({
-      queryKey: getListExcursionPickupPointsQueryKey(excursionId),
+      queryKey: getListExcursionPickupPointsQueryKey(excursionId ?? ""),
     });
 
   const { mutate: addPoint, isPending: isAdding } = useAddExcursionPickupPoint({
@@ -564,6 +529,91 @@ function PickupPointsSection({
   const { mutate: updateTime } = useUpdateExcursionPickupPoint({
     mutation: { onSuccess: invalidate },
   });
+
+  // Forma comune alle due modalità: `id` esiste solo per i punti già sul server.
+  const points = useMemo(() => {
+    if (excursionId) {
+      return serverPoints.map((p) => ({
+        key: p.id,
+        id: p.id as string | null,
+        pickupLocationId: p.pickupLocationId,
+        pickupTime: p.pickupTime,
+        location: p.location,
+      }));
+    }
+    const byId = new Map(allLocations.map((l) => [l.id, l]));
+    return draftPoints.flatMap((d) => {
+      const location = byId.get(d.pickupLocationId);
+      // Una location cancellata dalle Impostazioni mentre il form è aperto non
+      // deve far sparire la riga in modo silenzioso: senza dati da mostrare la
+      // si salta, e il salvataggio la ignorerà comunque.
+      return location
+        ? [
+            {
+              key: d.pickupLocationId,
+              id: null as string | null,
+              pickupLocationId: d.pickupLocationId,
+              pickupTime: d.pickupTime,
+              location,
+            },
+          ]
+        : [];
+    });
+  }, [excursionId, serverPoints, draftPoints, allLocations]);
+
+  const isLoading = excursionId ? isLoadingServer : false;
+
+  const handleAdd = () => {
+    if (!selectedLocationId) return;
+    const pickupTime = newTime.trim() || null;
+    if (excursionId) {
+      addPoint({
+        id: excursionId,
+        data: { pickupLocationId: selectedLocationId, pickupTime },
+      });
+      return;
+    }
+    onDraftChange([
+      ...draftPoints,
+      { pickupLocationId: selectedLocationId, pickupTime },
+    ]);
+    setSelectedLocationId("");
+    setNewTime("");
+  };
+
+  const handleRemove = (point: (typeof points)[number]) => {
+    if (excursionId && point.id) {
+      removePoint({ id: excursionId, ppId: point.id });
+      return;
+    }
+    onDraftChange(
+      draftPoints.filter(
+        (d) => d.pickupLocationId !== point.pickupLocationId,
+      ),
+    );
+  };
+
+  const handleTimeChange = (
+    point: (typeof points)[number],
+    value: string,
+  ) => {
+    const pickupTime = value.trim() || null;
+    if (excursionId && point.id) {
+      updateTime({
+        id: excursionId,
+        ppId: point.id,
+        data: { pickupTime },
+      });
+      return;
+    }
+    onDraftChange(
+      draftPoints.map((d) =>
+        d.pickupLocationId === point.pickupLocationId
+          ? { ...d, pickupTime }
+          : d,
+      ),
+    );
+  };
 
   const usedLocationIds = new Set(points.map((p) => p.pickupLocationId));
   const availableLocations = allLocations.filter(
@@ -599,7 +649,7 @@ function PickupPointsSection({
           )}
           {points.map((pp) => (
             <li
-              key={pp.id}
+              key={pp.key}
               className="flex items-center gap-2 px-3 py-2 border border-border rounded-xl"
             >
               <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -615,13 +665,8 @@ function PickupPointsSection({
                 type="text"
                 defaultValue={pp.pickupTime ?? ""}
                 onBlur={(e) => {
-                  const t = e.target.value.trim();
-                  if (t !== (pp.pickupTime ?? "")) {
-                    updateTime({
-                      id: excursionId,
-                      ppId: pp.id,
-                      data: { pickupTime: t || null },
-                    });
+                  if (e.target.value.trim() !== (pp.pickupTime ?? "")) {
+                    handleTimeChange(pp, e.target.value);
                   }
                 }}
                 placeholder="Orario"
@@ -629,7 +674,7 @@ function PickupPointsSection({
               />
               <button
                 type="button"
-                onClick={() => removePoint({ id: excursionId, ppId: pp.id })}
+                onClick={() => handleRemove(pp)}
                 className="p-1 text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -674,15 +719,7 @@ function PickupPointsSection({
           <button
             type="button"
             disabled={!selectedLocationId || isAdding}
-            onClick={() =>
-              addPoint({
-                id: excursionId,
-                data: {
-                  pickupLocationId: selectedLocationId,
-                  pickupTime: newTime.trim() || null,
-                },
-              })
-            }
+            onClick={handleAdd}
             className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-white disabled:opacity-50 mb-0.5"
           >
             {isAdding ? (
@@ -709,9 +746,9 @@ function PickupPointsSection({
           <p className="text-[11px] text-muted-foreground">
             Variazione tariffaria a persona in base alla provincia di raccolta:
             positivo = supplemento, negativo = sconto. Si imposta una volta per
-            provincia (vale per tutti i suoi punti) e si salva con "Salva
-            modifiche". Vuoto o 0 = nessuna variazione. Uno sconto non può
-            superare il prezzo base del partecipante.
+            provincia (vale per tutti i suoi punti) e si salva insieme alla
+            gita. Vuoto o 0 = nessuna variazione. Uno sconto non può superare il
+            prezzo base del partecipante.
           </p>
           {provinceCodes.map((code) => {
             const rawSurcharge = surcharges[code] ?? "";
@@ -848,6 +885,40 @@ export function ExcursionFormModal({
     useUpdateExcursion({
       mutation: { onSuccess: invalidate },
     });
+
+  // ---- Prezzi per fascia età e punti di raccolta ----
+  // Vivono qui, non nelle rispettive sezioni, perché partono col salvataggio
+  // generale: in creazione la gita non ha ancora un id e si scrivono subito
+  // dopo averla creata.
+  const [agePrices, setAgePrices] = useState<Record<string, string>>({});
+  const [draftPickupPoints, setDraftPickupPoints] = useState<
+    DraftPickupPoint[]
+  >([]);
+
+  const { mutateAsync: saveAgePrices } = useUpdateExcursionAgePrices();
+  const { mutateAsync: addPickupPoint } = useAddExcursionPickupPoint();
+
+  const { data: existingAgePrices } = useListExcursionAgePrices(
+    initial?.id ?? "",
+    {
+      query: {
+        enabled: mode === "edit" && !!initial?.id,
+        queryKey: getListExcursionAgePricesQueryKey(initial?.id ?? ""),
+      },
+    },
+  );
+
+  // Popola i campi una sola volta: dopo, comanda quello che l'utente digita.
+  const [agePricesLoaded, setAgePricesLoaded] = useState(false);
+  useEffect(() => {
+    if (agePricesLoaded || !existingAgePrices) return;
+    setAgePrices(
+      Object.fromEntries(
+        existingAgePrices.map((r) => [r.ageRangeId, r.price ?? ""]),
+      ),
+    );
+    setAgePricesLoaded(true);
+  }, [existingAgePrices, agePricesLoaded]);
 
   // Auto-fill vehicle fixed cost & capacity when picking a vehicle (only if creating or empty)
   const selectedVehicle = useMemo(
@@ -1017,6 +1088,35 @@ export function ExcursionFormModal({
           data: updatePayload,
         });
       }
+
+      // La gita ora ha un id: si scrivono le fasce età e, se arriviamo dalla
+      // creazione, i punti di raccolta scelti prima che esistesse.
+      const priceEntries = Object.entries(agePrices);
+      if (priceEntries.length > 0) {
+        await saveAgePrices({
+          id: saved.id,
+          data: {
+            prices: priceEntries.map(([ageRangeId, price]) => ({
+              ageRangeId,
+              price: price.trim() === "" ? null : price,
+            })),
+          },
+        });
+      }
+      if (mode === "create" && draftPickupPoints.length > 0) {
+        // In sequenza: l'ordine di inserimento decide il sortOrder dei punti.
+        for (const point of draftPickupPoints) {
+          await addPickupPoint({ id: saved.id, data: point });
+        }
+      }
+      invalidate();
+      void queryClient.invalidateQueries({
+        queryKey: getListExcursionAgePricesQueryKey(saved.id),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: getListExcursionPickupPointsQueryKey(saved.id),
+      });
+
       onSaved?.(saved);
       onClose();
     } catch (err: unknown) {
@@ -1502,17 +1602,14 @@ export function ExcursionFormModal({
                   </p>
                 </div>
               </div>
-            ) : mode === "edit" && initial?.id ? (
-              <AgePricesSection
-                excursionId={initial.id}
-                adultPrice={form.pricePerPerson}
-              />
             ) : (
-              <p className="text-xs text-muted-foreground">
-                Gli adulti pagano il prezzo indicato sopra. I prezzi per fascia
-                età dei bambini si configurano dopo il primo salvataggio della
-                gita.
-              </p>
+              <AgePricesSection
+                adultPrice={form.pricePerPerson}
+                values={agePrices}
+                onChange={(ageRangeId, value) =>
+                  setAgePrices((prev) => ({ ...prev, [ageRangeId]: value }))
+                }
+              />
             )}
           </section>
 
@@ -2026,31 +2123,23 @@ export function ExcursionFormModal({
           </section>
 
           {/* Sezione: Punti di raccolta */}
-          {mode === "edit" && initial?.id ? (
-            <PickupPointsSection
-              excursionId={initial.id}
-              surcharges={form.provinceSurcharges}
-              onSurchargeChange={(code, value) =>
-                setForm((p) => ({
-                  ...p,
-                  provinceSurcharges: {
-                    ...p.provinceSurcharges,
-                    [code]: value,
-                  },
-                }))
-              }
-              surchargeError={fieldErrors.provinceSurcharges}
-            />
-          ) : (
-            <section className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Punti di raccolta
-              </h4>
-              <p className="text-xs text-muted-foreground bg-muted/40 rounded-xl px-3 py-2">
-                Salva prima la gita per aggiungere i punti di raccolta.
-              </p>
-            </section>
-          )}
+          <PickupPointsSection
+            excursionId={mode === "edit" ? initial?.id : undefined}
+            draftPoints={draftPickupPoints}
+            onDraftChange={setDraftPickupPoints}
+            surcharges={form.provinceSurcharges}
+            onSurchargeChange={(code, value) =>
+              setForm((p) => ({
+                ...p,
+                provinceSurcharges: {
+                  ...p.provinceSurcharges,
+                  [code]: value,
+                },
+              }))
+            }
+            surchargeError={fieldErrors.provinceSurcharges}
+          />
+
 
           {mode === "edit" && initial && "adherentsCount" in initial && (
             <section className="space-y-3">
