@@ -38,10 +38,35 @@ test("rifiuta intervalli, extra e supplementi non validi", () => {
     )?.field,
     "extras",
   );
+  // La variazione per provincia ammette il segno meno (sconto): qui si rifiuta
+  // solo ciò che non è un numero rappresentabile in centesimi.
   assert.equal(
-    validateExcursionAdminInput({ provinceSurcharges: { IM: -5 } }, "percent")
-      ?.field,
+    validateExcursionAdminInput(
+      { provinceSurcharges: { IM: "abc" } },
+      "percent",
+    )?.field,
     "provinceSurcharges",
+  );
+  assert.equal(
+    validateExcursionAdminInput(
+      { provinceSurcharges: { IM: -Number.MAX_VALUE } },
+      "percent",
+    )?.field,
+    "provinceSurcharges",
+  );
+});
+
+test("accetta lo sconto per provincia (valore negativo)", () => {
+  assert.equal(
+    validateExcursionAdminInput({ provinceSurcharges: { IM: -5 } }, "percent"),
+    null,
+  );
+  assert.equal(
+    validateExcursionAdminInput(
+      { provinceSurcharges: { IM: "-12,50", SV: "8.00" } },
+      "percent",
+    ),
+    null,
   );
 });
 

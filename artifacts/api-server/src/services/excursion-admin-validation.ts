@@ -44,6 +44,20 @@ function validMoney(value: unknown): boolean {
 }
 
 /**
+ * Come `validMoney` ma senza il vincolo di segno: la variazione di prezzo per
+ * provincia è positiva quando è un supplemento e negativa quando è uno sconto.
+ * Che lo sconto non superi il prezzo base lo decide `buildQuote` sul preventivo,
+ * dove si conosce il prezzo del singolo partecipante; qui basta che il numero
+ * sia finito e rappresentabile in centesimi.
+ */
+function validSignedMoney(value: unknown): boolean {
+  const amount = decimalValue(value);
+  return (
+    Number.isFinite(amount) && Number.isSafeInteger(Math.round(amount * 100))
+  );
+}
+
+/**
  * Il frontend aiuta l'utente, ma l'API resta la fonte autorevole: nessun costo,
  * prezzo, acconto o intervallo operativo negativo/non finito deve raggiungere
  * PostgreSQL o il calcolo in centesimi.
@@ -123,11 +137,11 @@ export function validateExcursionAdminInput(
       };
     }
     for (const value of Object.values(surcharges as Record<string, unknown>)) {
-      if (isPresent(value) && !validMoney(value)) {
+      if (isPresent(value) && !validSignedMoney(value)) {
         return {
           field: "provinceSurcharges",
           message:
-            "Ogni supplemento provincia deve essere maggiore o uguale a zero.",
+            "Ogni variazione di prezzo per provincia deve essere un numero valido (positivo = supplemento, negativo = sconto).",
         };
       }
     }
