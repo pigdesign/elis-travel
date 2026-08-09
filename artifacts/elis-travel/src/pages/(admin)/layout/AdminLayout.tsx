@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus, Settings } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus, Settings, KeyRound } from "lucide-react";
 import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.webp";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +37,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { name: "Offerte", path: "~/admin/offers", matchPath: "/admin/offers", icon: Ticket },
     { name: "Richieste", path: "~/admin/leads", matchPath: "/admin/leads", icon: Users },
     { name: "Clienti", path: "~/admin/customers", matchPath: "/admin/customers", icon: UserRound },
+    { name: "Account clienti", path: "~/admin/customer-accounts", matchPath: "/admin/customer-accounts", icon: KeyRound },
     { name: "Impostazioni", path: "~/admin/settings", matchPath: "/admin/settings", icon: Settings },
   ];
 

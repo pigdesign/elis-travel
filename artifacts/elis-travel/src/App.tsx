@@ -34,6 +34,7 @@ import { OffersPage } from "@/pages/(admin)/offers/OffersPage";
 import { OfferDetailPage } from "@/pages/(admin)/offers/OfferDetailPage";
 import { LeadsPage } from "@/pages/(admin)/leads/LeadsPage";
 import { CustomersPage } from "@/pages/(admin)/customers/CustomersPage";
+import { CustomerAccountsPage } from "@/pages/(admin)/customer-accounts/CustomerAccountsPage";
 import { SettingsPage } from "@/pages/(admin)/settings/SettingsPage";
 import {
   PosterPreviewPage,
@@ -182,6 +183,7 @@ function Router() {
                 </Route>
                 <Route path="/leads" component={LeadsPage} />
                 <Route path="/customers" component={CustomersPage} />
+                <Route path="/customer-accounts" component={CustomerAccountsPage} />
                 <Route path="/settings" component={SettingsPage} />
                 <Route component={NotFound} />
               </Switch>
