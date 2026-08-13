@@ -227,10 +227,15 @@
   flex-direction: column;
 }
 
+/* Timeline di copertina: tutto giustificato al centro (cerchio, GIORNO,
+   data, titolo), trattini centrati tra i giorni — stesso impianto in
+   verticale e orizzontale, niente linea continua da tenere in asse */
 .poster-day {
   display: flex;
-  gap: 5mm;
-  position: relative;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5mm;
 }
 
 .poster-day-marker {
@@ -263,14 +268,15 @@
   margin-top: 1mm;
 }
 
-/* Connettore verticale tra un giorno e il successivo */
-.poster-day:not(:last-child) .poster-day-marker::after {
+/* Trattino centrato tra un giorno e il successivo: sta in testa al giorno
+   che segue (::before), così se il trim JS nasconde un giorno sparisce
+   anche il suo trattino e non restano segni orfani */
+.poster-timeline:not(.poster-timeline--single) .poster-day:not(:first-child)::before {
   content: "";
-  flex: 1;
   width: 0.5mm;
-  min-height: 4mm;
+  height: 6mm;
   background: var(--poster-orange);
-  margin-top: 1.5mm;
+  margin: 0 auto 1mm;
 }
 
 .poster-day-text {
@@ -311,62 +317,43 @@
   font-size: 9pt;
   font-style: italic;
   margin-top: 2mm;
+  text-align: center;
 }
 
-/* Attività della giornata in copertina (gite di 1 giorno): orari e tappe
-   su un'unica linea verticale IN ASSE col centro del cerchio del giorno
-   (6.5mm), pallini centrati sulla linea, testi allineati al titolo giorno */
+/* Attività della giornata in copertina (gite di 1 giorno): orario arancio
+   sopra, tappa sotto, trattini centrati tra una tappa e l'altra — come i
+   giorni, tutto giustificato al centro */
 .poster-day-activities {
-  position: relative;
-  padding-left: 18mm;
   display: flex;
   flex-direction: column;
-  gap: 3mm;
-  margin-top: 1.5mm;
-}
-
-/* La linea: parte subito sotto l'intestazione e si ferma esattamente
-   sull'ultimo pallino (--act-bottom ancorato via JS) */
-.poster-day-activities::before {
-  content: "";
-  position: absolute;
-  left: 6.25mm;
-  top: 0.5mm;
-  bottom: var(--act-bottom, 2mm);
-  width: 0.5mm;
-  background: var(--poster-orange);
-}
-
-/* Il moncone di connettore giorno→giorno non ha senso col giorno singolo */
-.poster-timeline--single .poster-day-marker::after {
-  display: none !important;
+  align-items: center;
+  text-align: center;
+  gap: 1.5mm;
+  margin-top: 2.5mm;
 }
 
 .poster-timeline--single .poster-day {
-  margin-bottom: 1.5mm;
+  margin-bottom: 0;
 }
 
 .cover-activity {
-  position: relative;
   display: flex;
-  gap: 3mm;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4mm;
   color: #fff;
   font-size: 12pt;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
-/* Pallino centrato sulla linea: centro a 6.5mm dal bordo colonna
-   (contenuto attività a 18mm → 6.5 − 1.6 − 18 = −13.1mm) */
-.cover-activity .dot {
-  position: absolute;
-  left: -13.1mm;
-  top: 1mm;
-  width: 3.2mm;
-  height: 3.2mm;
-  border-radius: 50%;
+/* Trattino centrato tra un'attività e la successiva */
+.cover-activity:not(:first-child)::before {
+  content: "";
+  display: block;
+  width: 0.5mm;
+  height: 3mm;
+  margin: 0 auto 1.2mm;
   background: var(--poster-orange);
-  border: 0.7mm solid var(--poster-navy);
 }
 
 .cover-activity .time {
@@ -374,8 +361,7 @@
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 700;
   font-size: 13pt;
-  width: 13mm;
-  flex-shrink: 0;
+  line-height: 1.1;
 }
 
 .cover-activity .text strong {
@@ -542,58 +528,35 @@
   z-index: 10;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 74mm;
+  /* Riga alta quanto il box: così le colonne hanno un'altezza definita e
+     i trim JS (timeline e liste) misurano l'overflow con scrollHeight
+     senza che una colonna stiri la riga oltre il contenitore */
+  grid-template-rows: 100%;
   gap: 8mm;
   overflow: hidden;
 }
 
-/* Il programma riempie in altezza tutta la colonna disponibile */
-.pv .pv-lower .poster-timeline {
-  height: 100%;
-}
-
-/* Più giorni: righe impacchettate (flex-start) con margini distribuiti
-   via JS e linea continua dietro i marker (fondo navy che la maschera
-   dentro le righe). ATTENZIONE: niente flex-grow/space-between/evenly
-   sulle righe — il motore di stampa di Chrome PERDE l'ultimo giorno
-   quando lo spazio è distribuito dal flex in un documento multipagina. */
-.pv .pv-lower .poster-timeline:not(.poster-timeline--single) {
-  position: relative;
-}
-
-.pv .pv-lower .poster-timeline:not(.poster-timeline--single)::before {
-  content: "";
-  position: absolute;
-  left: 5.3mm;
-  top: 5mm;
-  /* Il JS ancora la fine della linea al centro dell'ultimo cerchio */
-  bottom: var(--tl-bottom, 10mm);
-  width: 0.5mm;
-  background: var(--poster-orange);
-}
-
-.pv .pv-lower .poster-timeline:not(.poster-timeline--single) .poster-day {
-  margin-bottom: 0;
-}
-
-.pv .pv-lower .poster-timeline:not(.poster-timeline--single) .poster-day-marker {
-  background: var(--poster-navy);
-  position: relative;
-  z-index: 1;
-}
-
-.pv .pv-lower .poster-timeline:not(.poster-timeline--single) .poster-day .poster-day-marker::after {
-  display: none;
-}
-
-/* Giorno singolo: intestazione in alto, attività impacchettate; la
-   distribuzione nello spazio la fa il JS coi margini (sicuro in stampa) */
-
+/* Giorni impacchettati dall'alto con spaziatura fissa: mai stirati a
+   riempire la colonna (con pochi giorni i trattini verrebbero lunghissimi).
+   ATTENZIONE: niente flex-grow/space-between/evenly/margin-auto sulle
+   righe — il motore di stampa di Chrome PERDE l'ultimo elemento quando
+   lo spazio è distribuito dal flex in un documento multipagina. */
 .pv .poster-timeline {
   gap: 0;
 }
 
 .pv .poster-day {
-  margin-bottom: 4mm;
+  margin-bottom: 3mm;
+}
+
+.pv .poster-timeline--single .poster-day {
+  margin-bottom: 0;
+}
+
+/* Trattini leggermente più compatti: così una gita di 3 giorni sta sempre
+   nella colonna senza far scattare il trim */
+.pv .poster-timeline:not(.poster-timeline--single) .poster-day:not(:first-child)::before {
+  margin-bottom: 0.5mm;
 }
 
 .pv .poster-services {
@@ -693,78 +656,22 @@
    esplicito): margin auto / justify-content distribuiscono spazio elastico
    e il motore di stampa di Chrome perde l'ultimo elemento della colonna */
 
-/* Nel pannello orizzontale il giorno singolo è tutto giustificato al
-   centro, come i giorni multipli: attività con orario arancio sopra e
-   titolo bianco sotto, separate da trattini centrati (niente pallini) */
-.ph .poster-side .poster-timeline--single .poster-day-activities {
-  padding-left: 0;
-  margin-top: 2.5mm;
-  align-items: center;
-  text-align: center;
-  gap: 1.5mm;
-}
-
-/* Niente connettore né margine extra tra intestazione e attività: la
-   separazione la danno i trattini tra le attività */
-.ph .poster-side .poster-timeline--single .poster-day {
-  margin-bottom: 0;
-}
-
-
-.ph .poster-side .poster-timeline--single .poster-day-activities::before {
-  display: none;
-}
-
-.ph .poster-side .poster-timeline--single .cover-activity {
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4mm;
+/* Nel pannello stretto i corpi delle attività scendono di un punto */
+.ph .poster-side .cover-activity {
   font-size: 10pt;
   line-height: 1.15;
 }
 
-.ph .poster-side .poster-timeline--single .cover-activity .dot {
-  display: none;
-}
-
-.ph .poster-side .poster-timeline--single .cover-activity .time {
-  width: auto;
+.ph .poster-side .cover-activity .time {
   font-size: 11pt;
-  line-height: 1.1;
-}
-
-/* Trattino centrato tra un'attività e la successiva, come tra i giorni */
-.ph .poster-side .poster-timeline--single .cover-activity:not(:first-child)::before {
-  content: "";
-  display: block;
-  width: 0.5mm;
-  height: 3mm;
-  margin: 0 auto 1.2mm;
-  background: var(--poster-orange);
 }
 
 .ph .poster-side .poster-day {
   margin-bottom: 5mm;
-  text-align: center;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5mm;
 }
 
-.ph .poster-side .poster-day-marker {
-  width: auto;
-}
-
-.ph .poster-side .poster-day:not(:last-child) .poster-day-marker::after {
-  display: none;
-}
-
-.ph .poster-side .poster-timeline:not(.poster-timeline--single) .poster-day:not(:last-child)::after {
-  content: "";
-  width: 0.5mm;
-  height: 6mm;
-  background: var(--poster-orange);
-  margin: 1mm auto 0;
+.ph .poster-side .poster-timeline--single .poster-day {
+  margin-bottom: 0;
 }
 
 .ph .poster-body {

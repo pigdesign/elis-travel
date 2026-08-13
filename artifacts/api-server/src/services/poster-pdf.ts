@@ -174,8 +174,15 @@ async function renderPdf(pagePath: string): Promise<Buffer> {
     // A4 a 96dpi: evita che il layout parta da un viewport troppo stretto.
     await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 });
     const url = `${posterBaseUrl()}${pagePath}`;
+    // NON aspettare il silenzio della rete (networkidle0): la locandina monta
+    // l'applicazione intera, quindi parte anche il controllo account
+    // dell'area clienti. Quella fetch riceve la sua risposta subito, ma il
+    // corpo del 401 non viene mai letto: per il browser la connessione resta
+    // aperta e la rete non torna mai inattiva, così la navigazione scadeva
+    // sempre e ogni PDF finiva sul ripiego. Il segnale giusto è quello
+    // esplicito atteso qui sotto.
     await page.goto(url, {
-      waitUntil: "networkidle0",
+      waitUntil: "domcontentloaded",
       timeout: NAVIGATION_TIMEOUT_MS,
     });
 

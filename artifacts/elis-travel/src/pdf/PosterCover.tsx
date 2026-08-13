@@ -111,91 +111,29 @@ function PriceTag({ model }: { model: PosterModel }) {
 }
 
 /**
- * Distribuisce lo spazio verticale libero della colonna aggiungendo margini
- * calcolati tra gli elementi. Sostituisce flex-grow/space-between: il motore
- * di stampa di Chrome perde l'ultimo elemento quando lo spazio è distribuito
- * dal flex; coi margini il flusso resta a blocchi e la stampa è affidabile.
+ * Centra verticalmente la timeline nel pannello orizzontale con un margine
+ * esplicito calcolato. Sostituisce margin auto / justify-content: il motore
+ * di stampa di Chrome perde l'ultimo elemento della colonna quando lo
+ * spazio è distribuito dal flex in un documento multipagina.
  */
-function useFillColumn(
-  ref: React.RefObject<HTMLDivElement | null>,
-  itemSelector: string,
-  enabled: boolean,
-  deps: unknown[],
-) {
+function useCenterInPanel(ref: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
   useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
 
-    const distribute = () => {
-      // Nel pannello orizzontale il centraggio verticale è un margine
-      // esplicito calcolato qui: margin auto / justify-content lasciano al
-      // flex lo spazio elastico e il motore di stampa di Chrome perde
-      // l'ultimo elemento della colonna.
+    const center = () => {
       const side = root.parentElement;
-      if (side?.classList.contains("poster-side")) {
-        root.style.marginTop = "";
-        const cs = getComputedStyle(side);
-        const avail =
-          side.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-        const free = avail - root.getBoundingClientRect().height;
-        if (free > 0) root.style.marginTop = `${free / 2}px`;
-      }
-
-      if (!enabled) return;
-
-      const items = Array.from(root.querySelectorAll<HTMLElement>(itemSelector));
-      items.forEach((el) => {
-        el.style.marginBottom = "";
-      });
-
-      // Spazio libero misurato dalla posizione reale dell'ultimo figlio:
-      // scrollHeight non scende mai sotto l'altezza fissa del contenitore,
-      // quindi lì risulterebbe sempre zero.
-      const kids = Array.from(root.children) as HTMLElement[];
-      const lastKid = kids[kids.length - 1];
-      if (items.length >= 2 && lastKid) {
-        const used =
-          lastKid.getBoundingClientRect().bottom - root.getBoundingClientRect().top;
-        const leftover = root.clientHeight - used;
-        if (leftover > 0) {
-          const gap = leftover / (items.length - 1);
-          items.slice(0, -1).forEach((el) => {
-            el.style.marginBottom = `${gap}px`;
-          });
-        }
-      }
-
-      if (root.classList.contains("poster-timeline--single")) {
-        // Giorno singolo: la linea delle attività si ferma esattamente al
-        // centro dell'ultimo pallino (se i pallini sono visibili — nel
-        // pannello orizzontale centrato non ci sono).
-        const acts = root.querySelector<HTMLElement>(".poster-day-activities");
-        const dots = root.querySelectorAll<HTMLElement>(".cover-activity .dot");
-        const lastDot = dots[dots.length - 1];
-        if (acts && lastDot) {
-          const dotRect = lastDot.getBoundingClientRect();
-          if (dotRect.height > 0) {
-            const actsRect = acts.getBoundingClientRect();
-            const fromBottom = actsRect.bottom - dotRect.top - dotRect.height / 2;
-            acts.style.setProperty("--act-bottom", `${Math.max(0, fromBottom)}px`);
-          }
-        }
-      } else {
-        // Più giorni: la linea si ferma al centro dell'ultimo cerchio,
-        // mai un tratto di linea nuda sotto l'ultimo giorno.
-        const circles = root.querySelectorAll<HTMLElement>(".poster-day-circle");
-        const lastCircle = circles[circles.length - 1];
-        if (lastCircle) {
-          const rootRect = root.getBoundingClientRect();
-          const circleRect = lastCircle.getBoundingClientRect();
-          const fromBottom = rootRect.bottom - circleRect.bottom + circleRect.height / 2;
-          root.style.setProperty("--tl-bottom", `${Math.max(0, fromBottom)}px`);
-        }
-      }
+      if (!side?.classList.contains("poster-side")) return;
+      root.style.marginTop = "";
+      const cs = getComputedStyle(side);
+      const avail =
+        side.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const free = avail - root.getBoundingClientRect().height;
+      if (free > 0) root.style.marginTop = `${free / 2}px`;
     };
 
-    distribute();
-    document.fonts?.ready.then(distribute).catch(() => {});
+    center();
+    document.fonts?.ready.then(center).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }
@@ -245,23 +183,49 @@ function useTrimServices(ref: React.RefObject<HTMLDivElement | null>, deps: unkn
   }, deps);
 }
 
-function Timeline({
-  model,
-  maxDays,
-  fill = false,
-}: {
-  model: PosterModel;
-  maxDays: number;
-  fill?: boolean;
-}) {
+/**
+ * Nasconde da fondo timeline i giorni/attività che sforano la colonna
+ * verticale e mostra la nota "programma completo all'interno".
+ * Nel pannello orizzontale non serve: lì bastano i padding.
+ */
+function useTrimTimeline(
+  ref: React.RefObject<HTMLDivElement | null>,
+  itemSelector: string,
+  deps: unknown[],
+) {
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root || !root.closest(".pv-lower")) return;
+
+    const trim = () => {
+      const items = Array.from(root.querySelectorAll<HTMLElement>(itemSelector));
+      const note = root.querySelector<HTMLElement>(".poster-timeline-more");
+      items.forEach((el) => {
+        el.style.display = "";
+      });
+      if (note) note.style.display = note.dataset.capped === "1" ? "" : "none";
+
+      // La colonna ha altezza definita (grid-template-rows: 100%):
+      // scrollHeight rivela l'overflow del contenuto
+      const fits = () => root.scrollHeight <= root.clientHeight + 1;
+      if (fits()) return;
+      for (let i = items.length - 1; i > 0 && !fits(); i--) {
+        items[i].style.display = "none";
+        if (note) note.style.display = "";
+      }
+    };
+
+    trim();
+    document.fonts?.ready.then(trim).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
+function Timeline({ model, maxDays }: { model: PosterModel; maxDays: number }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const isSingle = model.days.length === 1;
-  useFillColumn(
-    rootRef,
-    isSingle ? ".cover-activity" : ".poster-day",
-    fill && model.days.length > 0,
-    [model, maxDays, fill],
-  );
+  useTrimTimeline(rootRef, isSingle ? ".cover-activity" : ".poster-day", [model, maxDays]);
+  useCenterInPanel(rootRef, [model, maxDays]);
   if (model.days.length === 0) {
     // Fallback: senza programma giorno-per-giorno mostriamo i punti di forza.
     if (model.highlights.length === 0) return null;
@@ -297,16 +261,13 @@ function Timeline({
                 sta nelle pagine interne, così il programma non si taglia */}
             {activities.map((act, i) => (
               <div key={i} className="cover-activity">
-                <span className="dot" />
                 {act.time && <span className="time">{act.time}</span>}
                 <span className="text">
                   <strong>{act.title}</strong>
                 </span>
               </div>
             ))}
-            {day.activities.length > activities.length && (
-              <div className="poster-timeline-more">Programma completo all'interno</div>
-            )}
+            <TimelineMoreNote capped={day.activities.length > activities.length} />
           </div>
         )}
         {activities.length === 0 && model.description && (
@@ -333,9 +294,22 @@ function Timeline({
           </div>
         </div>
       ))}
-      {hasMore && (
-        <div className="poster-timeline-more">Programma completo all'interno</div>
-      )}
+      <TimelineMoreNote capped={hasMore} />
+    </div>
+  );
+}
+
+/* Nota "programma completo": nel markup c'è sempre, visibile se la lista è
+   già tagliata in partenza; il trim JS la mostra anche quando nasconde
+   voci che non stanno nella colonna. */
+function TimelineMoreNote({ capped }: { capped: boolean }) {
+  return (
+    <div
+      className="poster-timeline-more"
+      data-capped={capped ? "1" : undefined}
+      style={capped ? undefined : { display: "none" }}
+    >
+      Programma completo all'interno
     </div>
   );
 }
@@ -440,7 +414,7 @@ export function PosterCover({ model, orientation, dateLabel, maxDays }: PosterCo
           </div>
           {/* Zona inferiore: parte sotto la foto e sotto il cartellino prezzo */}
           <div className="pv-lower">
-            <Timeline model={model} maxDays={maxDays} fill />
+            <Timeline model={model} maxDays={maxDays} />
             <div className="poster-services" ref={servicesRef}>
               {/* Cap prudente: coi corpi grandi le liste lunghe sforerebbero
                   la colonna; il resto va nelle pagine interne */}
