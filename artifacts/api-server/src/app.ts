@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { sessionPool } from "@workspace/db";
 import router from "./routes";
 import { stripeWebhookHandler } from "./routes/stripe-webhook";
+import { resendWebhookHandler } from "./routes/resend-webhook";
 import { ftpImageProxy } from "./routes/ftp-image-proxy";
 import { logger } from "./lib/logger";
 import { globalLimiter } from "./middlewares/rateLimiter";
@@ -43,14 +44,19 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com"],
+        // Iubenda: il widget dei consensi cookie carica il proprio codice da
+        // embeds/cdn e registra la scelta su idb; le pagine legali
+        // (privacy, cookie policy, termini) sono incorniciate da www.
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com", "https://embeds.iubenda.com", "https://cdn.iubenda.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "https://elis-travel.it", "http://elis-travel.it", "https://*.elis-travel.it", "http://*.elis-travel.it", "blob:", "https://storage.googleapis.com"],
-        connectSrc: ["'self'", "https://storage.googleapis.com", "https://api.stripe.com"],
+        connectSrc: ["'self'", "https://storage.googleapis.com", "https://api.stripe.com", "https://idb.iubenda.com"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
-        frameSrc: ["'none'", "https://js.stripe.com", "https://hooks.stripe.com"],
+        // 'none' era scritto insieme ad altre voci: non ha mai avuto effetto
+        // (il browser lo segnala e lo ignora), quindi è stato tolto.
+        frameSrc: ["https://js.stripe.com", "https://hooks.stripe.com", "https://www.iubenda.com"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -93,6 +99,14 @@ app.post(
   "/api/webhooks/stripe",
   express.raw({ type: "application/json" }),
   stripeWebhookHandler,
+);
+
+// Come per Stripe: la firma si calcola sul corpo grezzo, quindi la rotta va
+// registrata prima di express.json().
+app.post(
+  "/api/webhooks/resend",
+  express.raw({ type: "application/json" }),
+  resendWebhookHandler,
 );
 
 app.use(express.json());

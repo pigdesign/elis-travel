@@ -52,13 +52,17 @@ export function ExcursionPosterPage({ excursionIdOrSlug }: ExcursionPosterPagePr
   const { data: excursion, isLoading, isError } = useGetPublicExcursion(excursionId);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
+  // Le gite Rident non hanno locandina: l'endpoint PDF le rifiuta già, ma
+  // questa pagina è raggiungibile per conto suo e sarebbe stampabile a mano.
+  const isRident = excursion?.category === "rident";
+
   const model: PosterModel | null = useMemo(
     () => (excursion ? buildPosterFromPublicExcursion(excursion) : null),
     [excursion],
   );
 
   useEffect(() => {
-    if (isError) {
+    if (isError || isRident) {
       setStatus("error");
       return;
     }
@@ -94,21 +98,39 @@ export function ExcursionPosterPage({ excursionIdOrSlug }: ExcursionPosterPagePr
     if (wantsPrint) window.print();
   }, [status]);
 
-  // Pagina di servizio: mai indicizzata, e nient'altro a schermo oltre al
-  // poster (vedi .poster-standalone in poster.css).
+  // Pagina di servizio: mai indicizzata.
   useEffect(() => {
     const meta = document.createElement("meta");
     meta.name = "robots";
     meta.content = "noindex, nofollow";
     document.head.appendChild(meta);
-    document.body.classList.add("poster-standalone");
     return () => {
       meta.remove();
-      document.body.classList.remove("poster-standalone");
     };
   }, []);
 
+  // La maschera che lascia a schermo il solo poster (.poster-standalone in
+  // poster.css) va messa solo quando il poster c'è per davvero: nasconde
+  // qualunque figlio che non sia .poster-root, quindi anche i messaggi di
+  // errore, e la pagina resterebbe bianca senza spiegazione.
+  const posterVisible = !isRident && !isError && model !== null;
+  useEffect(() => {
+    if (!posterVisible) return;
+    document.body.classList.add("poster-standalone");
+    return () => {
+      document.body.classList.remove("poster-standalone");
+    };
+  }, [posterVisible]);
+
   if (isLoading) return null;
+
+  if (isRident) {
+    return (
+      <div style={{ padding: 32, fontFamily: "sans-serif" }}>
+        Locandina non disponibile per questa gita.
+      </div>
+    );
+  }
 
   if (isError || !model) {
     return <div style={{ padding: 32, fontFamily: "sans-serif" }}>Gita non trovata.</div>;

@@ -602,7 +602,9 @@ router.get("/catalog/products/excursions/:id/pdf", posterPdfLimiter, async (req,
     const id = req.params.id as string;
 
     // Stessa regola di visibilità del dettaglio pubblico: niente PDF per le
-    // gite non pubblicate.
+    // gite non pubblicate. In più solo le gite standard: la locandina non è
+    // prevista per le Rident, e l'indirizzo è indovinabile a mano, quindi il
+    // rifiuto sta qui e non solo nel tasto nascosto lato sito.
     const [excursion] = await db
       .select({
         id: excursionsTable.id,
@@ -613,6 +615,7 @@ router.get("/catalog/products/excursions/:id/pdf", posterPdfLimiter, async (req,
       .where(
         and(
           eq(excursionsTable.id, id),
+          eq(excursionsTable.category, "standard"),
           or(
             eq(excursionsTable.status, "open"),
             eq(excursionsTable.status, "confirmed"),

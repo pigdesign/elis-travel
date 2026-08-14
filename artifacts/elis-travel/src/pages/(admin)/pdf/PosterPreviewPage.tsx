@@ -97,6 +97,11 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
     : offerQuery.isLoading;
   const isError = isExcursion ? excursionQuery.isError : offerQuery.isError;
 
+  // Le gite Rident non hanno locandina: il tasto è già nascosto nella scheda,
+  // ma questo indirizzo si raggiunge anche a mano.
+  const isRidentExcursion =
+    isExcursion && excursionQuery.data?.category === "rident";
+
   if (state.status === "loading" || state.status === "unauthenticated") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -113,11 +118,15 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
     );
   }
 
-  if (isError || !model) {
+  if (isError || !model || isRidentExcursion) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-center px-4">
         <p className="text-muted-foreground">
-          {isExcursion ? "Gita non trovata." : "Offerta non trovata."}
+          {isRidentExcursion
+            ? "Locandina non disponibile per le gite Rident."
+            : isExcursion
+              ? "Gita non trovata."
+              : "Offerta non trovata."}
         </p>
         <button
           onClick={() => navigate(isExcursion ? "~/admin/excursions" : "~/admin/offers")}

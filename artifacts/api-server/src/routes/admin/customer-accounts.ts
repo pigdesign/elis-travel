@@ -12,6 +12,7 @@ import { enqueueAndDeliverNow } from "../../services/email-outbox";
 import { buildMagicLinkEmail } from "../../services/customer-auth-emails";
 import {
   TOKEN_TTL_MS,
+  invalidateOtherTokens,
   issueCustomerAuthToken,
 } from "../../services/customer-auth-token";
 import { recordAccountEvent } from "../../services/customer-auth-throttle";
@@ -337,6 +338,102 @@ router.delete("/customer-accounts/:id/bookings/:linkId", async (req, res) => {
   });
 
   res.json({ ok: true });
+});
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/**
+ * Cambia l'indirizzo di accesso di un account.
+ *
+ * E' il percorso di recupero per un indirizzo che rimbalza: senza password,
+ * un account la cui casella non riceve piu e definitivamente irraggiungibile,
+ * e questa e l'unica via d'uscita.
+ *
+ * Proprio per questo e anche l'operazione piu delicata del backoffice: chi la
+ * esegue prende di fatto il controllo dell'account. Va usata solo dopo aver
+ * verificato l'identita di chi chiama, e resta tracciata con il vecchio e il
+ * nuovo indirizzo.
+ *
+ * L'account torna a 'pending' e perde la verifica: il nuovo indirizzo dovra
+ * dimostrarsi valido ricevendo un link, esattamente come il primo.
+ */
+router.post("/customer-accounts/:id/email", async (req, res) => {
+  const { id } = req.params;
+  const body = (req.body ?? {}) as { email?: unknown };
+  const nuova =
+    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+
+  if (!UUID.test(id) || !nuova || !EMAIL_PATTERN.test(nuova)) {
+    res.status(400).json({ error: "Indirizzo email non valido." });
+    return;
+  }
+
+  const [account] = await db
+    .select()
+    .from(customerAccountsTable)
+    .where(eq(customerAccountsTable.id, id))
+    .limit(1);
+  if (!account) {
+    res.status(404).json({ error: "Account non trovato." });
+    return;
+  }
+  if (account.email.trim().toLowerCase() === nuova) {
+    res.status(409).json({ error: "E' gia l'indirizzo attuale." });
+    return;
+  }
+
+  // L'indice unico lo impedirebbe comunque, ma un 500 non direbbe all'operatore
+  // cosa e successo.
+  const [occupato] = await db
+    .select({ id: customerAccountsTable.id })
+    .from(customerAccountsTable)
+    .where(sql`lower(btrim(${customerAccountsTable.email})) = ${nuova}`)
+    .limit(1);
+  if (occupato) {
+    res.status(409).json({
+      error: "Esiste gia un account con questo indirizzo.",
+    });
+    return;
+  }
+
+  const precedente = account.email;
+  await db
+    .update(customerAccountsTable)
+    .set({
+      email: nuova,
+      emailStatus: "unknown",
+      emailBouncedAt: null,
+      emailVerifiedAt: null,
+      status: "pending",
+      updatedAt: new Date(),
+    })
+    .where(eq(customerAccountsTable.id, id));
+
+  await recordAccountEvent({
+    eventType: "profile_updated",
+    accountId: id,
+    detail: { campo: "email", da: precedente, a: nuova, by: actor(req) },
+  });
+
+  // I link gia emessi puntano al vecchio proprietario della casella: vanno
+  // chiusi prima di aprirne uno nuovo.
+  await invalidateOtherTokens({ accountId: id, purpose: "magic_link" });
+
+  const { token } = await issueCustomerAuthToken({
+    accountId: id,
+    purpose: "magic_link",
+  });
+  await enqueueAndDeliverNow({
+    eventType: "account.magic-link",
+    dedupeKey: `account:${id}:magic-link:${randomUUID()}`,
+    message: buildMagicLinkEmail({
+      to: nuova,
+      token,
+      ttlMs: TOKEN_TTL_MS.magic_link,
+    }),
+  });
+
+  res.json({ ok: true, email: nuova });
 });
 
 export default router;

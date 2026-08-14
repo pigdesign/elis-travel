@@ -1884,15 +1884,19 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/pdf/excursion/${exc.id}`}
-            className="inline-flex items-center gap-1.5 bg-white hover:bg-muted/50 border border-border text-foreground text-sm font-medium px-3 py-2 rounded-xl transition-colors"
-            data-testid="button-poster-excursion"
-            title="Genera locandina"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Locandina
-          </Link>
+          {/* Le gite Rident non hanno locandina: impianto grafico pensato per
+              le gite standard. */}
+          {exc.category !== "rident" && (
+            <Link
+              href={`/pdf/excursion/${exc.id}`}
+              className="inline-flex items-center gap-1.5 bg-white hover:bg-muted/50 border border-border text-foreground text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+              data-testid="button-poster-excursion"
+              title="Genera locandina"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Locandina
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => void handlePrintPickupReport()}

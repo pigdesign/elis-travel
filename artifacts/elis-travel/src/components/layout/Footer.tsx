@@ -122,7 +122,7 @@ export function Footer() {
         </div>
 
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-white/50 text-sm">
-          <p>&copy; {new Date().getFullYear()} Elis Travel. Tutti i diritti riservati.</p>
+          <p>&copy; {new Date().getFullYear()} Elis Travel — P.IVA 01750920090. Tutti i diritti riservati.</p>
         </div>
       </div>
     </footer>

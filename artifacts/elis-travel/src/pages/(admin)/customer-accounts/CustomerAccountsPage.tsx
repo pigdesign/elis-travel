@@ -6,6 +6,7 @@ import {
   Link2,
   Loader2,
   Mail,
+  MailWarning,
   Search,
   Unlink,
   UserRound,
@@ -109,6 +110,7 @@ export function CustomerAccountsPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [codice, setCodice] = useState("");
+  const [nuovaEmail, setNuovaEmail] = useState("");
 
   const caricaElenco = useCallback(async () => {
     const res = await fetch(
@@ -287,6 +289,48 @@ export function CustomerAccountsPage() {
                     ? `email verificata ${dt(detail.account.emailVerifiedAt)}`
                     : "email non ancora verificata"}
                 </p>
+
+                {detail.account.emailStatus === "bounced" && (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+                      <MailWarning className="h-4 w-4" />
+                      Le email a questo indirizzo non vengono recapitate
+                    </p>
+                    <p className="mt-1 text-sm text-amber-800">
+                      Il cliente non può più accedere: il link di ingresso non
+                      gli arriva. Dopo aver verificato chi è al telefono,
+                      correggi l'indirizzo qui sotto.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        value={nuovaEmail}
+                        onChange={(e) => setNuovaEmail(e.target.value)}
+                        placeholder="nuovo@indirizzo.it"
+                        className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                      />
+                      <button
+                        disabled={busy || !nuovaEmail.trim()}
+                        onClick={() =>
+                          void azione(
+                            `/api/admin/customer-accounts/${detail.account.id}/email`,
+                            {
+                              method: "POST",
+                              body: JSON.stringify({ email: nuovaEmail.trim() }),
+                            },
+                            `Indirizzo aggiornato: link di accesso inviato a ${nuovaEmail.trim()}.`,
+                          ).then(() => setNuovaEmail(""))
+                        }
+                        className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                      >
+                        Cambia e invia accesso
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-amber-700">
+                      L'account tornerà da verificare e i link già inviati
+                      verranno annullati.
+                    </p>
+                  </div>
+                )}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button

@@ -247,7 +247,10 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
         Prenota un posto
       </a>
 
-      {excursion && (
+      {/* Niente locandina per le gite Rident: l'impianto grafico è pensato per
+          le gite standard e queste sono di natura diversa. Il tasto sparisce
+          qui, ma l'endpoint rifiuta comunque per conto suo. */}
+      {excursion && excursion.category !== "rident" && (
         <a
           href={`/api/catalog/products/excursions/${excursion.id}/pdf`}
           className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/30 bg-white px-5 py-3.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"

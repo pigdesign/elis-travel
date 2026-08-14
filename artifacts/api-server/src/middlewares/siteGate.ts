@@ -9,7 +9,13 @@ const GATE_USER = process.env.SITE_BASIC_AUTH_USER || "";
 const GATE_PASS = process.env.SITE_BASIC_AUTH_PASS || "";
 const GATE_ENABLED = GATE_USER !== "" && GATE_PASS !== "";
 
-const EXEMPT_PREFIXES = ["/api/healthz", "/api/webhooks/stripe"];
+// I webhook sono endpoint macchina: non possono autenticarsi col gate di
+// prelancio, e un 401 farebbe ritentare il provider finche non rinuncia.
+const EXEMPT_PREFIXES = [
+  "/api/healthz",
+  "/api/webhooks/stripe",
+  "/api/webhooks/resend",
+];
 
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
