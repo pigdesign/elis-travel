@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+import { AlertCircle, RotateCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,9 +24,12 @@ import {
 import type { OfferDetail, OfferSummary, ScheduleDay } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { TagCombobox } from "@/components/shared/TagCombobox";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { describeDraftAge } from "@/lib/form-draft";
 
 type OfferFormData = {
   name: string;
+  subtitle: string;
   destination: string;
   tourOperator: string;
   status: string;
@@ -54,6 +58,7 @@ type OfferFormData = {
 
 const emptyForm: OfferFormData = {
   name: "",
+  subtitle: "",
   destination: "",
   tourOperator: "",
   status: "draft",
@@ -84,6 +89,7 @@ function offerToForm(offer: OfferSummary | OfferDetail): OfferFormData {
   const detail = offer as OfferDetail;
   return {
     name: offer.name ?? "",
+    subtitle: offer.subtitle ?? "",
     destination: offer.destination ?? "",
     tourOperator: offer.tourOperator ?? "",
     status: offer.status ?? "draft",
@@ -114,6 +120,7 @@ function offerToForm(offer: OfferSummary | OfferDetail): OfferFormData {
 function formToPayload(form: OfferFormData) {
   return {
     name: form.name.trim(),
+    subtitle: form.subtitle.trim() || null,
     destination: form.destination.trim(),
     tourOperator: form.tourOperator.trim() || null,
     status: form.status,
@@ -160,13 +167,72 @@ interface OfferFormModalProps {
   offer?: OfferSummary | OfferDetail;
 }
 
+/**
+ * Involucro sottile: tiene il Dialog e monta il form solo quando serve.
+ *
+ * Prima lo stato viveva qui e un effetto lo riportava ai valori dal server ogni
+ * volta che `offer` cambiava identita' — cosa che accade a ogni ricarica dei
+ * dati, quindi anche solo tornando sulla scheda del browser: quello che si era
+ * digitato spariva senza un segnale. Ora il form e' un componente separato che
+ * nasce all'apertura, legge i valori iniziali una volta sola e non viene piu'
+ * toccato da nessun aggiornamento in arrivo dal server.
+ */
 export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
+  // Il form registra qui la sua chiusura protetta. Serve perche' il Dialog ha
+  // una X propria (e il tasto Esc): senza questo rimando uscirebbero dal modale
+  // scavalcando la richiesta di conferma, che e' esattamente il modo in cui si
+  // perdeva il lavoro.
+  const closeGuardRef = useRef<(() => void) | null>(null);
+
+  const handleOpenChange = (next: boolean) => {
+    if (next) return;
+    if (closeGuardRef.current) closeGuardRef.current();
+    else onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-0"
+        // Un clic fuori dal riquadro non deve buttare via una compilazione
+        // lunga: si esce dalla X, da Annulla o con Esc, che passano tutti dalla
+        // conferma.
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        {open && (
+          <OfferFormBody
+            key={offer?.id ?? "new"}
+            offer={offer}
+            onClose={onClose}
+            closeGuardRef={closeGuardRef}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function OfferFormBody({
+  offer,
+  onClose,
+  closeGuardRef,
+}: {
+  offer?: OfferSummary | OfferDetail;
+  onClose: () => void;
+  closeGuardRef: React.MutableRefObject<(() => void) | null>;
+}) {
   const isEdit = !!offer;
   const queryClient = useQueryClient();
 
-  const [form, setForm] = useState<OfferFormData>(emptyForm);
+  // Inizializzazione pigra: i valori si leggono al montaggio e basta.
+  const [form, setForm] = useState<OfferFormData>(() =>
+    offer ? offerToForm(offer) : emptyForm,
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof OfferFormData, string>>>({});
   const [pendingDocs, setPendingDocs] = useState<PendingDocument[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   // Suggerimenti tour operator: valori già usati nelle offerte esistenti (nessun dato extra dal backend).
   const { data: offersForSuggestions = [] } = useListOffers();
@@ -174,13 +240,50 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
     .map((o) => o.tourOperator)
     .filter((t): t is string => !!t && t.trim() !== "");
 
-  useEffect(() => {
-    if (open) {
-      setForm(offer ? offerToForm(offer) : emptyForm);
-      setErrors({});
-      setPendingDocs([]);
+  const draftValue = useMemo(() => ({ form, pendingDocs }), [form, pendingDocs]);
+  const draft = useFormDraft({
+    key: offer?.id ? `offer:edit:${offer.id}` : "offer:create",
+    value: draftValue,
+  });
+
+  const restoreDraft = () => {
+    if (!draft.pending) return;
+    setForm(draft.pending.value.form);
+    setPendingDocs(draft.pending.value.pendingDocs ?? []);
+    draft.acceptPending();
+  };
+
+  const requestClose = () => {
+    if (
+      draft.isDirty &&
+      !window.confirm(
+        "Ci sono modifiche non salvate. Vuoi chiudere e perderle?\n\nAnnulla per tornare al form e salvare.",
+      )
+    ) {
+      return;
     }
-  }, [open, offer]);
+    draft.clear();
+    onClose();
+  };
+
+  // Senza array di dipendenze di proposito: il ref deve puntare sempre
+  // all'ultima versione della funzione, che legge stato aggiornato a ogni giro.
+  useEffect(() => {
+    closeGuardRef.current = requestClose;
+    return () => {
+      closeGuardRef.current = null;
+    };
+  });
+
+  useEffect(() => {
+    if (!draft.isDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [draft.isDirty]);
 
   const { mutate: createOffer, isPending: isCreating } = useCreateOffer({
     mutation: {
@@ -197,8 +300,10 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
           }
         }
         void queryClient.invalidateQueries({ queryKey: getListOffersQueryKey() });
+        draft.clear();
         onClose();
       },
+      onError: (err) => setErrorMsg(saveErrorMessage(err)),
     },
   });
 
@@ -209,8 +314,10 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
         if (offer?.id) {
           void queryClient.invalidateQueries({ queryKey: getGetOfferQueryKey(offer.id) });
         }
+        draft.clear();
         onClose();
       },
+      onError: (err) => setErrorMsg(saveErrorMessage(err)),
     },
   });
 
@@ -239,7 +346,18 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    setErrorMsg(null);
+    if (!validate()) {
+      setErrorMsg(
+        "Alcuni campi non sono compilati correttamente: controlla le voci evidenziate in rosso.",
+      );
+      requestAnimationFrame(() => {
+        formRef.current
+          ?.querySelector<HTMLElement>("[data-field-error]")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
     const payload = formToPayload(form);
     if (isEdit && offer) {
       updateOffer({ id: offer.id, data: payload });
@@ -249,9 +367,8 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
-        <DialogHeader className="px-6 pt-6 pb-0">
+    <>
+      <DialogHeader className="px-6 pt-6 pb-0">
           <DialogTitle className="text-xl font-bold">
             {isEdit ? "Modifica Offerta" : "Nuova Offerta"}
           </DialogTitle>
@@ -260,7 +377,45 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
           </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="px-6 pb-6 pt-4 space-y-6">
+        {draft.pending && (
+          <div
+            className="mx-6 mt-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            data-testid="banner-offer-draft"
+          >
+            <div className="flex items-start gap-2 text-sm text-amber-900">
+              <RotateCcw className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span>
+                Abbiamo ritrovato delle modifiche non salvate di{" "}
+                <strong>{describeDraftAge(draft.pending.savedAt)}</strong>. Vuoi
+                riprendere da lì?
+              </span>
+            </div>
+            <div className="flex flex-shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={restoreDraft}
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+                data-testid="button-restore-offer-draft"
+              >
+                Riprendi
+              </button>
+              <button
+                type="button"
+                onClick={draft.discardPending}
+                className="rounded-md px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                data-testid="button-discard-offer-draft"
+              >
+                Scarta
+              </button>
+            </div>
+          </div>
+        )}
+
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className="px-6 pb-6 pt-4 space-y-6"
+        >
           <div className={sectionCls}>
             <h3 className="text-sm font-bold text-foreground">Informazioni Generali</h3>
 
@@ -273,7 +428,7 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                   placeholder="es. Capodanno a Vienna"
                   className={inputCls}
                 />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                {errors.name && <p className="text-xs text-red-500 mt-1" data-field-error>{errors.name}</p>}
               </Field>
 
               <Field label="Destinazione *">
@@ -284,8 +439,24 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                   placeholder="es. Vienna, Austria"
                   className={inputCls}
                 />
-                {errors.destination && <p className="text-xs text-red-500 mt-1">{errors.destination}</p>}
+                {errors.destination && <p className="text-xs text-red-500 mt-1" data-field-error>{errors.destination}</p>}
               </Field>
+
+              <div className="sm:col-span-2">
+                <Field label="Sottotitolo">
+                  <input
+                    type="text"
+                    value={form.subtitle}
+                    onChange={set("subtitle")}
+                    placeholder="es. Tra palazzi imperiali, caffè storici e concerti"
+                    className={inputCls}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Riga di richiamo sotto il titolo: si vede in locandina e sulla
+                    pagina pubblica dell'offerta.
+                  </p>
+                </Field>
+              </div>
             </div>
 
             <div className="grid sm:grid-cols-3 gap-4">
@@ -457,7 +628,7 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
                   }}
                   className={`${inputCls} ${errors.validTo ? "border-red-400 focus:border-red-400 focus:ring-red-200" : ""}`}
                 />
-                {errors.validTo && <p className="text-xs text-red-500 mt-1">{errors.validTo}</p>}
+                {errors.validTo && <p className="text-xs text-red-500 mt-1" data-field-error>{errors.validTo}</p>}
               </Field>
             </div>
           </div>
@@ -572,10 +743,28 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
             </Field>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+          {errorMsg && (
+            <div
+              className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700"
+              data-testid="text-offer-form-error"
+            >
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-border">
+            {draft.isDirty && (
+              <span
+                className="mr-auto text-xs text-muted-foreground"
+                data-testid="text-offer-draft-status"
+              >
+                Modifiche non salvate — conservate in locale finché non salvi.
+              </span>
+            )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="px-5 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
             >
               Annulla
@@ -591,7 +780,21 @@ export function OfferFormModal({ open, onClose, offer }: OfferFormModalProps) {
             </button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </>
+  );
+}
+
+/** Messaggio leggibile per un salvataggio fallito. Prima queste mutation non
+ *  avevano `onError`: l'errore veniva inghiottito e il modale restava fermo,
+ *  indistinguibile da un salvataggio riuscito che non aveva salvato nulla. */
+function saveErrorMessage(err: unknown): string {
+  const e = err as { status?: number; data?: { error?: string }; message?: string };
+  if (e?.status === 401) {
+    return "Sessione scaduta: apri il login in un'altra scheda, rientra e riprova a salvare. Le modifiche restano qui.";
+  }
+  return (
+    e?.data?.error ??
+    e?.message ??
+    "Impossibile salvare l'offerta. Riprova."
   );
 }

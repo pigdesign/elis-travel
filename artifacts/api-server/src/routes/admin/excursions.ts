@@ -9,6 +9,7 @@ import {
   pickupLocationsTable,
   paymentAttemptsTable,
   paymentRefundsTable,
+  paymentRefundAttemptsTable,
   paymentRequestsTable,
   stripeCleanupJobsTable,
   bookingCancellationCasesTable,
@@ -77,6 +78,7 @@ import {
   calcFinancials,
   type ExcursionRevenue,
 } from "../../services/excursion-financials";
+import { enqueueStripeCleanupJobInTransaction } from "../../services/stripe-cleanup";
 
 const VALID_PAYMENT_STATUSES = [
   "pending",
@@ -403,6 +405,7 @@ router.post("/excursions", async (req, res) => {
       .insert(excursionsTable)
       .values({
         name: body.name ?? "Nuova gita",
+        subtitle: body.subtitle?.trim() || null,
         location: body.location ?? "",
         // `date` resta per compatibilita catalogo, ma deriva sempre dall'istante
         // autorevole di partenza osservato nel fuso Europe/Rome.
@@ -730,6 +733,7 @@ router.patch("/excursions/:id", async (req, res) => {
     const allowed: Partial<typeof excursionsTable.$inferInsert> = {};
     const mutableFields = [
       "name",
+      "subtitle",
       "location",
       "status",
       "category",
@@ -1147,6 +1151,10 @@ router.patch("/excursions/:id", async (req, res) => {
 router.delete("/excursions/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    // Con withBookings l'admin accetta di portarsi via anche le prenotazioni,
+    // altrimenti si comporta come prima e si ferma davanti alla prima.
+    const withBookings = req.query.withBookings === "true";
+    const force = req.query.force === "true";
 
     const result = await db.transaction(async (tx) => {
       const [excursion] = await tx
@@ -1157,17 +1165,89 @@ router.delete("/excursions/:id", async (req, res) => {
 
       if (!excursion) return { status: 404 as const };
 
-      const [{ count }] = await tx
-        .select({ count: sql<number>`count(*)::int` })
+      const bookings = await tx
+        .select({
+          id: excursionBookingsTable.id,
+          amountPaidCents: excursionBookingsTable.amountPaidCents,
+          setupIntentId: excursionBookingsTable.stripeSetupIntentId,
+          paymentIntentId: excursionBookingsTable.stripePaymentIntentId,
+        })
         .from(excursionBookingsTable)
         .where(eq(excursionBookingsTable.excursionId, id));
 
-      if (count > 0) {
-        return { status: 409 as const, count };
+      if (bookings.length > 0 && !withBookings) {
+        return { status: 409 as const, count: bookings.length };
+      }
+
+      if (bookings.length > 0) {
+        const paidCents = bookings.reduce(
+          (sum, b) => sum + (b.amountPaidCents ?? 0),
+          0,
+        );
+        const [refund] = await tx
+          .select({ id: paymentRefundsTable.id })
+          .from(paymentRefundsTable)
+          .where(
+            inArray(
+              paymentRefundsTable.bookingId,
+              bookings.map((b) => b.id),
+            ),
+          )
+          .limit(1);
+
+        if ((paidCents > 0 || refund) && !force) {
+          return {
+            status: 409 as const,
+            needsConfirmation: true as const,
+            count: bookings.length,
+            amountPaidCents: paidCents,
+          };
+        }
+
+        const ids = bookings.map((b) => b.id);
+        for (const b of bookings) {
+          if (b.setupIntentId) {
+            await enqueueStripeCleanupJobInTransaction(tx, {
+              bookingId: null,
+              operation: "cancel_setup_intent",
+              stripeResourceId: b.setupIntentId,
+            });
+          }
+          if (b.paymentIntentId) {
+            await enqueueStripeCleanupJobInTransaction(tx, {
+              bookingId: null,
+              operation: "cancel_payment_intent",
+              stripeResourceId: b.paymentIntentId,
+            });
+          }
+        }
+
+        // Le foreign key "restrict" vanno sciolte a mano, il resto cascata.
+        const refunds = await tx
+          .select({ id: paymentRefundsTable.id })
+          .from(paymentRefundsTable)
+          .where(inArray(paymentRefundsTable.bookingId, ids));
+        if (refunds.length > 0) {
+          await tx.delete(paymentRefundAttemptsTable).where(
+            inArray(
+              paymentRefundAttemptsTable.paymentRefundId,
+              refunds.map((r) => r.id),
+            ),
+          );
+          await tx
+            .delete(paymentRefundsTable)
+            .where(inArray(paymentRefundsTable.bookingId, ids));
+        }
+        await tx
+          .delete(bookingCancellationCasesTable)
+          .where(inArray(bookingCancellationCasesTable.bookingId, ids));
+        await tx
+          .delete(excursionBookingsTable)
+          .where(eq(excursionBookingsTable.excursionId, id));
       }
 
       await tx.delete(excursionsTable).where(eq(excursionsTable.id, id));
-      return { status: 200 as const };
+      return { status: 200 as const, deletedBookings: bookings.length };
     });
 
     if (result.status === 404) {
@@ -1175,14 +1255,25 @@ router.delete("/excursions/:id", async (req, res) => {
       return;
     }
     if (result.status === 409) {
+      if ("needsConfirmation" in result) {
+        const paidCents = result.amountPaidCents ?? 0;
+        res.status(409).json({
+          error: `La gita ha ${result.count} prenotazioni con ${(paidCents / 100).toFixed(2)} € registrati. Eliminandola perdi la traccia contabile di quei movimenti.`,
+          code: "needs_confirmation",
+          count: result.count,
+          amountPaidCents: paidCents,
+        });
+        return;
+      }
       res.status(409).json({
-        error:
-          "Impossibile eliminare: la gita ha prenotazioni. Elimina prima tutte le prenotazioni oppure annulla la gita.",
+        error: `La gita ha ${result.count} prenotazioni.`,
+        code: "has_bookings",
+        count: result.count,
       });
       return;
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, deletedBookings: result.deletedBookings });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });
@@ -1889,6 +1980,8 @@ router.patch("/excursions/:id/bookings/:bookingId", async (req, res) => {
 router.delete("/excursions/:id/bookings/:bookingId", async (req, res) => {
   try {
     const { id, bookingId } = req.params;
+    // L'admin ha letto l'avviso sui movimenti e vuole procedere lo stesso.
+    const force = req.query.force === "true";
 
     const removed = await db.transaction(async (tx) => {
       const [booking] = await tx
@@ -1964,18 +2057,29 @@ router.delete("/excursions/:id/bookings/:bookingId", async (req, res) => {
           ),
         )
         .limit(1);
-      if (
-        booking.amountPaidCents > 0 ||
-        booking.stripePaymentIntentId ||
-        booking.stripeSetupIntentId ||
-        requestWithIntent ||
-        attemptWithIntent ||
-        paidRequest ||
-        cancellationCase ||
-        refund ||
-        activeCleanup
-      ) {
-        return { kind: "financial_history" as const };
+      // Solo il denaro davvero movimentato merita di fermare l'eliminazione.
+      // Una carta memorizzata, un intent aperto o un caso di annullamento sono
+      // riferimenti tecnici: bloccavano l'admin senza proteggere nulla, e
+      // rendevano impossibile ripulire le prenotazioni di prova.
+      const moneyReasons: string[] = [];
+      if (booking.amountPaidCents > 0) {
+        moneyReasons.push(
+          `risultano incassati ${(booking.amountPaidCents / 100).toFixed(2)} €`,
+        );
+      }
+      if (paidRequest) {
+        moneyReasons.push("c'è una richiesta di pagamento risultata pagata");
+      }
+      if (refund) {
+        moneyReasons.push("c'è un rimborso registrato");
+      }
+
+      if (moneyReasons.length > 0 && !force) {
+        return {
+          kind: "needs_confirmation" as const,
+          reasons: moneyReasons,
+          amountPaidCents: booking.amountPaidCents,
+        };
       }
 
       // Le cancellazioni hanno gia aggiornato i contatori. Per tutte le altre
@@ -1988,6 +2092,43 @@ router.delete("/excursions/:id/bookings/:bookingId", async (req, res) => {
           "booking_deleted",
         );
       }
+
+      // La carta memorizzata non sparisce da Stripe cancellando la riga: senza
+      // questo resterebbe un metodo di pagamento orfano, agganciato a nulla.
+      if (booking.stripeSetupIntentId) {
+        await enqueueStripeCleanupJobInTransaction(tx, {
+          bookingId: null,
+          operation: "cancel_setup_intent",
+          stripeResourceId: booking.stripeSetupIntentId,
+        });
+      }
+      if (booking.stripePaymentIntentId) {
+        await enqueueStripeCleanupJobInTransaction(tx, {
+          bookingId: null,
+          operation: "cancel_payment_intent",
+          stripeResourceId: booking.stripePaymentIntentId,
+        });
+      }
+
+      // Queste due tabelle hanno la foreign key in "restrict": senza rimuoverle
+      // prima, Postgres rifiuterebbe la cancellazione. Il resto (richieste,
+      // tentativi, partecipanti, legami con l'account) va giù in cascata.
+      const refundIds = await tx
+        .select({ id: paymentRefundsTable.id })
+        .from(paymentRefundsTable)
+        .where(eq(paymentRefundsTable.bookingId, bookingId));
+      if (refundIds.length > 0) {
+        const ids = refundIds.map((r) => r.id);
+        await tx
+          .delete(paymentRefundAttemptsTable)
+          .where(inArray(paymentRefundAttemptsTable.paymentRefundId, ids));
+        await tx
+          .delete(paymentRefundsTable)
+          .where(eq(paymentRefundsTable.bookingId, bookingId));
+      }
+      await tx
+        .delete(bookingCancellationCasesTable)
+        .where(eq(bookingCancellationCasesTable.bookingId, bookingId));
 
       await tx
         .delete(excursionBookingsTable)
@@ -2017,11 +2158,13 @@ router.delete("/excursions/:id/bookings/:bookingId", async (req, res) => {
       res.status(404).json({ error: "Prenotazione non trovata." });
       return;
     }
-    if (removed.kind === "financial_history") {
+    if (removed.kind === "needs_confirmation") {
+      // Non è un rifiuto: è un "sei sicuro?". Il client rilancia con force=true.
       res.status(409).json({
-        error:
-          "La prenotazione ha movimenti, annullamenti o riferimenti tecnici e non può essere eliminata. Usa il flusso di annullamento per preservare lo storico finanziario.",
-        code: "financial_history",
+        error: `Attenzione: ${removed.reasons.join(", ")}. Eliminando la prenotazione perdi la traccia contabile di questi movimenti.`,
+        code: "needs_confirmation",
+        reasons: removed.reasons,
+        amountPaidCents: removed.amountPaidCents,
       });
       return;
     }

@@ -12,7 +12,6 @@ import {
   useGetExcursion,
   useGetOffer,
   useGetOfferImages,
-  useGetAdminSettings,
   useListExcursionPickupPoints,
   getGetExcursionQueryKey,
   getGetOfferQueryKey,
@@ -32,7 +31,26 @@ interface PosterPreviewPageProps {
   id: string;
 }
 
-type PosterMode = "locandina" | "scheda";
+/**
+ * locandina  = sola copertina
+ * scheda     = copertina + pagine interne
+ * solo-scheda = pagine interne senza copertina, da inviare per conto loro
+ *               (la testata della prima pagina interna riporta titolo,
+ *               sottotitolo, luogo, date e prezzo)
+ */
+type PosterMode = "locandina" | "scheda" | "solo-scheda";
+
+/**
+ * Scelta dell'orientamento nascosta all'operatore: per ora esce solo il
+ * formato verticale. Il layout orizzontale resta tutto al suo posto (rami
+ * `.ph` in poster.css, ramo landscape in PosterCover/PosterInnerPages,
+ * asset sfondo-h.png e onda-h-*.svg): per rimetterlo a disposizione basta
+ * riportare questa costante a true.
+ * NOTA: prima di riattivarlo serve la maschera orizzontale nuova del
+ * grafico — sfondo-h.png è ancora quella vecchia col blu navy, che non
+ * combacia col petrolio della copertina verticale.
+ */
+const ORIENTATION_SWITCH_ENABLED = false;
 
 /**
  * Anteprima e stampa della locandina promozionale (fase 1: window.print →
@@ -55,7 +73,6 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
     query: { queryKey: getGetOfferQueryKey(id), enabled: !isExcursion },
   });
   const offerImagesQuery = useGetOfferImages(id, { enabled: !isExcursion });
-  const settingsQuery = useGetAdminSettings();
 
   const [orientation, setOrientation] = useState<PosterOrientation>("portrait");
   const [mode, setMode] = useState<PosterMode>("locandina");
@@ -74,22 +91,16 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
       return buildPosterFromExcursion(
         excursionQuery.data,
         pickupPointsQuery.data ?? [],
-        settingsQuery.data,
       );
     }
     if (!offerQuery.data) return null;
-    return buildPosterFromOffer(
-      offerQuery.data,
-      offerImagesQuery.data ?? [],
-      settingsQuery.data,
-    );
+    return buildPosterFromOffer(offerQuery.data, offerImagesQuery.data ?? []);
   }, [
     isExcursion,
     excursionQuery.data,
     pickupPointsQuery.data,
     offerQuery.data,
     offerImagesQuery.data,
-    settingsQuery.data,
   ]);
 
   const isLoading = isExcursion
@@ -138,8 +149,10 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
     );
   }
 
-  const defaultMaxDays = orientation === "portrait" ? 4 : 3;
-  const effectiveMaxDays = maxDays ?? defaultMaxDays;
+  // Il programma si ridimensiona da solo per starci tutto (useFitDays), quindi
+  // di default si mostrano tutti i giorni fino a 7; oltre, il taglio automatico
+  // rimanda il resto alle pagine interne.
+  const effectiveMaxDays = maxDays ?? Math.min(model.days.length || 7, 7);
   const effectiveDateLabel = dateText ?? model.dateLabel;
 
   // Offerta senza categoria: la locandina esce col tema di ripiego (VACANZA),
@@ -176,32 +189,34 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
             Locandina — {model.title}
           </div>
 
-          <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
-            <button
-              onClick={() => setOrientation("portrait")}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors",
-                orientation === "portrait"
-                  ? "bg-white shadow text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <RectangleVertical className="w-4 h-4" />
-              Verticale
-            </button>
-            <button
-              onClick={() => setOrientation("landscape")}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors",
-                orientation === "landscape"
-                  ? "bg-white shadow text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <RectangleHorizontal className="w-4 h-4" />
-              Orizzontale
-            </button>
-          </div>
+          {ORIENTATION_SWITCH_ENABLED && (
+            <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
+              <button
+                onClick={() => setOrientation("portrait")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors",
+                  orientation === "portrait"
+                    ? "bg-white shadow text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <RectangleVertical className="w-4 h-4" />
+                Verticale
+              </button>
+              <button
+                onClick={() => setOrientation("landscape")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors",
+                  orientation === "landscape"
+                    ? "bg-white shadow text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <RectangleHorizontal className="w-4 h-4" />
+                Orizzontale
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
             <button
@@ -226,6 +241,17 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
             >
               Scheda completa
             </button>
+            <button
+              onClick={() => setMode("solo-scheda")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                mode === "solo-scheda"
+                  ? "bg-white shadow text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Solo scheda
+            </button>
           </div>
 
           <input
@@ -244,7 +270,7 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
                 onChange={(e) => setMaxDays(Number(e.target.value))}
                 className="px-2 py-1.5 border border-border rounded-xl text-sm bg-white"
               >
-                {Array.from({ length: Math.min(model.days.length, 6) }, (_, i) => i + 1).map(
+                {Array.from({ length: Math.min(model.days.length, 10) }, (_, i) => i + 1).map(
                   (n) => (
                     <option key={n} value={n}>
                       {n}
@@ -284,15 +310,19 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
       </div>
 
       <div className="poster-preview-stage">
-        <div className={mode === "scheda" ? "poster-break" : undefined}>
-          <PosterCover
-            model={model}
-            orientation={orientation}
-            dateLabel={effectiveDateLabel}
-            maxDays={effectiveMaxDays}
-          />
-        </div>
-        {mode === "scheda" && <PosterInnerPages model={model} orientation={orientation} />}
+        {mode !== "solo-scheda" && (
+          <div className={mode === "scheda" ? "poster-break" : undefined}>
+            <PosterCover
+              model={model}
+              orientation={orientation}
+              dateLabel={effectiveDateLabel}
+              maxDays={effectiveMaxDays}
+            />
+          </div>
+        )}
+        {mode !== "locandina" && (
+          <PosterInnerPages model={model} orientation={orientation} />
+        )}
       </div>
     </div>
   );

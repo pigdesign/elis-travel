@@ -13,7 +13,7 @@ function sanitizeCategory(value: unknown): string | null {
 }
 
 const MUTABLE_FIELDS = [
-  "name", "destination", "tourOperator", "status",
+  "name", "subtitle", "destination", "tourOperator", "status",
   "validFrom", "validTo", "baseFormula", "departureCity",
   "durationDays", "durationNights", "period", "publicPrice",
   "advertisingText", "servicesIncluded", "servicesExcluded",
@@ -50,6 +50,7 @@ router.post("/offers", async (req, res) => {
       .insert(offersTable)
       .values({
         name: (body.name as string) ?? "Nuova offerta",
+        subtitle: ((body.subtitle as string) ?? "").trim() || null,
         destination: (body.destination as string) ?? "",
         tourOperator: (body.tourOperator as string) ?? null,
         status: (body.status as string) ?? "draft",

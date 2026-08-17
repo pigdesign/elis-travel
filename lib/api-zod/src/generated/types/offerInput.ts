@@ -9,6 +9,8 @@ import type { ScheduleDay } from "./scheduleDay";
 
 export interface OfferInput {
   name?: string;
+  /** Riga di richiamo sotto il titolo (locandina e sito) */
+  subtitle?: string | null;
   destination?: string;
   tourOperator?: string | null;
   status?: string;

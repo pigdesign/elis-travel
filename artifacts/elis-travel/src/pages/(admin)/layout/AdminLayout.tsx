@@ -1,10 +1,49 @@
 import { useLocation } from "wouter";
-import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus, Settings, KeyRound } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus, Settings, KeyRound, AlertTriangle } from "lucide-react";
 import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.webp";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useListLeads } from "@workspace/api-client-react";
+import {
+  getSessionExpired,
+  subscribeSessionExpiry,
+} from "@/lib/session-expiry";
+
+/**
+ * Fascia di avviso quando la sessione e' scaduta durante il lavoro.
+ *
+ * Il login si apre in una scheda nuova apposta: restare su questa pagina vuol
+ * dire non perdere il form che si aveva aperto. Fatto il login, basta tornare
+ * qui e premere di nuovo Salva.
+ */
+function SessionExpiredBanner() {
+  const expired = useSyncExternalStore(subscribeSessionExpiry, getSessionExpired);
+  if (!expired) return null;
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 bg-amber-100 border-b border-amber-300 px-4 py-2.5 text-sm text-amber-900"
+      data-testid="banner-session-expired"
+    >
+      <AlertTriangle className="w-4 h-4 shrink-0" />
+      <span className="flex-1 min-w-[16rem]">
+        La sessione è scaduta: gli ultimi salvataggi potrebbero non essere
+        andati a buon fine. Rifai il login in una nuova scheda, poi torna qui e
+        premi di nuovo Salva — quello che hai compilato resta dov'è.
+      </span>
+      <a
+        href="/admin/login"
+        target="_blank"
+        rel="noreferrer"
+        className="rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
+        data-testid="link-session-expired-login"
+      >
+        Apri il login
+      </a>
+    </div>
+  );
+}
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, navigate] = useLocation();
@@ -109,6 +148,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
+        <SessionExpiredBanner />
         <header className="h-16 bg-white border-b border-border flex items-center px-8 shadow-sm shrink-0 md:hidden justify-between">
           <div className="font-bold font-serif text-primary text-xl">Elis Admin</div>
           <button

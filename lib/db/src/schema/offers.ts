@@ -6,6 +6,8 @@ import { relations } from "drizzle-orm";
 export const offersTable = pgTable("offers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  // Riga di richiamo sotto il titolo, in locandina e sulla pagina pubblica.
+  subtitle: text("subtitle"),
   destination: text("destination").notNull(),
   tourOperator: text("tour_operator"),
   status: text("status").notNull().default("draft"),

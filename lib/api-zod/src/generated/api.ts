@@ -303,6 +303,10 @@ export const GetDashboardStatsResponse = zod.object({
 export const ListExcursionsResponseItem = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   location: zod.string(),
   date: zod.string(),
   departureAt: zod.coerce
@@ -405,6 +409,10 @@ export const ListExcursionsResponse = zod.array(ListExcursionsResponseItem);
 export const CreateExcursionBody = zod
   .object({
     name: zod.string().optional(),
+    subtitle: zod
+      .string()
+      .nullish()
+      .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
     location: zod.string().optional(),
     date: zod
       .string()
@@ -510,6 +518,10 @@ export const GetExcursionResponse = zod
   .object({
     id: zod.string().uuid(),
     name: zod.string(),
+    subtitle: zod
+      .string()
+      .nullish()
+      .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
     location: zod.string(),
     date: zod.string(),
     departureAt: zod.coerce
@@ -664,6 +676,10 @@ export const UpdateExcursionParams = zod.object({
 
 export const UpdateExcursionBody = zod.object({
   name: zod.string().optional(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   location: zod.string().optional(),
   date: zod
     .string()
@@ -758,6 +774,10 @@ export const UpdateExcursionBody = zod.object({
 export const UpdateExcursionResponse = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   location: zod.string(),
   date: zod.string(),
   departureAt: zod.coerce
@@ -1326,6 +1346,10 @@ export const CompleteExcursionTripParams = zod.object({
 export const CompleteExcursionTripResponse = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   location: zod.string(),
   date: zod.string(),
   departureAt: zod.coerce
@@ -1432,6 +1456,10 @@ export const CancelExcursionTripParams = zod.object({
 export const CancelExcursionTripResponse = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   location: zod.string(),
   date: zod.string(),
   departureAt: zod.coerce
@@ -2053,6 +2081,10 @@ export const UpdateExcursionVehicleBody = zod.object({
 export const UpdateExcursionVehicleResponse = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   location: zod.string(),
   date: zod.string(),
   departureAt: zod.coerce
@@ -2374,6 +2406,10 @@ export const DeleteVehicleResponse = zod.object({
 export const ListOffersResponseItem = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   destination: zod.string(),
   tourOperator: zod.string().nullish(),
   status: zod.string(),
@@ -2401,6 +2437,10 @@ export const ListOffersResponse = zod.array(ListOffersResponseItem);
  */
 export const CreateOfferBody = zod.object({
   name: zod.string().optional(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   destination: zod.string().optional(),
   tourOperator: zod.string().nullish(),
   status: zod.string().optional(),
@@ -2453,6 +2493,10 @@ export const GetOfferResponse = zod
   .object({
     id: zod.string().uuid(),
     name: zod.string(),
+    subtitle: zod
+      .string()
+      .nullish()
+      .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
     destination: zod.string(),
     tourOperator: zod.string().nullish(),
     status: zod.string(),
@@ -2511,6 +2555,10 @@ export const UpdateOfferParams = zod.object({
 
 export const UpdateOfferBody = zod.object({
   name: zod.string().optional(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   destination: zod.string().optional(),
   tourOperator: zod.string().nullish(),
   status: zod.string().optional(),
@@ -2555,6 +2603,10 @@ export const UpdateOfferBody = zod.object({
 export const UpdateOfferResponse = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod
+    .string()
+    .nullish()
+    .describe("Riga di richiamo sotto il titolo (locandina e sito)"),
   destination: zod.string(),
   tourOperator: zod.string().nullish(),
   status: zod.string(),
@@ -2784,6 +2836,7 @@ export const GetPublicOfferParams = zod.object({
 export const GetPublicOfferResponse = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod.string().nullish(),
   destination: zod.string().nullish(),
   tourOperator: zod.string().nullish(),
   validFrom: zod.coerce.date().nullish(),
@@ -2831,6 +2884,7 @@ export const GetPublicExcursionParams = zod.object({
 export const GetPublicExcursionResponse = zod.object({
   id: zod.string().uuid(),
   name: zod.string(),
+  subtitle: zod.string().nullish(),
   location: zod.string().nullish(),
   date: zod.string().nullish(),
   departureAt: zod.coerce.date().nullish(),

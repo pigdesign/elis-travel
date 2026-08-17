@@ -7,13 +7,36 @@ import { POSTER_AGENCY, POSTER_BACKGROUNDS } from "./theme";
 export type PosterOrientation = "portrait" | "landscape";
 
 /**
+ * Estremi del fattore di scala dei giorni. Il minimo è il punto sotto il
+ * quale il programma non sarebbe più leggibile in stampa (oltre quello si
+ * preferisce tagliare i giorni in eccesso e rimandarli alle pagine interne);
+ * il massimo evita che una gita di 2 giorni diventi caricaturale.
+ */
+const MIN_DAY_SCALE = 0.62;
+const MAX_DAY_SCALE = 1.4;
+
+/**
  * Titolo auto-adattivo: cerca (per bisezione) il corpo più grande che riempie
  * il riquadro disponibile senza sforare né in larghezza né in altezza.
  * Due parole → molto grande; titolo lungo → si riduce e va a capo.
+ * Il sottotitolo, se c'è, segue il corpo del titolo (45%, con minimo e
+ * massimo) così il rapporto tra i due resta costante.
  */
-function AutoFitTitle({ text, orientation }: { text: string; orientation: PosterOrientation }) {
+function AutoFitTitle({
+  text,
+  subtitle,
+  location,
+  orientation,
+}: {
+  text: string;
+  subtitle: string | null;
+  location: string | null;
+  orientation: PosterOrientation;
+}) {
   const boxRef = useRef<HTMLDivElement>(null);
   const elRef = useRef<HTMLHeadingElement>(null);
+  const subRef = useRef<HTMLParagraphElement>(null);
+  const locRef = useRef<HTMLParagraphElement>(null);
 
   useLayoutEffect(() => {
     const box = boxRef.current;
@@ -24,7 +47,8 @@ function AutoFitTitle({ text, orientation }: { text: string; orientation: Poster
       // Il riquadro fa da vincolo massimo durante la ricerca…
       box.style.height = "";
       let lo = 16;
-      let hi = orientation === "portrait" ? 64 : 62;
+      // Tetto alzato del 20% sui valori originali (64 / 62), su richiesta
+      let hi = orientation === "portrait" ? 77 : 74;
       let best = lo;
       for (let i = 0; i < 9; i++) {
         const mid = (lo + hi) / 2;
@@ -43,19 +67,46 @@ function AutoFitTitle({ text, orientation }: { text: string; orientation: Poster
       // …poi collassa sull'altezza reale del testo, così kicker e riga data
       // restano attaccati al titolo qualunque sia il corpo calcolato.
       box.style.height = `${el.scrollHeight}px`;
+
+      if (subRef.current) {
+        subRef.current.style.fontSize = `${Math.min(Math.max(best * 0.45, 12), 22)}pt`;
+      }
+      // Sotto la base dell'ultima riga del titolo resta un margine morto (il
+      // blocco di riga è più alto dell'inchiostro delle maiuscole): cresce col
+      // corpo del titolo, quindi si recupera in proporzione — sull'elemento
+      // che segue il titolo, qualunque dei due sia.
+      const firstBelow = subRef.current ?? locRef.current;
+      if (firstBelow) firstBelow.style.marginTop = `${-best * 0.15}pt`;
     };
 
     fit();
     // Rimisura quando i font web finiscono di caricare (le metriche cambiano)
     document.fonts?.ready.then(fit).catch(() => {});
-  }, [text, orientation]);
+  }, [text, subtitle, location, orientation]);
 
   return (
-    <div ref={boxRef} className="poster-title-box">
-      <h1 ref={elRef} className="poster-title">
-        {text}
-      </h1>
-    </div>
+    <>
+      <div
+        ref={boxRef}
+        className={
+          subtitle ? "poster-title-box poster-title-box--withsub" : "poster-title-box"
+        }
+      >
+        <h1 ref={elRef} className="poster-title">
+          {text}
+        </h1>
+      </div>
+      {subtitle && (
+        <p ref={subRef} className="poster-subtitle">
+          {subtitle}
+        </p>
+      )}
+      {location && (
+        <p ref={locRef} className="poster-location">
+          {location}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -111,10 +162,61 @@ function PriceTag({ model }: { model: PosterModel }) {
 }
 
 /**
- * Centra verticalmente la timeline nel pannello orizzontale con un margine
- * esplicito calcolato. Sostituisce margin auto / justify-content: il motore
- * di stampa di Chrome perde l'ultimo elemento della colonna quando lo
- * spazio è distribuito dal flex in un documento multipagina.
+ * Spazio verticale realmente disponibile per la colonna programma, sia nella
+ * fascia bassa del verticale (altezza definita dalla griglia) sia nel
+ * pannello laterale dell'orizzontale (altezza data dal pannello meno i padding).
+ */
+function availableHeight(root: HTMLElement): number {
+  const side = root.parentElement;
+  if (side?.classList.contains("poster-side")) {
+    const cs = getComputedStyle(side);
+    return side.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  }
+  return root.clientHeight;
+}
+
+/**
+ * Fattore di scala dei giorni: cerca per bisezione il valore più grande che
+ * fa ancora stare tutto il programma nella colonna. È quello che permette a
+ * una gita di 2 giorni di riempire lo spazio con righe grandi e a una di 7 di
+ * starci comunque, senza due grafiche diverse da mantenere.
+ */
+function useFitDays(ref: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+
+    const fit = () => {
+      root.style.paddingTop = "";
+      const limit = availableHeight(root);
+      if (limit <= 0) return;
+      let lo = MIN_DAY_SCALE;
+      let hi = MAX_DAY_SCALE;
+      let best = lo;
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo + hi) / 2;
+        root.style.setProperty("--day-scale", String(mid));
+        if (root.scrollHeight <= limit + 1) {
+          best = mid;
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+      root.style.setProperty("--day-scale", String(best));
+    };
+
+    fit();
+    document.fonts?.ready.then(fit).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
+/**
+ * Centra verticalmente la timeline nella colonna con una spaziatura esplicita
+ * calcolata. Sostituisce margin auto / justify-content: il motore di stampa
+ * di Chrome perde l'ultimo elemento della colonna quando lo spazio è
+ * distribuito dal flex in un documento multipagina.
  */
 function useCenterInPanel(ref: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
   useLayoutEffect(() => {
@@ -123,13 +225,18 @@ function useCenterInPanel(ref: React.RefObject<HTMLDivElement | null>, deps: unk
 
     const center = () => {
       const side = root.parentElement;
-      if (!side?.classList.contains("poster-side")) return;
-      root.style.marginTop = "";
-      const cs = getComputedStyle(side);
-      const avail =
-        side.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-      const free = avail - root.getBoundingClientRect().height;
-      if (free > 0) root.style.marginTop = `${free / 2}px`;
+      if (side?.classList.contains("poster-side")) {
+        root.style.marginTop = "";
+        const free = availableHeight(root) - root.getBoundingClientRect().height;
+        if (free > 0) root.style.marginTop = `${free / 2}px`;
+        return;
+      }
+      // Fascia bassa del verticale: la colonna ha altezza fissa, quindi il
+      // contenuto si centra con un padding-top invece che con un margine.
+      if (!root.closest(".pv-lower")) return;
+      root.style.paddingTop = "";
+      const free = root.clientHeight - root.scrollHeight;
+      if (free > 0) root.style.paddingTop = `${free / 2}px`;
     };
 
     center();
@@ -197,6 +304,16 @@ function useTrimTimeline(
     const root = ref.current;
     if (!root || !root.closest(".pv-lower")) return;
 
+    // Il filo di collegamento si ferma all'ultimo giorno ancora visibile:
+    // se il trim ne nasconde qualcuno, la marcatura va rifatta o resterebbe
+    // un pezzo di filo appeso nel vuoto.
+    const markLastVisible = () => {
+      const days = Array.from(root.querySelectorAll<HTMLElement>(".poster-day"));
+      const shown = days.filter((el) => el.style.display !== "none");
+      days.forEach((el) => el.classList.remove("is-last"));
+      shown[shown.length - 1]?.classList.add("is-last");
+    };
+
     const trim = () => {
       const items = Array.from(root.querySelectorAll<HTMLElement>(itemSelector));
       const note = root.querySelector<HTMLElement>(".poster-timeline-more");
@@ -204,6 +321,7 @@ function useTrimTimeline(
         el.style.display = "";
       });
       if (note) note.style.display = note.dataset.capped === "1" ? "" : "none";
+      markLastVisible();
 
       // La colonna ha altezza definita (grid-template-rows: 100%):
       // scrollHeight rivela l'overflow del contenuto
@@ -211,6 +329,7 @@ function useTrimTimeline(
       if (fits()) return;
       for (let i = items.length - 1; i > 0 && !fits(); i--) {
         items[i].style.display = "none";
+        markLastVisible();
         if (note) note.style.display = "";
       }
     };
@@ -224,6 +343,9 @@ function useTrimTimeline(
 function Timeline({ model, maxDays }: { model: PosterModel; maxDays: number }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const isSingle = model.days.length === 1;
+  // L'ordine conta: prima si sceglie la scala più grande che ci sta, poi si
+  // tagliano le eventuali eccedenze, infine si centra quello che resta.
+  useFitDays(rootRef, [model, maxDays]);
   useTrimTimeline(rootRef, isSingle ? ".cover-activity" : ".poster-day", [model, maxDays]);
   useCenterInPanel(rootRef, [model, maxDays]);
   if (model.days.length === 0) {
@@ -238,16 +360,17 @@ function Timeline({ model, maxDays }: { model: PosterModel; maxDays: number }) {
     );
   }
 
-  // Giornata singola: la colonna si riempie con le attività della giornata
-  // (orari + tappe) invece della timeline multi-giorno, altrimenti resta vuota.
+  // Giornata singola: nessun altro giorno con cui spartire lo spazio, quindi
+  // la colonna si riempie col programma esteso della giornata — orario, tappa
+  // e anche la descrizione scritta di ogni tappa.
   if (model.days.length === 1) {
     const day = model.days[0];
-    const activities = day.activities.slice(0, 8);
+    const activities = day.activities.slice(0, 10);
     return (
       <div ref={rootRef} className="poster-timeline poster-timeline--single">
         <div className="poster-day">
           <div className="poster-day-marker">
-            <div className="poster-day-circle">{day.dayNumber}°</div>
+            <div className="poster-day-circle">{day.dayNumber}</div>
             <span className="giorno">GIORNO</span>
           </div>
           <div className="poster-day-text">
@@ -257,13 +380,12 @@ function Timeline({ model, maxDays }: { model: PosterModel; maxDays: number }) {
         </div>
         {activities.length > 0 && (
           <div className="poster-day-activities">
-            {/* In copertina solo orario + titolo: la spiegazione completa
-                sta nelle pagine interne, così il programma non si taglia */}
             {activities.map((act, i) => (
               <div key={i} className="cover-activity">
                 {act.time && <span className="time">{act.time}</span>}
                 <span className="text">
                   <strong>{act.title}</strong>
+                  {act.description && <span className="desc">{act.description}</span>}
                 </span>
               </div>
             ))}
@@ -277,15 +399,21 @@ function Timeline({ model, maxDays }: { model: PosterModel; maxDays: number }) {
     );
   }
 
+  // Da 2 giorni in su: solo numero del giorno, data e titolo della giornata.
+  // Niente attività — sono queste poche informazioni per riga a permettere di
+  // arrivare a 7 giorni in copertina; il dettaglio sta nelle pagine interne.
   const visible = model.days.slice(0, maxDays);
   const hasMore = model.days.length > visible.length;
 
   return (
-    <div ref={rootRef} className="poster-timeline">
-      {visible.map((day) => (
-        <div key={day.dayNumber} className="poster-day">
+    <div ref={rootRef} className="poster-timeline poster-timeline--rows">
+      {visible.map((day, i) => (
+        <div
+          key={day.dayNumber}
+          className={i === visible.length - 1 ? "poster-day is-last" : "poster-day"}
+        >
           <div className="poster-day-marker">
-            <div className="poster-day-circle">{day.dayNumber}°</div>
+            <div className="poster-day-circle">{day.dayNumber}</div>
             <span className="giorno">GIORNO</span>
           </div>
           <div className="poster-day-text">
@@ -402,7 +530,12 @@ export function PosterCover({ model, orientation, dateLabel, maxDays }: PosterCo
         <>
           <div className="poster-body">
             <div className="poster-kicker">{model.kicker}</div>
-            <AutoFitTitle text={model.title} orientation={orientation} />
+            <AutoFitTitle
+              text={model.title}
+              subtitle={model.subtitle}
+              location={model.location}
+              orientation={orientation}
+            />
             {dateLabel && (
               <div className="poster-daterow">
                 <CalendarDays />
@@ -415,11 +548,16 @@ export function PosterCover({ model, orientation, dateLabel, maxDays }: PosterCo
           {/* Zona inferiore: parte sotto la foto e sotto il cartellino prezzo */}
           <div className="pv-lower">
             <Timeline model={model} maxDays={maxDays} />
-            <div className="poster-services" ref={servicesRef}>
-              {/* Cap prudente: coi corpi grandi le liste lunghe sforerebbero
-                  la colonna; il resto va nelle pagine interne */}
-              <ServicesBlock title="La quota include" items={model.included} max={7} />
-              <ServicesBlock title="La quota non include" items={model.excluded} max={4} />
+            <div className="poster-services">
+              {/* Wrapper interno: è lui a essere ancorato al bordo basso
+                  della colonna (il filetto del bordo resta invece alto
+                  quanto tutta la colonna) */}
+              <div className="poster-services-inner" ref={servicesRef}>
+                {/* Cap prudente: coi corpi grandi le liste lunghe sforerebbero
+                    la colonna; il resto va nelle pagine interne */}
+                <ServicesBlock title="La quota include" items={model.included} max={7} />
+                <ServicesBlock title="La quota non include" items={model.excluded} max={4} />
+              </div>
             </div>
           </div>
         </>
@@ -430,7 +568,12 @@ export function PosterCover({ model, orientation, dateLabel, maxDays }: PosterCo
           </div>
           <div className="poster-body">
             <div className="poster-kicker">{model.kicker}</div>
-            <AutoFitTitle text={model.title} orientation={orientation} />
+            <AutoFitTitle
+              text={model.title}
+              subtitle={model.subtitle}
+              location={model.location}
+              orientation={orientation}
+            />
             {dateLabel && (
               <div className="poster-daterow">
                 <CalendarDays />

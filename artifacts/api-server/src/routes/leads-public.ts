@@ -347,6 +347,7 @@ router.get("/catalog/products/offers/:id", async (req, res) => {
       .select({
         id: offersTable.id,
         name: offersTable.name,
+        subtitle: offersTable.subtitle,
         destination: offersTable.destination,
         tourOperator: offersTable.tourOperator,
         validFrom: offersTable.validFrom,
@@ -420,6 +421,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       .select({
         id: excursionsTable.id,
         name: excursionsTable.name,
+        subtitle: excursionsTable.subtitle,
         location: excursionsTable.location,
         date: excursionsTable.date,
         departureAt: excursionsTable.departureAt,

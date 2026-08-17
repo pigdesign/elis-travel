@@ -16,6 +16,7 @@ import type { ScheduleDay } from "./scheduleDay";
 export interface PublicExcursionDetail {
   id: string;
   name: string;
+  subtitle?: string | null;
   location?: string | null;
   date?: string | null;
   departureAt?: Date | null;

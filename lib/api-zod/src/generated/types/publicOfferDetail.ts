@@ -10,6 +10,7 @@ import type { ScheduleDay } from "./scheduleDay";
 export interface PublicOfferDetail {
   id: string;
   name: string;
+  subtitle?: string | null;
   destination?: string | null;
   tourOperator?: string | null;
   validFrom?: Date | null;

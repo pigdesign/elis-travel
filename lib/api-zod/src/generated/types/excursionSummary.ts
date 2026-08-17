@@ -14,6 +14,8 @@ import type { ScheduleDay } from "./scheduleDay";
 export interface ExcursionSummary {
   id: string;
   name: string;
+  /** Riga di richiamo sotto il titolo (locandina e sito) */
+  subtitle?: string | null;
   location: string;
   date: string;
   /** Istante di partenza; visualizzato e inserito nel fuso Europe/Rome */

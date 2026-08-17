@@ -29,8 +29,6 @@ import { BookingDetailsModal } from "@/components/admin/BookingDetailsModal";
 import {
   useGetExcursion,
   useUpdateExcursion,
-  useDeleteExcursion,
-  useDeleteExcursionBooking,
   useAddExcursionBooking,
   useListExcursionAgePrices,
   useListExcursionPickupPoints,
@@ -330,16 +328,52 @@ function AvatarInitials({ name }: { name: string }) {
   );
 }
 
+/**
+ * Eliminazione di una prenotazione.
+ *
+ * Il server distingue due no molto diversi: "non esiste / errore" e "esiste ma
+ * ci sono movimenti di denaro, confermi?". Il secondo non è un rifiuto — si
+ * ripete la chiamata con `force` dopo aver avvisato l'utente. Passiamo dal
+ * fetch diretto perché il client generato non prevede parametri in query.
+ */
+type DeleteOutcome =
+  | { kind: "deleted" }
+  | { kind: "needs_confirmation"; message: string }
+  | { kind: "error"; message: string };
+
+async function deleteBookingRequest(
+  excursionId: string,
+  bookingId: string,
+  force = false,
+): Promise<DeleteOutcome> {
+  const response = await fetch(
+    `/api/admin/excursions/${excursionId}/bookings/${bookingId}${force ? "?force=true" : ""}`,
+    { method: "DELETE", credentials: "include" },
+  );
+  if (response.ok) return { kind: "deleted" };
+
+  const body = await response.json().catch(() => null);
+  const message =
+    body?.error ?? "Impossibile eliminare la prenotazione. Riprova.";
+  return body?.code === "needs_confirmation"
+    ? { kind: "needs_confirmation", message }
+    : { kind: "error", message };
+}
+
 function BookingRow({
   booking,
   excursionId,
   pickupPointName,
   onOpenDetails,
+  selected,
+  onToggleSelected,
 }: {
   booking: Booking;
   excursionId: string;
   pickupPointName?: string | null;
   onOpenDetails: (bookingId: string) => void;
+  selected: boolean;
+  onToggleSelected: () => void;
 }) {
   const queryClient = useQueryClient();
   const paymentCfg =
@@ -357,21 +391,42 @@ function BookingRow({
     });
   };
 
-  const { mutateAsync: deleteBooking, isPending: isDeleting } =
-    useDeleteExcursionBooking({
-      mutation: { onSuccess: invalidate },
-    });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const remove = async () => {
     if (
       !window.confirm(`Eliminare la prenotazione di ${booking.customerName}?`)
     )
       return;
+    setIsDeleting(true);
     try {
-      await deleteBooking({ id: excursionId, bookingId: booking.id });
+      const outcome = await deleteBookingRequest(excursionId, booking.id);
+      if (outcome.kind === "needs_confirmation") {
+        // Il server non rifiuta: avvisa che ci sono movimenti e aspetta un sì.
+        if (!window.confirm(`${outcome.message}\n\nProcedere comunque?`)) return;
+        const forced = await deleteBookingRequest(
+          excursionId,
+          booking.id,
+          true,
+        );
+        if (forced.kind === "error") {
+          alert(forced.message);
+          return;
+        }
+      } else if (outcome.kind === "error") {
+        alert(outcome.message);
+        return;
+      }
+      invalidate();
     } catch (e) {
       console.error(e);
-      alert("Impossibile eliminare la prenotazione.");
+      alert(
+        e instanceof Error
+          ? e.message
+          : "Impossibile eliminare la prenotazione.",
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -391,7 +446,16 @@ function BookingRow({
       }`}
       data-testid={`booking-row-${booking.id}`}
     >
-      <td className="py-2.5 pl-4 pr-2">
+      <td className="py-2.5 pl-4 pr-1">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelected}
+          className="h-4 w-4 accent-primary"
+          data-testid={`checkbox-booking-${booking.id}`}
+        />
+      </td>
+      <td className="py-2.5 pl-1 pr-2">
         <div className="flex items-center gap-2">
           <AvatarInitials name={booking.customerName} />
           <div className="min-w-0">
@@ -1557,17 +1621,13 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     useCompleteExcursionTrip({
       mutation: { onSuccess: invalidateExcursion },
     });
-  const { mutateAsync: deleteExcursion, isPending: isDeleting } =
-    useDeleteExcursion({
-      mutation: {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({
-            queryKey: getListExcursionsQueryKey(),
-          });
-        },
-      },
-    });
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  /**
+   * Elimina la gita. Con le prenotazioni davanti non si ferma più: chiede se
+   * portarsele dietro, e se fra quelle c'è del denaro chiede una seconda
+   * conferma dicendo quanto. Così si può ripulire senza svuotare a mano.
+   */
   const handleDelete = async () => {
     if (!exc) return;
     if (
@@ -1576,23 +1636,54 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
       )
     )
       return;
+
+    const call = async (params: string) => {
+      const response = await fetch(
+        `/api/admin/excursions/${excursionId}${params}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      const body = response.ok
+        ? null
+        : await response.json().catch(() => null);
+      return { ok: response.ok, body };
+    };
+
+    setIsDeleting(true);
     try {
-      await deleteExcursion({ id: excursionId });
+      let result = await call("");
+
+      if (!result.ok && result.body?.code === "has_bookings") {
+        if (
+          !window.confirm(
+            `${result.body.error}\n\nEliminare la gita insieme a tutte le sue prenotazioni?`,
+          )
+        )
+          return;
+        result = await call("?withBookings=true");
+      }
+
+      if (!result.ok && result.body?.code === "needs_confirmation") {
+        if (!window.confirm(`${result.body.error}\n\nProcedere comunque?`))
+          return;
+        result = await call("?withBookings=true&force=true");
+      }
+
+      if (!result.ok) {
+        alert(result.body?.error ?? "Impossibile eliminare la gita.");
+        return;
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: getListExcursionsQueryKey(),
+      });
       navigate("/excursions");
     } catch (err: unknown) {
-      const e = err as {
-        status?: number;
-        data?: { error?: string };
-        message?: string;
-      };
-      if (e?.status === 409) {
-        alert(
-          e?.data?.error ??
-            "Impossibile eliminare: la gita ha prenotazioni. Elimina prima tutte le prenotazioni oppure annulla la gita.",
-        );
-      } else {
-        alert(e?.data?.error ?? e?.message ?? "Impossibile eliminare la gita.");
-      }
+      console.error(err);
+      alert(
+        err instanceof Error ? err.message : "Impossibile eliminare la gita.",
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1660,7 +1751,12 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     );
   }
 
-  if (error || !exc) {
+  // Il controllo e' su `!exc`, non su `error`: se un ricaricamento in
+  // sottofondo fallisce (rete ballerina, deploy in corso) React Query segnala
+  // l'errore ma conserva i dati gia' in mano. Buttare giu' la pagina in quel
+  // caso smonterebbe anche il modale di modifica aperto sopra, con dentro tutto
+  // quello che si stava compilando.
+  if (!exc) {
     return (
       <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
         <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1736,6 +1832,66 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
       if (pa !== pb) return pa.localeCompare(pb, "it");
       return a.name.localeCompare(b.name, "it");
     });
+
+  // Selezione multipla: serve a fare piazza pulita senza cliccare il cestino
+  // trenta volte. Le prenotazioni con movimenti chiedono conferma una per una,
+  // perché l'avviso deve dire di quale si tratta e di quanti soldi.
+  const [selectedBookingIds, setSelectedBookingIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const toggleBookingSelection = (bookingId: string) => {
+    setSelectedBookingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(bookingId)) next.delete(bookingId);
+      else next.add(bookingId);
+      return next;
+    });
+  };
+
+  const removeSelectedBookings = async () => {
+    const ids = Array.from(selectedBookingIds);
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Eliminare ${ids.length} prenotazion${ids.length === 1 ? "e" : "i"}?`,
+      )
+    )
+      return;
+
+    setIsBulkDeleting(true);
+    const byId = new Map(allBookings.map((b) => [b.id, b]));
+    const failed: string[] = [];
+    try {
+      for (const bookingId of ids) {
+        const name = byId.get(bookingId)?.customerName ?? "prenotazione";
+        let outcome = await deleteBookingRequest(excursionId, bookingId);
+        if (outcome.kind === "needs_confirmation") {
+          if (
+            window.confirm(`${name}: ${outcome.message}\n\nProcedere comunque?`)
+          ) {
+            outcome = await deleteBookingRequest(excursionId, bookingId, true);
+          } else {
+            continue;
+          }
+        }
+        if (outcome.kind === "error") failed.push(`${name}: ${outcome.message}`);
+      }
+      if (failed.length > 0) {
+        alert(`Non eliminate:\n\n${failed.join("\n")}`);
+      }
+      setSelectedBookingIds(new Set());
+      void queryClient.invalidateQueries({
+        queryKey: getGetExcursionQueryKey(excursionId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: getListExcursionsQueryKey(),
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   const totalPeople = activeBookings.reduce(
     (sum, b) => sum + b.adults + b.children,
@@ -1849,6 +2005,17 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div
+          className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm"
+          data-testid="banner-excursion-stale"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          Non riesco ad aggiornare i dati di questa gita: quelli mostrati
+          potrebbero non essere gli ultimi. Controlla la connessione prima di
+          salvare modifiche importanti.
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <Link
           href="/excursions"
@@ -2260,11 +2427,59 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                 Aggiungi prenotazione
               </button>
             </div>
+            {selectedBookingIds.size > 0 && (
+              <div className="flex items-center justify-between gap-3 border-b border-border/50 bg-amber-50 px-4 py-2.5">
+                <span className="text-xs font-medium text-amber-900">
+                  {selectedBookingIds.size} prenotazion
+                  {selectedBookingIds.size === 1 ? "e selezionata" : "i selezionate"}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBookingIds(new Set())}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Deseleziona
+                  </button>
+                  <button
+                    type="button"
+                    onClick={removeSelectedBookings}
+                    disabled={isBulkDeleting}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                    data-testid="button-bulk-delete-bookings"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {isBulkDeleting
+                      ? "Eliminazione…"
+                      : `Elimina ${selectedBookingIds.size}`}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border/50">
-                    <th className="py-2 pl-4 pr-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="py-2 pl-4 pr-1 w-8">
+                      <input
+                        type="checkbox"
+                        checked={
+                          bookings.length > 0 &&
+                          selectedBookingIds.size === bookings.length
+                        }
+                        onChange={(e) =>
+                          setSelectedBookingIds(
+                            e.target.checked
+                              ? new Set(bookings.map((b) => b.id))
+                              : new Set(),
+                          )
+                        }
+                        className="h-4 w-4 accent-primary"
+                        title="Seleziona tutte"
+                        data-testid="checkbox-select-all-bookings"
+                      />
+                    </th>
+                    <th className="py-2 pl-1 pr-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Nome
                     </th>
                     <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -2293,12 +2508,14 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                           : null
                       }
                       onOpenDetails={setDetailsBookingId}
+                      selected={selectedBookingIds.has(b.id)}
+                      onToggleSelected={() => toggleBookingSelection(b.id)}
                     />
                   ))}
                   {bookings.length === 0 && (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="py-10 text-center text-muted-foreground"
                       >
                         {allBookings.length === 0

@@ -341,6 +341,15 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                     {excursion.name}
                   </h1>
 
+                  {excursion.subtitle && (
+                    <p
+                      className="mt-4 max-w-2xl text-lg font-medium text-white/90 md:text-xl"
+                      data-testid="text-excursion-subtitle"
+                    >
+                      {excursion.subtitle}
+                    </p>
+                  )}
+
                   <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-white/92 md:text-base">
                     {excursion.location && (
                       <div className="flex items-center gap-2">

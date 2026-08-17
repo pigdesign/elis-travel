@@ -393,6 +393,15 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
                     {offer.name}
                   </h1>
 
+                  {offer.subtitle && (
+                    <p
+                      className="mt-4 max-w-2xl text-lg font-medium text-white/90 md:text-xl"
+                      data-testid="text-offer-subtitle"
+                    >
+                      {offer.subtitle}
+                    </p>
+                  )}
+
                   <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-white/92 md:text-base">
                     {offer.destination && (
                       <div className="flex items-center gap-2">

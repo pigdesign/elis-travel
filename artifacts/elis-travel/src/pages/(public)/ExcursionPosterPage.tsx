@@ -19,7 +19,7 @@ import "@/pdf/poster.css";
 
 /** Valori di default della toolbar admin: il PDF pubblico usa questi. */
 const ORIENTATION = "portrait" as const;
-const MAX_DAYS_ON_COVER = 4;
+const MAX_DAYS_ON_COVER = 7;
 
 interface ExcursionPosterPageProps {
   excursionIdOrSlug: string;

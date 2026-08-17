@@ -1,6 +1,16 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import {
+  clearSessionExpired,
+  isAdminAuthError,
+  markSessionExpired,
+} from "@/lib/session-expiry";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -47,7 +57,34 @@ import {
 } from "@/lib/booking-portal-token";
 import { captureStripeReturnFromWindow } from "@/lib/booking-stripe-recovery";
 
-const queryClient = new QueryClient();
+// `refetchOnWindowFocus` e' attivo per default in React Query: ogni volta che
+// si torna sulla scheda del browser tutte le query attive ripartono. Su un
+// backoffice dove si compilano form lunghi e' un rischio e non un vantaggio —
+// basta un componente che riallinei i campi ai dati appena arrivati e quello
+// che l'utente ha digitato sparisce. I dati si aggiornano comunque a ogni
+// navigazione e dopo ogni salvataggio (invalidateQueries).
+const queryClient = new QueryClient({
+  // Un 401 su una chiamata del backoffice accende la fascia "sessione scaduta"
+  // invece di sparire in silenzio; qualunque risposta buona la spegne.
+  queryCache: new QueryCache({
+    onError: (error) => {
+      if (isAdminAuthError(error)) markSessionExpired();
+    },
+    onSuccess: () => clearSessionExpired(),
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      if (isAdminAuthError(error)) markSessionExpired();
+    },
+    onSuccess: () => clearSessionExpired(),
+  }),
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  },
+});
 
 function readBookingPortalToken(legacyToken?: string): string {
   if (typeof window === "undefined") return legacyToken ?? "";

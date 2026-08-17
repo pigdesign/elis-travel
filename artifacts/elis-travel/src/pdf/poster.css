@@ -6,6 +6,11 @@
  */
 
 .poster-root {
+  /* Colore della maschera di copertina nuova: lo usano la copertina verticale
+     e, nelle pagine interne, la fascia ripetuta e la testata con la foto —
+     così la scheda inviata da sola resta riconoscibile come lo stesso
+     documento della locandina. */
+  --poster-brand: #035a72;
   --poster-navy: #002949;
   --poster-navy-dark: #001d33;
   --poster-green: #3dae4a;
@@ -110,7 +115,7 @@
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 800;
   text-transform: uppercase;
-  line-height: 0.98;
+  line-height: 0.86;
   letter-spacing: 0.01em;
   color: #fff;
   text-shadow: 0 1px 8px rgba(14, 31, 48, 0.55);
@@ -118,19 +123,64 @@
 }
 
 /* Riquadro del titolo: il corpo viene calcolato via JS (AutoFitTitle)
-   per riempire questo spazio senza sforare */
+   per riempire questo spazio senza sforare.
+   overflow visibile: con l'interlinea stretta (0.86) gli accenti sulle
+   maiuscole escono dal blocco di riga e verrebbero tagliati. Il testo non
+   sfora comunque, ci pensa il calcolo del corpo. */
 .poster-title-box {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pv .poster-title-box {
-  height: 48mm;
-  margin-top: 2mm;
+  height: 58mm;
+  margin-top: 0;
+}
+
+/* Col sottotitolo il titolo cede l'altezza che serve a quest'ultimo, così il
+   blocco complessivo non spinge la riga data dentro la fascia bassa */
+.pv .poster-title-box--withsub {
+  height: 46mm;
+}
+
+.ph .poster-title-box--withsub {
+  height: 36mm;
 }
 
 .ph .poster-title-box {
   height: 46mm;
-  margin-top: 1.5mm;
+  margin-top: 0;
+}
+
+/* Sottotitolo: sotto il titolo, stessa famiglia condensata ma corpo ridotto
+   (~45% del titolo, calcolato in JS insieme al titolo) e peso più leggero */
+.poster-subtitle {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(14, 31, 48, 0.55);
+  /* Valore di ripiego: quello effettivo lo calcola AutoFitTitle in base al
+     corpo del titolo (recupera lo spazio morto sotto l'ultima riga). */
+  margin-top: 0;
+}
+
+/* Luogo / destinazione: riga piccola sotto il sottotitolo, nello stesso verde
+   del kicker sopra il titolo */
+.poster-location {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 13pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  color: var(--poster-green);
+  margin-top: 2mm;
+}
+
+.ph .poster-location {
+  font-size: 11.5pt;
 }
 
 .poster-daterow {
@@ -222,20 +272,45 @@
 
 /* ---------- Timeline giorni ---------- */
 
+/*
+ * Il programma di copertina è dimensionato da un fattore di scala calcolato
+ * a runtime (useFitDays in PosterCover.tsx): la ricerca cerca il valore più
+ * grande che sta ancora nella colonna. Con 2-3 giorni le righe crescono e
+ * riempiono lo spazio, con 7 giorni si comprimono fino a starci tutte.
+ * Le misure base stanno qui, così il pannello stretto dell'orizzontale può
+ * ridefinirle senza toccare la logica.
+ */
 .poster-timeline {
   display: flex;
   flex-direction: column;
+  --day-scale: 1;
+  --day-circle: 11mm;
+  --day-accent: 13pt;
+  --day-main: 16pt;
+  --day-gap: 7mm;
 }
 
-/* Timeline di copertina: tutto giustificato al centro (cerchio, GIORNO,
-   data, titolo), trattini centrati tra i giorni — stesso impianto in
-   verticale e orizzontale, niente linea continua da tenere in asse */
+.ph .poster-side .poster-timeline {
+  --day-circle: 9mm;
+  --day-accent: 11pt;
+  --day-main: 13pt;
+  --day-gap: 5.5mm;
+}
+
+/* Riga giorno: cerchio a sinistra, data + titolo a destra, filo verticale
+   arancio che collega i cerchi. Poche informazioni per riga = ci stanno
+   fino a 7 giorni nella colonna. */
 .poster-day {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1.5mm;
+  align-items: flex-start;
+  text-align: left;
+  gap: calc(4mm * var(--day-scale));
+  margin-bottom: calc(var(--day-gap) * var(--day-scale));
+}
+
+.poster-day:last-child {
+  margin-bottom: 0;
 }
 
 .poster-day-marker {
@@ -243,12 +318,12 @@
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
-  width: 13mm;
 }
 
 .poster-day-circle {
-  width: 11mm;
-  height: 11mm;
+  width: calc(var(--day-circle) * var(--day-scale));
+  height: calc(var(--day-circle) * var(--day-scale));
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--poster-orange);
   color: #fff;
@@ -257,7 +332,11 @@
   justify-content: center;
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 800;
-  font-size: 14pt;
+  font-size: calc(15pt * var(--day-scale));
+  /* Cifra otticamente centrata: senza line-height fisso la metrica del
+     font lascia il numero basso rispetto al cerchio */
+  line-height: 1;
+  padding-bottom: 0.3mm;
 }
 
 .poster-day-marker .giorno {
@@ -268,27 +347,58 @@
   margin-top: 1mm;
 }
 
-/* Trattino centrato tra un giorno e il successivo: sta in testa al giorno
-   che segue (::before), così se il trim JS nasconde un giorno sparisce
-   anche il suo trattino e non restano segni orfani */
-.poster-timeline:not(.poster-timeline--single) .poster-day:not(:first-child)::before {
+/* Nelle righe multi-giorno la parola GIORNO sparisce: il cerchio "1°" basta
+   e ogni riga risparmia ~5mm, che è quello che permette di arrivare a 7 */
+.poster-timeline--rows .poster-day-marker .giorno {
+  display: none;
+}
+
+/* Filo di collegamento continuo: parte dal bordo inferiore del cerchio e
+   scende fino al cerchio successivo, senza interruzioni qualunque sia
+   l'altezza del testo della riga. Per ottenerlo la colonna del marcatore si
+   stira a tutta l'altezza della riga (padding compreso) e il filo è un
+   elemento flessibile che ne occupa lo spazio residuo.
+   La classe .is-last (assegnata dal render e riaggiornata dal trim JS)
+   toglie il filo all'ultimo giorno effettivamente visibile. */
+.poster-timeline--rows .poster-day {
+  align-items: stretch;
+  margin-bottom: 0;
+}
+
+/* Lo stacco tra un giorno e l'altro sta nel padding del TESTO, non della
+   riga: il padding della riga resterebbe fuori dal box flex e la colonna
+   del marcatore — quindi il filo — si fermerebbe prima del cerchio dopo. */
+.poster-timeline--rows .poster-day-text {
+  padding-bottom: calc(var(--day-gap) * var(--day-scale));
+}
+
+.poster-timeline--rows .poster-day.is-last .poster-day-text {
+  padding-bottom: 0;
+}
+
+.poster-timeline--rows .poster-day-marker::after {
   content: "";
-  width: 0.5mm;
-  height: 6mm;
+  flex: 1;
+  width: 0.6mm;
   background: var(--poster-orange);
-  margin: 0 auto 1mm;
+}
+
+.poster-timeline--rows .poster-day.is-last .poster-day-marker::after {
+  display: none;
 }
 
 .poster-day-text {
-  padding-top: 0.5mm;
+  flex: 1;
   min-width: 0;
+  padding-top: calc(0.8mm * var(--day-scale));
 }
 
 .poster-day-text .accent {
   color: var(--poster-orange);
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 700;
-  font-size: 15pt;
+  font-size: calc(var(--day-accent) * var(--day-scale));
+  line-height: 1.1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -297,19 +407,10 @@
   color: #fff;
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 700;
-  font-size: 17.5pt;
+  font-size: calc(var(--day-main) * var(--day-scale));
   letter-spacing: 0.02em;
   text-transform: uppercase;
   line-height: 1.12;
-}
-
-/* Nel pannello stretto dell'orizzontale i titoli giorno restano più compatti */
-.ph .poster-side .poster-day-text .accent {
-  font-size: 12pt;
-}
-
-.ph .poster-side .poster-day-text .main {
-  font-size: 13.5pt;
 }
 
 .poster-timeline-more {
@@ -317,55 +418,58 @@
   font-size: 9pt;
   font-style: italic;
   margin-top: 2mm;
-  text-align: center;
 }
 
-/* Attività della giornata in copertina (gite di 1 giorno): orario arancio
-   sopra, tappa sotto, trattini centrati tra una tappa e l'altra — come i
-   giorni, tutto giustificato al centro */
+/* ---- Gita di 1 giorno: il programma esteso della giornata ----
+   Qui i giorni non sono in competizione per lo spazio, quindi si vedono
+   anche le descrizioni delle tappe (nelle multi-giorno resterebbero fuori). */
+.poster-timeline--single .poster-day {
+  margin-bottom: calc(4mm * var(--day-scale));
+}
+
 .poster-day-activities {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1.5mm;
-  margin-top: 2.5mm;
-}
-
-.poster-timeline--single .poster-day {
-  margin-bottom: 0;
+  /* Allineato al testo dei giorni: cerchio (11mm) + gap (4mm) */
+  padding-left: calc((var(--day-circle) + 4mm) * var(--day-scale));
 }
 
 .cover-activity {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4mm;
+  position: relative;
   color: #fff;
-  font-size: 12pt;
-  line-height: 1.2;
+  font-size: calc(10.5pt * var(--day-scale));
+  line-height: 1.25;
+  padding-bottom: calc(3mm * var(--day-scale));
 }
 
-/* Trattino centrato tra un'attività e la successiva */
-.cover-activity:not(:first-child)::before {
-  content: "";
-  display: block;
-  width: 0.5mm;
-  height: 3mm;
-  margin: 0 auto 1.2mm;
-  background: var(--poster-orange);
+.cover-activity:last-child {
+  padding-bottom: 0;
 }
 
 .cover-activity .time {
   color: var(--poster-orange);
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 700;
-  font-size: 13pt;
+  font-size: calc(12pt * var(--day-scale));
   line-height: 1.1;
+  margin-right: 2mm;
 }
 
 .cover-activity .text strong {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 700;
+  font-size: calc(12pt * var(--day-scale));
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Descrizione della tappa: solo nelle gite di 1 giorno */
+.cover-activity .desc {
+  display: block;
+  margin-top: calc(0.8mm * var(--day-scale));
+  color: rgba(255, 255, 255, 0.88);
+  font-size: calc(9.5pt * var(--day-scale));
+  line-height: 1.4;
 }
 
 .poster-cover-description {
@@ -472,20 +576,26 @@
 
 /* ---------- Copertina VERTICALE ---------- */
 
+/* Il fondo pagina deve combaciare con la maschera sfondo-v.png. Resta locale
+   al verticale: in orizzontale la maschera è ancora quella vecchia navy. */
+.pv {
+  --poster-navy: var(--poster-brand);
+}
+
 .pv .poster-logo {
   top: 9mm;
   left: 12mm;
   width: 50mm;
 }
 
-/* La foto copre TUTTA la zona della finestra inclusa la sfumatura del
-   grafico (alpha graduale fino a x=41mm / y=190mm): i bordi morbidi
-   li disegna l'overlay PNG, la foto non deve mai finire prima */
+/* La foto copre TUTTA la pagina: la maschera del grafico ha una sfumatura
+   lunghissima (alpha < 250 fino a x=0 / y=261mm), quindi qualunque bordo
+   della foto prima del bordo foglio si vedrebbe come un taglio netto.
+   I bordi morbidi li disegna solo l'overlay PNG. */
 .pv .poster-photo {
-  left: 40mm;
-  right: 0;
+  inset: 0;
   width: auto;
-  height: 191mm;
+  height: auto;
 }
 
 /* Niente sfumature CSS: il raccordo lo disegna lo sfondo sagomato */
@@ -493,24 +603,30 @@
   display: none;
 }
 
+/* Linguetta categoria: ancorata all'angolo alto-destro, al 70% della
+   dimensione originale (richiesta cliente: "30% più piccola, stessa posizione") */
 .pv .poster-wave {
   top: 0;
   right: 0;
-  width: 115mm;
+  width: 80.5mm;
 }
 
+/* Il titolo sconfina volutamente sulla foto (richiesta cliente: "ci deve
+   stare, anche se va sopra l'immagine"): la leggibilità la garantisce
+   l'ombra sotto il testo. Il limite destro (124mm) si ferma prima del corpo
+   del cartellino prezzo, che parte a ~126mm. */
 .pv .poster-body {
   position: absolute;
   top: 46mm;
   left: 12mm;
-  width: 80mm;
+  width: 112mm;
   z-index: 10;
 }
 
 .pv .poster-title {
   font-size: 39pt;
-  max-width: 78mm;
-  margin-top: 2mm;
+  max-width: 112mm;
+  margin-top: 0;
 }
 
 .pv .poster-daterow {
@@ -536,8 +652,9 @@
   overflow: hidden;
 }
 
-/* Giorni impacchettati dall'alto con spaziatura fissa: mai stirati a
-   riempire la colonna (con pochi giorni i trattini verrebbero lunghissimi).
+/* Le righe non vengono MAI stirate a riempire la colonna: lo spazio in più
+   lo assorbe il fattore di scala (righe più grandi) e quello che avanza lo
+   centra il JS con un padding esplicito.
    ATTENZIONE: niente flex-grow/space-between/evenly/margin-auto sulle
    righe — il motore di stampa di Chrome PERDE l'ultimo elemento quando
    lo spazio è distribuito dal flex in un documento multipagina. */
@@ -545,33 +662,28 @@
   gap: 0;
 }
 
-.pv .poster-day {
-  margin-bottom: 3mm;
-}
-
-.pv .poster-timeline--single .poster-day {
-  margin-bottom: 0;
-}
-
-/* Trattini leggermente più compatti: così una gita di 3 giorni sta sempre
-   nella colonna senza far scattare il trim */
-.pv .poster-timeline:not(.poster-timeline--single) .poster-day:not(:first-child)::before {
-  margin-bottom: 0.5mm;
-}
-
+/* Il filetto divisorio resta alto quanto tutta la colonna… */
 .pv .poster-services {
-  border-left: 0.4mm solid rgba(255, 255, 255, 0.35);
-  padding-left: 6mm;
+  position: relative;
+  border-left: 0.75mm solid rgba(255, 255, 255, 0.45);
+}
+
+/* …mentre le liste si appoggiano al BORDO BASSO: se sono corte lo spazio
+   vuoto resta in alto (la parte alta respira) invece che sotto.
+   Niente flex/justify-content qui: in stampa Chrome perde l'ultimo elemento
+   quando lo spazio è distribuito dal flex. Il tetto di altezza lascia
+   liberi i primi 10mm, dove scende il cartellino prezzo. */
+.pv .poster-services-inner {
+  position: absolute;
+  left: 6mm;
+  right: 0;
+  bottom: 0;
+  max-height: calc(100% - 10mm);
   overflow: hidden;
 }
 
 .pv .poster-services-block + .poster-services-block {
   margin-top: 5mm;
-}
-
-/* Le liste partono sotto il cartellino, che scende dalla foto */
-.pv .poster-services {
-  padding-top: 10mm;
 }
 
 /* Il contenitore sborda ben oltre il bordo destro: i laccetti del cartellino
@@ -626,10 +738,12 @@
   display: none;
 }
 
+/* Come in verticale: 70% della dimensione, ancorata al bordo destro di prima
+   (130 + 150 = 280mm, cioè 17mm dal bordo foglio) */
 .ph .poster-wave {
   top: 0;
-  left: 130mm;
-  width: 150mm;
+  right: 17mm;
+  width: 105mm;
 }
 
 /* Il pannello programma copre foto e laccetti del cartellino (z sopra) e
@@ -655,24 +769,6 @@
 /* Il centraggio verticale nel pannello è calcolato via JS (margine
    esplicito): margin auto / justify-content distribuiscono spazio elastico
    e il motore di stampa di Chrome perde l'ultimo elemento della colonna */
-
-/* Nel pannello stretto i corpi delle attività scendono di un punto */
-.ph .poster-side .cover-activity {
-  font-size: 10pt;
-  line-height: 1.15;
-}
-
-.ph .poster-side .cover-activity .time {
-  font-size: 11pt;
-}
-
-.ph .poster-side .poster-day {
-  margin-bottom: 5mm;
-}
-
-.ph .poster-side .poster-timeline--single .poster-day {
-  margin-bottom: 0;
-}
 
 .ph .poster-body {
   position: absolute;
@@ -747,19 +843,228 @@
   border-collapse: collapse;
   background: #fff;
   color: var(--poster-navy);
+  /* Il cerchio giorno è condiviso con la copertina, dove le misure arrivano
+     da queste variabili: qui niente scala automatica, valori fissi. Senza
+     definirle il calc() resterebbe invalido e i cerchi diventerebbero ovali. */
+  --day-scale: 1;
+  --day-circle: 11mm;
 }
 
+/* Altezza della fascia fissa ripetuta in stampa: la usano sia la fascia
+   stessa, sia lo spazio che il thead le riserva su ogni pagina, sia la
+   risalita del blocco di apertura che la copre sulla prima.
+   Sta sul wrap perché la fascia fissa vive fuori dalla tabella. */
+.poster-inner-wrap {
+  --inner-head-h: 16mm;
+}
+
+/* Fascia in cima alla PRIMA pagina: solo logo e categoria. Titolo e quota
+   qui sarebbero un doppione della testata grande subito sotto. */
 .poster-inner-header {
-  background: var(--poster-navy);
+  background: var(--poster-brand);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 4mm 10mm;
+  gap: 6mm;
+  padding: 4mm 10mm 5mm;
 }
 
 .poster-inner-header img {
   height: 12mm;
   width: auto;
+  flex-shrink: 0;
+}
+
+/* Fascia fissa delle pagine dalla seconda in poi: logo + titolo + quota.
+   In stampa gli elementi fixed si ripetono su OGNI pagina fisica; sulla
+   prima la copre .poster-inner-firstpage. */
+.poster-inner-printheader {
+  display: none;
+  background: var(--poster-brand);
+  align-items: center;
+  gap: 6mm;
+  padding: 0 10mm;
+  height: var(--inner-head-h);
+}
+
+.poster-inner-printheader img {
+  height: 9mm;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.poster-inner-printheader .poster-inner-badge {
+  font-size: 11pt;
+  padding: 1.5mm 4mm;
+}
+
+.poster-inner-printheader .poster-inner-badge svg {
+  width: 5mm;
+  height: 5mm;
+}
+
+.poster-inner-header-id {
+  flex: 1;
+  min-width: 0;
+  color: #fff;
+}
+
+.poster-inner-header-id .t {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 12pt;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  /* Titolo lungo su una riga sola: la fascia non deve mai crescere */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poster-inner-header-id .p {
+  font-size: 9pt;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.poster-inner-header-id .p strong {
+  color: var(--poster-orange);
+  font-weight: 800;
+}
+
+/* ---------- Testata della prima pagina interna ---------- */
+
+/* "Mini-copertina": foto + titolo, sottotitolo, luogo, date e prezzo. Serve a
+   rendere la scheda autosufficiente quando viene inviata senza locandina. */
+.poster-inner-hero {
+  position: relative;
+  min-height: 58mm;
+  overflow: hidden;
+  background: var(--poster-brand);
+  color: #fff;
+  break-inside: avoid;
+}
+
+.poster-inner-hero .hero-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Velo verso sinistra: i testi restano leggibili qualunque sia la foto */
+.poster-inner-hero .hero-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    var(--poster-brand) 0%,
+    rgba(3, 90, 114, 0.94) 42%,
+    rgba(3, 90, 114, 0.4) 100%
+  );
+}
+
+.poster-inner-hero .hero-content {
+  position: relative;
+  padding: 7mm 60mm 7mm 10mm;
+}
+
+.poster-inner-hero .hero-kicker {
+  color: var(--poster-green);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 12pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.poster-inner-hero .hero-title {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  font-size: 30pt;
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  margin-top: 1.5mm;
+}
+
+.poster-inner-hero .hero-subtitle {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  font-size: 14pt;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin-top: 2mm;
+}
+
+.poster-inner-hero .hero-location {
+  color: var(--poster-green);
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: 11pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 1.5mm;
+}
+
+.poster-inner-hero .hero-date {
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  font-size: 13pt;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 3.5mm;
+}
+
+.poster-inner-hero .hero-date svg {
+  width: 5.5mm;
+  height: 5.5mm;
+  stroke-width: 1.8;
+  flex-shrink: 0;
+}
+
+.poster-inner-hero .hero-date .num {
+  color: var(--poster-orange);
+  font-weight: 800;
+}
+
+/* Pastiglia prezzo: dritta e compatta, si legge e si stampa meglio del
+   cartellino inclinato della copertina */
+.poster-inner-hero .hero-price {
+  position: absolute;
+  right: 10mm;
+  bottom: 7mm;
+  background: var(--poster-orange);
+  color: #fff;
+  border-radius: 3mm;
+  padding: 3mm 6mm;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.poster-inner-hero .hero-price .q,
+.poster-inner-hero .hero-price .pp {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 600;
+  font-size: 9.5pt;
+  letter-spacing: 0.18em;
+}
+
+.poster-inner-hero .hero-price .v {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 800;
+  font-size: 26pt;
+  white-space: nowrap;
+}
+
+.poster-inner-hero .hero-price .v--request {
+  font-size: 14pt;
+  padding: 1mm 0;
 }
 
 .poster-inner-badge {
@@ -968,9 +1273,15 @@ body.poster-standalone > *:not(#root) {
     padding: 0 !important;
   }
 
+  /* Le fasce fisse (testata e contatti) si ripetono su OGNI pagina fisica,
+     copertina compresa. La copertina è opaca e grande quanto il foglio:
+     alzandola sopra di loro le nasconde entrambe, e restano visibili solo
+     sulle pagine della scheda. */
   .poster-page {
     box-shadow: none;
     margin: 0;
+    position: relative;
+    z-index: 50;
   }
 
   .poster-inner thead {
@@ -1007,6 +1318,29 @@ body.poster-standalone > *:not(#root) {
   .poster-inner-endspace {
     height: 16mm;
   }
+
+  /* Fascia identificativa fissa in cima a ogni pagina fisica */
+  .poster-inner-printheader {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+  }
+
+  /* Lo spazio che il thead le riserva, ripetuto su ogni pagina */
+  .poster-inner-headspace {
+    height: var(--inner-head-h);
+  }
+
+  /* Sulla prima pagina il blocco di apertura si riprende quello spazio e
+     copre la fascia fissa: sopra resta solo logo + categoria */
+  .poster-inner-firstpage {
+    position: relative;
+    z-index: 30;
+    margin-top: calc(-1 * var(--inner-head-h));
+  }
 }
 
 /* A schermo la banda fissa non esiste e lo spacer è a zero (le regole
@@ -1019,15 +1353,31 @@ body.poster-standalone > *:not(#root) {
   .poster-inner-endspace {
     height: 0;
   }
+
+  /* A schermo non ci sono pagine: si vede solo il blocco di apertura */
+  .poster-inner-printheader {
+    display: none;
+  }
+
+  .poster-inner-headspace {
+    height: 0;
+  }
+
+  .poster-inner-firstpage {
+    margin-top: 0;
+  }
 }
 
 .poster-print-footband strong {
   font-weight: 800;
 }
 
-/* Aria tra la fascia header (ripetuta a ogni pagina) e il contenuto */
+/* L'aria sotto la fascia header (ripetuta a ogni pagina) sta DENTRO la fascia,
+   non in un margine bianco: così sulla prima pagina il petrolio prosegue senza
+   soluzione di continuità nella testata con la foto, invece di lasciare una
+   striscia bianca in mezzo. */
 .poster-inner thead td {
-  padding-bottom: 5mm;
+  padding-bottom: 0;
 }
 
 /* Regole anti-taglio per la stampa multipagina delle pagine interne */

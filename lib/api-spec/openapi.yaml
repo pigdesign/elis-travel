@@ -2471,6 +2471,10 @@ components:
           format: uuid
         name:
           type: string
+        subtitle:
+          type: string
+          nullable: true
+          description: Riga di richiamo sotto il titolo (locandina e sito)
         location:
           type: string
         date:
@@ -3812,6 +3816,10 @@ components:
       properties:
         name:
           type: string
+        subtitle:
+          type: string
+          nullable: true
+          description: Riga di richiamo sotto il titolo (locandina e sito)
         location:
           type: string
         date:
@@ -4041,6 +4049,10 @@ components:
           format: uuid
         name:
           type: string
+        subtitle:
+          type: string
+          nullable: true
+          description: Riga di richiamo sotto il titolo (locandina e sito)
         destination:
           type: string
         tourOperator:
@@ -4145,6 +4157,10 @@ components:
       properties:
         name:
           type: string
+        subtitle:
+          type: string
+          nullable: true
+          description: Riga di richiamo sotto il titolo (locandina e sito)
         destination:
           type: string
         tourOperator:
@@ -4575,6 +4591,9 @@ components:
           format: uuid
         name:
           type: string
+        subtitle:
+          type: string
+          nullable: true
         destination:
           type: string
           nullable: true
@@ -4646,6 +4665,9 @@ components:
           format: uuid
         name:
           type: string
+        subtitle:
+          type: string
+          nullable: true
         location:
           type: string
           nullable: true

@@ -4,7 +4,6 @@ import type {
   OfferDetail,
   PublicExcursionDetail,
   ScheduleDay,
-  SettingsResponse,
 } from "@workspace/api-client-react";
 import type { OfferGalleryImage } from "@workspace/api-client-react";
 import { POSTER_THEMES, type PosterKind, type PosterTheme } from "./theme";
@@ -36,6 +35,10 @@ export interface PosterModel {
   kind: PosterKind;
   theme: PosterTheme;
   title: string;
+  /** Riga sotto il titolo, corpo ridotto; null se non compilata. */
+  subtitle: string | null;
+  /** Luogo (gite) o destinazione (offerte), sotto il sottotitolo. */
+  location: string | null;
   /** Kicker verde, es. "GITA 3 GIORNI". */
   kicker: string;
   /** Testo riga data, es. "DAL 17 AL 19 APRILE 2026" (modificabile nel form). */
@@ -51,14 +54,6 @@ export interface PosterModel {
   description: string | null;
   pickupPoints: PosterPickupPoint[];
   galleryImages: string[];
-  /** Blocco "come prenotare" (pagine interne), da settings. */
-  payment: {
-    depositPercentage: string | null;
-    iban: string | null;
-    beneficiary: string | null;
-    bank: string | null;
-    notes: string | null;
-  } | null;
 }
 
 const MONTHS_IT = [
@@ -148,25 +143,14 @@ function normalizeDays(
   });
 }
 
-function normalizePayment(settings?: SettingsResponse): PosterModel["payment"] {
-  if (!settings) return null;
-  const payment = {
-    depositPercentage: settings.deposit_percentage ?? null,
-    iban: settings.payment_iban ?? null,
-    beneficiary: settings.payment_beneficiary ?? null,
-    bank: settings.payment_bank ?? null,
-    notes: settings.payment_notes ?? null,
-  };
-  const hasData = Object.values(payment).some((v) => v && v.trim().length > 0);
-  return hasData ? payment : null;
-}
-
 /**
  * Campi della gita che finiscono in locandina, comuni al tipo admin
  * (ExcursionDetail) e a quello pubblico (PublicExcursionDetail).
  */
 interface ExcursionPosterSource {
   name: string;
+  subtitle?: string | null;
+  location?: string | null;
   date?: string | null;
   pricePerPerson?: string | null;
   coverImageUrl?: string | null;
@@ -183,7 +167,6 @@ interface ExcursionPosterSource {
 function buildExcursionPoster(
   excursion: ExcursionPosterSource,
   pickupPoints: PosterPickupPoint[],
-  payment: PosterModel["payment"],
 ): PosterModel {
   const startDate = parseDate(excursion.date);
   const days = normalizeDays(excursion.schedule, startDate);
@@ -194,6 +177,8 @@ function buildExcursionPoster(
     kind: "gita",
     theme: POSTER_THEMES.gita,
     title: excursion.name,
+    subtitle: excursion.subtitle?.trim() || null,
+    location: excursion.location?.trim() || null,
     kicker: dayCount > 1 ? `GITA ${dayCount} GIORNI` : "GITA DI 1 GIORNO",
     dateLabel: startDate && endDate ? formatDateRange(startDate, endDate) : "",
     priceLabel: formatPosterPrice(excursion.pricePerPerson),
@@ -205,14 +190,12 @@ function buildExcursionPoster(
     description: excursion.generalInfo?.trim() || null,
     pickupPoints,
     galleryImages: [],
-    payment,
   };
 }
 
 export function buildPosterFromExcursion(
   excursion: ExcursionDetail,
   pickupPoints: ExcursionPickupPoint[],
-  settings?: SettingsResponse,
 ): PosterModel {
   return buildExcursionPoster(
     excursion,
@@ -224,14 +207,12 @@ export function buildPosterFromExcursion(
         address: pp.location.address ?? null,
         time: pp.pickupTime ?? null,
       })),
-    normalizePayment(settings),
   );
 }
 
 /**
  * Variante pubblica: stessi template e stesso layout, dati presi dall'endpoint
- * pubblico della gita. Il blocco "come prenotare" resta fuori perché IBAN e
- * beneficiario non sono esposti sull'API pubblica.
+ * pubblico della gita.
  */
 export function buildPosterFromPublicExcursion(
   excursion: PublicExcursionDetail,
@@ -246,14 +227,12 @@ export function buildPosterFromPublicExcursion(
         address: pp.address ?? null,
         time: pp.pickupTime ?? null,
       })),
-    null,
   );
 }
 
 export function buildPosterFromOffer(
   offer: OfferDetail,
   galleryImages: OfferGalleryImage[],
-  settings?: SettingsResponse,
 ): PosterModel {
   const kind: PosterKind = offer.category === "crociera" ? "crociera" : "vacanza";
   const theme = POSTER_THEMES[kind];
@@ -279,6 +258,9 @@ export function buildPosterFromOffer(
     kind,
     theme,
     title: offer.name,
+    subtitle: offer.subtitle?.trim() || null,
+    // Per le offerte il "luogo" è la destinazione commerciale.
+    location: offer.destination?.trim() || null,
     kicker: durationParts.length > 0 ? `${theme.label} ${durationParts.join(" / ")}` : theme.label,
     dateLabel,
     // Le offerte hanno un prezzo "a partire da": prefisso DA sul cartellino.
@@ -293,6 +275,5 @@ export function buildPosterFromOffer(
     galleryImages: [...galleryImages]
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((img) => img.imageUrl),
-    payment: normalizePayment(settings),
   };
 }

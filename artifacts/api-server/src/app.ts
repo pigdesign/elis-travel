@@ -129,6 +129,10 @@ if (!process.env.SESSION_SECRET) {
 // Qui l'unica lista da mantenere e quella dei path clienti, che introduciamo noi
 // e conosciamo per intero; tutto il resto conserva esattamente il comportamento
 // attuale. Il predicato vive in services/session-routing.ts perche e testato.
+// `rolling` rinnova la scadenza a ogni richiesta. Senza, i 7 giorni partivano
+// dal login e scadevano a data fissa anche lavorandoci tutti i giorni: la
+// sessione poteva morire in mezzo alla compilazione di un form, e da li' ogni
+// salvataggio tornava 401 mentre l'interfaccia sembrava ancora a posto.
 const adminSession = session({
   store: new PgSession({
     pool: sessionPool,
@@ -138,6 +142,7 @@ const adminSession = session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  rolling: true,
   proxy: true,
   cookie: {
     httpOnly: true,

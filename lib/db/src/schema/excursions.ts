@@ -35,6 +35,8 @@ export const excursionVehiclesTable = pgTable("excursion_vehicles", {
 export const excursionsTable = pgTable("excursions", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  // Riga di richiamo sotto il titolo, in locandina e sulla pagina pubblica.
+  subtitle: text("subtitle"),
   location: text("location").notNull(),
   date: date("date").notNull(),
   // Istante reale di partenza. `date` resta disponibile per catalogo e

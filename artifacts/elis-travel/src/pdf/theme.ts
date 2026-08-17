@@ -92,6 +92,9 @@ export const POSTER_AGENCY = {
   name: "ELIS TRAVEL",
   tagline: "AGENZIA VIAGGI E TOUR OPERATOR",
   address: "VIA CAVOUR 59C - ANDORA SV",
+  /** Stessa via, in caso/maiuscole normali: per i testi discorsivi. */
+  addressPretty: "Via Cavour 59C — Andora (SV)",
   phones: "0182 64 64 47 - 391 17 17 007",
   email: "INFO@ELIS-TRAVEL.IT",
+  website: "www.elis-travel.it",
 } as const;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Loader2,
@@ -8,6 +8,7 @@ import {
   Trash2,
   MapPin,
   Clock,
+  RotateCcw,
 } from "lucide-react";
 import {
   useCreateExcursion,
@@ -44,6 +45,8 @@ import {
   departureAtToRomeLocal,
   romeLocalDateTimeToIso,
 } from "@/lib/excursion-time";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { describeDraftAge } from "@/lib/form-draft";
 
 // Suggerimenti iniziali per i tag (le voci tipologia storiche del sito).
 const DEFAULT_TAG_SUGGESTIONS = [
@@ -81,6 +84,7 @@ type ExtraRow = { name: string; price: string };
 
 type FormState = {
   name: string;
+  subtitle: string;
   location: string;
   date: string;
   departureTime: string;
@@ -138,6 +142,7 @@ function todayISO() {
 function emptyState(): FormState {
   return {
     name: "",
+    subtitle: "",
     location: "",
     date: todayISO(),
     departureTime: "",
@@ -219,6 +224,7 @@ function fromExcursion(
   const departureLocal = departureAtToRomeLocal(exc.departureAt);
   return {
     name: exc.name ?? "",
+    subtitle: exc.subtitle ?? "",
     location: exc.location ?? "",
     date: opts?.clearDate
       ? ""
@@ -322,6 +328,7 @@ function toPayload(s: FormState): ExcursionCreateInput {
   }
   return {
     name: s.name.trim(),
+    subtitle: s.subtitle.trim() || null,
     location: s.location.trim(),
     date: s.date,
     departureAt,
@@ -800,7 +807,9 @@ function PickupPointsSection({
             );
           })}
           {surchargeError && (
-            <p className="text-xs text-red-600">{surchargeError}</p>
+            <p className="text-xs text-red-600" data-field-error>
+              {surchargeError}
+            </p>
           )}
         </div>
       )}
@@ -848,6 +857,9 @@ export function ExcursionFormModal({
   });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Riferimento al contenitore scorrevole: serve a portare sotto gli occhi il
+  // primo campo in errore, che in un form lungo cade quasi sempre fuori schermo.
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const { data: vehicles } = useListVehicles();
 
@@ -919,6 +931,75 @@ export function ExcursionFormModal({
     );
     setAgePricesLoaded(true);
   }, [existingAgePrices, agePricesLoaded]);
+
+  // ---- Bozza locale ----
+  // Compilare una gita richiede parecchi minuti e finora tutto viveva solo in
+  // memoria: cambiare scheda, chiudere il modale per sbaglio o una ricarica
+  // bastavano a perdere il lavoro senza nemmeno un avviso. Qui una copia va in
+  // localStorage a ogni modifica e viene riproposta al rientro.
+  //
+  // La chiave distingue creazione, duplicazione e modifica della singola gita,
+  // cosi' bozze diverse non si sovrascrivono a vicenda.
+  const draftKey =
+    mode === "edit"
+      ? initial?.id
+        ? `excursion:edit:${initial.id}`
+        : null
+      : isDuplicate && initial?.id
+        ? `excursion:duplicate:${initial.id}`
+        : "excursion:create";
+
+  // Nella bozza finisce tutto cio' che il salvataggio manda al server, non il
+  // solo `form`: fasce d'eta' e punti di raccolta inseriti in creazione sono
+  // altrettanto lavoro perso.
+  const draftValue = useMemo(
+    () => ({ form, agePrices, draftPickupPoints }),
+    [form, agePrices, draftPickupPoints],
+  );
+
+  const draft = useFormDraft({ key: draftKey, value: draftValue });
+
+  const restoreDraft = () => {
+    if (!draft.pending) return;
+    const { value } = draft.pending;
+    setForm(value.form);
+    setAgePrices(value.agePrices ?? {});
+    setDraftPickupPoints(value.draftPickupPoints ?? []);
+    // I prezzi ripristinati sono piu' recenti di quelli sul server: senza
+    // questo flag l'effetto qui sopra li riscriverebbe appena arriva la query.
+    setAgePricesLoaded(true);
+    draft.acceptPending();
+  };
+
+  // Chiusura dal tasto X o da Annulla: con modifiche in sospeso si chiede
+  // conferma, altrimenti un clic distratto butta via tutto. La bozza resta
+  // comunque su disco, ma qui l'utente sta dichiarando di volerla scartare.
+  const requestClose = () => {
+    if (
+      draft.isDirty &&
+      !window.confirm(
+        "Ci sono modifiche non salvate. Vuoi chiudere e perderle?\n\nAnnulla per tornare al form e salvare.",
+      )
+    ) {
+      return;
+    }
+    draft.clear();
+    onClose();
+  };
+
+  // Ricarica della pagina o chiusura della scheda: il browser mostra il suo
+  // avviso nativo. La bozza e' comunque gia' su disco, questo evita solo che
+  // l'utente se ne accorga troppo tardi.
+  useEffect(() => {
+    if (!draft.isDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Richiesto dai browser piu' vecchi per far comparire l'avviso.
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [draft.isDirty]);
 
   // Auto-fill vehicle fixed cost & capacity when picking a vehicle (only if creating or empty)
   const selectedVehicle = useMemo(
@@ -1071,7 +1152,20 @@ export function ExcursionFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!validate()) return;
+    if (!validate()) {
+      // Senza questo il tasto sembrava semplicemente non funzionare: l'errore
+      // veniva scritto accanto al campo, che in un form cosi' lungo e' quasi
+      // sempre fuori dalla parte visibile.
+      setErrorMsg(
+        "Alcuni campi non sono compilati correttamente: controlla le voci evidenziate in rosso.",
+      );
+      requestAnimationFrame(() => {
+        const firstError =
+          formRef.current?.querySelector<HTMLElement>("[data-field-error]");
+        firstError?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
     try {
       const payload = toPayload(form);
       let saved: ExcursionSummary;
@@ -1117,12 +1211,25 @@ export function ExcursionFormModal({
         queryKey: getListExcursionPickupPointsQueryKey(saved.id),
       });
 
+      // Salvato davvero: solo ora la bozza locale puo' sparire.
+      draft.clear();
+
       onSaved?.(saved);
       onClose();
     } catch (err: unknown) {
-      const e = err as { data?: { error?: string }; message?: string };
+      const e = err as {
+        status?: number;
+        data?: { error?: string };
+        message?: string;
+      };
+      // Il 401 merita un messaggio suo: dice cosa fare e, soprattutto,
+      // rassicura che quanto compilato non e' andato perso.
       setErrorMsg(
-        e?.data?.error ?? e?.message ?? "Impossibile salvare la gita. Riprova.",
+        e?.status === 401
+          ? "Sessione scaduta: apri il login in un'altra scheda, rientra e premi di nuovo Salva. Le modifiche restano qui."
+          : (e?.data?.error ??
+            e?.message ??
+            "Impossibile salvare la gita. Riprova."),
       );
     }
   };
@@ -1141,7 +1248,7 @@ export function ExcursionFormModal({
           </h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="p-1.5 rounded-md hover:bg-muted/50"
             data-testid="button-close-excursion-form"
           >
@@ -1149,7 +1256,45 @@ export function ExcursionFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-6">
+        {draft.pending && (
+          <div
+            className="mx-6 mt-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            data-testid="banner-excursion-draft"
+          >
+            <div className="flex items-start gap-2 text-sm text-amber-900">
+              <RotateCcw className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span>
+                Abbiamo ritrovato delle modifiche non salvate di{" "}
+                <strong>{describeDraftAge(draft.pending.savedAt)}</strong>. Vuoi
+                riprendere da lì?
+              </span>
+            </div>
+            <div className="flex flex-shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={restoreDraft}
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+                data-testid="button-restore-excursion-draft"
+              >
+                Riprendi
+              </button>
+              <button
+                type="button"
+                onClick={draft.discardPending}
+                className="rounded-md px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                data-testid="button-discard-excursion-draft"
+              >
+                Scarta
+              </button>
+            </div>
+          </div>
+        )}
+
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className="px-6 py-5 space-y-6"
+        >
           {/* Sezione: Informazioni base */}
           <section className="space-y-3">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1169,10 +1314,27 @@ export function ExcursionFormModal({
                   data-testid="input-excursion-name"
                 />
                 {fieldErrors.name && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
                     {fieldErrors.name}
                   </p>
                 )}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Sottotitolo
+                </label>
+                <input
+                  type="text"
+                  value={form.subtitle}
+                  onChange={(e) => setField("subtitle", e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Es. Tra colline, borghi medievali e degustazioni"
+                  data-testid="input-excursion-subtitle"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Riga di richiamo sotto il titolo: si vede in locandina e sulla
+                  pagina pubblica della gita.
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">
@@ -1187,7 +1349,7 @@ export function ExcursionFormModal({
                   data-testid="input-excursion-location"
                 />
                 {fieldErrors.location && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
                     {fieldErrors.location}
                   </p>
                 )}
@@ -1204,7 +1366,7 @@ export function ExcursionFormModal({
                   data-testid="input-excursion-date"
                 />
                 {fieldErrors.date && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
                     {fieldErrors.date}
                   </p>
                 )}
@@ -1231,7 +1393,7 @@ export function ExcursionFormModal({
                   data-testid="input-excursion-departure-time"
                 />
                 {fieldErrors.departureTime ? (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
                     {fieldErrors.departureTime}
                   </p>
                 ) : (
@@ -1341,7 +1503,7 @@ export function ExcursionFormModal({
                   data-testid="input-excursion-price"
                 />
                 {fieldErrors.pricePerPerson && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
                     {fieldErrors.pricePerPerson}
                   </p>
                 )}
@@ -1361,6 +1523,11 @@ export function ExcursionFormModal({
                   className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   data-testid="input-excursion-meal"
                 />
+                {fieldErrors.mealCostPerPerson && (
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
+                    {fieldErrors.mealCostPerPerson}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">
@@ -1377,6 +1544,11 @@ export function ExcursionFormModal({
                   className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   data-testid="input-excursion-entrance"
                 />
+                {fieldErrors.entranceCostPerPerson && (
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
+                    {fieldErrors.entranceCostPerPerson}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1455,7 +1627,7 @@ export function ExcursionFormModal({
               </button>
 
               {fieldErrors.extras && (
-                <p className="text-xs text-red-600 mt-1">
+                <p className="text-xs text-red-600 mt-1" data-field-error>
                   {fieldErrors.extras}
                 </p>
               )}
@@ -1551,7 +1723,7 @@ export function ExcursionFormModal({
               </button>
 
               {fieldErrors.otherCosts && (
-                <p className="text-xs text-red-600 mt-1">
+                <p className="text-xs text-red-600 mt-1" data-field-error>
                   {fieldErrors.otherCosts}
                 </p>
               )}
@@ -1834,7 +2006,7 @@ export function ExcursionFormModal({
                   Lascia 0 se non c'è limite (es. mezzo da definire).
                 </p>
                 {fieldErrors.currentCapacity && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
                     {fieldErrors.currentCapacity}
                   </p>
                 )}
@@ -1855,7 +2027,7 @@ export function ExcursionFormModal({
                   Calcolata sulle persone, non sulle prenotazioni.
                 </p>
                 {fieldErrors.minThreshold && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
                     {fieldErrors.minThreshold}
                   </p>
                 )}
@@ -1953,6 +2125,11 @@ export function ExcursionFormModal({
                   className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   data-testid="input-excursion-vehicle-cost"
                 />
+                {fieldErrors.vehicleFixedCost && (
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
+                    {fieldErrors.vehicleFixedCost}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">
@@ -1967,6 +2144,11 @@ export function ExcursionFormModal({
                   placeholder="(opzionale)"
                   data-testid="input-excursion-switch-threshold"
                 />
+                {fieldErrors.switchThreshold && (
+                  <p className="text-xs text-red-600 mt-1" data-field-error>
+                    {fieldErrors.switchThreshold}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">
@@ -2003,6 +2185,11 @@ export function ExcursionFormModal({
                     placeholder="0.00"
                     data-testid="input-excursion-switch-cost"
                   />
+                  {fieldErrors.switchVehicleAdditionalCost && (
+                    <p className="text-xs text-red-600 mt-1" data-field-error>
+                      {fieldErrors.switchVehicleAdditionalCost}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -2195,10 +2382,18 @@ export function ExcursionFormModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/50">
+            {draft.isDirty && (
+              <span
+                className="mr-auto text-xs text-muted-foreground"
+                data-testid="text-excursion-draft-status"
+              >
+                Modifiche non salvate — conservate in locale finché non salvi.
+              </span>
+            )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="px-4 py-2 text-sm rounded-md hover:bg-muted/50 text-muted-foreground"
               data-testid="button-cancel-excursion-form"
             >

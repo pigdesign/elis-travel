@@ -73,6 +73,8 @@ export interface ScheduleDay {
 export interface ExcursionSummary {
   id: string;
   name: string;
+  /** Riga di richiamo sotto il titolo (locandina e sito) */
+  subtitle?: string | null;
   location: string;
   date: string;
   /** Istante di partenza; visualizzato e inserito nel fuso Europe/Rome */
@@ -817,6 +819,8 @@ export const ExcursionInputDepositType = {
 
 export interface ExcursionInput {
   name?: string;
+  /** Riga di richiamo sotto il titolo (locandina e sito) */
+  subtitle?: string | null;
   location?: string;
   /** Data di compatibilità, derivata da departureAt nel fuso Europe/Rome */
   date?: string;
@@ -913,6 +917,8 @@ export interface VehicleInput {
 export interface OfferSummary {
   id: string;
   name: string;
+  /** Riga di richiamo sotto il titolo (locandina e sito) */
+  subtitle?: string | null;
   destination: string;
   tourOperator?: string | null;
   status: string;
@@ -948,6 +954,8 @@ export type OfferDetail = OfferSummary & {
 
 export interface OfferInput {
   name?: string;
+  /** Riga di richiamo sotto il titolo (locandina e sito) */
+  subtitle?: string | null;
   destination?: string;
   tourOperator?: string | null;
   status?: string;
@@ -1120,6 +1128,7 @@ export interface PublicRidentCatalog {
 export interface PublicOfferDetail {
   id: string;
   name: string;
+  subtitle?: string | null;
   destination?: string | null;
   tourOperator?: string | null;
   validFrom?: string | null;
@@ -1205,6 +1214,7 @@ export interface PublicPaymentMethods {
 export interface PublicExcursionDetail {
   id: string;
   name: string;
+  subtitle?: string | null;
   location?: string | null;
   date?: string | null;
   departureAt?: string | null;
