@@ -582,8 +582,9 @@
   --poster-navy: var(--poster-brand);
 }
 
+/* Aria sopra il logo pari a quella a sinistra */
 .pv .poster-logo {
-  top: 9mm;
+  top: 12mm;
   left: 12mm;
   width: 50mm;
 }
@@ -701,7 +702,7 @@
 /* ---------- Copertina ORIZZONTALE ---------- */
 
 .ph .poster-logo {
-  top: 8mm;
+  top: 10mm;
   left: 10mm;
   width: 46mm;
 }
@@ -850,12 +851,14 @@
   --day-circle: 11mm;
 }
 
-/* Altezza della fascia fissa ripetuta in stampa: la usano sia la fascia
-   stessa, sia lo spazio che il thead le riserva su ogni pagina, sia la
-   risalita del blocco di apertura che la copre sulla prima.
-   Sta sul wrap perché la fascia fissa vive fuori dalla tabella. */
+/* Fascia fissa ripetuta in stampa: altezza della fascia e stacco tra questa e
+   il testo che riprende sotto. Li usano la fascia stessa, lo spazio che il
+   thead le riserva su ogni pagina e la risalita del blocco di apertura che la
+   copre sulla prima: devono restare in sincrono, quindi stanno in un posto
+   solo. Sul wrap perché la fascia fissa vive fuori dalla tabella. */
 .poster-inner-wrap {
-  --inner-head-h: 16mm;
+  --inner-head-h: 24mm;
+  --inner-head-gap: 9mm;
 }
 
 /* Fascia in cima alla PRIMA pagina: solo logo e categoria. Titolo e quota
@@ -865,13 +868,20 @@
   display: flex;
   align-items: center;
   gap: 6mm;
-  padding: 4mm 10mm 5mm;
+  /* Aria attorno al logo pari a quella laterale, sopra e sotto */
+  padding: 10mm;
 }
 
 .poster-inner-header img {
   height: 12mm;
   width: auto;
   flex-shrink: 0;
+}
+
+/* Qui la fascia ha solo logo e categoria: senza questo la pastiglia
+   resterebbe appiccicata al logo invece di andare al bordo destro */
+.poster-inner-header .poster-inner-badge {
+  margin-left: auto;
 }
 
 /* Fascia fissa delle pagine dalla seconda in poi: logo + titolo + quota.
@@ -887,7 +897,7 @@
 }
 
 .poster-inner-printheader img {
-  height: 9mm;
+  height: 8mm;
   width: auto;
   flex-shrink: 0;
 }
@@ -1257,12 +1267,29 @@ body.poster-standalone > *:not(#root) {
   display: none !important;
 }
 
+/* Lo script Iubenda di index.html appende in fondo al <body> il banner cookie
+   e un iframe di servizio (un riquadro bianco senza stile). Nell'anteprima
+   della locandina non devono comparire, e soprattutto non devono finire nel
+   PDF: in stampa li nascondiamo sempre, a schermo solo sulle pagine locandina. */
+body.poster-no-widgets > #iubenda-cs-banner,
+body.poster-no-widgets > iframe,
+body.poster-no-widgets [class*="iubenda-cs"] {
+  display: none !important;
+}
+
 .poster-break {
   break-after: page;
 }
 
 @media print {
   .no-print {
+    display: none !important;
+  }
+
+  /* Nessun widget di terze parti nel PDF, qualunque pagina si stampi */
+  #iubenda-cs-banner,
+  body > iframe,
+  [class*="iubenda-cs"] {
     display: none !important;
   }
 
@@ -1329,17 +1356,18 @@ body.poster-standalone > *:not(#root) {
     z-index: 20;
   }
 
-  /* Lo spazio che il thead le riserva, ripetuto su ogni pagina */
+  /* Spazio riservato dal thead su ogni pagina: la fascia PIÙ lo stacco, così
+     il testo che riprende in cima alla pagina non le finisce appiccicato */
   .poster-inner-headspace {
-    height: var(--inner-head-h);
+    height: calc(var(--inner-head-h) + var(--inner-head-gap));
   }
 
-  /* Sulla prima pagina il blocco di apertura si riprende quello spazio e
-     copre la fascia fissa: sopra resta solo logo + categoria */
+  /* Sulla prima pagina il blocco di apertura si riprende tutto quello spazio
+     e copre la fascia fissa: sopra resta solo logo + categoria */
   .poster-inner-firstpage {
     position: relative;
     z-index: 30;
-    margin-top: calc(-1 * var(--inner-head-h));
+    margin-top: calc(-1 * (var(--inner-head-h) + var(--inner-head-gap)));
   }
 }
 

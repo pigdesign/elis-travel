@@ -85,6 +85,15 @@ export function PosterPreviewPage({ kind, id }: PosterPreviewPageProps) {
     }
   }, [state.status, navigate]);
 
+  // Fuori da qui il banner cookie Iubenda ci sta: in anteprima locandina no,
+  // finirebbe sopra la grafica e dentro il PDF salvato.
+  useEffect(() => {
+    document.body.classList.add("poster-no-widgets");
+    return () => {
+      document.body.classList.remove("poster-no-widgets");
+    };
+  }, []);
+
   const model: PosterModel | null = useMemo(() => {
     if (isExcursion) {
       if (!excursionQuery.data) return null;
