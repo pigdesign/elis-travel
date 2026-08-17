@@ -1432,6 +1432,19 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const [showCancelled, setShowCancelled] = useState(false);
   const [detailsBookingId, setDetailsBookingId] = useState<string | null>(null);
   const [confirmResult, setConfirmResult] = useState<string | null>(null);
+  // Selezione multipla: serve a fare piazza pulita senza cliccare il cestino
+  // trenta volte. Le prenotazioni con movimenti chiedono conferma una per una,
+  // perché l'avviso deve dire di quale si tratta e di quanti soldi.
+  //
+  // Sta qui in cima insieme agli altri useState, e non accanto al codice che la
+  // usa: sotto ci sono i return anticipati per "sto caricando" e "gita non
+  // trovata". Un hook dichiarato dopo quei return non viene eseguito al primo
+  // giro e React aborte il render appena i dati arrivano ("Rendered more hooks
+  // than during the previous render") — pagina bianca.
+  const [selectedBookingIds, setSelectedBookingIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [completionFailure, setCompletionFailure] = useState<{
     error: string;
     blockers: Array<{
@@ -1832,14 +1845,6 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
       if (pa !== pb) return pa.localeCompare(pb, "it");
       return a.name.localeCompare(b.name, "it");
     });
-
-  // Selezione multipla: serve a fare piazza pulita senza cliccare il cestino
-  // trenta volte. Le prenotazioni con movimenti chiedono conferma una per una,
-  // perché l'avviso deve dire di quale si tratta e di quanti soldi.
-  const [selectedBookingIds, setSelectedBookingIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const toggleBookingSelection = (bookingId: string) => {
     setSelectedBookingIds((prev) => {

@@ -957,7 +957,16 @@ export function ExcursionFormModal({
     [form, agePrices, draftPickupPoints],
   );
 
-  const draft = useFormDraft({ key: draftKey, value: draftValue });
+  // In modifica i prezzi per fascia arrivano da una query a parte: finche' non
+  // sono a bordo il form non e' ancora "com'era all'apertura".
+  const draftReady =
+    mode !== "edit" || !initial?.id || agePricesLoaded;
+
+  const draft = useFormDraft({
+    key: draftKey,
+    value: draftValue,
+    ready: draftReady,
+  });
 
   const restoreDraft = () => {
     if (!draft.pending) return;
