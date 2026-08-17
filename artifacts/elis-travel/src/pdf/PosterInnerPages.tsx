@@ -16,6 +16,28 @@ interface PosterInnerPagesProps {
   orientation: PosterOrientation;
 }
 
+/**
+ * Contatti agenzia su due righe. Ogni voce è un blocco indivisibile: su una
+ * riga sola il testo andava a capo dove capitava, spezzando in due il
+ * trattino dell'indirizzo email.
+ */
+function AgencyContacts() {
+  return (
+    <div className="poster-contacts">
+      <div>
+        <span className="nb">
+          <strong>{POSTER_AGENCY.name}</strong> {POSTER_AGENCY.tagline}
+        </span>{" "}
+        · <span className="nb">{POSTER_AGENCY.address}</span>
+      </div>
+      <div>
+        <span className="nb">{POSTER_AGENCY.phones}</span> ·{" "}
+        <span className="nb">{POSTER_AGENCY.email}</span>
+      </div>
+    </div>
+  );
+}
+
 /** Evidenzia le cifre in arancio, come sulla copertina. */
 function DateLabel({ text }: { text: string }) {
   return (
@@ -280,16 +302,12 @@ export function PosterInnerPages({ model, orientation }: PosterInnerPagesProps) 
 
       {/* Anteprima a schermo: fascia contatti in coda al documento */}
       <div className="poster-inner-footerband no-print">
-        <strong>{POSTER_AGENCY.name}</strong> {POSTER_AGENCY.tagline} ·{" "}
-        {POSTER_AGENCY.address} · {POSTER_AGENCY.phones} · {POSTER_AGENCY.email}
+        <AgencyContacts />
       </div>
 
       {/* Stampa: banda fissa che si ripete a fondo di ogni pagina fisica */}
       <div className="poster-print-footband">
-        <span>
-          <strong>{POSTER_AGENCY.name}</strong> {POSTER_AGENCY.tagline} ·{" "}
-          {POSTER_AGENCY.address} · {POSTER_AGENCY.phones} · {POSTER_AGENCY.email}
-        </span>
+        <AgencyContacts />
       </div>
     </div>
   );

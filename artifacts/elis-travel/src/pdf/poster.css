@@ -1252,8 +1252,17 @@
   letter-spacing: 0.06em;
 }
 
-.poster-inner-footerband strong {
+.poster-contacts strong {
   font-weight: 800;
+}
+
+/* Voce indivisibile: mai un a capo dentro un indirizzo o una email */
+.poster-contacts .nb {
+  white-space: nowrap;
+}
+
+.poster-contacts {
+  line-height: 1.3;
 }
 
 /* ---------- Stampa ---------- */
@@ -1267,13 +1276,14 @@ body.poster-standalone > *:not(#root) {
   display: none !important;
 }
 
-/* Lo script Iubenda di index.html appende in fondo al <body> il banner cookie
-   e un iframe di servizio (un riquadro bianco senza stile). Nell'anteprima
-   della locandina non devono comparire, e soprattutto non devono finire nel
-   PDF: in stampa li nascondiamo sempre, a schermo solo sulle pagine locandina. */
-body.poster-no-widgets > #iubenda-cs-banner,
-body.poster-no-widgets > iframe,
-body.poster-no-widgets [class*="iubenda-cs"] {
+/* Lo script Iubenda di index.html appende i suoi nodi in fondo al <body>:
+   il banner cookie prima del consenso, un badge più piccolo dopo, più un
+   iframe di servizio senza stile (il riquadro bianco). Cambiano forma e
+   nomi delle classi a seconda dello stato del consenso, quindi non si
+   inseguono per selettore: l'applicazione vive tutta dentro #root, perciò
+   qualunque cosa stia a livello di <body> qui non ci deve essere.
+   Vale sia a schermo che in stampa, e copre anche widget futuri. */
+body.poster-no-widgets > *:not(#root) {
   display: none !important;
 }
 
@@ -1286,10 +1296,10 @@ body.poster-no-widgets [class*="iubenda-cs"] {
     display: none !important;
   }
 
-  /* Nessun widget di terze parti nel PDF, qualunque pagina si stampi */
-  #iubenda-cs-banner,
-  body > iframe,
-  [class*="iubenda-cs"] {
+  /* Nessun widget di terze parti nel PDF della locandina, in qualunque
+     stato sia il consenso cookie */
+  body.poster-no-widgets > *:not(#root),
+  body.poster-standalone > *:not(#root) {
     display: none !important;
   }
 
@@ -1337,7 +1347,7 @@ body.poster-no-widgets [class*="iubenda-cs"] {
     text-align: center;
     font-size: 8.5pt;
     letter-spacing: 0.06em;
-    padding: 0 10mm;
+    padding: 0 8mm;
   }
 
   /* Spazio riservato in fondo a ogni pagina piena (tfoot si ripete):
