@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode, RefObject } from "react";
 import { cn } from "@/lib/utils";
 
@@ -110,43 +110,80 @@ export function scrollToSection(
 }
 
 /**
- * Evidenzia nell'indice la sezione in cima all'area visibile.
+ * Evidenzia nell'indice la sezione che stai guardando.
  * `ids` deve essere nell'ordine del documento.
+ *
+ * `activate` serve ai click sull'indice: accende subito la voce scelta e la
+ * tiene accesa finché non scorri tu. Senza, le ultime sezioni non si
+ * accenderebbero mai, perché a fondo pagina il riquadro non può scorrere oltre
+ * e loro non arrivano mai in cima.
  */
 export function useActiveSection(
   ids: string[],
   rootRef: RefObject<HTMLElement | null>,
 ) {
   const [activeId, setActiveId] = useState(ids[0] ?? "");
+  const lockedRef = useRef(false);
   const key = ids.join("|");
+
+  const compute = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const found = key
+      .split("|")
+      .map(
+        (id) => [id, root.querySelector(`[${SECTION_ATTR}="${id}"]`)] as const,
+      )
+      .filter((pair): pair is readonly [string, Element] => pair[1] !== null);
+    if (found.length === 0) return;
+
+    // Fondo raggiunto: quello che guardi è l'ultimo blocco, comunque sia messo.
+    if (root.scrollTop + root.clientHeight >= root.scrollHeight - 4) {
+      setActiveId(found[found.length - 1][0]);
+      return;
+    }
+    // Altrimenti: l'ultima sezione già entrata nella fascia alta del riquadro.
+    const line = root.getBoundingClientRect().top + root.clientHeight * 0.25;
+    let current = found[0][0];
+    for (const [id, el] of found) {
+      if (el.getBoundingClientRect().top <= line) current = id;
+    }
+    setActiveId(current);
+  }, [key, rootRef]);
 
   useEffect(() => {
     const root = rootRef.current;
-    if (!root || typeof IntersectionObserver === "undefined") return;
-    const order = key.split("|");
-    const elements = order
-      .map((id) => root.querySelector(`[${SECTION_ATTR}="${id}"]`))
-      .filter((el): el is Element => el !== null);
-    if (elements.length === 0) return;
+    if (!root) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (lockedRef.current) return;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(compute);
+    };
+    // Se scorri tu, la scelta fatta dall'indice non comanda più.
+    const release = () => {
+      lockedRef.current = false;
+    };
+    root.addEventListener("scroll", onScroll, { passive: true });
+    root.addEventListener("wheel", release, { passive: true });
+    root.addEventListener("touchmove", release, { passive: true });
+    root.addEventListener("pointerdown", release);
+    root.addEventListener("keydown", release);
+    compute();
+    return () => {
+      cancelAnimationFrame(raf);
+      root.removeEventListener("scroll", onScroll);
+      root.removeEventListener("wheel", release);
+      root.removeEventListener("touchmove", release);
+      root.removeEventListener("pointerdown", release);
+      root.removeEventListener("keydown", release);
+    };
+  }, [compute, rootRef]);
 
-    const visible = new Set<string>();
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.getAttribute(SECTION_ATTR);
-          if (!id) continue;
-          if (entry.isIntersecting) visible.add(id);
-          else visible.delete(id);
-        }
-        const first = order.find((id) => visible.has(id));
-        if (first) setActiveId(first);
-      },
-      // La fascia alta del corpo decide la sezione "corrente".
-      { root, rootMargin: "0px 0px -75% 0px", threshold: 0 },
-    );
-    elements.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [key, rootRef]);
+  const activate = useCallback((id: string) => {
+    lockedRef.current = true;
+    setActiveId(id);
+  }, []);
 
-  return activeId;
+  return { activeId, activate };
 }

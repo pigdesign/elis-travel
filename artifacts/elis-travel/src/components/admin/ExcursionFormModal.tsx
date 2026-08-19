@@ -80,7 +80,7 @@ const SECTION_GROUPS: FormSectionGroup[] = [
     ],
   },
   {
-    label: "Soldi",
+    label: "Gestione economica",
     items: [
       { id: "prezzo", label: "Prezzo e costi" },
       { id: "altri-costi", label: "Altri costi" },
@@ -1320,7 +1320,8 @@ export function ExcursionFormModal({
     () => sectionGroups.flatMap((g) => g.items.map((i) => i.id)),
     [sectionGroups],
   );
-  const activeSection = useActiveSection(sectionIds, bodyRef);
+  const { activeId: activeSection, activate: activateSection } =
+    useActiveSection(sectionIds, bodyRef);
 
   return (
     <div
@@ -1385,7 +1386,10 @@ export function ExcursionFormModal({
             <FormSectionNav
               groups={sectionGroups}
               activeId={activeSection}
-              onSelect={(id) => scrollToSection(bodyRef.current, id)}
+              onSelect={(id) => {
+                activateSection(id);
+                scrollToSection(bodyRef.current, id);
+              }}
             />
             <div
               ref={bodyRef}
