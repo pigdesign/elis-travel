@@ -12,7 +12,12 @@ interface ScheduleTimelineProps {
  * Timeline pubblica del programma/itinerario mostrata al cliente: giorni con
  * attività (ora, titolo, descrizione). Condivisa tra gite e offerte.
  */
-export function ScheduleTimeline({ days, title, mainVisual, imageAlt }: ScheduleTimelineProps) {
+export function ScheduleTimeline({
+  days,
+  title,
+  mainVisual,
+  imageAlt,
+}: ScheduleTimelineProps) {
   if (days.length === 0) return null;
 
   return (
@@ -24,7 +29,11 @@ export function ScheduleTimeline({ days, title, mainVisual, imageAlt }: Schedule
 
       {mainVisual && (
         <div className="mb-6 overflow-hidden rounded-[24px]">
-          <img src={mainVisual} alt={imageAlt ?? title} className="h-56 w-full object-cover md:h-72" />
+          <img
+            src={mainVisual}
+            alt={imageAlt ?? title}
+            className="h-56 w-full object-cover md:h-72"
+          />
         </div>
       )}
 
@@ -36,7 +45,9 @@ export function ScheduleTimeline({ days, title, mainVisual, imageAlt }: Schedule
                 Giorno {day.dayNumber}
               </span>
               {day.title && (
-                <span className="text-base font-semibold text-foreground">{day.title}</span>
+                <span className="text-base font-semibold text-foreground">
+                  {day.title}
+                </span>
               )}
             </div>
 
@@ -50,9 +61,11 @@ export function ScheduleTimeline({ days, title, mainVisual, imageAlt }: Schedule
                     </span>
                   )}
                   <div className="min-w-0">
-                    <div className="text-base font-semibold text-[#14242b]">{act.title}</div>
+                    <div className="text-base font-semibold text-[#14242b]">
+                      {act.title}
+                    </div>
                     {act.description && (
-                      <div className="mt-1 text-sm leading-relaxed text-[#63757c]">
+                      <div className="mt-1 whitespace-pre-line text-sm leading-relaxed text-[#63757c]">
                         {act.description}
                       </div>
                     )}

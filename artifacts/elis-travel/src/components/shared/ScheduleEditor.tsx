@@ -1,6 +1,10 @@
 import { Plus, Trash2, X } from "lucide-react";
-import type { ScheduleDay, ScheduleActivity } from "@workspace/api-client-react";
+import type {
+  ScheduleDay,
+  ScheduleActivity,
+} from "@workspace/api-client-react";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
+import { AutoGrowTextarea } from "@/components/shared/AutoGrowTextarea";
 
 interface ScheduleEditorProps {
   value: ScheduleDay[];
@@ -28,9 +32,14 @@ export function ScheduleEditor({
       </h4>
       <p className="text-xs text-muted-foreground -mt-1">{description}</p>
       {value.map((day, di) => (
-        <div key={di} className="border border-border rounded-xl p-3 space-y-2 bg-muted/20">
+        <div
+          key={di}
+          className="border border-border rounded-xl p-3 space-y-2 bg-muted/20"
+        >
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-primary shrink-0">Giorno {day.dayNumber}</span>
+            <span className="text-xs font-bold text-primary shrink-0">
+              Giorno {day.dayNumber}
+            </span>
             <input
               type="text"
               value={day.title ?? ""}
@@ -51,7 +60,9 @@ export function ScheduleEditor({
             </button>
           </div>
           <div className="pl-1">
-            <p className="text-xs text-muted-foreground mb-1">Immagine giornata</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              Immagine giornata
+            </p>
             <CoverImageUploader
               value={day.imageUrl ?? null}
               onChange={(url) => {
@@ -90,8 +101,7 @@ export function ScheduleEditor({
                 placeholder="Titolo attività *"
                 className="flex-1 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
-              <input
-                type="text"
+              <AutoGrowTextarea
                 value={act.description ?? ""}
                 onChange={(e) => {
                   const s = [...value];
@@ -101,13 +111,16 @@ export function ScheduleEditor({
                   onChange(s);
                 }}
                 placeholder="Descrizione"
-                className="flex-1 px-2 py-1 border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="flex-1 px-2 py-1 border border-border rounded-lg text-xs leading-5 focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
               <button
                 type="button"
                 onClick={() => {
                   const s = [...value];
-                  s[di] = { ...s[di], activities: s[di].activities.filter((_, i) => i !== ai) };
+                  s[di] = {
+                    ...s[di],
+                    activities: s[di].activities.filter((_, i) => i !== ai),
+                  };
                   onChange(s);
                 }}
                 className="p-1 text-muted-foreground hover:text-destructive shrink-0"
