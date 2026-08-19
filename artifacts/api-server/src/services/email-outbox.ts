@@ -365,13 +365,19 @@ async function deliverLeasedEntry(
         );
       return "suppressed";
     }
-    await sendEmail(messageFromPayload(entry.payload));
+    const { providerMessageId } = await sendEmail(
+      messageFromPayload(entry.payload),
+    );
     const now = new Date();
     await db
       .update(emailOutboxTable)
       .set({
         status: "sent",
         sentAt: now,
+        // Serve a ritrovare il messaggio nel pannello del provider quando
+        // qualcuno segnala di non averlo ricevuto: "risulta inviata" da solo
+        // non basta a distinguere un filtro antispam da un errore nostro.
+        providerMessageId: providerMessageId ?? null,
         lastError: null,
         leaseOwner: null,
         leaseExpiresAt: null,

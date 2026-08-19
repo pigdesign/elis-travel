@@ -89,6 +89,16 @@ export async function resendWebhookHandler(
           { accountId: aggiornato.id, motivo: azione.motivo },
           "Indirizzo non recapitabile: account segnalato in backoffice",
         );
+      } else {
+        // Nessun account con quell'indirizzo: e un destinatario interno, cioe
+        // una delle caselle in ADMIN_NOTIFICATION_EMAILS. Non c'e una riga da
+        // aggiornare, ma il fatto va reso visibile: un indirizzo interno che
+        // rimbalza e piu grave di uno cliente, perche nessuno se ne accorge —
+        // il cliente almeno telefona.
+        logger.error(
+          { destinatario: emailNormalizzata, motivo: azione.motivo },
+          "RIMBALZO SU INDIRIZZO INTERNO: le notifiche all'amministrazione non vengono recapitate",
+        );
       }
     } else {
       // Consegna riuscita: se l'indirizzo era segnato come non recapitabile,

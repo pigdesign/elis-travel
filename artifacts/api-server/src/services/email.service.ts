@@ -41,7 +41,7 @@ function getSmtpTransport(): Transporter {
   return cachedSmtpTransport;
 }
 
-async function sendViaResend(msg: EmailMessage): Promise<void> {
+async function sendViaResend(msg: EmailMessage): Promise<string | undefined> {
   const apiKey = process.env.RESEND_API_KEY!;
   const recipients = Array.isArray(msg.to) ? msg.to : [msg.to];
   const res = await fetch("https://api.resend.com/emails", {
@@ -63,11 +63,16 @@ async function sendViaResend(msg: EmailMessage): Promise<void> {
     const body = await res.text().catch(() => "");
     throw new Error(`Resend API error ${res.status}: ${body}`);
   }
+  // L'identificativo restituito e l'unico modo per ritrovare un messaggio nel
+  // pannello del provider dopo l'invio: senza, un'email che non arriva a
+  // destinazione non e piu rintracciabile da nessuna parte.
+  const body = (await res.json().catch(() => null)) as { id?: string } | null;
+  return typeof body?.id === "string" ? body.id : undefined;
 }
 
-async function sendViaSmtp(msg: EmailMessage): Promise<void> {
+async function sendViaSmtp(msg: EmailMessage): Promise<string | undefined> {
   const transport = getSmtpTransport();
-  await transport.sendMail({
+  const info = await transport.sendMail({
     from: getFromAddress(),
     to: msg.to,
     subject: msg.subject,
@@ -75,24 +80,32 @@ async function sendViaSmtp(msg: EmailMessage): Promise<void> {
     text: msg.text,
     replyTo: msg.replyTo,
   });
+  // Con SMTP il messageId prova soltanto che il relay ha accettato: la
+  // consegna finale puo fallire ore dopo con un rapporto asincrono.
+  return typeof info?.messageId === "string" ? info.messageId : undefined;
 }
 
-export async function sendEmail(msg: EmailMessage): Promise<void> {
+export async function sendEmail(
+  msg: EmailMessage,
+): Promise<{ providerMessageId?: string }> {
   const provider = detectProvider();
   if (provider === "none") {
     logger.warn(
       { to: msg.to, subject: msg.subject },
       "Nessun provider email configurato (impostare RESEND_API_KEY o SMTP_HOST). Email non inviata.",
     );
-    return;
+    return {};
   }
   try {
-    if (provider === "resend") await sendViaResend(msg);
-    else await sendViaSmtp(msg);
+    const providerMessageId =
+      provider === "resend"
+        ? await sendViaResend(msg)
+        : await sendViaSmtp(msg);
     logger.info(
-      { to: msg.to, subject: msg.subject, provider },
+      { to: msg.to, subject: msg.subject, provider, providerMessageId },
       "Email inviata",
     );
+    return { providerMessageId };
   } catch (err) {
     logger.error(
       { err, to: msg.to, subject: msg.subject, provider },
