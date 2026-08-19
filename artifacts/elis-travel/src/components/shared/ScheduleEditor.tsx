@@ -12,6 +12,8 @@ interface ScheduleEditorProps {
   title?: string;
   description?: string;
   testIdPrefix?: string;
+  /** false quando il titolo lo mette gia' la scheda che contiene l'editor. */
+  showHeader?: boolean;
 }
 
 /**
@@ -24,13 +26,18 @@ export function ScheduleEditor({
   title = "Programma",
   description = "Struttura la giornata per step. Ogni giorno può avere più attività.",
   testIdPrefix = "schedule",
+  showHeader = true,
 }: ScheduleEditorProps) {
   return (
     <section className="space-y-3">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </h4>
-      <p className="text-xs text-muted-foreground -mt-1">{description}</p>
+      {showHeader && (
+        <>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {title}
+          </h4>
+          <p className="text-xs text-muted-foreground -mt-1">{description}</p>
+        </>
+      )}
       {value.map((day, di) => (
         <div
           key={di}

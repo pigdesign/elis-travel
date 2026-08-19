@@ -9,6 +9,20 @@ import {
   MapPin,
   Clock,
   RotateCcw,
+  Info,
+  Users,
+  Euro,
+  Receipt,
+  Tags,
+  Wallet,
+  CreditCard,
+  Bus,
+  Image as ImageIcon,
+  ListOrdered,
+  ListChecks,
+  BookOpen,
+  StickyNote,
+  BarChart3,
 } from "lucide-react";
 import {
   useCreateExcursion,
@@ -47,6 +61,58 @@ import {
 } from "@/lib/excursion-time";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { describeDraftAge } from "@/lib/form-draft";
+import {
+  FormSection,
+  FormSectionNav,
+  scrollToSection,
+  useActiveSection,
+} from "@/components/admin/FormSectionNav";
+import type { FormSectionGroup } from "@/components/admin/FormSectionNav";
+
+// Indice del form, nell'ordine in cui le sezioni compaiono nella pagina.
+// La voce "contatori" esiste solo in modifica.
+const SECTION_GROUPS: FormSectionGroup[] = [
+  {
+    label: "Base",
+    items: [
+      { id: "informazioni", label: "Informazioni" },
+      { id: "capienza", label: "Capienza e soglia" },
+    ],
+  },
+  {
+    label: "Soldi",
+    items: [
+      { id: "prezzo", label: "Prezzo e costi" },
+      { id: "altri-costi", label: "Altri costi" },
+      { id: "prezzi-partecipanti", label: "Prezzi partecipanti" },
+      { id: "acconto", label: "Acconto e saldo" },
+      { id: "pagamenti", label: "Metodi di pagamento" },
+    ],
+  },
+  {
+    label: "Logistica",
+    items: [
+      { id: "mezzo", label: "Mezzo di trasporto" },
+      { id: "punti-raccolta", label: "Punti di raccolta" },
+    ],
+  },
+  {
+    label: "Contenuti pubblici",
+    items: [
+      { id: "copertina", label: "Immagine di copertina" },
+      { id: "programma", label: "Programma" },
+      { id: "quota", label: "Quota include / non include" },
+      { id: "info-utili", label: "Informazioni utili" },
+    ],
+  },
+  {
+    label: "Interno",
+    items: [
+      { id: "note", label: "Note operative" },
+      { id: "contatori", label: "Contatori prenotazioni" },
+    ],
+  },
+];
 
 // Suggerimenti iniziali per i tag (le voci tipologia storiche del sito).
 const DEFAULT_TAG_SUGGESTIONS = [
@@ -594,16 +660,11 @@ function PickupPointsSection({
       return;
     }
     onDraftChange(
-      draftPoints.filter(
-        (d) => d.pickupLocationId !== point.pickupLocationId,
-      ),
+      draftPoints.filter((d) => d.pickupLocationId !== point.pickupLocationId),
     );
   };
 
-  const handleTimeChange = (
-    point: (typeof points)[number],
-    value: string,
-  ) => {
+  const handleTimeChange = (point: (typeof points)[number], value: string) => {
     const pickupTime = value.trim() || null;
     if (excursionId && point.id) {
       updateTime({
@@ -641,10 +702,7 @@ function PickupPointsSection({
   const pointsWithoutProvince = points.filter((p) => !p.location.province);
 
   return (
-    <section className="space-y-3">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Punti di raccolta
-      </h4>
+    <div className="space-y-3">
       {isLoading ? (
         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
       ) : (
@@ -820,7 +878,7 @@ function PickupPointsSection({
           Imposta la provincia in Impostazioni → Punti di raccolta.
         </p>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -860,6 +918,8 @@ export function ExcursionFormModal({
   // Riferimento al contenitore scorrevole: serve a portare sotto gli occhi il
   // primo campo in errore, che in un form lungo cade quasi sempre fuori schermo.
   const formRef = useRef<HTMLFormElement | null>(null);
+  // Corpo scorrevole del modale: e' lui che scorre, non la pagina dietro.
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   const { data: vehicles } = useListVehicles();
 
@@ -959,8 +1019,7 @@ export function ExcursionFormModal({
 
   // In modifica i prezzi per fascia arrivano da una query a parte: finche' non
   // sono a bordo il form non e' ancora "com'era all'apertura".
-  const draftReady =
-    mode !== "edit" || !initial?.id || agePricesLoaded;
+  const draftReady = mode !== "edit" || !initial?.id || agePricesLoaded;
 
   const draft = useFormDraft({
     key: draftKey,
@@ -1237,21 +1296,39 @@ export function ExcursionFormModal({
         e?.status === 401
           ? "Sessione scaduta: apri il login in un'altra scheda, rientra e premi di nuovo Salva. Le modifiche restano qui."
           : (e?.data?.error ??
-            e?.message ??
-            "Impossibile salvare la gita. Riprova."),
+              e?.message ??
+              "Impossibile salvare la gita. Riprova."),
       );
     }
   };
 
   const isPending = isCreating || isUpdating;
 
+  const showCounters =
+    mode === "edit" && !!initial && "adherentsCount" in initial;
+  const sectionGroups = useMemo(
+    () =>
+      showCounters
+        ? SECTION_GROUPS
+        : SECTION_GROUPS.map((g) => ({
+            ...g,
+            items: g.items.filter((i) => i.id !== "contatori"),
+          })).filter((g) => g.items.length > 0),
+    [showCounters],
+  );
+  const sectionIds = useMemo(
+    () => sectionGroups.flatMap((g) => g.items.map((i) => i.id)),
+    [sectionGroups],
+  );
+  const activeSection = useActiveSection(sectionIds, bodyRef);
+
   return (
     <div
-      className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
       data-testid="modal-excursion-form"
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-white rounded-t-2xl">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-[min(96vw,1200px)] max-h-[92vh] flex flex-col overflow-hidden">
+        <div className="flex flex-shrink-0 items-center justify-between px-6 py-4 border-b border-border/50 bg-white rounded-t-2xl">
           <h3 className="text-lg font-bold text-foreground">
             {mode === "create" ? "Nuova Gita" : "Modifica Gita"}
           </h3>
@@ -1267,7 +1344,7 @@ export function ExcursionFormModal({
 
         {draft.pending && (
           <div
-            className="mx-6 mt-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            className="mx-6 mt-4 flex flex-shrink-0 flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             data-testid="banner-excursion-draft"
           >
             <div className="flex items-start gap-2 text-sm text-amber-900">
@@ -1302,1096 +1379,1149 @@ export function ExcursionFormModal({
         <form
           ref={formRef}
           onSubmit={handleSubmit}
-          className="px-6 py-5 space-y-6"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          {/* Sezione: Informazioni base */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Informazioni
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Nome gita *
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setField("name", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Es. Tour Toscana — Siena e San Gimignano"
-                  data-testid="input-excursion-name"
-                />
-                {fieldErrors.name && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.name}
-                  </p>
-                )}
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Sottotitolo
-                </label>
-                <input
-                  type="text"
-                  value={form.subtitle}
-                  onChange={(e) => setField("subtitle", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Es. Tra colline, borghi medievali e degustazioni"
-                  data-testid="input-excursion-subtitle"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Riga di richiamo sotto il titolo: si vede in locandina e sulla
-                  pagina pubblica della gita.
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Luogo *
-                </label>
-                <input
-                  type="text"
-                  value={form.location}
-                  onChange={(e) => setField("location", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Es. Siena, Italia"
-                  data-testid="input-excursion-location"
-                />
-                {fieldErrors.location && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.location}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Data *
-                </label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setField("date", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-date"
-                />
-                {fieldErrors.date && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.date}
-                  </p>
-                )}
-                {!fieldErrors.date && form.date && form.date < todayISO() && (
-                  <p
-                    className="text-xs text-amber-700 mt-1 flex items-center gap-1"
-                    data-testid="warning-excursion-past-date"
-                  >
-                    <AlertCircle className="w-3 h-3" />
-                    Attenzione: la data è nel passato.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Ora di partenza *
-                </label>
-                <input
-                  type="time"
-                  value={form.departureTime}
-                  onChange={(e) => setField("departureTime", e.target.value)}
-                  step={60}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-departure-time"
-                />
-                {fieldErrors.departureTime ? (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.departureTime}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Fuso Europe/Rome. Il saldo scade 48 ore prima.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Stato
-                </label>
-                {form.status !== "draft" && form.status !== "open" ? (
-                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
-                    {form.status === "confirmed"
-                      ? "Confermata"
-                      : form.status === "completed"
-                        ? "Completata"
-                        : form.status === "cancelled"
-                          ? "Annullata"
-                          : form.status === "archived"
-                            ? "Archiviata"
-                            : form.status}
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">
-                      Lo stato operativo si cambia soltanto dai comandi dedicati
-                      nel dettaglio della gita.
+          <div className="flex min-h-0 flex-1">
+            <FormSectionNav
+              groups={sectionGroups}
+              activeId={activeSection}
+              onSelect={(id) => scrollToSection(bodyRef.current, id)}
+            />
+            <div
+              ref={bodyRef}
+              className="min-w-0 flex-1 space-y-4 overflow-y-auto bg-muted/10 px-4 py-5 md:px-6"
+            >
+              {/* Sezione: Informazioni base */}
+              <FormSection id="informazioni" title="Informazioni" icon={Info}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Nome gita *
+                    </label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setField("name", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Es. Tour Toscana — Siena e San Gimignano"
+                      data-testid="input-excursion-name"
+                    />
+                    {fieldErrors.name && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.name}
+                      </p>
+                    )}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Sottotitolo
+                    </label>
+                    <input
+                      type="text"
+                      value={form.subtitle}
+                      onChange={(e) => setField("subtitle", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Es. Tra colline, borghi medievali e degustazioni"
+                      data-testid="input-excursion-subtitle"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Riga di richiamo sotto il titolo: si vede in locandina e
+                      sulla pagina pubblica della gita.
                     </p>
                   </div>
-                ) : (
-                  <select
-                    value={form.status}
-                    onChange={(e) => setField("status", e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                    data-testid="select-excursion-status"
-                  >
-                    {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Tipo gita
-                </label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setField("category", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                  data-testid="select-excursion-category"
-                >
-                  {CATEGORY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                {form.category === "rident" && (
-                  <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 shrink-0" />
-                    Gita Rident: compare nella pagina Rident del sito (con voce
-                    di menu dedicata), non nell'elenco/filtri delle gite
-                    standard.
-                  </p>
-                )}
-              </div>
-
-              {form.category === "standard" && (
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Tag
-                  </label>
-                  <TagMultiCombobox
-                    values={form.tags}
-                    onChange={(v) => setField("tags", v)}
-                    suggestions={tagSuggestions}
-                    placeholder="Aggiungi tag (es. Weekend, Cultura)…"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Temi usati dal filtro “Tipologia” sul sito. Scegli tra gli
-                    esistenti o creane di nuovi.
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Sezione: Costi & prezzo */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Prezzo e costi per persona (€)
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Prezzo *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.pricePerPerson}
-                  onChange={(e) => setField("pricePerPerson", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-price"
-                />
-                {fieldErrors.pricePerPerson && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.pricePerPerson}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Pasto
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.mealCostPerPerson}
-                  onChange={(e) =>
-                    setField("mealCostPerPerson", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-meal"
-                />
-                {fieldErrors.mealCostPerPerson && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.mealCostPerPerson}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Ingressi
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.entranceCostPerPerson}
-                  onChange={(e) =>
-                    setField("entranceCostPerPerson", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-entrance"
-                />
-                {fieldErrors.entranceCostPerPerson && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.entranceCostPerPerson}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Extra: voci di costo nominate e ripetibili (guida, assicurazione, ...) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-medium text-foreground">
-                  Extra (voci di costo per persona)
-                </label>
-                {form.extras.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    Totale:{" "}
-                    {extraTotal.toLocaleString("it-IT", {
-                      style: "currency",
-                      currency: "EUR",
-                    })}
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {form.extras.map((row, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Luogo *
+                    </label>
                     <input
                       type="text"
-                      placeholder="Nome (es. Guida, Assicurazione)"
-                      value={row.name}
-                      onChange={(e) => updateExtra(i, "name", e.target.value)}
-                      className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      data-testid={`input-excursion-extra-name-${i}`}
+                      value={form.location}
+                      onChange={(e) => setField("location", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Es. Siena, Italia"
+                      data-testid="input-excursion-location"
                     />
-                    <div className="relative w-28 shrink-0">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0,00"
-                        value={row.price}
-                        onChange={(e) =>
-                          updateExtra(i, "price", e.target.value)
-                        }
-                        className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
-                        data-testid={`input-excursion-extra-price-${i}`}
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                        €
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeExtra(i)}
-                      className="p-2 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
-                      title="Rimuovi extra"
-                      data-testid={`button-remove-extra-${i}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {fieldErrors.location && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.location}
+                      </p>
+                    )}
                   </div>
-                ))}
-                {form.extras.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Nessun extra. Aggiungine uno se ci sono costi accessori
-                    (guida, assicurazione, ...).
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={addExtra}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-dashed border-border text-primary hover:bg-primary/5 transition-colors"
-                data-testid="button-add-extra"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Aggiungi extra
-              </button>
-
-              {fieldErrors.extras && (
-                <p className="text-xs text-red-600 mt-1" data-field-error>
-                  {fieldErrors.extras}
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* Sezione: Altri costi — costi fissi a carico dell'agenzia (NON per persona) */}
-          <section className="space-y-3">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Altri costi
-              </h4>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Costi fissi a carico dell'agenzia, <strong>non</strong> a
-                persona (es. focaccia offerta a tutti durante il viaggio).
-                Rientrano nel margine netto ma non nel costo per persona.
-              </p>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-medium text-foreground">
-                  Voci di costo
-                </label>
-                {form.otherCosts.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    Totale:{" "}
-                    {otherCostTotal.toLocaleString("it-IT", {
-                      style: "currency",
-                      currency: "EUR",
-                    })}
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {form.otherCosts.map((row, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Data *
+                    </label>
                     <input
-                      type="text"
-                      placeholder="Nome (es. Focaccia, Omaggio)"
-                      value={row.name}
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setField("date", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-date"
+                    />
+                    {fieldErrors.date && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.date}
+                      </p>
+                    )}
+                    {!fieldErrors.date &&
+                      form.date &&
+                      form.date < todayISO() && (
+                        <p
+                          className="text-xs text-amber-700 mt-1 flex items-center gap-1"
+                          data-testid="warning-excursion-past-date"
+                        >
+                          <AlertCircle className="w-3 h-3" />
+                          Attenzione: la data è nel passato.
+                        </p>
+                      )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Ora di partenza *
+                    </label>
+                    <input
+                      type="time"
+                      value={form.departureTime}
                       onChange={(e) =>
-                        updateOtherCost(i, "name", e.target.value)
+                        setField("departureTime", e.target.value)
                       }
-                      className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      data-testid={`input-excursion-othercost-name-${i}`}
+                      step={60}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-departure-time"
                     />
-                    <div className="relative w-28 shrink-0">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0,00"
-                        value={row.price}
-                        onChange={(e) =>
-                          updateOtherCost(i, "price", e.target.value)
-                        }
-                        className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
-                        data-testid={`input-excursion-othercost-price-${i}`}
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                        €
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeOtherCost(i)}
-                      className="p-2 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
-                      title="Rimuovi voce"
-                      data-testid={`button-remove-othercost-${i}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {fieldErrors.departureTime ? (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.departureTime}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Fuso Europe/Rome. Il saldo scade 48 ore prima.
+                      </p>
+                    )}
                   </div>
-                ))}
-                {form.otherCosts.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Nessun altro costo. Aggiungine uno per i costi a carico
-                    dell'agenzia (non a persona).
-                  </p>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Stato
+                    </label>
+                    {form.status !== "draft" && form.status !== "open" ? (
+                      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                        {form.status === "confirmed"
+                          ? "Confermata"
+                          : form.status === "completed"
+                            ? "Completata"
+                            : form.status === "cancelled"
+                              ? "Annullata"
+                              : form.status === "archived"
+                                ? "Archiviata"
+                                : form.status}
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">
+                          Lo stato operativo si cambia soltanto dai comandi
+                          dedicati nel dettaglio della gita.
+                        </p>
+                      </div>
+                    ) : (
+                      <select
+                        value={form.status}
+                        onChange={(e) => setField("status", e.target.value)}
+                        className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                        data-testid="select-excursion-status"
+                      >
+                        {STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Tipo gita
+                    </label>
+                    <select
+                      value={form.category}
+                      onChange={(e) => setField("category", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                      data-testid="select-excursion-category"
+                    >
+                      {CATEGORY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    {form.category === "rident" && (
+                      <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Gita Rident: compare nella pagina Rident del sito (con
+                        voce di menu dedicata), non nell'elenco/filtri delle
+                        gite standard.
+                      </p>
+                    )}
+                  </div>
 
-              <button
-                type="button"
-                onClick={addOtherCost}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-dashed border-border text-primary hover:bg-primary/5 transition-colors"
-                data-testid="button-add-othercost"
+                  {form.category === "standard" && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Tag
+                      </label>
+                      <TagMultiCombobox
+                        values={form.tags}
+                        onChange={(v) => setField("tags", v)}
+                        suggestions={tagSuggestions}
+                        placeholder="Aggiungi tag (es. Weekend, Cultura)…"
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Temi usati dal filtro “Tipologia” sul sito. Scegli tra
+                        gli esistenti o creane di nuovi.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+
+              {/* Sezione: Capienza & soglia */}
+              <FormSection id="capienza" title="Capienza e soglia" icon={Users}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Capienza posti
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.currentCapacity}
+                      onChange={(e) =>
+                        setField("currentCapacity", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-capacity"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Lascia 0 se non c'è limite (es. mezzo da definire).
+                    </p>
+                    {fieldErrors.currentCapacity && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.currentCapacity}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Soglia minima adesioni
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.minThreshold}
+                      onChange={(e) => setField("minThreshold", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-min-threshold"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Calcolata sulle persone, non sulle prenotazioni.
+                    </p>
+                    {fieldErrors.minThreshold && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.minThreshold}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Data ritorno
+                    </label>
+                    <input
+                      type="date"
+                      value={form.returnDate}
+                      onChange={(e) => setField("returnDate", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-return-date"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Facoltativa, per gite di più giorni.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Chiusura prenotazioni
+                    </label>
+                    <input
+                      type="date"
+                      value={form.bookingCloseDate}
+                      onChange={(e) =>
+                        setField("bookingCloseDate", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-booking-close"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Oltre questa data il form pubblico è chiuso.
+                    </p>
+                  </div>
+                </div>
+                <label className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={form.waitlistEnabled}
+                    disabled
+                    readOnly
+                    className="mt-0.5 h-4 w-4 cursor-not-allowed accent-primary opacity-60"
+                    data-testid="checkbox-excursion-waitlist"
+                  />
+                  <span className="text-xs text-foreground">
+                    Lista d'attesa — non ancora attiva
+                    <span className="block text-[11px] text-muted-foreground">
+                      Questo flag è soltanto predisposto nel database: al
+                      momento non registra richieste, non assegna priorità e non
+                      invia comunicazioni. Il controllo è disabilitato finché il
+                      flusso operativo non sarà implementato.
+                    </span>
+                  </span>
+                </label>
+              </FormSection>
+
+              {/* Sezione: Costi & prezzo */}
+              <FormSection
+                id="prezzo"
+                title="Prezzo e costi per persona (€)"
+                icon={Euro}
               >
-                <Plus className="w-3.5 h-3.5" />
-                Aggiungi voce
-              </button>
-
-              {fieldErrors.otherCosts && (
-                <p className="text-xs text-red-600 mt-1" data-field-error>
-                  {fieldErrors.otherCosts}
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* Sezione: Prezzi partecipanti (Gite v2) */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Prezzi partecipanti
-            </h4>
-            {form.category === "rident" ? (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Prezzo paziente (€)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={form.patientPrice}
-                    onChange={(e) => setField("patientPrice", e.target.value)}
-                    placeholder={form.pricePerPerson || "0"}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-excursion-patient-price"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Vuoto = vale il prezzo base della gita.
-                  </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Prezzo *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.pricePerPerson}
+                      onChange={(e) =>
+                        setField("pricePerPerson", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-price"
+                    />
+                    {fieldErrors.pricePerPerson && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.pricePerPerson}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Pasto
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.mealCostPerPerson}
+                      onChange={(e) =>
+                        setField("mealCostPerPerson", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-meal"
+                    />
+                    {fieldErrors.mealCostPerPerson && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.mealCostPerPerson}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Ingressi
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.entranceCostPerPerson}
+                      onChange={(e) =>
+                        setField("entranceCostPerPerson", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-entrance"
+                    />
+                    {fieldErrors.entranceCostPerPerson && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.entranceCostPerPerson}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Prezzo accompagnatore (€)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={form.companionPrice}
-                    onChange={(e) => setField("companionPrice", e.target.value)}
-                    placeholder={form.pricePerPerson || "0"}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-excursion-companion-price"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Vuoto = vale il prezzo base della gita.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <AgePricesSection
-                adultPrice={form.pricePerPerson}
-                values={agePrices}
-                onChange={(ageRangeId, value) =>
-                  setAgePrices((prev) => ({ ...prev, [ageRangeId]: value }))
-                }
-              />
-            )}
-          </section>
 
-          {/* Sezione: Acconto e saldo (Gite v2) */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Acconto e saldo
-            </h4>
-            <label className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-              <input
-                type="checkbox"
-                checked={form.depositEnabled}
-                onChange={(e) => setField("depositEnabled", e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-primary"
-                data-testid="checkbox-excursion-deposit-enabled"
-              />
-              <span className="text-sm text-foreground">
-                Acconto abilitato
-                <span className="block text-[11px] text-muted-foreground">
-                  Se disattivato, i clienti possono solo pagare l'importo
-                  completo.
-                </span>
-              </span>
-            </label>
-            {form.depositEnabled && (
-              <div className="grid grid-cols-2 gap-3">
+                {/* Extra: voci di costo nominate e ripetibili (guida, assicurazione, ...) */}
                 <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Tipo acconto
-                  </label>
-                  <select
-                    value={form.depositType}
-                    onChange={(e) => setField("depositType", e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="select-excursion-deposit-type"
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-medium text-foreground">
+                      Extra (voci di costo per persona)
+                    </label>
+                    {form.extras.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        Totale:{" "}
+                        {extraTotal.toLocaleString("it-IT", {
+                          style: "currency",
+                          currency: "EUR",
+                        })}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {form.extras.map((row, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nome (es. Guida, Assicurazione)"
+                          value={row.name}
+                          onChange={(e) =>
+                            updateExtra(i, "name", e.target.value)
+                          }
+                          className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          data-testid={`input-excursion-extra-name-${i}`}
+                        />
+                        <div className="relative w-28 shrink-0">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0,00"
+                            value={row.price}
+                            onChange={(e) =>
+                              updateExtra(i, "price", e.target.value)
+                            }
+                            className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
+                            data-testid={`input-excursion-extra-price-${i}`}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                            €
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeExtra(i)}
+                          className="p-2 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                          title="Rimuovi extra"
+                          data-testid={`button-remove-extra-${i}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {form.extras.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nessun extra. Aggiungine uno se ci sono costi accessori
+                        (guida, assicurazione, ...).
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addExtra}
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-dashed border-border text-primary hover:bg-primary/5 transition-colors"
+                    data-testid="button-add-extra"
                   >
-                    <option value="percent">Percentuale sul totale</option>
-                    <option value="fixed">Importo fisso a persona</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    {form.depositType === "fixed"
-                      ? "Importo (€ a persona)"
-                      : "Percentuale (%)"}
-                  </label>
-                  <input
-                    type="number"
-                    step={form.depositType === "fixed" ? "0.01" : "1"}
-                    min="0"
-                    value={form.depositValue}
-                    onChange={(e) => setField("depositValue", e.target.value)}
-                    placeholder={
-                      form.depositType === "fixed"
-                        ? "es. 50"
-                        : "vuoto = impostazione globale"
-                    }
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-excursion-deposit-value"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Data limite acconto
-                  </label>
-                  <input
-                    type="date"
-                    value={form.depositDeadlineDate}
-                    onChange={(e) =>
-                      setField("depositDeadlineDate", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-excursion-deposit-deadline"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Oltre questa data l'acconto non è più proposto.
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Saldo entro (ore prima della partenza)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={form.balanceHoursOverride}
-                  onChange={(e) =>
-                    setField("balanceHoursOverride", e.target.value)
-                  }
-                  placeholder="vuoto = impostazione globale"
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-balance-hours"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Esempio: 48 = scadenza del saldo 48 ore prima dell'orario
-                  reale di partenza. Se la gita viene confermata più tardi, il
-                  saldo è dovuto subito con il periodo di tolleranza configurato
-                  nelle impostazioni.
-                </p>
-              </div>
-            </div>
-          </section>
+                    <Plus className="w-3.5 h-3.5" />
+                    Aggiungi extra
+                  </button>
 
-          {/* Sezione: Metodi di pagamento e scadenze (Gite v2) */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Metodi di pagamento e scadenze
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={form.payCardEnabled}
-                  onChange={(e) => setField("payCardEnabled", e.target.checked)}
-                  className="h-4 w-4 accent-primary"
-                  data-testid="checkbox-excursion-pay-card"
-                />
-                <span className="text-sm text-foreground">Carta</span>
-              </label>
-              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={form.payBankTransferEnabled}
-                  onChange={(e) =>
-                    setField("payBankTransferEnabled", e.target.checked)
-                  }
-                  className="h-4 w-4 accent-primary"
-                  data-testid="checkbox-excursion-pay-bank"
-                />
-                <span className="text-sm text-foreground">Bonifico</span>
-              </label>
-              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={form.payOfficeEnabled}
-                  onChange={(e) =>
-                    setField("payOfficeEnabled", e.target.checked)
-                  }
-                  className="h-4 w-4 accent-primary"
-                  data-testid="checkbox-excursion-pay-office"
-                />
-                <span className="text-sm text-foreground">In ufficio</span>
-              </label>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Ore scadenza bonifico
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={form.bankTransferHoursOverride}
-                  onChange={(e) =>
-                    setField("bankTransferHoursOverride", e.target.value)
-                  }
-                  placeholder="globale"
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-bank-hours"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Ore scadenza ufficio
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={form.officeHoursOverride}
-                  onChange={(e) =>
-                    setField("officeHoursOverride", e.target.value)
-                  }
-                  placeholder="globale"
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-office-hours"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Solo totale da (giorni prima)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.fullPaymentOnlyDaysBefore}
-                  onChange={(e) =>
-                    setField("fullPaymentOnlyDaysBefore", e.target.value)
-                  }
-                  placeholder="globale"
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-full-only-days"
-                />
-              </div>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              I campi vuoti usano i valori delle Impostazioni globali.
-            </p>
-          </section>
-
-          {/* Sezione: Capienza & soglia */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Capienza e soglia
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Capienza posti
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.currentCapacity}
-                  onChange={(e) => setField("currentCapacity", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-capacity"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Lascia 0 se non c'è limite (es. mezzo da definire).
-                </p>
-                {fieldErrors.currentCapacity && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.currentCapacity}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Soglia minima adesioni
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.minThreshold}
-                  onChange={(e) => setField("minThreshold", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-min-threshold"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Calcolata sulle persone, non sulle prenotazioni.
-                </p>
-                {fieldErrors.minThreshold && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.minThreshold}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Data ritorno
-                </label>
-                <input
-                  type="date"
-                  value={form.returnDate}
-                  onChange={(e) => setField("returnDate", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-return-date"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Facoltativa, per gite di più giorni.
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Chiusura prenotazioni
-                </label>
-                <input
-                  type="date"
-                  value={form.bookingCloseDate}
-                  onChange={(e) => setField("bookingCloseDate", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-booking-close"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Oltre questa data il form pubblico è chiuso.
-                </p>
-              </div>
-            </div>
-            <label className="flex items-start gap-2.5">
-              <input
-                type="checkbox"
-                checked={form.waitlistEnabled}
-                disabled
-                readOnly
-                className="mt-0.5 h-4 w-4 cursor-not-allowed accent-primary opacity-60"
-                data-testid="checkbox-excursion-waitlist"
-              />
-              <span className="text-xs text-foreground">
-                Lista d'attesa — non ancora attiva
-                <span className="block text-[11px] text-muted-foreground">
-                  Questo flag è soltanto predisposto nel database: al momento
-                  non registra richieste, non assegna priorità e non invia
-                  comunicazioni. Il controllo è disabilitato finché il flusso
-                  operativo non sarà implementato.
-                </span>
-              </span>
-            </label>
-          </section>
-
-          {/* Sezione: Mezzo */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Mezzo di trasporto
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Mezzo principale
-                </label>
-                <select
-                  value={form.vehicleId}
-                  onChange={(e) => selectPrimaryVehicle(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                  data-testid="select-excursion-vehicle"
-                >
-                  <option value="">— Da definire —</option>
-                  {vehicles?.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} ({v.capacity} posti)
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  La scelta aggiorna capienza e costo del mezzo; il sistema
-                  impedisce di scendere sotto i posti già riservati.
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Costo fisso mezzo (€)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.vehicleFixedCost}
-                  onChange={(e) => setField("vehicleFixedCost", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-excursion-vehicle-cost"
-                />
-                {fieldErrors.vehicleFixedCost && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.vehicleFixedCost}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Soglia cambio mezzo
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.switchThreshold}
-                  onChange={(e) => setField("switchThreshold", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="(opzionale)"
-                  data-testid="input-excursion-switch-threshold"
-                />
-                {fieldErrors.switchThreshold && (
-                  <p className="text-xs text-red-600 mt-1" data-field-error>
-                    {fieldErrors.switchThreshold}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Mezzo alternativo
-                </label>
-                <select
-                  value={form.switchVehicleId}
-                  onChange={(e) => setField("switchVehicleId", e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                  data-testid="select-excursion-switch-vehicle"
-                >
-                  <option value="">— Nessuno —</option>
-                  {vehicles?.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} ({v.capacity} posti)
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {form.switchVehicleId && (
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Costo aggiuntivo mezzo alternativo (€)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={form.switchVehicleAdditionalCost}
-                    onChange={(e) =>
-                      setField("switchVehicleAdditionalCost", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="0.00"
-                    data-testid="input-excursion-switch-cost"
-                  />
-                  {fieldErrors.switchVehicleAdditionalCost && (
+                  {fieldErrors.extras && (
                     <p className="text-xs text-red-600 mt-1" data-field-error>
-                      {fieldErrors.switchVehicleAdditionalCost}
+                      {fieldErrors.extras}
                     </p>
                   )}
                 </div>
+              </FormSection>
+
+              {/* Sezione: Altri costi — costi fissi a carico dell'agenzia (NON per persona) */}
+              <FormSection
+                id="altri-costi"
+                title="Altri costi"
+                icon={Receipt}
+                description={
+                  <>
+                    Costi fissi a carico dell'agenzia, <strong>non</strong> a
+                    persona (es. focaccia offerta a tutti durante il viaggio).
+                    Rientrano nel margine netto ma non nel costo per persona.
+                  </>
+                }
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-medium text-foreground">
+                      Voci di costo
+                    </label>
+                    {form.otherCosts.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        Totale:{" "}
+                        {otherCostTotal.toLocaleString("it-IT", {
+                          style: "currency",
+                          currency: "EUR",
+                        })}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {form.otherCosts.map((row, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nome (es. Focaccia, Omaggio)"
+                          value={row.name}
+                          onChange={(e) =>
+                            updateOtherCost(i, "name", e.target.value)
+                          }
+                          className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          data-testid={`input-excursion-othercost-name-${i}`}
+                        />
+                        <div className="relative w-28 shrink-0">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0,00"
+                            value={row.price}
+                            onChange={(e) =>
+                              updateOtherCost(i, "price", e.target.value)
+                            }
+                            className="w-full pl-3 pr-6 py-2 border border-border rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
+                            data-testid={`input-excursion-othercost-price-${i}`}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                            €
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeOtherCost(i)}
+                          className="p-2 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                          title="Rimuovi voce"
+                          data-testid={`button-remove-othercost-${i}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {form.otherCosts.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nessun altro costo. Aggiungine uno per i costi a carico
+                        dell'agenzia (non a persona).
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addOtherCost}
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-dashed border-border text-primary hover:bg-primary/5 transition-colors"
+                    data-testid="button-add-othercost"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Aggiungi voce
+                  </button>
+
+                  {fieldErrors.otherCosts && (
+                    <p className="text-xs text-red-600 mt-1" data-field-error>
+                      {fieldErrors.otherCosts}
+                    </p>
+                  )}
+                </div>
+              </FormSection>
+
+              {/* Sezione: Prezzi partecipanti (Gite v2) */}
+              <FormSection
+                id="prezzi-partecipanti"
+                title="Prezzi partecipanti"
+                icon={Tags}
+              >
+                {form.category === "rident" ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Prezzo paziente (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={form.patientPrice}
+                        onChange={(e) =>
+                          setField("patientPrice", e.target.value)
+                        }
+                        placeholder={form.pricePerPerson || "0"}
+                        className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        data-testid="input-excursion-patient-price"
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Vuoto = vale il prezzo base della gita.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Prezzo accompagnatore (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={form.companionPrice}
+                        onChange={(e) =>
+                          setField("companionPrice", e.target.value)
+                        }
+                        placeholder={form.pricePerPerson || "0"}
+                        className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        data-testid="input-excursion-companion-price"
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Vuoto = vale il prezzo base della gita.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <AgePricesSection
+                    adultPrice={form.pricePerPerson}
+                    values={agePrices}
+                    onChange={(ageRangeId, value) =>
+                      setAgePrices((prev) => ({ ...prev, [ageRangeId]: value }))
+                    }
+                  />
+                )}
+              </FormSection>
+
+              {/* Sezione: Acconto e saldo (Gite v2) */}
+              <FormSection id="acconto" title="Acconto e saldo" icon={Wallet}>
+                <label className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={form.depositEnabled}
+                    onChange={(e) =>
+                      setField("depositEnabled", e.target.checked)
+                    }
+                    className="mt-0.5 h-4 w-4 accent-primary"
+                    data-testid="checkbox-excursion-deposit-enabled"
+                  />
+                  <span className="text-sm text-foreground">
+                    Acconto abilitato
+                    <span className="block text-[11px] text-muted-foreground">
+                      Se disattivato, i clienti possono solo pagare l'importo
+                      completo.
+                    </span>
+                  </span>
+                </label>
+                {form.depositEnabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Tipo acconto
+                      </label>
+                      <select
+                        value={form.depositType}
+                        onChange={(e) =>
+                          setField("depositType", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        data-testid="select-excursion-deposit-type"
+                      >
+                        <option value="percent">Percentuale sul totale</option>
+                        <option value="fixed">Importo fisso a persona</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        {form.depositType === "fixed"
+                          ? "Importo (€ a persona)"
+                          : "Percentuale (%)"}
+                      </label>
+                      <input
+                        type="number"
+                        step={form.depositType === "fixed" ? "0.01" : "1"}
+                        min="0"
+                        value={form.depositValue}
+                        onChange={(e) =>
+                          setField("depositValue", e.target.value)
+                        }
+                        placeholder={
+                          form.depositType === "fixed"
+                            ? "es. 50"
+                            : "vuoto = impostazione globale"
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        data-testid="input-excursion-deposit-value"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Data limite acconto
+                      </label>
+                      <input
+                        type="date"
+                        value={form.depositDeadlineDate}
+                        onChange={(e) =>
+                          setField("depositDeadlineDate", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        data-testid="input-excursion-deposit-deadline"
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Oltre questa data l'acconto non è più proposto.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Saldo entro (ore prima della partenza)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.balanceHoursOverride}
+                      onChange={(e) =>
+                        setField("balanceHoursOverride", e.target.value)
+                      }
+                      placeholder="vuoto = impostazione globale"
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-balance-hours"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Esempio: 48 = scadenza del saldo 48 ore prima dell'orario
+                      reale di partenza. Se la gita viene confermata più tardi,
+                      il saldo è dovuto subito con il periodo di tolleranza
+                      configurato nelle impostazioni.
+                    </p>
+                  </div>
+                </div>
+              </FormSection>
+
+              {/* Sezione: Metodi di pagamento e scadenze (Gite v2) */}
+              <FormSection
+                id="pagamenti"
+                title="Metodi di pagamento e scadenze"
+                icon={CreditCard}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={form.payCardEnabled}
+                      onChange={(e) =>
+                        setField("payCardEnabled", e.target.checked)
+                      }
+                      className="h-4 w-4 accent-primary"
+                      data-testid="checkbox-excursion-pay-card"
+                    />
+                    <span className="text-sm text-foreground">Carta</span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={form.payBankTransferEnabled}
+                      onChange={(e) =>
+                        setField("payBankTransferEnabled", e.target.checked)
+                      }
+                      className="h-4 w-4 accent-primary"
+                      data-testid="checkbox-excursion-pay-bank"
+                    />
+                    <span className="text-sm text-foreground">Bonifico</span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={form.payOfficeEnabled}
+                      onChange={(e) =>
+                        setField("payOfficeEnabled", e.target.checked)
+                      }
+                      className="h-4 w-4 accent-primary"
+                      data-testid="checkbox-excursion-pay-office"
+                    />
+                    <span className="text-sm text-foreground">In ufficio</span>
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Ore scadenza bonifico
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.bankTransferHoursOverride}
+                      onChange={(e) =>
+                        setField("bankTransferHoursOverride", e.target.value)
+                      }
+                      placeholder="globale"
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-bank-hours"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Ore scadenza ufficio
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.officeHoursOverride}
+                      onChange={(e) =>
+                        setField("officeHoursOverride", e.target.value)
+                      }
+                      placeholder="globale"
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-office-hours"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Solo totale da (giorni prima)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.fullPaymentOnlyDaysBefore}
+                      onChange={(e) =>
+                        setField("fullPaymentOnlyDaysBefore", e.target.value)
+                      }
+                      placeholder="globale"
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-full-only-days"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  I campi vuoti usano i valori delle Impostazioni globali.
+                </p>
+              </FormSection>
+
+              {/* Sezione: Mezzo */}
+              <FormSection id="mezzo" title="Mezzo di trasporto" icon={Bus}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Mezzo principale
+                    </label>
+                    <select
+                      value={form.vehicleId}
+                      onChange={(e) => selectPrimaryVehicle(e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                      data-testid="select-excursion-vehicle"
+                    >
+                      <option value="">— Da definire —</option>
+                      {vehicles?.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name} ({v.capacity} posti)
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      La scelta aggiorna capienza e costo del mezzo; il sistema
+                      impedisce di scendere sotto i posti già riservati.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Costo fisso mezzo (€)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.vehicleFixedCost}
+                      onChange={(e) =>
+                        setField("vehicleFixedCost", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-excursion-vehicle-cost"
+                    />
+                    {fieldErrors.vehicleFixedCost && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.vehicleFixedCost}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Soglia cambio mezzo
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.switchThreshold}
+                      onChange={(e) =>
+                        setField("switchThreshold", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="(opzionale)"
+                      data-testid="input-excursion-switch-threshold"
+                    />
+                    {fieldErrors.switchThreshold && (
+                      <p className="text-xs text-red-600 mt-1" data-field-error>
+                        {fieldErrors.switchThreshold}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Mezzo alternativo
+                    </label>
+                    <select
+                      value={form.switchVehicleId}
+                      onChange={(e) =>
+                        setField("switchVehicleId", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                      data-testid="select-excursion-switch-vehicle"
+                    >
+                      <option value="">— Nessuno —</option>
+                      {vehicles?.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name} ({v.capacity} posti)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {form.switchVehicleId && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Costo aggiuntivo mezzo alternativo (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={form.switchVehicleAdditionalCost}
+                        onChange={(e) =>
+                          setField(
+                            "switchVehicleAdditionalCost",
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0.00"
+                        data-testid="input-excursion-switch-cost"
+                      />
+                      {fieldErrors.switchVehicleAdditionalCost && (
+                        <p
+                          className="text-xs text-red-600 mt-1"
+                          data-field-error
+                        >
+                          {fieldErrors.switchVehicleAdditionalCost}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+
+              {/* Sezione: Punti di raccolta */}
+              <FormSection
+                id="punti-raccolta"
+                title="Punti di raccolta"
+                icon={MapPin}
+              >
+                <PickupPointsSection
+                  excursionId={mode === "edit" ? initial?.id : undefined}
+                  draftPoints={draftPickupPoints}
+                  onDraftChange={setDraftPickupPoints}
+                  surcharges={form.provinceSurcharges}
+                  onSurchargeChange={(code, value) =>
+                    setForm((p) => ({
+                      ...p,
+                      provinceSurcharges: {
+                        ...p.provinceSurcharges,
+                        [code]: value,
+                      },
+                    }))
+                  }
+                  surchargeError={fieldErrors.provinceSurcharges}
+                />
+              </FormSection>
+
+              {/* Sezione: Copertina */}
+              <FormSection
+                id="copertina"
+                title="Immagine di copertina"
+                icon={ImageIcon}
+              >
+                <CoverImageUploader
+                  value={form.coverImageUrl}
+                  onChange={(url) => setField("coverImageUrl", url)}
+                  testIdPrefix="excursion-form-cover"
+                />
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    ...oppure incolla un URL immagine
+                  </label>
+                  <input
+                    type="url"
+                    value={form.coverImageUrl ?? ""}
+                    onChange={(e) =>
+                      setField(
+                        "coverImageUrl",
+                        e.target.value.trim() === "" ? null : e.target.value,
+                      )
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="https://..."
+                    data-testid="input-excursion-cover-url"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Puoi caricare un file con il pulsante sopra oppure incollare
+                    direttamente un link a un'immagine.
+                  </p>
+                </div>
+              </FormSection>
+
+              {/* Sezione: Programma */}
+              <FormSection
+                id="programma"
+                title="Programma"
+                icon={ListOrdered}
+                description="Struttura la giornata per step. Ogni giorno può avere più attività."
+              >
+                <ScheduleEditor
+                  value={form.schedule}
+                  onChange={(days) => setField("schedule", days)}
+                  showHeader={false}
+                />
+              </FormSection>
+
+              {/* Sezione: Quota */}
+              <FormSection
+                id="quota"
+                title="Quota include / non include"
+                icon={ListChecks}
+              >
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      La quota include
+                    </label>
+                    <textarea
+                      value={form.included}
+                      onChange={(e) => setField("included", e.target.value)}
+                      rows={5}
+                      placeholder={
+                        "Viaggio in Bus GT\nAccompagnatore\nNavigazione Isole Borromee"
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Una voce per riga.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      La quota non include
+                    </label>
+                    <textarea
+                      value={form.excluded}
+                      onChange={(e) => setField("excluded", e.target.value)}
+                      rows={5}
+                      placeholder={
+                        "Pranzi e bevande\nIngressi a musei\nTassa di soggiorno"
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Una voce per riga.
+                    </p>
+                  </div>
+                </div>
+              </FormSection>
+
+              {/* Sezione: Info utili */}
+              <FormSection
+                id="info-utili"
+                title="Informazioni utili"
+                icon={BookOpen}
+              >
+                <textarea
+                  value={form.generalInfo}
+                  onChange={(e) => setField("generalInfo", e.target.value)}
+                  rows={4}
+                  placeholder={
+                    "Documenti: carta d'identità valida per l'espatrio.\nCondizioni: il viaggio si effettua al raggiungimento del numero minimo di partecipanti."
+                  }
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                />
+              </FormSection>
+
+              {/* Sezione: Note */}
+              <FormSection id="note" title="Note operative" icon={StickyNote}>
+                <textarea
+                  value={form.operationalNotes}
+                  onChange={(e) => setField("operationalNotes", e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                  placeholder="Es. Partenza ore 06:00 da Piazza Roma. Pranzo incluso."
+                  data-testid="textarea-excursion-notes"
+                />
+              </FormSection>
+
+              {showCounters && initial && "adherentsCount" in initial && (
+                <FormSection
+                  id="contatori"
+                  title="Contatori prenotazioni (sola lettura)"
+                  icon={BarChart3}
+                >
+                  <div className="grid grid-cols-3 gap-3 bg-muted/30 rounded-md p-3">
+                    <div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Aderenti
+                      </div>
+                      <div
+                        className="text-base font-semibold text-foreground"
+                        data-testid="text-counter-adherents"
+                      >
+                        {initial.adherentsCount}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Acconti
+                      </div>
+                      <div
+                        className="text-base font-semibold text-foreground"
+                        data-testid="text-counter-deposits"
+                      >
+                        {initial.depositsCount}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Saldati
+                      </div>
+                      <div
+                        className="text-base font-semibold text-foreground"
+                        data-testid="text-counter-balances"
+                      >
+                        {initial.balancesCount}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Aggiornati automaticamente dalle prenotazioni: non sono
+                    modificabili da qui.
+                  </p>
+                </FormSection>
               )}
             </div>
-          </section>
-
-          {/* Sezione: Note */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Note operative
-            </h4>
-            <textarea
-              value={form.operationalNotes}
-              onChange={(e) => setField("operationalNotes", e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-              placeholder="Es. Partenza ore 06:00 da Piazza Roma. Pranzo incluso."
-              data-testid="textarea-excursion-notes"
-            />
-          </section>
-
-          {/* Sezione: Copertina */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Immagine di copertina
-            </h4>
-            <CoverImageUploader
-              value={form.coverImageUrl}
-              onChange={(url) => setField("coverImageUrl", url)}
-              testIdPrefix="excursion-form-cover"
-            />
-            <div>
-              <label className="block text-xs font-medium text-foreground mb-1">
-                ...oppure incolla un URL immagine
-              </label>
-              <input
-                type="url"
-                value={form.coverImageUrl ?? ""}
-                onChange={(e) =>
-                  setField(
-                    "coverImageUrl",
-                    e.target.value.trim() === "" ? null : e.target.value,
-                  )
-                }
-                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="https://..."
-                data-testid="input-excursion-cover-url"
-              />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Puoi caricare un file con il pulsante sopra oppure incollare
-                direttamente un link a un'immagine.
-              </p>
-            </div>
-          </section>
-
-          {/* Sezione: Programma */}
-          <ScheduleEditor
-            value={form.schedule}
-            onChange={(days) => setField("schedule", days)}
-          />
-
-          {/* Sezione: Quota */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Quota include / non include
-            </h4>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  La quota include
-                </label>
-                <textarea
-                  value={form.included}
-                  onChange={(e) => setField("included", e.target.value)}
-                  rows={5}
-                  placeholder={
-                    "Viaggio in Bus GT\nAccompagnatore\nNavigazione Isole Borromee"
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Una voce per riga.
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  La quota non include
-                </label>
-                <textarea
-                  value={form.excluded}
-                  onChange={(e) => setField("excluded", e.target.value)}
-                  rows={5}
-                  placeholder={
-                    "Pranzi e bevande\nIngressi a musei\nTassa di soggiorno"
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Una voce per riga.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Sezione: Info utili */}
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Informazioni utili
-            </h4>
-            <textarea
-              value={form.generalInfo}
-              onChange={(e) => setField("generalInfo", e.target.value)}
-              rows={4}
-              placeholder={
-                "Documenti: carta d'identità valida per l'espatrio.\nCondizioni: il viaggio si effettua al raggiungimento del numero minimo di partecipanti."
-              }
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-            />
-          </section>
-
-          {/* Sezione: Punti di raccolta */}
-          <PickupPointsSection
-            excursionId={mode === "edit" ? initial?.id : undefined}
-            draftPoints={draftPickupPoints}
-            onDraftChange={setDraftPickupPoints}
-            surcharges={form.provinceSurcharges}
-            onSurchargeChange={(code, value) =>
-              setForm((p) => ({
-                ...p,
-                provinceSurcharges: {
-                  ...p.provinceSurcharges,
-                  [code]: value,
-                },
-              }))
-            }
-            surchargeError={fieldErrors.provinceSurcharges}
-          />
-
-
-          {mode === "edit" && initial && "adherentsCount" in initial && (
-            <section className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Contatori prenotazioni (sola lettura)
-              </h4>
-              <div className="grid grid-cols-3 gap-3 bg-muted/30 rounded-md p-3">
-                <div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Aderenti
-                  </div>
-                  <div
-                    className="text-base font-semibold text-foreground"
-                    data-testid="text-counter-adherents"
-                  >
-                    {initial.adherentsCount}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Acconti
-                  </div>
-                  <div
-                    className="text-base font-semibold text-foreground"
-                    data-testid="text-counter-deposits"
-                  >
-                    {initial.depositsCount}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Saldati
-                  </div>
-                  <div
-                    className="text-base font-semibold text-foreground"
-                    data-testid="text-counter-balances"
-                  >
-                    {initial.balancesCount}
-                  </div>
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Aggiornati automaticamente dalle prenotazioni: non sono
-                modificabili da qui.
-              </p>
-            </section>
-          )}
+          </div>
 
           {errorMsg && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+            <div className="mx-4 mb-2 flex flex-shrink-0 items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 md:mx-6">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span data-testid="text-form-error">{errorMsg}</span>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/50">
+          <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/50 bg-white px-4 py-3 md:px-6">
             {draft.isDirty && (
               <span
                 className="mr-auto text-xs text-muted-foreground"
