@@ -71,9 +71,17 @@ export function FormSectionNav({
     >
       {groups.map((group) => (
         <div key={group.label}>
-          <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          {/* Il titolo del gruppo porta alla sua prima sezione. */}
+          <button
+            type="button"
+            onClick={() => {
+              const first = group.items[0];
+              if (first) onSelect(first.id);
+            }}
+            className="w-full rounded-md px-2 py-1 text-left text-[11px] font-bold uppercase tracking-wider text-foreground/70 transition-colors hover:bg-muted/60 hover:text-primary"
+          >
             {group.label}
-          </p>
+          </button>
           <ul className="mt-1 space-y-0.5">
             {group.items.map((item) => (
               <li key={item.id}>
