@@ -63,6 +63,22 @@ export async function resendWebhookHandler(
     return;
   }
 
+  // Guasto passeggero: va visto, ma NON deve cambiare lo stato dell'account.
+  // Un rifiuto temporaneo del provider di destinazione non dice nulla sulla
+  // validita dell'indirizzo.
+  if (azione.tipo === "solo_segnalazione") {
+    logger.warn(
+      {
+        destinatario: azione.email.trim().toLowerCase(),
+        motivo: azione.motivo,
+        provider: azione.dettaglio ?? null,
+      },
+      "Consegna fallita temporaneamente: nessuna modifica all'account",
+    );
+    res.json({ ok: true, segnalato: azione.motivo });
+    return;
+  }
+
   const emailNormalizzata = azione.email.trim().toLowerCase();
 
   try {
@@ -83,7 +99,7 @@ export async function resendWebhookHandler(
         await recordAccountEvent({
           eventType: "email_bounced",
           accountId: aggiornato.id,
-          detail: { motivo: azione.motivo },
+          detail: { motivo: azione.motivo, provider: azione.dettaglio ?? null },
         });
         logger.warn(
           { accountId: aggiornato.id, motivo: azione.motivo },
@@ -96,7 +112,13 @@ export async function resendWebhookHandler(
         // rimbalza e piu grave di uno cliente, perche nessuno se ne accorge —
         // il cliente almeno telefona.
         logger.error(
-          { destinatario: emailNormalizzata, motivo: azione.motivo },
+          {
+            destinatario: emailNormalizzata,
+            motivo: azione.motivo,
+            // Il messaggio grezzo del server di destinazione: e cio che
+            // distingue "casella inesistente" da "messaggio rifiutato".
+            provider: azione.dettaglio ?? null,
+          },
           "RIMBALZO SU INDIRIZZO INTERNO: le notifiche all'amministrazione non vengono recapitate",
         );
       }

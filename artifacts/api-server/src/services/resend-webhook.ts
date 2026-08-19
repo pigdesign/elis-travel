@@ -79,15 +79,70 @@ export function verificaFirmaResend(input: {
   return { valida: false, motivo: "firma non corrispondente" };
 }
 
+/**
+ * Rimbalzi permanenti e temporanei richiedono risposte opposte.
+ *
+ * Il provider distingue "Permanent" (casella inesistente, dominio inattivo:
+ * non cambiera) da "Transient" (server occupato, casella piena, greylisting,
+ * mittente momentaneamente rifiutato: si risolve). Trattarli allo stesso modo
+ * significherebbe togliere l'accesso a un cliente perche il suo provider ha
+ * avuto un'ora storta — e senza password quell'accesso e l'unico che ha.
+ */
+function rimbalzoPermanente(data: EventoResend["data"]): boolean {
+  const bounce = data?.bounce;
+  if (!bounce || typeof bounce !== "object") {
+    // Senza classificazione non si presume il peggio: meglio riprovare a
+    // scrivere a un indirizzo morto che chiudere fuori un cliente vivo.
+    return false;
+  }
+  const tipo = (bounce as { type?: unknown }).type;
+  return typeof tipo === "string" && tipo.toLowerCase() === "permanent";
+}
+
 export type AzioneEmail =
-  | { tipo: "segna_non_recapitabile"; email: string; motivo: string }
+  | {
+      tipo: "segna_non_recapitabile";
+      email: string;
+      motivo: string;
+      /** Diagnostica grezza del provider: il "perche" del rifiuto. */
+      dettaglio?: Record<string, unknown> | null;
+    }
   | { tipo: "segna_recapitabile"; email: string }
+  | {
+      /** Problema passeggero: si annota, non si tocca lo stato dell'account. */
+      tipo: "solo_segnalazione";
+      email: string;
+      motivo: string;
+      dettaglio?: Record<string, unknown> | null;
+    }
   | { tipo: "ignora"; motivo: string };
 
 type EventoResend = {
   type?: unknown;
-  data?: { to?: unknown; email?: unknown } | null;
+  data?: {
+    to?: unknown;
+    email?: unknown;
+    bounce?: unknown;
+    reason?: unknown;
+  } | null;
 };
+
+/**
+ * Il messaggio del server di destinazione, cosi com'e. Senza, sappiamo che un
+ * indirizzo rifiuta ma non se e "casella inesistente", "casella piena" o
+ * "messaggio classificato come indesiderato" — che portano a rimedi diversi.
+ */
+function diagnosticaProvider(
+  data: EventoResend["data"],
+): Record<string, unknown> | null {
+  if (!data) return null;
+  const out: Record<string, unknown> = {};
+  if (data.bounce && typeof data.bounce === "object") {
+    Object.assign(out, data.bounce as Record<string, unknown>);
+  }
+  if (typeof data.reason === "string") out.reason = data.reason;
+  return Object.keys(out).length > 0 ? out : null;
+}
 
 function primoDestinatario(data: EventoResend["data"]): string | null {
   if (!data) return null;
@@ -126,16 +181,25 @@ export function azionePerEvento(evento: unknown): AzioneEmail {
 
   switch (tipo) {
     case "email.bounced":
-      return {
-        tipo: "segna_non_recapitabile",
-        email,
-        motivo: "indirizzo rifiutato dal server di destinazione",
-      };
+      return rimbalzoPermanente(e.data)
+        ? {
+            tipo: "segna_non_recapitabile",
+            email,
+            motivo: "indirizzo rifiutato in modo definitivo",
+            dettaglio: diagnosticaProvider(e.data),
+          }
+        : {
+            tipo: "solo_segnalazione",
+            email,
+            motivo: "consegna fallita in modo temporaneo",
+            dettaglio: diagnosticaProvider(e.data),
+          };
     case "email.complained":
       return {
         tipo: "segna_non_recapitabile",
         email,
         motivo: "segnalato come indesiderato dal destinatario",
+        dettaglio: diagnosticaProvider(e.data),
       };
     case "email.delivered":
       return { tipo: "segna_recapitabile", email };

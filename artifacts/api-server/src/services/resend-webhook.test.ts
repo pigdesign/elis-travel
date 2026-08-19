@@ -94,10 +94,10 @@ test("con piu firme basta che una corrisponda", () => {
 
 // --- traduzione evento → azione -------------------------------------------
 
-test("un rimbalzo segna l'indirizzo come non recapitabile", () => {
+test("un rimbalzo definitivo segna l'indirizzo come non recapitabile", () => {
   const a = azionePerEvento({
     type: "email.bounced",
-    data: { to: ["mario@esempio.it"] },
+    data: { to: ["mario@esempio.it"], bounce: { type: "Permanent" } },
   });
   assert.equal(a.tipo, "segna_non_recapitabile");
   assert.equal(a.tipo === "segna_non_recapitabile" && a.email, "mario@esempio.it");
@@ -131,9 +131,71 @@ test("gli altri eventi vengono ignorati senza errori", () => {
 });
 
 test("il destinatario si legge sia da stringa sia da lista", () => {
-  assert.equal(
-    azionePerEvento({ type: "email.bounced", data: { to: "solo@esempio.it" } })
-      .tipo,
-    "segna_non_recapitabile",
+  const daLista = azionePerEvento({
+    type: "email.bounced",
+    data: { to: ["lista@esempio.it"], bounce: { type: "Permanent" } },
+  });
+  const daStringa = azionePerEvento({
+    type: "email.bounced",
+    data: { to: "solo@esempio.it", bounce: { type: "Permanent" } },
+  });
+  assert.equal(daLista.tipo === "segna_non_recapitabile" && daLista.email, "lista@esempio.it");
+  assert.equal(daStringa.tipo === "segna_non_recapitabile" && daStringa.email, "solo@esempio.it");
+});
+
+// --- permanente vs temporaneo ----------------------------------------------
+
+test("solo un rimbalzo PERMANENTE segna l'indirizzo come non recapitabile", () => {
+  const a = azionePerEvento({
+    type: "email.bounced",
+    data: { to: ["x@y.it"], bounce: { type: "Permanent", subType: "NoEmail" } },
+  });
+  assert.equal(a.tipo, "segna_non_recapitabile");
+});
+
+test("un rimbalzo TEMPORANEO non tocca l'account", () => {
+  // Caso reale osservato: Aruba rispondeva 501 "dominio mittente non valido",
+  // classificato Transient. Bloccare l'account avrebbe tolto a un cliente
+  // l'unico accesso che ha, per un problema che non lo riguardava.
+  const a = azionePerEvento({
+    type: "email.bounced",
+    data: {
+      to: ["x@y.it"],
+      bounce: {
+        type: "Transient",
+        subType: "General",
+        message: "501 5.1.8 dominio mittente non valido",
+      },
+    },
+  });
+  assert.equal(a.tipo, "solo_segnalazione");
+});
+
+test("senza classificazione non si presume il peggio", () => {
+  const a = azionePerEvento({ type: "email.bounced", data: { to: ["x@y.it"] } });
+  assert.equal(a.tipo, "solo_segnalazione");
+});
+
+test("la diagnostica del provider viene conservata", () => {
+  const a = azionePerEvento({
+    type: "email.bounced",
+    data: {
+      to: ["x@y.it"],
+      bounce: { type: "Transient", message: "501 dominio mittente non valido" },
+    },
+  });
+  assert.ok(a.tipo === "solo_segnalazione" && a.dettaglio);
+  assert.match(
+    JSON.stringify(a.tipo === "solo_segnalazione" ? a.dettaglio : {}),
+    /501/,
   );
+});
+
+test("un reclamo per spam resta bloccante anche senza classificazione", () => {
+  // Qui non c'e ambiguita: la persona ha dichiarato di non volerci.
+  const a = azionePerEvento({
+    type: "email.complained",
+    data: { to: ["x@y.it"] },
+  });
+  assert.equal(a.tipo, "segna_non_recapitabile");
 });
