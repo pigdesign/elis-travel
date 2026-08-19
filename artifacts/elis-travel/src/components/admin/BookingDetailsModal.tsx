@@ -594,6 +594,32 @@ export function BookingDetailsModal({
             </div>
           )}
 
+          {booking && data?.termsReacceptance?.required && (
+            <div
+              className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+              data-testid="alert-terms-reacceptance"
+            >
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 w-4 h-4 shrink-0 text-sky-700" />
+                <div className="space-y-1">
+                  <div className="font-semibold">
+                    In attesa che il cliente riaccetti i Termini
+                  </div>
+                  <p className="leading-relaxed">
+                    L'acconto non viene addebitato perché i Termini sono
+                    cambiati dopo l'autorizzazione
+                    {data.termsReacceptance.acceptedVersion &&
+                    data.termsReacceptance.currentVersion
+                      ? `: aveva accettato la versione del ${data.termsReacceptance.acceptedVersion}, ora è in vigore quella del ${data.termsReacceptance.currentVersion}`
+                      : ""}
+                    . Il cliente ha ricevuto un'email con il link al portale,
+                    dove può confermare con un clic: l'addebito riparte da solo.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {booking && (
             <>
               {/* Referente + riepilogo economico */}

@@ -146,6 +146,148 @@ function LocationCombobox({
   );
 }
 
+function TipologiaCombobox({
+  tipologie,
+  value,
+  onChange,
+}: {
+  tipologie: { name: string; count: number }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
+
+  const filtered = query.trim()
+    ? tipologie.filter((t) => t.name.toLowerCase().includes(query.toLowerCase()))
+    : tipologie;
+
+  function select(t: string) {
+    onChange(t);
+    setOpen(false);
+    setQuery("");
+  }
+
+  function clear(e: React.MouseEvent) {
+    e.stopPropagation();
+    onChange("");
+    setOpen(false);
+    setQuery("");
+  }
+
+  return (
+    <div ref={containerRef} className="relative flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-6 py-5 text-left hover:bg-muted/30 transition-colors group"
+      >
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${open ? "bg-accent/20" : "bg-accent/10 group-hover:bg-accent/20"}`}>
+          <Tag className="w-5 h-5 text-accent" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Tipologia</p>
+          <div className="flex items-center gap-1">
+            <span className={`text-sm font-bold truncate flex-1 ${value ? "text-foreground" : "text-muted-foreground/60"}`}>
+              {value || "Che tipo di gita?"}
+            </span>
+            {value ? (
+              <X
+                className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={clear}
+              />
+            ) : (
+              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+            )}
+          </div>
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
+          {tipologie.length > 8 && (
+            <div className="p-3 border-b border-border">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border border-border focus-within:border-accent focus-within:bg-white transition-colors">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Cerca tipologia…"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+                />
+                {query && (
+                  <button type="button" onClick={() => setQuery("")} className="shrink-0 text-muted-foreground hover:text-foreground">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="max-h-56 overflow-y-auto py-1.5">
+            <button
+              type="button"
+              onClick={() => select("")}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                value === ""
+                  ? "bg-accent/10 text-accent font-semibold"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5 shrink-0 opacity-50" />
+              Tutte le tipologie
+            </button>
+
+            {filtered.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground text-center">Nessun risultato</p>
+            ) : (
+              filtered.map((t) => (
+                <button
+                  key={t.name}
+                  type="button"
+                  onClick={() => select(t.name)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                    value.toLowerCase() === t.name.toLowerCase()
+                      ? "bg-accent/10 text-accent font-semibold"
+                      : "text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <Tag className="w-3.5 h-3.5 shrink-0 text-accent/60" />
+                  <span className="flex-1 truncate">{t.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{t.count}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ExcursionsPage() {
   const { data, isLoading } = useListPublicCatalog();
   const { data: locations = [] } = useListPublicExcursionLocations();
@@ -160,21 +302,24 @@ export function ExcursionsPage() {
   const tipologia = params.get("tipologia") ?? "";
   const month = params.get("month") ?? "";
 
-  // Tipologie disponibili: ricavate dai tag realmente presenti sulle gite (dedup case-insensitive).
+  // Tipologie disponibili: ricavate dai tag realmente presenti sulle gite (dedup case-insensitive),
+  // con il numero di gite per ciascuna.
   const availableTipologie = useMemo(() => {
-    const seen = new Set<string>();
-    const list: string[] = [];
+    const byKey = new Map<string, { name: string; count: number }>();
     for (const ex of excursions) {
+      const seenInEx = new Set<string>();
       for (const t of (ex.tags ?? [])) {
         const name = (t ?? "").trim();
         if (!name) continue;
         const key = name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        list.push(name);
+        if (seenInEx.has(key)) continue;
+        seenInEx.add(key);
+        const entry = byKey.get(key);
+        if (entry) entry.count += 1;
+        else byKey.set(key, { name, count: 1 });
       }
     }
-    return list.sort((a, b) => a.localeCompare(b, "it"));
+    return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, "it"));
   }, [excursions]);
 
   function setFilter(key: string, value: string) {
@@ -242,30 +387,12 @@ export function ExcursionsPage() {
               onChange={setLocation}
             />
 
-            {/* Tipologia — chip dinamici dai tag delle gite */}
-            <div className="flex items-center gap-3 px-6 py-5 flex-1">
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                <Tag className="w-5 h-5 text-accent" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">Tipologia</p>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {[{ value: "", label: "Tutti" }, ...availableTipologie.map((t) => ({ value: t, label: t }))].map((cat) => (
-                    <button
-                      key={cat.value}
-                      onClick={() => setTipologia(cat.value)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                        tipologia === cat.value
-                          ? "bg-accent text-white shadow shadow-accent/25 scale-105"
-                          : "bg-muted text-muted-foreground hover:bg-accent/10 hover:text-accent"
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {/* Tipologia — combobox dinamico dai tag delle gite */}
+            <TipologiaCombobox
+              tipologie={availableTipologie}
+              value={tipologia}
+              onChange={setTipologia}
+            />
 
             {/* Periodo — month combobox */}
             <MonthCombobox

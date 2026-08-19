@@ -281,11 +281,11 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
     cardPaymentsEnabled: cardPaymentsEnabledFromSetting(
       map.excursion_card_payments_enabled,
     ),
-    // L'addebito futuro resta spento finche amministrazione e testo di consenso
-    // non sono entrambi configurati (integrazione Iubenda prevista a parte).
-    futureCardChargeEnabled:
-      map.future_card_charge_enabled === "true" &&
-      Boolean(map.future_card_charge_consent_version?.trim()),
+    // L'addebito futuro dipende da questo interruttore E dalla possibilita di
+    // sapere quale versione dei T&C il cliente sta accettando: la versione non
+    // si scrive piu a mano, la legge il servizio iubenda-terms dal documento
+    // pubblicato, e senza quella il salvataggio carta non parte comunque.
+    futureCardChargeEnabled: map.future_card_charge_enabled === "true",
     futureCardChargeConsentVersion:
       map.future_card_charge_consent_version?.trim() || null,
     cardCheckoutHoldMinutes: intOr(map.card_checkout_hold_minutes, 30),

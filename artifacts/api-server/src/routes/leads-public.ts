@@ -17,6 +17,7 @@ import { dispatchCardSavedEmailV2 } from "../services/excursion-booking-emails-v
 import { verifyBookingCancellationToken } from "../services/booking-cancellation-token";
 import { publicFormsLimiter, posterPdfLimiter } from "../middlewares/rateLimiter";
 import { getExcursionPosterPdf } from "../services/poster-pdf";
+import { getCurrentTermsVersion } from "../services/iubenda-terms";
 import { stripe } from "../services/stripe";
 import { logger } from "../lib/logger";
 import {
@@ -508,10 +509,12 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       settings,
       Boolean(stripe),
     );
+    // La versione dei T&C arriva da Iubenda: se non e determinabile il
+    // salvataggio carta non sara comunque possibile, quindi non lo annunciamo.
+    const termsVersion = await getCurrentTermsVersion();
     const cardFlow =
       ctx.excursion.status === "open" && depositAllowed && methods.card
-        ? settings.futureCardChargeEnabled &&
-          Boolean(settings.futureCardChargeConsentVersion?.trim())
+        ? settings.futureCardChargeEnabled && Boolean(termsVersion)
           ? "save_for_confirmation"
           : "unavailable_for_deposit"
         : "pay_now";

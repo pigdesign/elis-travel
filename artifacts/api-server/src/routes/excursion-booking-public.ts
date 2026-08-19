@@ -73,6 +73,7 @@ import {
   isDepartureOpenForBooking,
 } from "../services/excursion-time";
 import { isPaymentBlockedByCancellation } from "../services/booking-cancellation-guard";
+import { getCurrentTermsVersion } from "../services/iubenda-terms";
 import {
   HomePickupValidationError,
   normalizeHomePickupRequest,
@@ -477,6 +478,13 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       }
     }
 
+    // La versione del consenso e la data di ultima modifica dei T&C su Iubenda,
+    // dove vive la clausola sull'addebito differito. Se Iubenda non e
+    // raggiungibile e non c'e alcun valore noto, il salvataggio carta non parte:
+    // meglio dirottare su bonifico/ufficio che registrare un consenso senza
+    // sapere a quale testo si riferisce.
+    const termsVersion = await getCurrentTermsVersion();
+
     // Il salvataggio carta e ammesso esclusivamente per un acconto di una gita
     // ancora aperta e soltanto quando flag e versione consenso sono configurati.
     const savedCardAuthorizationRequired = preflightBooking
@@ -496,10 +504,11 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         )
       : savedCardAuthorizationRequired &&
         settings.futureCardChargeEnabled &&
-        Boolean(settings.futureCardChargeConsentVersion?.trim());
+        Boolean(termsVersion);
+    // Su una prenotazione ripresa vale la versione accettata allora, non quella
+    // di oggi: il consenso e stato dato su quel testo.
     const futureChargeConsentVersion =
-      preflightFutureConsent[0]?.policyVersion ??
-      settings.futureCardChargeConsentVersion;
+      preflightFutureConsent[0]?.policyVersion ?? termsVersion;
     if (
       !preflightBooking &&
       savedCardAuthorizationRequired &&
@@ -890,7 +899,11 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
           bookingId: booking.id,
           consentType: "terms",
           accepted: true,
-          policyVersion: settings.termsVersion,
+          // I Termini che il cliente vede sono il documento pubblicato su
+          // Iubenda: la versione e la sua data di ultima modifica. Il valore
+          // scritto in Impostazioni resta solo come ripiego, per non lasciare
+          // il consenso senza riferimento se Iubenda non risponde.
+          policyVersion: termsVersion ?? settings.termsVersion,
         },
         {
           bookingId: booking.id,
@@ -1094,8 +1107,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       true,
     ).card;
     const liveFutureChargeAvailable =
-      liveCardSettings.futureCardChargeEnabled &&
-      Boolean(liveCardSettings.futureCardChargeConsentVersion?.trim());
+      liveCardSettings.futureCardChargeEnabled && Boolean(termsVersion);
     if (
       !liveCardAvailable ||
       (saveCardForConfirmation && !liveFutureChargeAvailable)

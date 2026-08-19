@@ -3,6 +3,7 @@ import { Router, type Request } from "express";
 import { db } from "@workspace/db";
 import {
   bookingCancellationCasesTable,
+  bookingConsentsTable,
   bookingParticipantsTable,
   excursionBookingsTable,
   excursionsTable,
@@ -25,6 +26,11 @@ import {
 import { publicFormsLimiter } from "../middlewares/rateLimiter";
 import { logger } from "../lib/logger";
 import { resolveBookingAccess } from "../services/booking-access";
+import { getCurrentTermsVersion } from "../services/iubenda-terms";
+import {
+  recoverConfirmedBookingWorkflow,
+  requiresTermsReacceptance,
+} from "../services/excursion-confirmation";
 import { verifyBookingAccessToken } from "../services/booking-access-token";
 import { recordAccountEvent } from "../services/customer-auth-throttle";
 import {
@@ -256,6 +262,31 @@ router.get("/booking-portal", async (req, res) => {
       Boolean(stripe),
     );
 
+    // Serve una nuova accettazione dei Termini? Riguarda solo chi ha lasciato
+    // la carta in attesa della conferma: e quella autorizzazione a dover
+    // corrispondere al testo in vigore.
+    const [acceptedConsent] = await db
+      .select({ policyVersion: bookingConsentsTable.policyVersion })
+      .from(bookingConsentsTable)
+      .where(
+        and(
+          eq(bookingConsentsTable.bookingId, ctx.booking.id),
+          eq(bookingConsentsTable.consentType, "future_card_charge"),
+          eq(bookingConsentsTable.accepted, true),
+        ),
+      )
+      .limit(1);
+    const acceptedTermsVersion = acceptedConsent?.policyVersion ?? null;
+    const currentTermsVersion = acceptedConsent
+      ? await getCurrentTermsVersion()
+      : null;
+    const reacceptanceRequired = requiresTermsReacceptance({
+      acceptedTermsVersion,
+      currentTermsVersion,
+      hasSavedCard: Boolean(ctx.booking.stripePaymentMethodId),
+      cancelled: Boolean(ctx.booking.cancelledAt),
+    });
+
     const latestCancellationCase = cancellationCases[0] ?? null;
     const cancellationStatus =
       latestCancellationCase?.status ?? ctx.booking.cancellationRequestStatus;
@@ -326,12 +357,108 @@ router.get("/booking-portal", async (req, res) => {
             ctx.excursion.status,
           ),
       },
+      termsReacceptance: {
+        required: reacceptanceRequired,
+        // Data del testo che il cliente aveva accettato e di quello in vigore
+        // adesso: servono a spiegargli perche gli stiamo richiedendo un si.
+        acceptedVersion: acceptedTermsVersion,
+        currentVersion: currentTermsVersion,
+      },
     });
   } catch (error) {
     logger.error({ err: error }, "Lettura portale prenotazione fallita");
     res.status(500).json({ error: "Errore interno del server." });
   }
 });
+
+/**
+ * Nuova accettazione dei Termini per un'autorizzazione gia rilasciata.
+ *
+ * Il cliente aveva autorizzato l'addebito leggendo una certa versione dei
+ * Termini; se il testo e cambiato, l'autorizzazione non copre piu quello in
+ * vigore e l'acconto resta fermo. Qui il cliente dice di si sul testo nuovo:
+ * si aggiorna la versione registrata e si rimette in moto l'addebito, che e
+ * idempotente e non fa nulla se la gita non e confermata.
+ */
+router.post(
+  "/booking-portal/reaccept-terms",
+  publicFormsLimiter,
+  async (req, res) => {
+    try {
+      const ctx = await authorizedBooking(req);
+      if (!ctx) {
+        res
+          .status(404)
+          .json({ error: "Link prenotazione non valido o scaduto." });
+        return;
+      }
+      if (ctx.booking.cancelledAt) {
+        res
+          .status(409)
+          .json({ error: "La prenotazione è stata annullata." });
+        return;
+      }
+
+      const currentTermsVersion = await getCurrentTermsVersion();
+      if (!currentTermsVersion) {
+        // Non sappiamo su quale testo stiamo raccogliendo il consenso: meglio
+        // riprovare piu tardi che registrare un si senza riferimento.
+        res.status(503).json({
+          error:
+            "Non riusciamo a leggere i Termini aggiornati in questo momento. Riprova tra qualche minuto.",
+        });
+        return;
+      }
+
+      const [consent] = await db
+        .select({
+          id: bookingConsentsTable.id,
+          policyVersion: bookingConsentsTable.policyVersion,
+        })
+        .from(bookingConsentsTable)
+        .where(
+          and(
+            eq(bookingConsentsTable.bookingId, ctx.booking.id),
+            eq(bookingConsentsTable.consentType, "future_card_charge"),
+            eq(bookingConsentsTable.accepted, true),
+          ),
+        )
+        .limit(1);
+      if (!consent) {
+        res.status(409).json({
+          error: "Questa prenotazione non prevede un addebito da autorizzare.",
+        });
+        return;
+      }
+      if (consent.policyVersion === currentTermsVersion) {
+        // Gia allineata: magari due schede aperte, oppure il cliente ha
+        // ricaricato. Non e un errore.
+        res.json({ ok: true, version: currentTermsVersion });
+        return;
+      }
+
+      await db
+        .update(bookingConsentsTable)
+        .set({ policyVersion: currentTermsVersion, acceptedAt: new Date() })
+        .where(eq(bookingConsentsTable.id, consent.id));
+
+      logger.info(
+        {
+          bookingId: ctx.booking.id,
+          versionePrecedente: consent.policyVersion,
+          versioneNuova: currentTermsVersion,
+        },
+        "Termini riaccettati dal cliente: l'addebito puo riprendere",
+      );
+
+      await recoverConfirmedBookingWorkflow(ctx.booking.id);
+      res.json({ ok: true, version: currentTermsVersion });
+    } catch (error) {
+      logger.error({ err: error }, "Nuova accettazione dei Termini fallita");
+      res.status(500).json({ error: "Errore interno del server." });
+    }
+  },
+);
 
 router.post(
   "/booking-portal/cancellation",

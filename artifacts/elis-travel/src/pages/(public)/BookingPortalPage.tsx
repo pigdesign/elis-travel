@@ -108,6 +108,11 @@ type PortalData = {
     cancelledAt: string | null;
     canRequest: boolean;
   };
+  termsReacceptance: {
+    required: boolean;
+    acceptedVersion: string | null;
+    currentVersion: string | null;
+  };
 };
 
 function euro(cents: number): string {
@@ -518,6 +523,27 @@ export function BookingPortalPage({
     };
   }, [refresh, stripeRecovery, token]);
 
+  const [isReaccepting, setIsReaccepting] = useState(false);
+
+  // I Termini sono cambiati dopo che il cliente aveva autorizzato l'addebito:
+  // qui li riaccetta, e l'acconto riparte da solo se la gita e confermata.
+  const reacceptTerms = async () => {
+    setIsReaccepting(true);
+    setError(null);
+    try {
+      await portalRequest(auth, "/reaccept-terms", { method: "POST" });
+      await refresh();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Non è stato possibile registrare l'accettazione.",
+      );
+    } finally {
+      setIsReaccepting(false);
+    }
+  };
+
   const selectOffline = async (method: "bank_transfer" | "office") => {
     if (!data?.paymentRequest || paymentResolutionFailure) return;
     setBusyMethod(method);
@@ -748,6 +774,64 @@ export function BookingPortalPage({
               <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
               </p>
+            )}
+
+            {/* I Termini sono cambiati dopo l'autorizzazione: finche il cliente
+                non riaccetta, l'acconto resta fermo. */}
+            {data.termsReacceptance.required && !bookingCancelled && (
+              <section
+                className="rounded-3xl border border-sky-200 bg-sky-50 p-6"
+                data-testid="section-terms-reacceptance"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" />
+                  <div className="space-y-3">
+                    <h2 className="text-base font-semibold text-sky-950">
+                      Serve una tua conferma sui Termini aggiornati
+                    </h2>
+                    <p className="text-sm leading-relaxed text-sky-900">
+                      Avevi autorizzato l'addebito dell'acconto alla conferma
+                      della gita leggendo i Termini e Condizioni
+                      {data.termsReacceptance.acceptedVersion
+                        ? ` del ${data.termsReacceptance.acceptedVersion}`
+                        : ""}
+                      . Da allora il testo è stato aggiornato
+                      {data.termsReacceptance.currentVersion
+                        ? ` (versione del ${data.termsReacceptance.currentVersion})`
+                        : ""}
+                      , quindi <strong>non addebitiamo nulla</strong> finché non
+                      ci confermi che accetti anche la versione nuova.
+                    </p>
+                    <p className="text-sm leading-relaxed text-sky-900">
+                      La tua carta resta salvata e non subisce alcun addebito
+                      adesso: vale sempre la regola di prima, si paga solo se la
+                      gita viene confermata.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void reacceptTerms()}
+                        disabled={isReaccepting}
+                        className="inline-flex items-center gap-2 rounded-full bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sky-800 disabled:opacity-60"
+                        data-testid="button-reaccept-terms"
+                      >
+                        {isReaccepting && (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )}
+                        Accetto i Termini aggiornati
+                      </button>
+                      <a
+                        href="/termini-e-condizioni"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-sky-800 underline underline-offset-2"
+                      >
+                        Leggi i Termini
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </section>
             )}
 
             {(data.cancellation.status || data.cancellation.cancelledAt) && (

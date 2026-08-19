@@ -2,6 +2,10 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { settingsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import {
+  getCurrentTermsVersion,
+  resetTermsVersionCache,
+} from "../../services/iubenda-terms";
 
 const router = Router();
 
@@ -93,6 +97,25 @@ router.put("/settings", async (req, res) => {
       }
     }
     res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+/**
+ * Versione dei Termini e Condizioni in vigore, letta da Iubenda.
+ *
+ * La risposta arriva dalla cache (un'ora). Con `?refresh=1` la cache viene
+ * svuotata e il documento riletto: serve subito dopo aver pubblicato una
+ * modifica su Iubenda, altrimenti il gestionale continuerebbe a registrare i
+ * consensi con la data precedente fino alla scadenza della cache.
+ */
+router.get("/terms-version", async (req, res) => {
+  try {
+    if (req.query.refresh === "1") resetTermsVersionCache();
+    const version = await getCurrentTermsVersion();
+    res.json({ version: version ?? null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Errore interno del server." });

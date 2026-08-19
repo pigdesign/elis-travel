@@ -41,6 +41,8 @@ import {
   enqueueStripeCleanupJobInTransaction,
   StripeCleanupManualCompletionError,
 } from "../../services/stripe-cleanup";
+import { getCurrentTermsVersion } from "../../services/iubenda-terms";
+import { requiresTermsReacceptance } from "../../services/excursion-confirmation";
 import { reconcileBookingCancellation } from "../../services/booking-cancellations";
 import { isPaymentBlockedByCancellation } from "../../services/booking-cancellation-guard";
 import {
@@ -919,6 +921,17 @@ router.get("/bookings/:bookingId/details", async (req, res) => {
           Boolean(participant.lastName?.trim()),
       );
 
+    // Perche l'acconto e fermo: senza questo, in scheda si vedrebbe solo un
+    // pagamento "da lavorare" senza sapere che la palla e al cliente.
+    const acceptedTermsVersion =
+      consents.find(
+        (consent) =>
+          consent.consentType === "future_card_charge" && consent.accepted,
+      )?.policyVersion ?? null;
+    const currentTermsVersion = acceptedTermsVersion
+      ? await getCurrentTermsVersion()
+      : null;
+
     res.json({
       booking,
       participants,
@@ -930,6 +943,16 @@ router.get("/bookings/:bookingId/details", async (req, res) => {
       cleanupJobs,
       economicSummary,
       participantsDetailed,
+      termsReacceptance: {
+        required: requiresTermsReacceptance({
+          acceptedTermsVersion,
+          currentTermsVersion,
+          hasSavedCard: Boolean(booking.stripePaymentMethodId),
+          cancelled: Boolean(booking.cancelledAt),
+        }),
+        acceptedVersion: acceptedTermsVersion,
+        currentVersion: currentTermsVersion,
+      },
     });
   } catch (err) {
     console.error("Booking details fetch failed:", err);

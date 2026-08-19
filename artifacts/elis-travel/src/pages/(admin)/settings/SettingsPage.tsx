@@ -13,9 +13,13 @@ import {
   Clock,
   Building2,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 import {
+  getGetTermsVersionQueryKey,
+  getTermsVersion,
   useGetAdminSettings,
+  useGetTermsVersion,
   useUpdateAdminSettings,
   getGetAdminSettingsQueryKey,
   useListPickupLocations,
@@ -645,6 +649,22 @@ export function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: settings, isLoading: isLoadingSettings } =
     useGetAdminSettings();
+  const { data: iubendaTerms, isFetching: isLoadingTermsVersion } =
+    useGetTermsVersion();
+  const [isRereadingTerms, setIsRereadingTerms] = useState(false);
+  const termsVersionBusy = isLoadingTermsVersion || isRereadingTerms;
+
+  // `refresh=1` svuota la cache lato server e rilegge il documento: il refetch
+  // della query da solo tornerebbe con lo stesso valore gia in cache.
+  async function rereadTermsVersion() {
+    setIsRereadingTerms(true);
+    try {
+      const fresh = await getTermsVersion({ refresh: "1" });
+      queryClient.setQueryData(getGetTermsVersionQueryKey(), fresh);
+    } finally {
+      setIsRereadingTerms(false);
+    }
+  }
   const { data: pickupLocations = [], isLoading: isLoadingPickup } =
     useListPickupLocations();
   const { data: ageRanges = [], isLoading: isLoadingAgeRanges } =
@@ -667,7 +687,6 @@ export function SettingsPage() {
   const [depositPercentage, setDepositPercentage] = useState("");
   const [cardPaymentsEnabled, setCardPaymentsEnabled] = useState(false);
   const [futureCardChargeEnabled, setFutureCardChargeEnabled] = useState(false);
-  const [futureCardConsentVersion, setFutureCardConsentVersion] = useState("");
   const [cardCheckoutHoldMinutes, setCardCheckoutHoldMinutes] = useState("");
   const [paymentGraceMinutes, setPaymentGraceMinutes] = useState("");
   // Gite v2 — scadenze pagamento (ore) e regole
@@ -700,9 +719,6 @@ export function SettingsPage() {
       );
       setFutureCardChargeEnabled(
         settings.future_card_charge_enabled === "true",
-      );
-      setFutureCardConsentVersion(
-        settings.future_card_charge_consent_version ?? "",
       );
       setCardCheckoutHoldMinutes(settings.card_checkout_hold_minutes ?? "30");
       setPaymentGraceMinutes(settings.payment_grace_minutes ?? "120");
@@ -791,12 +807,6 @@ export function SettingsPage() {
         );
         return;
       }
-      if (futureCardChargeEnabled && !futureCardConsentVersion.trim()) {
-        setErrorMsg(
-          "Per gli addebiti futuri serve una versione del consenso specifico.",
-        );
-        return;
-      }
       const adult = adultMinAge.trim();
       if (
         adult !== "" &&
@@ -820,7 +830,6 @@ export function SettingsPage() {
           future_card_charge_enabled: futureCardChargeEnabled
             ? "true"
             : "false",
-          future_card_charge_consent_version: futureCardConsentVersion.trim(),
           card_checkout_hold_minutes: holdMinutes,
           payment_grace_minutes: graceMinutes,
           payment_deadline_bank_hours: bankHours.trim(),
@@ -976,23 +985,52 @@ export function SettingsPage() {
                   Kill switch specifico per l'acconto futuro. OFF impedisce sia
                   nuovi salvataggi sia addebiti automatici delle carte già
                   salvate alla conferma: la richiesta passa a intervento
-                  cliente/portale. Attivare solo con la versione del consenso
-                  Iubenda corretta; senza versione il backend resta fail-closed.
+                  cliente/portale.
                 </span>
               </span>
             </label>
-            <div>
-              <label className="block text-xs font-medium text-foreground mb-1">
-                Versione consenso addebito futuro
-              </label>
-              <input
-                type="text"
-                value={futureCardConsentVersion}
-                onChange={(e) => setFutureCardConsentVersion(e.target.value)}
-                placeholder="Es. iubenda-2026-01"
-                className={inputCls}
-                data-testid="input-settings-future-card-consent-version"
-              />
+            <div className="rounded-lg bg-white/70 px-3 py-2.5 space-y-2">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  La versione del consenso non si imposta più qui.
+                </span>{" "}
+                Viene letta dalla data di ultima modifica dei Termini e
+                Condizioni pubblicati su Iubenda, dove si trova la clausola
+                sull'addebito differito. Se quella data cambia, gli acconti già
+                autorizzati non vengono più addebitati in automatico: le
+                prenotazioni restano in attesa di una nuova accettazione.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className="text-xs text-foreground"
+                  data-testid="text-terms-version"
+                >
+                  Versione in vigore:{" "}
+                  <strong>
+                    {termsVersionBusy
+                      ? "lettura in corso…"
+                      : (iubendaTerms?.version ?? "non disponibile")}
+                  </strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void rereadTermsVersion()}
+                  disabled={termsVersionBusy}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50 disabled:opacity-60"
+                  data-testid="button-refresh-terms-version"
+                >
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 ${termsVersionBusy ? "animate-spin" : ""}`}
+                  />
+                  Rileggi da Iubenda
+                </button>
+              </div>
+              {iubendaTerms?.version == null && !termsVersionBusy && (
+                <p className="text-xs text-amber-800">
+                  Senza versione il salvataggio della carta non parte e i
+                  clienti vengono indirizzati su bonifico o ufficio.
+                </p>
+              )}
             </div>
           </div>
 

@@ -8,6 +8,7 @@
 
 export * from "./adminBookingConsent";
 export * from "./adminBookingDetails";
+export * from "./adminBookingDetailsTermsReacceptance";
 export * from "./adminBookingEconomicSummary";
 export * from "./adminBookingParticipant";
 export * from "./adminBookingParticipantReplaceInput";
@@ -84,6 +85,9 @@ export * from "./excursionSummaryProvinceSurcharges";
 export * from "./excursionSummaryStatus";
 export * from "./expireOverdueBookings200";
 export * from "./expireOverdueBookingsBody";
+export * from "./getTermsVersion200";
+export * from "./getTermsVersionParams";
+export * from "./getTermsVersionRefresh";
 export * from "./healthStatus";
 export * from "./lead";
 export * from "./leadNote";

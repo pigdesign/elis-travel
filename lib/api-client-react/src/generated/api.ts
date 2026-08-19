@@ -61,6 +61,8 @@ import type {
   ExcursionSummary,
   ExpireOverdueBookings200,
   ExpireOverdueBookingsBody,
+  GetTermsVersion200,
+  GetTermsVersionParams,
   HealthStatus,
   Lead,
   LeadNote,
@@ -6828,6 +6830,102 @@ export const useUpdateAdminSettings = <
 > => {
   return useMutation(getUpdateAdminSettingsMutationOptions(options));
 };
+
+/**
+ * Data di ultima modifica del documento Iubenda, usata come versione dei consensi. Con refresh=1 la cache viene svuotata e il documento riletto: da usare subito dopo aver pubblicato una modifica su Iubenda.
+
+ * @summary Versione dei Termini e Condizioni pubblicata su Iubenda
+ */
+export const getGetTermsVersionUrl = (params?: GetTermsVersionParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/terms-version?${stringifiedParams}`
+    : `/api/admin/terms-version`;
+};
+
+export const getTermsVersion = async (
+  params?: GetTermsVersionParams,
+  options?: RequestInit,
+): Promise<GetTermsVersion200> => {
+  return customFetch<GetTermsVersion200>(getGetTermsVersionUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTermsVersionQueryKey = (params?: GetTermsVersionParams) => {
+  return [`/api/admin/terms-version`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetTermsVersionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTermsVersion>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetTermsVersionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTermsVersion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTermsVersionQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTermsVersion>>> = ({
+    signal,
+  }) => getTermsVersion(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTermsVersion>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTermsVersionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTermsVersion>>
+>;
+export type GetTermsVersionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Versione dei Termini e Condizioni pubblicata su Iubenda
+ */
+
+export function useGetTermsVersion<
+  TData = Awaited<ReturnType<typeof getTermsVersion>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetTermsVersionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTermsVersion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTermsVersionQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Elenco fasce età globali per i bambini

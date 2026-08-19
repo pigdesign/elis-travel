@@ -502,7 +502,20 @@ export interface AdminStripeCleanupManualCompletionResponse {
   manualCompletionReference: string | null;
 }
 
+/**
+ * Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.
+
+ */
+export type AdminBookingDetailsTermsReacceptance = {
+  required?: boolean;
+  acceptedVersion?: string | null;
+  currentVersion?: string | null;
+};
+
 export interface AdminBookingDetails {
+  /** Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.
+   */
+  termsReacceptance?: AdminBookingDetailsTermsReacceptance;
   booking: Booking;
   participants: AdminBookingParticipant[];
   consents: AdminBookingConsent[];
@@ -1626,6 +1639,26 @@ export type ConvertLeadToCustomerBody = {
   email: string;
   phone?: string | null;
   mobile?: string | null;
+};
+
+export type GetTermsVersionParams = {
+  /**
+   * Se "1", rilegge il documento ignorando la cache.
+   */
+  refresh?: GetTermsVersionRefresh;
+};
+
+export type GetTermsVersionRefresh =
+  (typeof GetTermsVersionRefresh)[keyof typeof GetTermsVersionRefresh];
+
+export const GetTermsVersionRefresh = {
+  NUMBER_1: "1",
+} as const;
+
+export type GetTermsVersion200 = {
+  /** Data di ultima modifica, es. "19 agosto 2026". null se Iubenda non e raggiungibile e non esiste alcun valore noto.
+   */
+  version: string | null;
 };
 
 export type DeleteAgeRange200 = {

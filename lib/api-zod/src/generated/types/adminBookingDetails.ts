@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdminBookingConsent } from "./adminBookingConsent";
+import type { AdminBookingDetailsTermsReacceptance } from "./adminBookingDetailsTermsReacceptance";
 import type { AdminBookingEconomicSummary } from "./adminBookingEconomicSummary";
 import type { AdminBookingParticipant } from "./adminBookingParticipant";
 import type { AdminCancellationCase } from "./adminCancellationCase";
@@ -16,6 +17,9 @@ import type { AdminStripeCleanupJob } from "./adminStripeCleanupJob";
 import type { Booking } from "./booking";
 
 export interface AdminBookingDetails {
+  /** Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.
+   */
+  termsReacceptance?: AdminBookingDetailsTermsReacceptance;
   booking: Booking;
   participants: AdminBookingParticipant[];
   consents: AdminBookingConsent[];

@@ -48,6 +48,7 @@ function isPaymentSensitiveEventType(eventType: string): boolean {
     eventType.startsWith("booking.balance-") ||
     eventType === "booking.payment-action-required.customer" ||
     eventType === "booking.payment-action-required.admin" ||
+    eventType === "booking.terms-reacceptance.customer" ||
     eventType === "booking.payment-deadline-extended.customer" ||
     eventType === "booking.instructions.customer" ||
     eventType === "booking.card-saved.customer"

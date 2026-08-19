@@ -1647,6 +1647,16 @@ export const GetAdminBookingDetailsParams = zod.object({
 export const getAdminBookingDetailsResponseBookingHomePickupAddressMax = 500;
 
 export const GetAdminBookingDetailsResponse = zod.object({
+  termsReacceptance: zod
+    .object({
+      required: zod.boolean().optional(),
+      acceptedVersion: zod.string().nullish(),
+      currentVersion: zod.string().nullish(),
+    })
+    .optional()
+    .describe(
+      "Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.\n",
+    ),
   booking: zod.object({
     id: zod.string().uuid(),
     excursionId: zod.string().uuid(),
@@ -3150,6 +3160,27 @@ export const UpdateAdminSettingsResponse = zod.object({
   privacy_policy_version: zod.string().nullish(),
   media_policy_version: zod.string().nullish(),
   adult_min_age: zod.string().nullish(),
+});
+
+/**
+ * Data di ultima modifica del documento Iubenda, usata come versione dei consensi. Con refresh=1 la cache viene svuotata e il documento riletto: da usare subito dopo aver pubblicato una modifica su Iubenda.
+
+ * @summary Versione dei Termini e Condizioni pubblicata su Iubenda
+ */
+export const GetTermsVersionQueryParams = zod.object({
+  refresh: zod
+    .enum(["1"])
+    .optional()
+    .describe('Se \"1\", rilegge il documento ignorando la cache.'),
+});
+
+export const GetTermsVersionResponse = zod.object({
+  version: zod
+    .string()
+    .nullable()
+    .describe(
+      'Data di ultima modifica, es. \"19 agosto 2026\". null se Iubenda non e raggiungibile e non esiste alcun valore noto.\n',
+    ),
 });
 
 /**

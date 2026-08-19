@@ -237,7 +237,8 @@ export function outboxSuppressionReason(
   const isBalanceRequest = eventType === "booking.balance-requested.customer";
   const isActionRequired =
     eventType === "booking.payment-action-required.customer" ||
-    eventType === "booking.payment-action-required.admin";
+    eventType === "booking.payment-action-required.admin" ||
+    eventType === "booking.terms-reacceptance.customer";
   const isReminder = eventType.startsWith("booking.balance-reminder.");
   const isDeadlineExtended =
     eventType === "booking.payment-deadline-extended.customer";

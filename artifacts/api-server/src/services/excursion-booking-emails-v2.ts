@@ -1045,6 +1045,64 @@ export async function dispatchBalanceRequestEmailV2(
   });
 }
 
+/**
+ * Termini aggiornati dopo che il cliente aveva autorizzato l'addebito.
+ *
+ * Non e una richiesta di pagamento: il cliente non deve pagare nulla e non
+ * deve scegliere un metodo. Deve solo confermare che accetta anche il testo
+ * nuovo, altrimenti l'acconto resta fermo. L'email dell'azione pagamento
+ * ordinaria direbbe la cosa sbagliata.
+ */
+async function buildTermsReacceptanceEmail(
+  bookingId: string,
+  paymentRequestId?: string,
+): Promise<EmailMessage | null> {
+  const ctx = await loadBooking(bookingId);
+  if (!ctx) return null;
+  const { booking, excursion } = ctx;
+  if (isPaymentBlockedByCancellation(booking)) return null;
+  if (paymentRequestId) {
+    const request = await loadPaymentRequestById(bookingId, paymentRequestId);
+    if (!request || request.status !== "action_required") return null;
+  }
+  const access = await ensureBookingAccessToken(bookingId);
+  const portalUrl = buildBookingPortalUrl(access.token);
+  const subject = `Conferma i Termini aggiornati — ${excursion.name}`;
+  const text = [
+    `Ciao ${booking.customerName},`,
+    "",
+    `abbiamo aggiornato i Termini e Condizioni dopo la tua prenotazione per ${excursion.name}.`,
+    "",
+    "Non ti abbiamo addebitato nulla e non ti addebiteremo nulla finche non ci",
+    "confermi che accetti anche il testo nuovo. La tua carta resta salvata e",
+    "vale sempre la regola di prima: si paga solo se la gita viene confermata.",
+    "",
+    "Apri il portale della tua prenotazione e conferma con un clic:",
+    portalUrl,
+  ].join("\n");
+  const html = wrap(
+    "Conferma i Termini aggiornati",
+    `<p>Ciao ${escapeHtml(booking.customerName)},<br/>abbiamo aggiornato i Termini e Condizioni dopo la tua prenotazione per <strong>${escapeHtml(excursion.name)}</strong>.</p>
+     <p><strong>Non ti abbiamo addebitato nulla</strong> e non ti addebiteremo nulla finche non ci confermi che accetti anche il testo nuovo. La tua carta resta salvata e vale sempre la regola di prima: si paga solo se la gita viene confermata.</p>
+     <p style="margin:24px 0"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 20px;border-radius:999px;background:#0b5b60;color:#fff;text-decoration:none;font-weight:700">Conferma i Termini aggiornati</a></p>`,
+  );
+  return { to: booking.email!, subject, text, html, replyTo: agency().email };
+}
+
+export async function dispatchTermsReacceptanceEmailV2(
+  bookingId: string,
+  paymentRequestId?: string,
+): Promise<void> {
+  const scope = paymentRequestId ?? bookingId;
+  await queueBuiltEmail({
+    bookingId,
+    eventType: "booking.terms-reacceptance.customer",
+    dedupeKey: `payment-request:${scope}:terms-reacceptance-customer:v2`,
+    message: buildTermsReacceptanceEmail(bookingId, paymentRequestId),
+    label: "nuova accettazione Termini",
+  });
+}
+
 export async function dispatchPaymentActionRequiredEmailV2(
   bookingId: string,
   requestType: string,

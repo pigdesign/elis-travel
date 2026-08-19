@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { db } from "@workspace/db";
 import {
+  bookingConsentsTable,
   excursionBookingsTable,
   excursionsTable,
   paymentAttemptsTable,
@@ -17,10 +18,12 @@ import {
   notInArray,
 } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { getCurrentTermsVersion } from "./iubenda-terms";
 import { ensureBalanceRequest } from "./booking-balance";
 import {
   dispatchExcursionConfirmedEmailV2,
   dispatchPaymentActionRequiredEmailV2,
+  dispatchTermsReacceptanceEmailV2,
 } from "./excursion-booking-emails-v2";
 import {
   computeBalanceDueAt,
@@ -97,7 +100,9 @@ export type ConfirmationAutoChargeBlockReason =
   | "future_card_charge_disabled"
   | "card_payments_disabled"
   | "excursion_card_payments_disabled"
-  | "stripe_amount_below_minimum";
+  | "stripe_amount_below_minimum"
+  | "terms_version_changed"
+  | "terms_version_unavailable";
 
 export function confirmationAutoChargeBlockReason(input: {
   stripeConfigured: boolean;
@@ -105,6 +110,10 @@ export function confirmationAutoChargeBlockReason(input: {
   cardPaymentsEnabled: boolean;
   excursionCardPaymentsEnabled: boolean;
   amountCents: number;
+  /** Versione dei T&C accettata dal cliente al momento della prenotazione. */
+  acceptedTermsVersion?: string | null;
+  /** Versione pubblicata adesso su Iubenda; `null` se non determinabile. */
+  currentTermsVersion?: string | null;
 }): ConfirmationAutoChargeBlockReason | null {
   if (!input.futureCardChargeEnabled) return "future_card_charge_disabled";
   if (!input.cardPaymentsEnabled) return "card_payments_disabled";
@@ -115,7 +124,39 @@ export function confirmationAutoChargeBlockReason(input: {
   if (!isStripeChargeAmountSupported(input.amountCents)) {
     return "stripe_amount_below_minimum";
   }
+  // Il cliente ha autorizzato l'addebito leggendo una certa versione dei T&C.
+  // Se il testo e cambiato da allora, quell'autorizzazione non copre piu il
+  // testo in vigore: l'acconto non parte in automatico e la prenotazione
+  // finisce tra quelle da lavorare a mano, dove si chiede una nuova
+  // accettazione. Non potendo sapere quale sia la versione corrente si applica
+  // la stessa cautela: non si addebita cio che non si puo verificare.
+  if (!input.currentTermsVersion || !input.acceptedTermsVersion) {
+    return "terms_version_unavailable";
+  }
+  if (input.acceptedTermsVersion !== input.currentTermsVersion) {
+    return "terms_version_changed";
+  }
   return null;
+}
+
+/**
+ * La prenotazione e ferma perche il cliente deve riaccettare i Termini?
+ *
+ * Distinzione importante rispetto a `confirmationAutoChargeBlockReason`: li si
+ * decide se addebitare, qui se ha senso *chiedere qualcosa al cliente*. Se non
+ * sappiamo quale sia la versione in vigore il problema e nostro, non suo, e
+ * chiedergli di riaccettare un testo che non riusciamo a leggere non avrebbe
+ * senso.
+ */
+export function requiresTermsReacceptance(input: {
+  acceptedTermsVersion: string | null;
+  currentTermsVersion: string | null;
+  hasSavedCard: boolean;
+  cancelled: boolean;
+}): boolean {
+  if (input.cancelled || !input.hasSavedCard) return false;
+  if (!input.currentTermsVersion) return false;
+  return input.acceptedTermsVersion !== input.currentTermsVersion;
 }
 
 async function markActionRequired(opts: {
@@ -126,6 +167,12 @@ async function markActionRequired(opts: {
   paymentIntent?: Stripe.PaymentIntent | null;
   requestMethod?: "card" | null;
   error: unknown;
+  /**
+   * Se l'addebito si e fermato perche il testo dei Termini e cambiato, al
+   * cliente non va chiesto di "completare il pagamento" — non deve pagare
+   * niente, deve dare una conferma. Serve un'altra email.
+   */
+  blockReason?: ConfirmationAutoChargeBlockReason | null;
 }): Promise<void> {
   const now = new Date();
   const detail =
@@ -196,11 +243,15 @@ async function markActionRequired(opts: {
     return true;
   });
   if (shouldNotify) {
-    await dispatchPaymentActionRequiredEmailV2(
-      opts.bookingId,
-      opts.requestType,
-      opts.requestId,
-    );
+    if (opts.blockReason === "terms_version_changed") {
+      await dispatchTermsReacceptanceEmailV2(opts.bookingId, opts.requestId);
+    } else {
+      await dispatchPaymentActionRequiredEmailV2(
+        opts.bookingId,
+        opts.requestType,
+        opts.requestId,
+      );
+    }
   }
 }
 
@@ -245,6 +296,9 @@ async function chargeSavedCardAtConfirmation(
   now: Date,
 ): Promise<ConfirmedBookingRecoveryOutcome> {
   const settings = await getPaymentSettings();
+  // Fuori dalla transazione: e una chiamata di rete, non deve tenere aperto un
+  // lock sulla prenotazione.
+  const currentTermsVersion = await getCurrentTermsVersion();
 
   const prepared = await db.transaction(async (tx) => {
     const [booking] = await tx
@@ -290,6 +344,18 @@ async function chargeSavedCardAtConfirmation(
     const requestType = plan.requestType;
     const amount = plan.amountCents;
     if (amount <= 0) return null;
+    // Versione dei T&C che il cliente aveva davanti quando ha autorizzato.
+    const [acceptedConsent] = await tx
+      .select({ policyVersion: bookingConsentsTable.policyVersion })
+      .from(bookingConsentsTable)
+      .where(
+        and(
+          eq(bookingConsentsTable.bookingId, booking.id),
+          eq(bookingConsentsTable.consentType, "future_card_charge"),
+          eq(bookingConsentsTable.accepted, true),
+        ),
+      )
+      .limit(1);
     const blockReason =
       !booking.stripeCustomerId || !booking.stripePaymentMethodId
         ? ("saved_card_missing" as const)
@@ -301,6 +367,8 @@ async function chargeSavedCardAtConfirmation(
               cardPaymentsEnabled: settings.cardPaymentsEnabled,
               excursionCardPaymentsEnabled: excursion.payCardEnabled,
               amountCents: amount,
+              acceptedTermsVersion: acceptedConsent?.policyVersion ?? null,
+              currentTermsVersion,
             });
 
     let [request] = await tx
@@ -422,6 +490,7 @@ async function chargeSavedCardAtConfirmation(
       attemptId: prepared.attempt.id,
       requestType: prepared.requestType,
       requestMethod: null,
+      blockReason: prepared.blockReason,
       error: new Error(
         `Addebito automatico non eseguito: ${prepared.blockReason ?? "configurazione_non_disponibile"}`,
       ),
