@@ -1,10 +1,11 @@
 import { db } from "@workspace/db";
 import {
+  customerAccountBookingsTable,
   customerAccountsTable,
   excursionBookingsTable,
   normalizeAccountEmail,
 } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { buildAccountAccessUrl } from "./customer-auth-emails";
 import { escapeHtml } from "./email-layout";
@@ -84,6 +85,67 @@ export async function ensureShadowAccount(input: {
 }
 
 /**
+ * Crea l'account ombra per una prenotazione appena registrata.
+ *
+ * Va chiamata alla CREAZIONE della prenotazione e non mentre si compone
+ * un'email. Legarla alla costruzione dell'email lasciava senza account chi
+ * pagava subito con carta, chi aveva totale zero e chi veniva inserito
+ * dall'ufficio a pagamento avvenuto: quelle tre strade ricevono la ricevuta,
+ * che il richiamo non lo conteneva. Il risultato era un vicolo cieco — nessun
+ * account, e su /accedi la risposta generica "se l'indirizzo e registrato" per
+ * un'email che non sarebbe mai partita.
+ *
+ * Non solleva e non attende: un intoppo qui non deve toccare la prenotazione,
+ * che e gia registrata e vale di piu.
+ */
+export function ensureAccountForBooking(bookingId: string): void {
+  void (async () => {
+    try {
+      const [booking] = await db
+        .select({
+          email: excursionBookingsTable.email,
+          customerName: excursionBookingsTable.customerName,
+        })
+        .from(excursionBookingsTable)
+        .where(eq(excursionBookingsTable.id, bookingId))
+        .limit(1);
+      if (!booking?.email) return;
+      await ensureShadowAccount({
+        email: booking.email,
+        createdVia: "booking",
+        fullName: booking.customerName,
+      });
+    } catch (error) {
+      logger.warn(
+        { err: error, bookingId },
+        "Creazione dell'account area clienti fallita; la prenotazione non e toccata",
+      );
+    }
+  })();
+}
+
+/**
+ * Vero se la prenotazione risulta gia fra i viaggi di quell'account.
+ */
+async function alreadyLinked(input: {
+  accountId: string;
+  bookingId: string;
+}): Promise<boolean> {
+  const [row] = await db
+    .select({ id: customerAccountBookingsTable.id })
+    .from(customerAccountBookingsTable)
+    .where(
+      and(
+        eq(customerAccountBookingsTable.accountId, input.accountId),
+        eq(customerAccountBookingsTable.bookingId, input.bookingId),
+        isNull(customerAccountBookingsTable.revokedAt),
+      ),
+    )
+    .limit(1);
+  return row !== undefined;
+}
+
+/**
  * Prepara il richiamo "attiva la tua area personale" per una prenotazione.
  *
  * Il token e di tipo `account_invite` ed e legato a QUESTA prenotazione: chi lo
@@ -118,6 +180,13 @@ export async function prepareBookingInvite(
     // Un indirizzo che rimbalza non riceverebbe comunque il messaggio: inutile
     // emettere un token che nessuno potra usare.
     if (account.emailStatus === "bounced") return null;
+    // Gia fra i suoi viaggi: il richiamo sarebbe rumore, e il token emesso
+    // resterebbe valido per sette giorni senza servire a niente. Conta da
+    // quando il richiamo sta in tutte le email della prenotazione e non solo
+    // nella prima.
+    if (await alreadyLinked({ accountId: account.id, bookingId: booking.id })) {
+      return null;
+    }
 
     const { token } = await issueCustomerAuthToken({
       accountId: account.id,

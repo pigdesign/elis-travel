@@ -167,8 +167,9 @@ export function AccountTripsPage() {
             </p>
             {scope === "upcoming" && (
               <p className="mt-2 text-sm text-muted-foreground">
-                Se hai prenotato di recente, apri il link che ti abbiamo inviato
-                via email e collega la prenotazione al tuo account.
+                Se hai prenotato di recente, apri il link "Attiva la tua area
+                personale" che trovi nell'email di conferma: la prenotazione si
+                collega da sola.
               </p>
             )}
           </div>

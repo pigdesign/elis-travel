@@ -16,6 +16,12 @@ declare module "express-session" {
     customerAccount: {
       accountId: string;
       email: string;
+      // Come e stata aperta questa sessione. Serve a una cosa sola: decidere se
+      // per cambiare password chiedere quella attuale. Chi e entrato dal link
+      // via email ha gia dimostrato di possedere la casella — ed e proprio il
+      // caso di chi la password l'ha dimenticata, che altrimenti resterebbe
+      // bloccato fuori dall'unica pagina in grado di sbloccarlo.
+      via?: "magic_link" | "password";
     };
   }
 }

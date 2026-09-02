@@ -73,6 +73,7 @@ import {
   isDepartureOpenForBooking,
 } from "../services/excursion-time";
 import { isPaymentBlockedByCancellation } from "../services/booking-cancellation-guard";
+import { ensureAccountForBooking } from "../services/customer-account-provisioning";
 import { getCurrentTermsVersion } from "../services/iubenda-terms";
 import {
   HomePickupValidationError,
@@ -1021,6 +1022,12 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       });
       return;
     }
+
+    // Account dell'area clienti: creato qui, per OGNI prenotazione, e non
+    // dentro la costruzione di una delle email — cosi esiste anche per chi
+    // paga subito con carta e per chi ha totale zero, che ricevono la ricevuta
+    // e non le istruzioni. Non blocca la risposta.
+    ensureAccountForBooking(result.booking.id);
 
     const resolvedBookingCode =
       result.booking.bookingCode ?? bookingCode ?? result.booking.id;

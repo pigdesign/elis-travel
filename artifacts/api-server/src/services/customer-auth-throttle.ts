@@ -166,3 +166,69 @@ export async function checkMagicLinkThrottle(input: {
   });
   return magicLinkThrottleDecision(counts);
 }
+
+// ---------------------------------------------------------------------------
+// Limiti per l'accesso con password.
+//
+// Stessa scelta del magic link — il conteggio sta sul database e non in
+// memoria — ma per un motivo diverso: qui non difendiamo dall'enumerazione,
+// difendiamo dal tentare password a raffica. Un contatore per processo che si
+// azzera a ogni deploy non serve a niente contro chi prova per ore.
+// ---------------------------------------------------------------------------
+
+export const PASSWORD_LOGIN_LIMITS = {
+  perEmailPerQuarterHour: 10,
+  perIpPerQuarterHour: 30,
+} as const;
+
+export function passwordLoginThrottleDecision(counts: {
+  emailLastQuarterHour: number;
+  ipLastQuarterHour: number;
+}): ThrottleDecision {
+  if (counts.ipLastQuarterHour >= PASSWORD_LOGIN_LIMITS.perIpPerQuarterHour) {
+    return { allowed: false, blockedBy: "ip" };
+  }
+  if (
+    counts.emailLastQuarterHour >=
+    PASSWORD_LOGIN_LIMITS.perEmailPerQuarterHour
+  ) {
+    return { allowed: false, blockedBy: "email" };
+  }
+  return { allowed: true, blockedBy: null };
+}
+
+/**
+ * Conta i tentativi falliti nell'ultimo quarto d'ora, per indirizzo e per IP.
+ *
+ * Come per il magic link: una sola query, non due in parallelo. Il pool ha tre
+ * connessioni e il job di manutenzione ne occupa mentre lavora.
+ */
+export async function checkPasswordLoginThrottle(input: {
+  email: string;
+  ip: string | null;
+  now?: Date;
+}): Promise<ThrottleDecision> {
+  const now = input.now ?? new Date();
+  const quarterStart = new Date(now.getTime() - WINDOWS_MS.quarterHour);
+  const emailHash = hashEmailForEvents(input.email);
+
+  const rows = await db.execute<{
+    emailLastQuarterHour: number;
+    ipLastQuarterHour: number;
+  }>(sql`
+    SELECT
+      count(*) FILTER (WHERE email_hash = ${emailHash})::int
+        AS "emailLastQuarterHour",
+      count(*) FILTER (WHERE ip = ${input.ip})::int
+        AS "ipLastQuarterHour"
+    FROM customer_account_events
+    WHERE event_type = 'password_login_failed'
+      AND created_at >= ${quarterStart}
+  `);
+
+  const row = rows.rows[0];
+  return passwordLoginThrottleDecision({
+    emailLastQuarterHour: Number(row?.emailLastQuarterHour ?? 0),
+    ipLastQuarterHour: Number(row?.ipLastQuarterHour ?? 0),
+  });
+}

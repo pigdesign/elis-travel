@@ -32,6 +32,7 @@ import { BookingPortalPage } from "@/pages/(public)/BookingPortalPage";
 import { AccountLoginPage } from "@/pages/(public)/AccountLoginPage";
 import { AccountHomePage } from "@/pages/(public)/AccountHomePage";
 import { AccountTripsPage } from "@/pages/(public)/AccountTripsPage";
+import { AccountSecurityPage } from "@/pages/(public)/AccountSecurityPage";
 import { RequireCustomer } from "@/components/customer/RequireCustomer";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
@@ -187,6 +188,13 @@ function Router() {
         {() => (
           <RequireCustomer>
             <AccountTripsPage />
+          </RequireCustomer>
+        )}
+      </Route>
+      <Route path="/area-clienti/accesso">
+        {() => (
+          <RequireCustomer>
+            <AccountSecurityPage />
           </RequireCustomer>
         )}
       </Route>

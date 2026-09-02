@@ -22,8 +22,14 @@ import {
 } from "../services/customer-auth-token";
 import {
   checkMagicLinkThrottle,
+  checkPasswordLoginThrottle,
   recordAccountEvent,
 } from "../services/customer-auth-throttle";
+import {
+  checkPasswordPolicy,
+  hashPassword,
+  verifyPassword,
+} from "../services/customer-password";
 import {
   isBookingScope,
   listAccountBookings,
@@ -74,6 +80,7 @@ function accountSummary(account: {
   mobile: string | null;
   status: string;
   lastLoginAt: Date | null;
+  passwordHash: string | null;
 }) {
   return {
     id: account.id,
@@ -84,7 +91,35 @@ function accountSummary(account: {
     mobile: account.mobile,
     status: account.status,
     lastLoginAt: account.lastLoginAt,
+    // Solo il fatto che esista, mai l'hash: serve all'interfaccia per sapere
+    // se offrire "cambia password" o "imposta una password".
+    hasPassword: account.passwordHash !== null,
   };
+}
+
+/**
+ * Apre la sessione dell'area clienti per un account gia verificato.
+ *
+ * La rigenerazione dell'identificativo prima di scriverci dentro non e
+ * facoltativa: senza, un identificativo noto all'attaccante prima del login
+ * resterebbe valido dopo (session fixation).
+ */
+async function openCustomerSession(
+  req: Request,
+  account: { id: string; email: string },
+  via: "magic_link" | "password",
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate((err) => (err ? reject(err) : resolve()));
+  });
+  req.session.customerAccount = {
+    accountId: account.id,
+    email: account.email,
+    via,
+  };
+  await new Promise<void>((resolve, reject) => {
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
 }
 
 /**
@@ -288,16 +323,7 @@ router.post("/account/magic-link/consume", async (req, res) => {
     exceptTokenId: consumed.id,
   });
 
-  // Rigenerazione dell'identificativo di sessione prima di scriverci dentro:
-  // senza, un identificativo noto all'attaccante prima del login resterebbe
-  // valido dopo (session fixation).
-  await new Promise<void>((resolve, reject) => {
-    req.session.regenerate((err) => (err ? reject(err) : resolve()));
-  });
-  req.session.customerAccount = { accountId: account.id, email: account.email };
-  await new Promise<void>((resolve, reject) => {
-    req.session.save((err) => (err ? reject(err) : resolve()));
-  });
+  await openCustomerSession(req, account, "magic_link");
 
   await recordAccountEvent({
     eventType: "magic_link_consumed",
@@ -311,6 +337,192 @@ router.post("/account/magic-link/consume", async (req, res) => {
   });
 
   res.json({ account: accountSummary(updated ?? account) });
+});
+
+/**
+ * Accesso con email e password.
+ *
+ * E una comodita aggiunta, non la via principale: la password si puo impostare
+ * solo da dentro una sessione gia aperta, quindi chi arriva qui l'ha scelta
+ * deliberatamente. Chi non l'ha impostata usa il link, e chi l'ha dimenticata
+ * pure — il link e anche il recupero, e per questo non esiste un "password
+ * dimenticata" separato.
+ */
+router.post("/account/login", async (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const email = readEmail(body);
+  const password = typeof body.password === "string" ? body.password : "";
+  const ip = clientIp(req);
+
+  if (!email || !password) {
+    res.status(400).json({ error: "Email e password sono obbligatori." });
+    return;
+  }
+
+  const throttle = await checkPasswordLoginThrottle({ email, ip });
+  if (!throttle.allowed) {
+    // Qui, a differenza del magic link, dirlo non rivela niente: il limite
+    // conta i FALLIMENTI, e fallisce anche chi prova un indirizzo inesistente.
+    res.status(429).json({
+      error: "Troppi tentativi. Riprova tra 15 minuti.",
+    });
+    return;
+  }
+
+  const [account] = await db
+    .select()
+    .from(customerAccountsTable)
+    .where(sql`lower(btrim(${customerAccountsTable.email})) = ${email}`)
+    .limit(1);
+
+  // Il confronto si fa SEMPRE, anche senza account e anche senza password
+  // impostata: verifyPassword lavora su un hash fittizio quando non ne ha uno
+  // vero, cosi il tempo di risposta non distingue un indirizzo registrato da
+  // uno inventato. Senza, il form di accesso tornerebbe a essere l'oracolo che
+  // il messaggio generico del magic link serve a evitare.
+  const passwordOk = await verifyPassword(
+    password,
+    account?.passwordHash ?? null,
+  );
+
+  if (!account || account.status !== "active" || !passwordOk) {
+    await recordAccountEvent({
+      eventType: "password_login_failed",
+      accountId: account?.id ?? null,
+      email,
+      ip,
+    });
+    res.status(401).json({ error: "Email o password non corretti." });
+    return;
+  }
+
+  const now = new Date();
+  const [updated] = await db
+    .update(customerAccountsTable)
+    .set({ lastLoginAt: now, updatedAt: now })
+    .where(eq(customerAccountsTable.id, account.id))
+    .returning();
+
+  await openCustomerSession(req, account, "password");
+  await recordAccountEvent({ eventType: "login", accountId: account.id, ip });
+
+  res.json({ account: accountSummary(updated ?? account) });
+});
+
+/**
+ * Chiude le altre sessioni dello stesso account.
+ *
+ * Cambiare password senza questo passaggio non servirebbe a niente nel caso
+ * che conta: chi ha lasciato la sessione aperta su un computer altrui la
+ * ritroverebbe valida per i novanta giorni successivi.
+ */
+async function revokeOtherSessions(input: {
+  accountId: string;
+  keepSid: string;
+}): Promise<void> {
+  try {
+    await db.execute(sql`
+      DELETE FROM customer_sessions
+      WHERE sess -> 'customerAccount' ->> 'accountId' = ${input.accountId}
+        AND sid <> ${input.keepSid}
+    `);
+  } catch (error) {
+    // La password e comunque cambiata: un errore qui non deve far fallire
+    // l'operazione, ma deve lasciare traccia.
+    logger.error({ err: error }, "Revoca delle altre sessioni cliente fallita");
+  }
+}
+
+/**
+ * Imposta o cambia la password.
+ *
+ * La password attuale viene chiesta solo a chi e entrato CON la password.
+ * Chi e entrato dal link ha appena dimostrato di possedere la casella, che e
+ * una prova piu forte — ed e esattamente la persona che la password l'ha
+ * dimenticata: pretenderla da lei significherebbe non avere nessun modo di
+ * cambiarla.
+ */
+router.post("/account/password", requireCustomer, async (req, res) => {
+  const account = req.customerAccount!;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const password = body.password;
+  const currentPassword =
+    typeof body.currentPassword === "string" ? body.currentPassword : "";
+
+  const mustProveCurrent =
+    account.passwordHash !== null &&
+    req.session.customerAccount?.via === "password";
+
+  if (mustProveCurrent) {
+    const ok = await verifyPassword(currentPassword, account.passwordHash);
+    if (!ok) {
+      res.status(403).json({ error: "La password attuale non e corretta." });
+      return;
+    }
+  }
+
+  const policy = checkPasswordPolicy(password);
+  if (!policy.ok) {
+    res.status(400).json({ error: policy.error });
+    return;
+  }
+
+  const now = new Date();
+  await db
+    .update(customerAccountsTable)
+    .set({ passwordHash: await hashPassword(password as string), updatedAt: now })
+    .where(eq(customerAccountsTable.id, account.id));
+
+  await revokeOtherSessions({
+    accountId: account.id,
+    keepSid: req.sessionID,
+  });
+  // Da adesso questa sessione vale quanto una aperta con la password: chi la
+  // usa ha appena dimostrato di conoscerla.
+  if (req.session.customerAccount) {
+    req.session.customerAccount.via = "password";
+  }
+
+  await recordAccountEvent({
+    eventType: "password_set",
+    accountId: account.id,
+    ip: clientIp(req),
+  });
+
+  res.json({ ok: true, hasPassword: true });
+});
+
+/**
+ * Rimuove la password e torna al solo accesso con link.
+ */
+router.delete("/account/password", requireCustomer, async (req, res) => {
+  const account = req.customerAccount!;
+
+  if (account.passwordHash === null) {
+    res.json({ ok: true, hasPassword: false });
+    return;
+  }
+
+  await db
+    .update(customerAccountsTable)
+    .set({ passwordHash: null, updatedAt: new Date() })
+    .where(eq(customerAccountsTable.id, account.id));
+
+  await revokeOtherSessions({
+    accountId: account.id,
+    keepSid: req.sessionID,
+  });
+  if (req.session.customerAccount) {
+    req.session.customerAccount.via = "magic_link";
+  }
+
+  await recordAccountEvent({
+    eventType: "password_removed",
+    accountId: account.id,
+    ip: clientIp(req),
+  });
+
+  res.json({ ok: true, hasPassword: false });
 });
 
 router.post("/account/logout", async (req, res) => {

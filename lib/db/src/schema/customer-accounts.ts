@@ -232,6 +232,12 @@ export const CUSTOMER_ACCOUNT_EVENT_TYPES = [
   "magic_link_failed",
   "login",
   "logout",
+  // Accesso con password: opzionale, impostabile solo da dentro una sessione
+  // gia autenticata. I tentativi falliti sono qui e non altrove perche e da
+  // qui che si conta per limitarli, esattamente come per il magic link.
+  "password_set",
+  "password_removed",
+  "password_login_failed",
   "invite_sent",
   "blocked",
   "unblocked",

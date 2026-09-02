@@ -20,6 +20,8 @@ export type CustomerAccount = {
   mobile: string | null;
   status: string;
   lastLoginAt: string | null;
+  /** Se ha impostato una password puo entrare senza aspettare l'email. */
+  hasPassword: boolean;
 };
 
 type CustomerAuthState =
@@ -33,6 +35,18 @@ type CustomerAuthContextValue = {
   requestMagicLink: (email: string) => Promise<{ message: string }>;
   /** Consuma il token ricevuto via email e apre la sessione. */
   consumeToken: (token: string) => Promise<CustomerAccount>;
+  /** Accesso con la password, per chi ha scelto di impostarne una. */
+  loginWithPassword: (
+    email: string,
+    password: string,
+  ) => Promise<CustomerAccount>;
+  /** Imposta o cambia la password dell'account. */
+  setPassword: (input: {
+    password: string;
+    currentPassword?: string;
+  }) => Promise<void>;
+  /** Torna al solo accesso con link. */
+  removePassword: () => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -104,6 +118,57 @@ export function CustomerAuthProvider({
     return data.account;
   }, []);
 
+  const loginWithPassword = useCallback(
+    async (email: string, password: string) => {
+      const res = await fetch("/api/account/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        throw new Error(await readError(res, "Email o password non corretti."));
+      }
+      const data = (await res.json()) as { account: CustomerAccount };
+      setState({ status: "authenticated", account: data.account });
+      return data.account;
+    },
+    [],
+  );
+
+  const setPassword = useCallback(
+    async (input: { password: string; currentPassword?: string }) => {
+      const res = await fetch("/api/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) {
+        throw new Error(
+          await readError(res, "Non siamo riusciti a salvare la password."),
+        );
+      }
+      // Il riepilogo dell'account porta `hasPassword`: rileggerlo tiene
+      // allineata l'interfaccia senza doverlo dedurre qui.
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const removePassword = useCallback(async () => {
+    const res = await fetch("/api/account/password", {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      throw new Error(
+        await readError(res, "Non siamo riusciti a rimuovere la password."),
+      );
+    }
+    await refresh();
+  }, [refresh]);
+
   const logout = useCallback(async () => {
     await fetch("/api/account/logout", {
       method: "POST",
@@ -114,7 +179,16 @@ export function CustomerAuthProvider({
 
   return (
     <CustomerAuthContext.Provider
-      value={{ state, requestMagicLink, consumeToken, logout, refresh }}
+      value={{
+        state,
+        requestMagicLink,
+        consumeToken,
+        loginWithPassword,
+        setPassword,
+        removePassword,
+        logout,
+        refresh,
+      }}
     >
       {children}
     </CustomerAuthContext.Provider>

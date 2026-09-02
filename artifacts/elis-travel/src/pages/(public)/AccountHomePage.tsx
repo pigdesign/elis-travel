@@ -56,6 +56,17 @@ export function AccountHomePage() {
               pagamento.
             </p>
           </a>
+          <a
+            href="/area-clienti/accesso"
+            className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm transition-colors hover:border-primary/40"
+          >
+            <h2 className="font-semibold text-foreground">Come accedi</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {account.hasPassword
+                ? "Entri con la password oppure con il link via email."
+                : "Entri con il link via email. Se preferisci puoi aggiungere una password."}
+            </p>
+          </a>
           <div className="rounded-2xl border border-dashed border-border/60 bg-white/60 p-6">
             <h2 className="font-semibold text-muted-foreground">
               Pagamenti e documenti

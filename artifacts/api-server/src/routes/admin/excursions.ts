@@ -40,6 +40,7 @@ import {
   dispatchPaymentReceivedEmailV2,
 } from "../../services/excursion-booking-emails-v2";
 import { releaseBookingSeatsInTransaction } from "../../services/seat-reservations";
+import { ensureAccountForBooking } from "../../services/customer-account-provisioning";
 import { getExcursionCompletionBlockersInTransaction } from "../../services/excursion-completion";
 import {
   BookingCancellationError,
@@ -1675,6 +1676,11 @@ router.post("/excursions/:id/bookings", async (req, res) => {
       });
       return;
     }
+
+    // Anche le prenotazioni inserite dall'ufficio hanno diritto all'area
+    // clienti: senza questa riga, chi viene registrato a pagamento gia
+    // avvenuto resterebbe senza account.
+    ensureAccountForBooking(result.booking.id);
 
     const postCommitNotifications: Promise<void>[] = [
       dispatchNewBookingAdminEmailV2(result.booking.id),

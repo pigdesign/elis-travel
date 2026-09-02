@@ -16,16 +16,27 @@ type Phase =
   | { kind: "error"; message: string };
 
 /**
+ * Come si entra. Il link via email resta il modo predefinito perche e l'unico
+ * che funziona sempre: un account nasce da una prenotazione, quindi finche il
+ * cliente non ne ha scelta una, una password non ce l'ha.
+ */
+type Mode = "link" | "password";
+
+/**
  * Pagina unica di accesso all'area clienti.
  *
- * Serve due situazioni: la richiesta del link e l'atterraggio dal link
- * ricevuto. Tenerle insieme evita una rotta in piu e fa si che chi clicca un
- * link scaduto si trovi gia davanti al modulo per richiederne uno nuovo.
+ * Serve tre situazioni: la richiesta del link, l'atterraggio dal link ricevuto
+ * e l'accesso con la password per chi ne ha impostata una. Tenerle insieme
+ * evita rotte in piu e fa si che chi clicca un link scaduto si trovi gia
+ * davanti al modulo per richiederne uno nuovo.
  */
 export function AccountLoginPage() {
-  const { state, requestMagicLink, consumeToken } = useCustomerAuth();
+  const { state, requestMagicLink, consumeToken, loginWithPassword } =
+    useCustomerAuth();
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<Mode>("link");
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
 
   // Il token viene letto una sola volta al montaggio e subito rimosso dalla
@@ -64,10 +75,21 @@ export function AccountLoginPage() {
     }
   }, [initialToken, state.status, navigate]);
 
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setPassword("");
+    setPhase({ kind: "form" });
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setPhase({ kind: "sending" });
     try {
+      if (mode === "password") {
+        await loginWithPassword(email, password);
+        navigate("/area-clienti");
+        return;
+      }
       const { message } = await requestMagicLink(email);
       setPhase({ kind: "sent", message });
     } catch (err) {
@@ -76,7 +98,9 @@ export function AccountLoginPage() {
         message:
           err instanceof Error
             ? err.message
-            : "Non siamo riusciti a inviare il link. Riprova.",
+            : mode === "password"
+              ? "Accesso non riuscito. Riprova."
+              : "Non siamo riusciti a inviare il link. Riprova.",
       });
     }
   };
@@ -167,10 +191,32 @@ export function AccountLoginPage() {
                     autoFocus
                     className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                   />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Usa lo stesso indirizzo con cui hai prenotato.
-                  </p>
+                  {mode === "link" && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Usa lo stesso indirizzo con cui hai prenotato.
+                    </p>
+                  )}
                 </div>
+
+                {mode === "password" && (
+                  <div>
+                    <label
+                      htmlFor="account-password"
+                      className="block text-sm font-medium text-foreground mb-1.5"
+                    >
+                      La tua password
+                    </label>
+                    <input
+                      id="account-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                    />
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -178,15 +224,46 @@ export function AccountLoginPage() {
                   className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-95 disabled:opacity-60 transition-opacity"
                 >
                   {phase.kind === "sending"
-                    ? "Invio in corso…"
-                    : "Inviami il link di accesso"}
+                    ? mode === "password"
+                      ? "Accesso in corso…"
+                      : "Invio in corso…"
+                    : mode === "password"
+                      ? "Entra"
+                      : "Inviami il link di accesso"}
                 </button>
               </form>
 
-              <p className="mt-6 text-center text-xs text-muted-foreground">
-                Nessuna password da ricordare: ti mandiamo un link che ti fa
-                entrare con un clic.
-              </p>
+              {/* Il passaggio fra i due modi e anche il recupero password: chi
+                  l'ha dimenticata entra col link e la ricambia da dentro.
+                  Per questo non esiste un "password dimenticata" separato. */}
+              {mode === "link" ? (
+                <div className="mt-6 text-center space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Nessuna password da ricordare: ti mandiamo un link che ti fa
+                    entrare con un clic.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => switchMode("password")}
+                    className="text-sm text-primary underline underline-offset-4"
+                  >
+                    Ho impostato una password
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-6 text-center space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => switchMode("link")}
+                    className="text-sm text-primary underline underline-offset-4"
+                  >
+                    Non ricordo la password: mandami il link
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    Con il link entri comunque, e da dentro puoi cambiarla.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>

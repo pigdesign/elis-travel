@@ -418,6 +418,7 @@ async function buildExcursionConfirmedEmail(
       : activeBalance
         ? `Il saldo di ${euro(activeBalance.amountCents)} è disponibile nel portale${deadline ? ` con scadenza ${deadline}` : ""}.${tolerance ? ` ${tolerance}.` : ""}`
         : `Risulta ancora un residuo di ${euro(residual)}. Consulta il portale o contatta l'agenzia per le modalità di saldo.`;
+  const invite = inviteSections(await prepareBookingInvite(bookingId));
   const subject = `Gita confermata — ${excursion.name} (${booking.bookingCode ?? ""})`;
   const text = [
     `Ciao ${booking.customerName},`,
@@ -428,13 +429,15 @@ async function buildExcursionConfirmedEmail(
     ...summary.text,
     "",
     `Gestisci la prenotazione${residual > 0 ? " e il saldo" : ""}: ${portalUrl}`,
+    ...invite.text,
   ].join("\n");
   const html = wrap(
     "Gita confermata",
     `<p>Ciao ${escapeHtml(booking.customerName)},<br/>la gita <strong>${escapeHtml(excursion.name)}</strong> è confermata.</p>
      <p>${escapeHtml(financialText)}</p>
      ${summary.html.join("")}
-     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">${residual > 0 ? "Gestisci e paga il saldo" : "Consulta la prenotazione"}</a></p>`,
+     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">${residual > 0 ? "Gestisci e paga il saldo" : "Consulta la prenotazione"}</a></p>
+     ${invite.html}`,
   );
   return { to: booking.email!, subject, text, html, replyTo: agency().email };
 }
@@ -942,6 +945,7 @@ async function buildPaymentReceivedEmail(
           : isSettled
             ? "Questa ricevuta conferma l'incasso registrato. Fai riferimento alle eventuali comunicazioni successive sullo stato o sull'annullamento della prenotazione."
             : "";
+  const invite = inviteSections(await prepareBookingInvite(bookingId));
   const subject =
     `${title}: ${excursion.name} (${booking.bookingCode ?? ""})`.trim();
   const text = [
@@ -954,13 +958,15 @@ async function buildPaymentReceivedEmail(
     ...(extra ? [``, extra] : []),
     "",
     `Gestisci la prenotazione o richiedi l'annullamento: ${portalUrl}`,
+    ...invite.text,
   ].join("\n");
   const html = wrap(
     title,
     `<p>Ciao ${escapeHtml(booking.customerName)},<br/>${noPaymentRequired ? "la tua prenotazione è confermata e non richiede alcun pagamento." : "abbiamo registrato il tuo pagamento. Grazie!"}</p>
      ${summary.html.join("")}
      ${extra ? `<p>${escapeHtml(extra)}</p>` : ""}
-     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Gestisci prenotazione / richiedi annullamento</a></p>`,
+     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Gestisci prenotazione / richiedi annullamento</a></p>
+     ${invite.html}`,
   );
   return { to: booking.email!, subject, text, html, replyTo: agency().email };
 }
