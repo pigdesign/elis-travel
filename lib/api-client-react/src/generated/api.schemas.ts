@@ -125,6 +125,7 @@ export interface ExcursionSummary {
   payCardEnabled?: boolean;
   payBankTransferEnabled?: boolean;
   payOfficeEnabled?: boolean;
+  payOnBusEnabled?: boolean;
   bankTransferHoursOverride?: number | null;
   officeHoursOverride?: number | null;
   fullPaymentOnlyDaysBefore?: number | null;
@@ -512,6 +513,19 @@ export type AdminBookingDetailsTermsReacceptance = {
   currentVersion?: string | null;
 };
 
+export type AdminBookingActionDetails = { [key: string]: unknown };
+
+export interface AdminBookingAction {
+  id: string;
+  paymentRequestId?: string | null;
+  /** update_booking | update_payment_request | record_payment | reverse_payment */
+  action: string;
+  reason?: string | null;
+  details?: AdminBookingActionDetails;
+  adminName?: string | null;
+  createdAt: string;
+}
+
 export interface AdminBookingDetails {
   /** Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.
    */
@@ -524,18 +538,123 @@ export interface AdminBookingDetails {
   cancellationCases: AdminCancellationCase[];
   refunds: AdminPaymentRefund[];
   cleanupJobs: AdminStripeCleanupJob[];
+  /** Diario delle correzioni manuali dell'amministrazione, dalla più recente. Il registro dei pagamenti dice quanto è stato incassato, questo dice chi ha deciso e perché.
+   */
+  adminActions: AdminBookingAction[];
   economicSummary: AdminBookingEconomicSummary;
   participantsDetailed: boolean;
+}
+
+/**
+ * Tutti i campi sono facoltativi: quelli non inviati restano invariati.
+
+ */
+export interface AdminBookingProfileInput {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  customerName?: string;
+  /** @maxLength 200 */
+  email?: string | null;
+  /** @maxLength 40 */
+  phone?: string | null;
+  customerNotificationsEnabled?: boolean;
+  servizioCasa?: boolean;
+  /** @maxLength 500 */
+  homePickupAddress?: string | null;
+  /**
+   * Nuovo totale della prenotazione, mai inferiore all'incassato
+   * @minimum 0
+   */
+  totalAmountCents?: number;
+  /** @maxLength 500 */
+  reason?: string;
+}
+
+export type AdminPaymentRequestPatchInputMethod =
+  (typeof AdminPaymentRequestPatchInputMethod)[keyof typeof AdminPaymentRequestPatchInputMethod];
+
+export const AdminPaymentRequestPatchInputMethod = {
+  bank_transfer: "bank_transfer",
+  office: "office",
+  on_bus: "on_bus",
+} as const;
+
+/**
+ * Almeno uno tra metodo, importo e scadenza deve essere presente.
+ */
+export interface AdminPaymentRequestPatchInput {
+  method?: AdminPaymentRequestPatchInputMethod;
+  /** @minimum 1 */
+  amountCents?: number;
+  deadline?: string;
+  /**
+   * Obbligatorio quando cambia l'importo
+   * @maxLength 500
+   */
+  reason?: string;
+}
+
+export type AdminBookingPaymentInputMethod =
+  (typeof AdminBookingPaymentInputMethod)[keyof typeof AdminBookingPaymentInputMethod];
+
+export const AdminBookingPaymentInputMethod = {
+  bank_transfer: "bank_transfer",
+  office: "office",
+  on_bus: "on_bus",
+} as const;
+
+export interface AdminBookingPaymentInput {
+  /** @minimum 1 */
+  amountCents: number;
+  method: AdminBookingPaymentInputMethod;
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  transactionReference: string;
+  /** Quando è stato incassato davvero; se assente vale adesso */
+  paidAt?: string;
+  /** @maxLength 500 */
+  reason?: string;
+}
+
+export type PickupReportPaymentState =
+  (typeof PickupReportPaymentState)[keyof typeof PickupReportPaymentState];
+
+export const PickupReportPaymentState = {
+  paid: "paid",
+  due_on_bus: "due_on_bus",
+  due: "due",
+  unknown: "unknown",
+} as const;
+
+/**
+ * Stato economico della prenotazione a cui la persona appartiene
+ */
+export interface PickupReportPayment {
+  state: PickupReportPaymentState;
+  dueCents: number;
+  onBusCents: number;
+  totalCents: number | null;
+  paidCents: number;
+  method: string | null;
 }
 
 export interface PickupReportPerson {
   name: string;
   participantType: string;
   ageRangeLabel?: string | null;
+  bookingId: string;
   bookingCode?: string | null;
+  bookingSeats: number;
   referente: string;
   phone?: string | null;
   paymentStatus: string;
+  payment: PickupReportPayment;
+  mediaConsent: boolean | null;
+  onBusPaymentDue?: boolean;
   servizioCasa: boolean;
   homePickupAddress: string | null;
 }
@@ -568,8 +687,23 @@ export interface PickupReportMissingParticipantDetails {
   seats: number;
   servizioCasa: boolean;
   homePickupAddress: string | null;
+  pickupPointId?: string | null;
+  pickupPointName: string | null;
+  pickupProvince?: string | null;
+  pickupTime: string | null;
+  payment: PickupReportPayment;
+  mediaConsent: boolean | null;
   participantsDetailed: boolean;
   warning: string;
+}
+
+export interface PickupReportOnBusCollection {
+  bookingId: string;
+  bookingCode?: string | null;
+  referente: string;
+  phone?: string | null;
+  seats: number;
+  amountCents: number;
 }
 
 export interface PickupReport {
@@ -577,6 +711,8 @@ export interface PickupReport {
   groups: PickupReportGroup[];
   totalPeople: number;
   missingParticipantDetails: PickupReportMissingParticipantDetails[];
+  onBusCollections?: PickupReportOnBusCollection[];
+  onBusTotalCents?: number;
 }
 
 export interface ConfirmTripResponse {
@@ -878,6 +1014,7 @@ export interface ExcursionInput {
   payCardEnabled?: boolean;
   payBankTransferEnabled?: boolean;
   payOfficeEnabled?: boolean;
+  payOnBusEnabled?: boolean;
   bankTransferHoursOverride?: number | null;
   officeHoursOverride?: number | null;
   fullPaymentOnlyDaysBefore?: number | null;
@@ -1222,6 +1359,7 @@ export interface PublicPaymentMethods {
   card: boolean;
   bankTransfer: boolean;
   office: boolean;
+  onBus?: boolean;
 }
 
 export interface PublicExcursionDetail {
@@ -1437,6 +1575,7 @@ export interface SettingsResponse {
   payment_notes?: string | null;
   deposit_percentage?: string | null;
   excursion_card_payments_enabled?: string | null;
+  excursion_on_bus_payments_enabled?: string | null;
   future_card_charge_enabled?: string | null;
   future_card_charge_consent_version?: string | null;
   card_checkout_hold_minutes?: string | null;
@@ -1462,6 +1601,7 @@ export interface SettingsInput {
   payment_notes?: string;
   deposit_percentage?: string;
   excursion_card_payments_enabled?: string;
+  excursion_on_bus_payments_enabled?: string;
   future_card_charge_enabled?: string;
   future_card_charge_consent_version?: string;
   card_checkout_hold_minutes?: string;
@@ -1627,6 +1767,31 @@ export type UpdateBookingDeadline200 = {
   ok: boolean;
   deadline: string;
   graceUntil: string;
+};
+
+export type UpdateAdminPaymentRequest200 = {
+  ok: boolean;
+  unchanged: boolean;
+  reopened: boolean;
+};
+
+export type RecordAdminBookingPayment201 = {
+  ok: boolean;
+  paymentRequestId: string;
+  amountPaidCents: number;
+};
+
+export type ReverseAdminPaymentRequestBody = {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  reason: string;
+};
+
+export type ReverseAdminPaymentRequest200 = {
+  ok: boolean;
+  amountPaidCents: number;
 };
 
 export type DeleteVehicle200 = {

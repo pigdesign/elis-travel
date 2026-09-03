@@ -375,7 +375,7 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
                 <div className="max-w-3xl pb-24 md:pb-28 lg:pb-36">
                   <Link
                     href="/offerte"
-                    className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white"
+                    className="mb-6 flex w-fit items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white"
                     data-testid="link-back-to-offers"
                   >
                     <ArrowLeft className="h-4 w-4" />

@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PublicPaymentMethods {
-  card: boolean;
-  bankTransfer: boolean;
-  office: boolean;
-  onBus?: boolean;
-}
+export type ReverseAdminPaymentRequestBody = {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  reason: string;
+};

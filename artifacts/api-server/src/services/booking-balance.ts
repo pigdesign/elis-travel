@@ -39,11 +39,52 @@ export function balanceRequestDepartureState(
   return isDepartureOpenForBooking(departureAt, now) ? "open" : "trip_departed";
 }
 
+export type BalancePaymentWindow = { deadline: Date; graceUntil: Date };
+
+/**
+ * Finestra di pagamento del saldo in funzione del metodo scelto.
+ *
+ * Il saldo incassato a bordo si chiude con la partenza: portare li la scadenza
+ * lo tiene esigibile fino all'ultimo momento utile senza che le automazioni di
+ * sollecito e scadenza lo leggano come insoluto. Ogni altro metodo torna alla
+ * scadenza canonica del saldo, cosi il ripensamento del cliente non regala
+ * tempo che il flusso online non prevede. Una proroga concessa a mano
+ * dall'amministrazione, se c'era, va quindi rinnovata dopo il passaggio al bus.
+ */
+export function balancePaymentWindowForMethod(input: {
+  method: string;
+  departureAt: Date | null;
+  balanceHours: number;
+  graceMinutes: number;
+  now: Date;
+}): BalancePaymentWindow | null {
+  if (!input.departureAt) return null;
+  if (input.method === "on_bus") {
+    return { deadline: input.departureAt, graceUntil: input.departureAt };
+  }
+  const dueAt = computeBalanceDueAt(input.departureAt, input.balanceHours);
+  if (!dueAt) return null;
+  const deadline = dueAt > input.now ? dueAt : input.now;
+  return {
+    deadline,
+    graceUntil: computeGraceUntil({
+      deadline,
+      graceMinutes: input.graceMinutes,
+      departureAt: input.departureAt,
+    }),
+  };
+}
+
 export function canCreateBalanceRequestAfterLatest(input: {
   latestRequestStatus: string | null;
   hasUnresolvedRefund: boolean;
 }): boolean {
   if (input.latestRequestStatus === null) return true;
+  // Un saldo annullato non e piu un'obbligazione: succede quando
+  // l'amministrazione storna un incasso registrato per errore o chiude una
+  // richiesta rimasta appesa. Senza questa riga la prenotazione resterebbe
+  // con un residuo da incassare e nessun modo di richiederlo.
+  if (input.latestRequestStatus === "cancelled") return true;
   return input.latestRequestStatus === "refunded" && !input.hasUnresolvedRefund;
 }
 

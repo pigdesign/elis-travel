@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PickupReportPayment } from "./pickupReportPayment";
 
 export interface PickupReportMissingParticipantDetails {
   bookingId: string;
@@ -15,6 +16,12 @@ export interface PickupReportMissingParticipantDetails {
   seats: number;
   servizioCasa: boolean;
   homePickupAddress: string | null;
+  pickupPointId?: string | null;
+  pickupPointName: string | null;
+  pickupProvince?: string | null;
+  pickupTime: string | null;
+  payment: PickupReportPayment;
+  mediaConsent: boolean | null;
   participantsDetailed: boolean;
   warning: string;
 }

@@ -38,6 +38,7 @@ import {
   getPaymentSettings,
   isStripeChargeAmountSupported,
 } from "../services/excursion-pricing";
+import { balancePaymentWindowForMethod } from "../services/booking-balance";
 import {
   applySuccessfulCardPayment,
   cardPaymentApplicationDisposition,
@@ -260,6 +261,7 @@ router.get("/booking-portal", async (req, res) => {
       ctx.excursion,
       settings,
       Boolean(stripe),
+      { requestType: activeRequest?.type },
     );
 
     // Serve una nuova accettazione dei Termini? Riguarda solo chi ha lasciato
@@ -518,23 +520,29 @@ router.post(
       };
       if (
         !paymentRequestId ||
-        !["card", "bank_transfer", "office"].includes(method ?? "")
+        !["card", "bank_transfer", "office", "on_bus"].includes(method ?? "")
       ) {
         res.status(400).json({ error: "Metodo di pagamento non valido." });
         return;
       }
       const settings = await getPaymentSettings();
+      // Il tipo della richiesta e autorevole solo dentro la transazione: qui
+      // verifichiamo la configurazione, poi il vincolo "solo saldo" del bus
+      // viene riverificato sulla riga bloccata.
       const methods = availablePaymentMethods(
         ctx.excursion,
         settings,
         Boolean(stripe),
+        { requestType: "balance" },
       );
       const allowed =
         method === "card"
           ? methods.card
           : method === "bank_transfer"
             ? methods.bankTransfer
-            : methods.office;
+            : method === "on_bus"
+              ? methods.onBus
+              : methods.office;
       if (!allowed) {
         res
           .status(400)
@@ -569,8 +577,13 @@ router.post(
           .for("update")
           .limit(1);
         if (!request) return { kind: "not_found" as const };
+        if (method === "on_bus" && request.type !== "balance") {
+          return { kind: "method_not_allowed" as const };
+        }
         const now = new Date();
         const deadline = effectiveDeadline(request);
+        // Una richiesta gia scaduta non torna pagabile scegliendo il bus: il
+        // saldo insoluto e una decisione dell'amministrazione, non del cliente.
         if (deadline && deadline < now) return { kind: "expired" as const };
         const staleCardAttempts =
           method !== "card"
@@ -624,9 +637,33 @@ router.post(
               ),
             );
         }
+        // Entrare o uscire dal saldo a bordo sposta la finestra di pagamento:
+        // fino alla partenza per il bus, di nuovo alla scadenza canonica del
+        // saldo per ogni metodo che si paga prima di salire.
+        const windowChanges =
+          request.type === "balance" &&
+          (method === "on_bus" || request.method === "on_bus")
+            ? balancePaymentWindowForMethod({
+                method: method!,
+                departureAt: ctx.excursion.departureAt,
+                balanceHours:
+                  ctx.excursion.balanceHoursOverride ?? settings.balanceHours,
+                graceMinutes: settings.paymentGraceMinutes,
+                now,
+              })
+            : null;
         await tx
           .update(paymentRequestsTable)
-          .set({ method, updatedAt: now })
+          .set({
+            method,
+            ...(windowChanges
+              ? {
+                  deadline: windowChanges.deadline,
+                  graceUntil: windowChanges.graceUntil,
+                }
+              : {}),
+            updatedAt: now,
+          })
           .where(eq(paymentRequestsTable.id, request.id));
         if (method !== "card" && booking.stripeSetupIntentId) {
           await enqueueStripeCleanupJobInTransaction(tx, {
@@ -646,6 +683,9 @@ router.post(
           .update(excursionBookingsTable)
           .set({
             paymentMethod: method,
+            ...(windowChanges
+              ? { paymentDeadline: windowChanges.deadline }
+              : {}),
             // Il cambio esplicito a un metodo offline revoca l'uso operativo
             // della carta salvata. Gli ID restano nel job di cleanup durevole,
             // mentre la booking non puo piu essere addebitata off-session.
@@ -667,6 +707,13 @@ router.post(
         res
           .status(404)
           .json({ error: "Richiesta di pagamento non disponibile." });
+        return;
+      }
+      if (methodUpdate.kind === "method_not_allowed") {
+        res.status(400).json({
+          error:
+            "Il pagamento a bordo è ammesso soltanto per il saldo di una prenotazione già avviata.",
+        });
         return;
       }
       if (methodUpdate.kind === "expired") {

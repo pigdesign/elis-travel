@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import type { Excursion } from "@workspace/db/schema";
 import {
   availablePaymentMethods,
+  isOnBusPaymentAvailable,
+  onBusPaymentsEnabledFromSetting,
   buildQuote,
   cardPaymentsEnabledFromSetting,
   computePaymentDeadline,
@@ -30,6 +32,7 @@ test("la carta resta disabilitata finché il kill switch non è esplicitamente t
 const settings: PaymentSettings = {
   depositPercentage: 30,
   cardPaymentsEnabled: true,
+  onBusPaymentsEnabled: true,
   futureCardChargeEnabled: false,
   futureCardChargeConsentVersion: null,
   cardCheckoutHoldMinutes: 30,
@@ -288,7 +291,7 @@ test("bonifico e ufficio sono disponibili solo con istruzioni operative", () => 
   });
   assert.deepEqual(
     availablePaymentMethods(configuredExcursion, settings, true),
-    { card: true, bankTransfer: false, office: false },
+    { card: true, bankTransfer: false, office: false, onBus: false },
   );
   assert.deepEqual(
     availablePaymentMethods(
@@ -300,8 +303,58 @@ test("bonifico e ufficio sono disponibili solo con istruzioni operative", () => 
       },
       true,
     ),
-    { card: true, bankTransfer: true, office: true },
+    { card: true, bankTransfer: true, office: true, onBus: false },
   );
+});
+
+test("il saldo a bordo vale solo per il saldo di una gita che lo ammette", () => {
+  const busExcursion = excursion({ payOnBusEnabled: true });
+  assert.equal(
+    isOnBusPaymentAvailable(busExcursion, settings, "balance"),
+    true,
+  );
+  // Acconto e pagamento in unica soluzione restano esclusi, e cosi anche una
+  // richiesta di tipo ignoto.
+  assert.equal(
+    isOnBusPaymentAvailable(busExcursion, settings, "deposit"),
+    false,
+  );
+  assert.equal(isOnBusPaymentAvailable(busExcursion, settings, "full"), false);
+  assert.equal(isOnBusPaymentAvailable(busExcursion, settings, null), false);
+  // Il flag della gita e l'interruttore globale devono valere entrambi.
+  assert.equal(
+    isOnBusPaymentAvailable(
+      excursion({ payOnBusEnabled: false }),
+      settings,
+      "balance",
+    ),
+    false,
+  );
+  assert.equal(
+    isOnBusPaymentAvailable(
+      busExcursion,
+      { ...settings, onBusPaymentsEnabled: false },
+      "balance",
+    ),
+    false,
+  );
+  // Senza indicare il tipo di richiesta il metodo non viene mai proposto.
+  assert.equal(
+    availablePaymentMethods(busExcursion, settings, true).onBus,
+    false,
+  );
+  assert.equal(
+    availablePaymentMethods(busExcursion, settings, true, {
+      requestType: "balance",
+    }).onBus,
+    true,
+  );
+});
+
+test("l'interruttore globale del saldo a bordo disabilita solo se scritto false", () => {
+  assert.equal(onBusPaymentsEnabledFromSetting(undefined), true);
+  assert.equal(onBusPaymentsEnabledFromSetting("true"), true);
+  assert.equal(onBusPaymentsEnabledFromSetting("false"), false);
 });
 
 test("zero euro non richiede pagamento e Stripe parte da 50 centesimi", () => {

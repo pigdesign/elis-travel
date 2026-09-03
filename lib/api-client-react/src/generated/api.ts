@@ -20,12 +20,15 @@ import type {
   AdminBookingDetails,
   AdminBookingParticipantReplaceInput,
   AdminBookingParticipantReplaceResponse,
+  AdminBookingPaymentInput,
+  AdminBookingProfileInput,
   AdminCancellationOpenInput,
   AdminCancellationOpenResponse,
   AdminCancellationResolutionInput,
   AdminCancellationResolutionResponse,
   AdminManualRefundCompletionInput,
   AdminManualRefundCompletionResponse,
+  AdminPaymentRequestPatchInput,
   AdminStripeCleanupManualCompletionInput,
   AdminStripeCleanupManualCompletionResponse,
   AdminUser,
@@ -89,11 +92,15 @@ import type {
   PublicRidentCatalog,
   QuoteRequest,
   QuoteResponse,
+  RecordAdminBookingPayment201,
   RequestBookingBalance200,
+  ReverseAdminPaymentRequest200,
+  ReverseAdminPaymentRequestBody,
   RmsSearchResult,
   SearchRmsCustomersParams,
   SettingsInput,
   SettingsResponse,
+  UpdateAdminPaymentRequest200,
   UpdateBookingDeadline200,
   UpdateBookingDeadlineBody,
   UpdateExcursionAgePrices200,
@@ -3365,6 +3372,371 @@ export function useGetAdminBookingDetails<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Anagrafica e totale sono modificabili anche a pagamento avvenuto: un recapito sbagliato va corretto proprio quando la gita è vicina. Il totale non può scendere sotto l'importo già incassato, e cambiandolo le richieste ancora aperte vengono riallineate al nuovo residuo.
+ * @summary Corregge i dati del referente e il totale della prenotazione
+ */
+export const getUpdateAdminBookingProfileUrl = (bookingId: string) => {
+  return `/api/admin/bookings/${bookingId}/profile`;
+};
+
+export const updateAdminBookingProfile = async (
+  bookingId: string,
+  adminBookingProfileInput: AdminBookingProfileInput,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getUpdateAdminBookingProfileUrl(bookingId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminBookingProfileInput),
+  });
+};
+
+export const getUpdateAdminBookingProfileMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminBookingProfile>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminBookingProfileInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminBookingProfile>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminBookingProfileInput> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminBookingProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminBookingProfile>>,
+    { bookingId: string; data: BodyType<AdminBookingProfileInput> }
+  > = (props) => {
+    const { bookingId, data } = props ?? {};
+
+    return updateAdminBookingProfile(bookingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminBookingProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminBookingProfile>>
+>;
+export type UpdateAdminBookingProfileMutationBody =
+  BodyType<AdminBookingProfileInput>;
+export type UpdateAdminBookingProfileMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Corregge i dati del referente e il totale della prenotazione
+ */
+export const useUpdateAdminBookingProfile = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminBookingProfile>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminBookingProfileInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminBookingProfile>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminBookingProfileInput> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminBookingProfileMutationOptions(options));
+};
+
+/**
+ * È il percorso con cui l'ufficio decide al posto del cliente che non usa il portale. La carta resta esclusa: autorizzare un addebito richiede il consenso del titolare. Il saldo a bordo resta ammesso solo per le richieste di tipo balance su gite che lo abilitano, e sposta scadenza e tolleranza alla partenza. Una richiesta scaduta torna esigibile.
+ * @summary Corregge metodo, importo o scadenza di una richiesta ancora aperta
+ */
+export const getUpdateAdminPaymentRequestUrl = (requestId: string) => {
+  return `/api/admin/payment-requests/${requestId}`;
+};
+
+export const updateAdminPaymentRequest = async (
+  requestId: string,
+  adminPaymentRequestPatchInput: AdminPaymentRequestPatchInput,
+  options?: RequestInit,
+): Promise<UpdateAdminPaymentRequest200> => {
+  return customFetch<UpdateAdminPaymentRequest200>(
+    getUpdateAdminPaymentRequestUrl(requestId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminPaymentRequestPatchInput),
+    },
+  );
+};
+
+export const getUpdateAdminPaymentRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminPaymentRequest>>,
+    TError,
+    { requestId: string; data: BodyType<AdminPaymentRequestPatchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminPaymentRequest>>,
+  TError,
+  { requestId: string; data: BodyType<AdminPaymentRequestPatchInput> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminPaymentRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminPaymentRequest>>,
+    { requestId: string; data: BodyType<AdminPaymentRequestPatchInput> }
+  > = (props) => {
+    const { requestId, data } = props ?? {};
+
+    return updateAdminPaymentRequest(requestId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminPaymentRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminPaymentRequest>>
+>;
+export type UpdateAdminPaymentRequestMutationBody =
+  BodyType<AdminPaymentRequestPatchInput>;
+export type UpdateAdminPaymentRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Corregge metodo, importo o scadenza di una richiesta ancora aperta
+ */
+export const useUpdateAdminPaymentRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminPaymentRequest>>,
+    TError,
+    { requestId: string; data: BodyType<AdminPaymentRequestPatchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminPaymentRequest>>,
+  TError,
+  { requestId: string; data: BodyType<AdminPaymentRequestPatchInput> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminPaymentRequestMutationOptions(options));
+};
+
+/**
+ * Copre i casi che "segna pagato" non raggiunge: prenotazioni storiche senza richieste di pagamento e versamenti che non coincidono con l'importo richiesto. Se una richiesta aperta ha esattamente quell'importo viene saldata quella, altrimenti nasce una richiesta già incassata. Dopo il movimento le richieste ancora aperte vengono riallineate al residuo.
+ * @summary Registra un incasso arrivato in ufficio
+ */
+export const getRecordAdminBookingPaymentUrl = (bookingId: string) => {
+  return `/api/admin/bookings/${bookingId}/payments`;
+};
+
+export const recordAdminBookingPayment = async (
+  bookingId: string,
+  adminBookingPaymentInput: AdminBookingPaymentInput,
+  options?: RequestInit,
+): Promise<RecordAdminBookingPayment201> => {
+  return customFetch<RecordAdminBookingPayment201>(
+    getRecordAdminBookingPaymentUrl(bookingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminBookingPaymentInput),
+    },
+  );
+};
+
+export const getRecordAdminBookingPaymentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordAdminBookingPayment>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminBookingPaymentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordAdminBookingPayment>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminBookingPaymentInput> },
+  TContext
+> => {
+  const mutationKey = ["recordAdminBookingPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordAdminBookingPayment>>,
+    { bookingId: string; data: BodyType<AdminBookingPaymentInput> }
+  > = (props) => {
+    const { bookingId, data } = props ?? {};
+
+    return recordAdminBookingPayment(bookingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordAdminBookingPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recordAdminBookingPayment>>
+>;
+export type RecordAdminBookingPaymentMutationBody =
+  BodyType<AdminBookingPaymentInput>;
+export type RecordAdminBookingPaymentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Registra un incasso arrivato in ufficio
+ */
+export const useRecordAdminBookingPayment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordAdminBookingPayment>>,
+    TError,
+    { bookingId: string; data: BodyType<AdminBookingPaymentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recordAdminBookingPayment>>,
+  TError,
+  { bookingId: string; data: BodyType<AdminBookingPaymentInput> },
+  TContext
+> => {
+  return useMutation(getRecordAdminBookingPaymentMutationOptions(options));
+};
+
+/**
+ * Vale solo per gli incassi registrati dall'amministrazione (bonifico, ufficio, a bordo). Un incasso su carta non si storna: quel denaro è uscito davvero dal conto del cliente e va restituito dal flusso rimborsi. Il motivo è obbligatorio e resta nel diario.
+ * @summary Storna un incasso registrato a mano per errore
+ */
+export const getReverseAdminPaymentRequestUrl = (requestId: string) => {
+  return `/api/admin/payment-requests/${requestId}/reverse`;
+};
+
+export const reverseAdminPaymentRequest = async (
+  requestId: string,
+  reverseAdminPaymentRequestBody: ReverseAdminPaymentRequestBody,
+  options?: RequestInit,
+): Promise<ReverseAdminPaymentRequest200> => {
+  return customFetch<ReverseAdminPaymentRequest200>(
+    getReverseAdminPaymentRequestUrl(requestId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(reverseAdminPaymentRequestBody),
+    },
+  );
+};
+
+export const getReverseAdminPaymentRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reverseAdminPaymentRequest>>,
+    TError,
+    { requestId: string; data: BodyType<ReverseAdminPaymentRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reverseAdminPaymentRequest>>,
+  TError,
+  { requestId: string; data: BodyType<ReverseAdminPaymentRequestBody> },
+  TContext
+> => {
+  const mutationKey = ["reverseAdminPaymentRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reverseAdminPaymentRequest>>,
+    { requestId: string; data: BodyType<ReverseAdminPaymentRequestBody> }
+  > = (props) => {
+    const { requestId, data } = props ?? {};
+
+    return reverseAdminPaymentRequest(requestId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReverseAdminPaymentRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reverseAdminPaymentRequest>>
+>;
+export type ReverseAdminPaymentRequestMutationBody =
+  BodyType<ReverseAdminPaymentRequestBody>;
+export type ReverseAdminPaymentRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Storna un incasso registrato a mano per errore
+ */
+export const useReverseAdminPaymentRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reverseAdminPaymentRequest>>,
+    TError,
+    { requestId: string; data: BodyType<ReverseAdminPaymentRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reverseAdminPaymentRequest>>,
+  TError,
+  { requestId: string; data: BodyType<ReverseAdminPaymentRequestBody> },
+  TContext
+> => {
+  return useMutation(getReverseAdminPaymentRequestMutationOptions(options));
+};
 
 /**
  * Il numero di righe deve coincidere con i posti già occupati. Il comando non modifica importi, pagamenti o posti. Le righe già registrate devono conservare il proprio id: vengono aggiornate in-place affinché gli snapshot prezzo storici non siano mai riassegnati per posizione a un'altra riga.

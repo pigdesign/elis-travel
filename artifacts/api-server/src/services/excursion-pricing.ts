@@ -204,6 +204,7 @@ export async function loadPricingContext(
 export type PaymentSettings = {
   depositPercentage: number | null;
   cardPaymentsEnabled: boolean;
+  onBusPaymentsEnabled: boolean;
   futureCardChargeEnabled: boolean;
   futureCardChargeConsentVersion: string | null;
   cardCheckoutHoldMinutes: number;
@@ -228,6 +229,7 @@ export type PaymentSettings = {
 const PAYMENT_SETTING_KEYS = [
   "deposit_percentage",
   "excursion_card_payments_enabled",
+  "excursion_on_bus_payments_enabled",
   "future_card_charge_enabled",
   "future_card_charge_consent_version",
   "card_checkout_hold_minutes",
@@ -267,6 +269,18 @@ export function cardPaymentsEnabledFromSetting(
   return value === "true";
 }
 
+/**
+ * Interruttore generale del saldo a bordo. A differenza della carta qui non
+ * esiste un prerequisito tecnico da verificare: il gate vero e il flag della
+ * singola gita, gia spento di default. Questo valore serve a togliere il
+ * metodo ovunque in un colpo solo, quindi disabilita solo se scritto "false".
+ */
+export function onBusPaymentsEnabledFromSetting(
+  value: string | undefined,
+): boolean {
+  return value !== "false";
+}
+
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   const rows = await db
     .select({ key: settingsTable.key, value: settingsTable.value })
@@ -280,6 +294,9 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
       Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : null,
     cardPaymentsEnabled: cardPaymentsEnabledFromSetting(
       map.excursion_card_payments_enabled,
+    ),
+    onBusPaymentsEnabled: onBusPaymentsEnabledFromSetting(
+      map.excursion_on_bus_payments_enabled,
     ),
     // L'addebito futuro dipende da questo interruttore E dalla possibilita di
     // sapere quale versione dei T&C il cliente sta accettando: la versione non
@@ -569,12 +586,40 @@ export function buildQuote(
   };
 }
 
+export type AvailablePaymentMethods = {
+  card: boolean;
+  bankTransfer: boolean;
+  office: boolean;
+  onBus: boolean;
+};
+
+/**
+ * Il saldo a bordo esiste solo come chiusura di una prenotazione gia avviata:
+ * l'agenzia incassa il residuo alla partenza perche l'impegno del cliente e
+ * gia dimostrato dall'acconto versato. Acconto e pagamento in unica soluzione
+ * restano quindi esclusi, e il tipo di richiesta non noto vale come esclusione.
+ */
+export function isOnBusPaymentAvailable(
+  excursion: Excursion,
+  settings: PaymentSettings,
+  requestType: string | null | undefined,
+): boolean {
+  return (
+    requestType === "balance" &&
+    excursion.payOnBusEnabled &&
+    settings.onBusPaymentsEnabled
+  );
+}
+
 // Metodi di pagamento disponibili per la gita (interseca config gita e globali).
 export function availablePaymentMethods(
   excursion: Excursion,
   settings: PaymentSettings,
   stripeConfigured: boolean,
-): { card: boolean; bankTransfer: boolean; office: boolean } {
+  // Tipo della richiesta da pagare: senza questo dato il saldo a bordo resta
+  // escluso, perche nessun chiamante deve poterlo offrire per disattenzione.
+  opts?: { requestType?: string | null },
+): AvailablePaymentMethods {
   return {
     card:
       excursion.payCardEnabled &&
@@ -586,6 +631,7 @@ export function availablePaymentMethods(
       excursion.payBankTransferEnabled && Boolean(settings.iban?.trim()),
     office:
       excursion.payOfficeEnabled && Boolean(settings.officeAddress?.trim()),
+    onBus: isOnBusPaymentAvailable(excursion, settings, opts?.requestType),
   };
 }
 

@@ -81,21 +81,6 @@ import {
 } from "../../services/excursion-financials";
 import { enqueueStripeCleanupJobInTransaction } from "../../services/stripe-cleanup";
 
-const VALID_PAYMENT_STATUSES = [
-  "pending",
-  "deposit_requested",
-  "deposit",
-  "full_requested",
-  "paid",
-] as const;
-type PaymentStatus = (typeof VALID_PAYMENT_STATUSES)[number];
-function isValidPaymentStatus(s: unknown): s is PaymentStatus {
-  return (
-    typeof s === "string" &&
-    (VALID_PAYMENT_STATUSES as readonly string[]).includes(s)
-  );
-}
-
 const ADMIN_CREATABLE_STATUSES = [
   "deposit_requested",
   "full_requested",
@@ -458,6 +443,7 @@ router.post("/excursions", async (req, res) => {
         payCardEnabled: body.payCardEnabled ?? true,
         payBankTransferEnabled: body.payBankTransferEnabled ?? true,
         payOfficeEnabled: body.payOfficeEnabled ?? true,
+        payOnBusEnabled: body.payOnBusEnabled ?? false,
         bankTransferHoursOverride: body.bankTransferHoursOverride ?? null,
         officeHoursOverride: body.officeHoursOverride ?? null,
         fullPaymentOnlyDaysBefore: body.fullPaymentOnlyDaysBefore ?? null,
@@ -773,6 +759,7 @@ router.patch("/excursions/:id", async (req, res) => {
       "payCardEnabled",
       "payBankTransferEnabled",
       "payOfficeEnabled",
+      "payOnBusEnabled",
       "bankTransferHoursOverride",
       "officeHoursOverride",
       "fullPaymentOnlyDaysBefore",
@@ -1968,19 +1955,6 @@ router.put("/bookings/:bookingId/participants", async (req, res) => {
     console.error("Participant replacement failed:", error);
     res.status(500).json({ error: "Errore interno del server." });
   }
-});
-
-router.patch("/excursions/:id/bookings/:bookingId", async (req, res) => {
-  const { paymentStatus } = req.body as { paymentStatus?: string };
-  if (!isValidPaymentStatus(paymentStatus)) {
-    res.status(400).json({ error: "Stato pagamento non valido." });
-    return;
-  }
-  res.status(409).json({
-    error:
-      "Lo stato economico non può essere modificato direttamente. Registra il pagamento sulla relativa richiesta indicando il riferimento dell'operazione.",
-    code: "PAYMENT_REQUIRES_FINANCIAL_OPERATION",
-  });
 });
 
 router.delete("/excursions/:id/bookings/:bookingId", async (req, res) => {

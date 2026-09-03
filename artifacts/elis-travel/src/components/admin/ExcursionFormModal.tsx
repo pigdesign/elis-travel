@@ -195,6 +195,7 @@ type FormState = {
   payCardEnabled: boolean;
   payBankTransferEnabled: boolean;
   payOfficeEnabled: boolean;
+  payOnBusEnabled: boolean;
   bankTransferHoursOverride: string;
   officeHoursOverride: string;
   fullPaymentOnlyDaysBefore: string;
@@ -248,6 +249,7 @@ function emptyState(): FormState {
     payCardEnabled: true,
     payBankTransferEnabled: true,
     payOfficeEnabled: true,
+    payOnBusEnabled: false,
     bankTransferHoursOverride: "",
     officeHoursOverride: "",
     fullPaymentOnlyDaysBefore: "",
@@ -339,6 +341,7 @@ function fromExcursion(
     payCardEnabled: exc.payCardEnabled !== false,
     payBankTransferEnabled: exc.payBankTransferEnabled !== false,
     payOfficeEnabled: exc.payOfficeEnabled !== false,
+    payOnBusEnabled: exc.payOnBusEnabled === true,
     bankTransferHoursOverride:
       exc.bankTransferHoursOverride != null
         ? String(exc.bankTransferHoursOverride)
@@ -458,6 +461,7 @@ function toPayload(s: FormState): ExcursionCreateInput {
     payCardEnabled: s.payCardEnabled,
     payBankTransferEnabled: s.payBankTransferEnabled,
     payOfficeEnabled: s.payOfficeEnabled,
+    payOnBusEnabled: s.payOnBusEnabled,
     bankTransferHoursOverride:
       s.bankTransferHoursOverride.trim() !== ""
         ? Math.max(1, parseInt(s.bankTransferHoursOverride, 10) || 0)
@@ -2146,7 +2150,28 @@ export function ExcursionFormModal({
                     />
                     <span className="text-sm text-foreground">In ufficio</span>
                   </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={form.payOnBusEnabled}
+                      onChange={(e) =>
+                        setField("payOnBusEnabled", e.target.checked)
+                      }
+                      className="h-4 w-4 accent-primary"
+                      data-testid="checkbox-excursion-pay-on-bus"
+                    />
+                    <span className="text-sm text-foreground">
+                      Sul bus (solo saldo)
+                    </span>
+                  </label>
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Con &laquo;Sul bus&raquo; il cliente che ha già versato
+                  l&apos;acconto può scegliere di saldare alla partenza:
+                  l&apos;incasso va poi registrato a mano dal dettaglio della
+                  prenotazione. Acconto e pagamento in unica soluzione restano
+                  esclusi.
+                </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-foreground mb-1">

@@ -49,6 +49,8 @@ export function shouldRollbackBookingAfterStripeSetupFailure(input: {
   );
 }
 
+const OFFLINE_PAYMENT_METHODS = new Set(["bank_transfer", "office", "on_bus"]);
+
 export function planOfflineMethodCardCleanup(
   method: string,
   attempts: readonly {
@@ -56,7 +58,7 @@ export function planOfflineMethodCardCleanup(
     stripePaymentIntentId: string | null;
   }[],
 ): Array<{ attemptId: string; paymentIntentId: string }> {
-  if (method !== "bank_transfer" && method !== "office") return [];
+  if (!OFFLINE_PAYMENT_METHODS.has(method)) return [];
   return attempts.flatMap((attempt) =>
     attempt.stripePaymentIntentId
       ? [

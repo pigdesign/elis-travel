@@ -126,6 +126,10 @@ export const excursionsTable = pgTable("excursions", {
     .notNull()
     .default(true),
   payOfficeEnabled: boolean("pay_office_enabled").notNull().default(true),
+  // Saldo incassato a bordo il giorno della partenza. Vale SOLO per il saldo
+  // (l'acconto resta carta/bonifico/ufficio) e parte spento: il bus si accetta
+  // solo dove l'agenzia ha deciso di far viaggiare qualcuno ancora da saldare.
+  payOnBusEnabled: boolean("pay_on_bus_enabled").notNull().default(false),
   // Override delle ore globali di scadenza per bonifico / ufficio
   bankTransferHoursOverride: integer("bank_transfer_hours_override"),
   officeHoursOverride: integer("office_hours_override"),

@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Ban,
   Building2,
+  Bus,
   CheckCircle2,
   Clock,
   CreditCard,
@@ -43,7 +44,7 @@ const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as
   | undefined;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
-type PaymentMethod = "card" | "bank_transfer" | "office";
+type PaymentMethod = "card" | "bank_transfer" | "office" | "on_bus";
 
 class PortalRequestError extends Error {
   constructor(
@@ -92,7 +93,12 @@ type PortalData = {
     graceUntil: string | null;
     canPay: boolean;
   } | null;
-  paymentMethods: { card: boolean; bankTransfer: boolean; office: boolean };
+  paymentMethods: {
+    card: boolean;
+    bankTransfer: boolean;
+    office: boolean;
+    onBus: boolean;
+  };
   bank: {
     iban: string | null;
     beneficiary: string | null;
@@ -544,7 +550,9 @@ export function BookingPortalPage({
     }
   };
 
-  const selectOffline = async (method: "bank_transfer" | "office") => {
+  const selectOffline = async (
+    method: "bank_transfer" | "office" | "on_bus",
+  ) => {
     if (!data?.paymentRequest || paymentResolutionFailure) return;
     setBusyMethod(method);
     setError(null);
@@ -687,6 +695,11 @@ export function BookingPortalPage({
         id: "office" as const,
         label: "In ufficio",
         icon: Building2,
+      },
+      data.paymentMethods.onBus && {
+        id: "on_bus" as const,
+        label: "Sul bus",
+        icon: Bus,
       },
     ].filter(Boolean) as Array<{
       id: PaymentMethod;
@@ -909,21 +922,30 @@ export function BookingPortalPage({
                     </p>
                   </div>
                   <div className="text-sm text-muted-foreground sm:text-right">
-                    {data.paymentRequest.deadline && (
+                    {selectedMethod === "on_bus" ? (
                       <p>
-                        Scadenza:{" "}
-                        <strong>
-                          {dateTime(data.paymentRequest.deadline)}
-                        </strong>
+                        Da versare <strong>alla partenza</strong>, direttamente
+                        sul bus.
                       </p>
-                    )}
-                    {data.paymentRequest.graceUntil && (
-                      <p className="mt-1 text-amber-700">
-                        Tolleranza amministrativa fino a{" "}
-                        <strong>
-                          {dateTime(data.paymentRequest.graceUntil)}
-                        </strong>
-                      </p>
+                    ) : (
+                      <>
+                        {data.paymentRequest.deadline && (
+                          <p>
+                            Scadenza:{" "}
+                            <strong>
+                              {dateTime(data.paymentRequest.deadline)}
+                            </strong>
+                          </p>
+                        )}
+                        {data.paymentRequest.graceUntil && (
+                          <p className="mt-1 text-amber-700">
+                            Tolleranza amministrativa fino a{" "}
+                            <strong>
+                              {dateTime(data.paymentRequest.graceUntil)}
+                            </strong>
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -938,7 +960,9 @@ export function BookingPortalPage({
                     <h3 className="mt-7 text-sm font-semibold text-foreground">
                       Scegli come pagare il saldo
                     </h3>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <div
+                      className={`mt-3 grid gap-3 ${methodOptions.length > 3 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}
+                    >
                       {methodOptions.map((option) => {
                         const Icon = option.icon;
                         const active = selectedMethod === option.id;
@@ -1052,6 +1076,27 @@ export function BookingPortalPage({
                         <p className="mt-3 text-xs text-muted-foreground">
                           Cita il codice {data.booking.bookingCode}. Il
                           pagamento sarà registrato manualmente.
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedMethod === "on_bus" && (
+                      <div className="mt-6 rounded-2xl bg-slate-50 p-5 text-sm">
+                        <h3 className="font-semibold text-foreground">
+                          Saldo sul bus
+                        </h3>
+                        <p className="mt-2">
+                          Il giorno della partenza porta{" "}
+                          <strong>
+                            {euro(data.paymentRequest.amountCents)}
+                          </strong>{" "}
+                          in contanti: l'accompagnatore registrerà l'incasso
+                          alla salita.
+                        </p>
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Il tuo posto resta riservato. Se preferisci pagare
+                          prima della partenza puoi tornare qui e scegliere un
+                          altro metodo.
                         </p>
                       </div>
                     )}

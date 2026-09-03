@@ -686,6 +686,7 @@ export function SettingsPage() {
   const [notes, setNotes] = useState("");
   const [depositPercentage, setDepositPercentage] = useState("");
   const [cardPaymentsEnabled, setCardPaymentsEnabled] = useState(false);
+  const [onBusPaymentsEnabled, setOnBusPaymentsEnabled] = useState(true);
   const [futureCardChargeEnabled, setFutureCardChargeEnabled] = useState(false);
   const [cardCheckoutHoldMinutes, setCardCheckoutHoldMinutes] = useState("");
   const [paymentGraceMinutes, setPaymentGraceMinutes] = useState("");
@@ -716,6 +717,10 @@ export function SettingsPage() {
       setDepositPercentage(settings.deposit_percentage ?? "");
       setCardPaymentsEnabled(
         settings.excursion_card_payments_enabled === "true",
+      );
+      // Il default e acceso: il gate reale resta il flag della singola gita.
+      setOnBusPaymentsEnabled(
+        settings.excursion_on_bus_payments_enabled !== "false",
       );
       setFutureCardChargeEnabled(
         settings.future_card_charge_enabled === "true",
@@ -825,6 +830,9 @@ export function SettingsPage() {
           payment_notes: notes.trim(),
           deposit_percentage: pct,
           excursion_card_payments_enabled: cardPaymentsEnabled
+            ? "true"
+            : "false",
+          excursion_on_bus_payments_enabled: onBusPaymentsEnabled
             ? "true"
             : "false",
           future_card_charge_enabled: futureCardChargeEnabled
@@ -963,6 +971,29 @@ export function SettingsPage() {
                   già salvate. Restano disponibili soltanto i metodi offline
                   abilitati sulla singola gita. Per sicurezza la carta resta OFF
                   finché questa opzione non viene salvata esplicitamente.
+                </span>
+              </span>
+            </label>
+          </div>
+          <div>
+            <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+              <input
+                type="checkbox"
+                checked={onBusPaymentsEnabled}
+                onChange={(e) => setOnBusPaymentsEnabled(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+                data-testid="checkbox-settings-on-bus-payments"
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Consenti il saldo a bordo
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Kill switch globale: disattivandolo il pagamento sul bus
+                  sparisce da tutte le gite, anche da quelle che lo hanno
+                  abilitato. Resta comunque da attivare gita per gita, e non è
+                  mai proposto per l'acconto o per il pagamento in unica
+                  soluzione.
                 </span>
               </span>
             </label>

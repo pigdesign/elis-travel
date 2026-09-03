@@ -8,10 +8,13 @@
 import type { PickupReportExcursion } from "./pickupReportExcursion";
 import type { PickupReportGroup } from "./pickupReportGroup";
 import type { PickupReportMissingParticipantDetails } from "./pickupReportMissingParticipantDetails";
+import type { PickupReportOnBusCollection } from "./pickupReportOnBusCollection";
 
 export interface PickupReport {
   excursion: PickupReportExcursion;
   groups: PickupReportGroup[];
   totalPeople: number;
   missingParticipantDetails: PickupReportMissingParticipantDetails[];
+  onBusCollections?: PickupReportOnBusCollection[];
+  onBusTotalCents?: number;
 }

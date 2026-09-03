@@ -10,6 +10,7 @@ import {
   paymentRefundsTable,
   stripeCleanupJobsTable,
   bookingCancellationCasesTable,
+  bookingAdminActionsTable,
   excursionPickupPointsTable,
   pickupLocationsTable,
 } from "@workspace/db/schema";
@@ -47,7 +48,10 @@ import { reconcileBookingCancellation } from "../../services/booking-cancellatio
 import { isPaymentBlockedByCancellation } from "../../services/booking-cancellation-guard";
 import {
   buildMissingParticipantDetails,
+  buildOnBusCollections,
+  buildPickupReportPayment,
   hasCompletePickupReportParticipant,
+  type PickupReportPayment,
 } from "../../services/pickup-report";
 import { computeGraceUntil } from "../../services/excursion-time";
 import {
@@ -755,6 +759,7 @@ router.get("/bookings/:bookingId/details", async (req, res) => {
       cancellationCases,
       refunds,
       cleanupJobs,
+      adminActions,
     ] = await Promise.all([
       db
         .select()
@@ -869,6 +874,23 @@ router.get("/bookings/:bookingId/details", async (req, res) => {
         .from(stripeCleanupJobsTable)
         .where(eq(stripeCleanupJobsTable.bookingId, bookingId))
         .orderBy(asc(stripeCleanupJobsTable.createdAt)),
+      // Diario delle correzioni manuali: nel modello a partita doppia le righe
+      // dicono quanto, non chi e perche. Va mostrato accanto ai movimenti,
+      // altrimenti la modifica libera diventa una scatola nera.
+      db
+        .select({
+          id: bookingAdminActionsTable.id,
+          paymentRequestId: bookingAdminActionsTable.paymentRequestId,
+          action: bookingAdminActionsTable.action,
+          reason: bookingAdminActionsTable.reason,
+          details: bookingAdminActionsTable.details,
+          adminName: bookingAdminActionsTable.adminName,
+          createdAt: bookingAdminActionsTable.createdAt,
+        })
+        .from(bookingAdminActionsTable)
+        .where(eq(bookingAdminActionsTable.bookingId, bookingId))
+        .orderBy(desc(bookingAdminActionsTable.createdAt))
+        .limit(50),
     ]);
 
     const sumRefunds = (statuses?: string[]) =>
@@ -941,6 +963,7 @@ router.get("/bookings/:bookingId/details", async (req, res) => {
       cancellationCases,
       refunds,
       cleanupJobs,
+      adminActions,
       economicSummary,
       participantsDetailed,
       termsReacceptance: {
@@ -994,6 +1017,10 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
         customerName: excursionBookingsTable.customerName,
         customerPhone: excursionBookingsTable.phone,
         paymentStatus: excursionBookingsTable.paymentStatus,
+        paymentMethod: excursionBookingsTable.paymentMethod,
+        totalAmountCents: excursionBookingsTable.totalAmountCents,
+        amountPaidCents: excursionBookingsTable.amountPaidCents,
+        bookingSeats: excursionBookingsTable.seats,
         servizioCasa: excursionBookingsTable.servizioCasa,
         homePickupAddress: excursionBookingsTable.homePickupAddress,
       })
@@ -1025,6 +1052,11 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
         customerName: excursionBookingsTable.customerName,
         phone: excursionBookingsTable.phone,
         seats: excursionBookingsTable.seats,
+        paymentStatus: excursionBookingsTable.paymentStatus,
+        paymentMethod: excursionBookingsTable.paymentMethod,
+        totalAmountCents: excursionBookingsTable.totalAmountCents,
+        amountPaidCents: excursionBookingsTable.amountPaidCents,
+        bookingPickupPointId: excursionBookingsTable.pickupPointId,
         servizioCasa: excursionBookingsTable.servizioCasa,
         homePickupAddress: excursionBookingsTable.homePickupAddress,
       })
@@ -1037,6 +1069,64 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
         ),
       )
       .orderBy(asc(excursionBookingsTable.customerName));
+
+    // Saldi da incassare alla partenza: chi ha scelto il bus resta "pending"
+    // fino alla conferma manuale, quindi la lista e anche la prova di cosa
+    // l'accompagnatore deve riportare indietro.
+    const onBusRows = await db
+      .select({
+        bookingId: excursionBookingsTable.id,
+        bookingCode: excursionBookingsTable.bookingCode,
+        referente: excursionBookingsTable.customerName,
+        phone: excursionBookingsTable.phone,
+        seats: excursionBookingsTable.seats,
+        requestAmountCents: paymentRequestsTable.amountCents,
+        totalAmountCents: excursionBookingsTable.totalAmountCents,
+        amountPaidCents: excursionBookingsTable.amountPaidCents,
+      })
+      .from(paymentRequestsTable)
+      .innerJoin(
+        excursionBookingsTable,
+        eq(paymentRequestsTable.bookingId, excursionBookingsTable.id),
+      )
+      .where(
+        and(
+          eq(excursionBookingsTable.excursionId, id),
+          isNull(excursionBookingsTable.cancelledAt),
+          ne(excursionBookingsTable.seatStatus, "released"),
+          eq(paymentRequestsTable.type, "balance"),
+          eq(paymentRequestsTable.method, "on_bus"),
+          inArray(paymentRequestsTable.status, ["pending", "action_required"]),
+        ),
+      )
+      .orderBy(asc(excursionBookingsTable.customerName));
+    const onBus = buildOnBusCollections(onBusRows);
+    const onBusCentsByBooking = new Map(
+      onBus.collections.map((item) => [item.bookingId, item.amountCents]),
+    );
+
+    // Consenso foto/video: e della prenotazione e serve all'accompagnatore
+    // prima di scattare. Assente sulle prenotazioni inserite a mano, dove non
+    // e mai stato chiesto: resta null e il report lo dichiara.
+    const mediaConsents = await db
+      .select({
+        bookingId: bookingConsentsTable.bookingId,
+        accepted: bookingConsentsTable.accepted,
+      })
+      .from(bookingConsentsTable)
+      .innerJoin(
+        excursionBookingsTable,
+        eq(bookingConsentsTable.bookingId, excursionBookingsTable.id),
+      )
+      .where(
+        and(
+          eq(excursionBookingsTable.excursionId, id),
+          eq(bookingConsentsTable.consentType, "media"),
+        ),
+      );
+    const mediaConsentByBooking = new Map(
+      mediaConsents.map((row) => [row.bookingId, row.accepted]),
+    );
 
     const points = await db
       .select({
@@ -1059,6 +1149,24 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
     const pointById = new Map(points.map((p) => [p.id, p]));
     const operationalRows = rows.filter(hasCompletePickupReportParticipant);
 
+    // Lo stato economico e della prenotazione, non della singola persona: il
+    // denaro si incassa dal referente, quindi la riga lo riporta come contesto
+    // e il totale resta quello della prenotazione.
+    const paymentOf = (booking: {
+      bookingId: string;
+      paymentStatus: string;
+      paymentMethod: string | null;
+      totalAmountCents: number | null;
+      amountPaidCents: number;
+    }) =>
+      buildPickupReportPayment({
+        paymentStatus: booking.paymentStatus,
+        paymentMethod: booking.paymentMethod,
+        totalAmountCents: booking.totalAmountCents,
+        amountPaidCents: booking.amountPaidCents,
+        onBusCents: onBusCentsByBooking.get(booking.bookingId) ?? 0,
+      });
+
     type Group = {
       pickupPointId: string | null;
       pickupPointName: string;
@@ -1069,10 +1177,15 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
         name: string;
         participantType: string;
         ageRangeLabel: string | null;
+        bookingId: string;
         bookingCode: string | null;
+        bookingSeats: number;
         referente: string;
         phone: string | null;
         paymentStatus: string;
+        payment: PickupReportPayment;
+        mediaConsent: boolean | null;
+        onBusPaymentDue: boolean;
         servizioCasa: boolean;
         homePickupAddress: string | null;
       }[];
@@ -1103,14 +1216,20 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
         groups.set(key, g);
       }
       const personName = `${r.firstName.trim()} ${r.lastName.trim()}`;
+      const payment = paymentOf(r);
       g.people.push({
         name: personName,
         participantType: r.participantType,
         ageRangeLabel: r.ageRangeLabel,
+        bookingId: r.bookingId,
         bookingCode: r.bookingCode,
+        bookingSeats: r.bookingSeats,
         referente: r.customerName,
         phone: r.customerPhone,
         paymentStatus: r.paymentStatus,
+        payment,
+        mediaConsent: mediaConsentByBooking.get(r.bookingId) ?? null,
+        onBusPaymentDue: payment.state === "due_on_bus",
         servizioCasa: r.servizioCasa,
         homePickupAddress: r.homePickupAddress,
       });
@@ -1126,7 +1245,26 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
         a.pickupPointName.localeCompare(b.pickupPointName, "it"),
     );
     const missingParticipantDetails = buildMissingParticipantDetails(
-      activeBookings,
+      activeBookings.map((booking) => {
+        const point = booking.bookingPickupPointId
+          ? pointById.get(booking.bookingPickupPointId)
+          : null;
+        return {
+          bookingId: booking.bookingId,
+          bookingCode: booking.bookingCode,
+          customerName: booking.customerName,
+          phone: booking.phone,
+          seats: booking.seats,
+          servizioCasa: booking.servizioCasa,
+          homePickupAddress: booking.homePickupAddress,
+          pickupPointId: booking.bookingPickupPointId,
+          pickupPointName: point?.name ?? null,
+          pickupProvince: point?.province ?? null,
+          pickupTime: point?.pickupTime ?? null,
+          payment: paymentOf(booking),
+          mediaConsent: mediaConsentByBooking.get(booking.bookingId) ?? null,
+        };
+      }),
       rows,
     );
     res.json({
@@ -1137,6 +1275,8 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
       })),
       totalPeople: operationalRows.length,
       missingParticipantDetails,
+      onBusCollections: onBus.collections,
+      onBusTotalCents: onBus.totalCents,
     });
   } catch (err) {
     console.error("Pickup report failed:", err);

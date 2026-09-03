@@ -393,6 +393,7 @@ export const ListExcursionsResponseItem = zod.object({
   payCardEnabled: zod.boolean().optional(),
   payBankTransferEnabled: zod.boolean().optional(),
   payOfficeEnabled: zod.boolean().optional(),
+  payOnBusEnabled: zod.boolean().optional(),
   bankTransferHoursOverride: zod.number().nullish(),
   officeHoursOverride: zod.number().nullish(),
   fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -498,6 +499,7 @@ export const CreateExcursionBody = zod
     payCardEnabled: zod.boolean().optional(),
     payBankTransferEnabled: zod.boolean().optional(),
     payOfficeEnabled: zod.boolean().optional(),
+    payOnBusEnabled: zod.boolean().optional(),
     bankTransferHoursOverride: zod.number().nullish(),
     officeHoursOverride: zod.number().nullish(),
     fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -608,6 +610,7 @@ export const GetExcursionResponse = zod
     payCardEnabled: zod.boolean().optional(),
     payBankTransferEnabled: zod.boolean().optional(),
     payOfficeEnabled: zod.boolean().optional(),
+    payOnBusEnabled: zod.boolean().optional(),
     bankTransferHoursOverride: zod.number().nullish(),
     officeHoursOverride: zod.number().nullish(),
     fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -765,6 +768,7 @@ export const UpdateExcursionBody = zod.object({
   payCardEnabled: zod.boolean().optional(),
   payBankTransferEnabled: zod.boolean().optional(),
   payOfficeEnabled: zod.boolean().optional(),
+  payOnBusEnabled: zod.boolean().optional(),
   bankTransferHoursOverride: zod.number().nullish(),
   officeHoursOverride: zod.number().nullish(),
   fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -864,6 +868,7 @@ export const UpdateExcursionResponse = zod.object({
   payCardEnabled: zod.boolean().optional(),
   payBankTransferEnabled: zod.boolean().optional(),
   payOfficeEnabled: zod.boolean().optional(),
+  payOnBusEnabled: zod.boolean().optional(),
   bankTransferHoursOverride: zod.number().nullish(),
   officeHoursOverride: zod.number().nullish(),
   fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -1287,10 +1292,26 @@ export const GetExcursionPickupReportResponse = zod.object({
           name: zod.string(),
           participantType: zod.string(),
           ageRangeLabel: zod.string().nullish(),
+          bookingId: zod.string(),
           bookingCode: zod.string().nullish(),
+          bookingSeats: zod.number(),
           referente: zod.string(),
           phone: zod.string().nullish(),
           paymentStatus: zod.string(),
+          payment: zod
+            .object({
+              state: zod.enum(["paid", "due_on_bus", "due", "unknown"]),
+              dueCents: zod.number(),
+              onBusCents: zod.number(),
+              totalCents: zod.number().nullable(),
+              paidCents: zod.number(),
+              method: zod.string().nullable(),
+            })
+            .describe(
+              "Stato economico della prenotazione a cui la persona appartiene",
+            ),
+          mediaConsent: zod.boolean().nullable(),
+          onBusPaymentDue: zod.boolean().optional(),
           servizioCasa: zod.boolean(),
           homePickupAddress: zod.string().nullable(),
         }),
@@ -1313,10 +1334,40 @@ export const GetExcursionPickupReportResponse = zod.object({
       seats: zod.number(),
       servizioCasa: zod.boolean(),
       homePickupAddress: zod.string().nullable(),
+      pickupPointId: zod.string().nullish(),
+      pickupPointName: zod.string().nullable(),
+      pickupProvince: zod.string().nullish(),
+      pickupTime: zod.string().nullable(),
+      payment: zod
+        .object({
+          state: zod.enum(["paid", "due_on_bus", "due", "unknown"]),
+          dueCents: zod.number(),
+          onBusCents: zod.number(),
+          totalCents: zod.number().nullable(),
+          paidCents: zod.number(),
+          method: zod.string().nullable(),
+        })
+        .describe(
+          "Stato economico della prenotazione a cui la persona appartiene",
+        ),
+      mediaConsent: zod.boolean().nullable(),
       participantsDetailed: zod.literal(false),
       warning: zod.string(),
     }),
   ),
+  onBusCollections: zod
+    .array(
+      zod.object({
+        bookingId: zod.string(),
+        bookingCode: zod.string().nullish(),
+        referente: zod.string(),
+        phone: zod.string().nullish(),
+        seats: zod.number(),
+        amountCents: zod.number(),
+      }),
+    )
+    .optional(),
+  onBusTotalCents: zod.number().optional(),
 });
 
 /**
@@ -1436,6 +1487,7 @@ export const CompleteExcursionTripResponse = zod.object({
   payCardEnabled: zod.boolean().optional(),
   payBankTransferEnabled: zod.boolean().optional(),
   payOfficeEnabled: zod.boolean().optional(),
+  payOnBusEnabled: zod.boolean().optional(),
   bankTransferHoursOverride: zod.number().nullish(),
   officeHoursOverride: zod.number().nullish(),
   fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -1546,6 +1598,7 @@ export const CancelExcursionTripResponse = zod.object({
   payCardEnabled: zod.boolean().optional(),
   payBankTransferEnabled: zod.boolean().optional(),
   payOfficeEnabled: zod.boolean().optional(),
+  payOnBusEnabled: zod.boolean().optional(),
   bankTransferHoursOverride: zod.number().nullish(),
   officeHoursOverride: zod.number().nullish(),
   fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -1853,6 +1906,25 @@ export const GetAdminBookingDetailsResponse = zod.object({
       updatedAt: zod.coerce.date(),
     }),
   ),
+  adminActions: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        paymentRequestId: zod.string().uuid().nullish(),
+        action: zod
+          .string()
+          .describe(
+            "update_booking | update_payment_request | record_payment | reverse_payment",
+          ),
+        reason: zod.string().nullish(),
+        details: zod.record(zod.string(), zod.unknown()).optional(),
+        adminName: zod.string().nullish(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .describe(
+      "Diario delle correzioni manuali dell'amministrazione, dalla più recente. Il registro dei pagamenti dice quanto è stato incassato, questo dice chi ha deciso e perché.\n",
+    ),
   economicSummary: zod.object({
     totalAmountCents: zod.number().nullable(),
     paidAmountCents: zod.number(),
@@ -1868,6 +1940,130 @@ export const GetAdminBookingDetailsResponse = zod.object({
     netCollectedAmountCents: zod.number(),
   }),
   participantsDetailed: zod.boolean(),
+});
+
+/**
+ * Anagrafica e totale sono modificabili anche a pagamento avvenuto: un recapito sbagliato va corretto proprio quando la gita è vicina. Il totale non può scendere sotto l'importo già incassato, e cambiandolo le richieste ancora aperte vengono riallineate al nuovo residuo.
+ * @summary Corregge i dati del referente e il totale della prenotazione
+ */
+export const UpdateAdminBookingProfileParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const updateAdminBookingProfileBodyCustomerNameMax = 200;
+
+export const updateAdminBookingProfileBodyEmailMax = 200;
+
+export const updateAdminBookingProfileBodyPhoneMax = 40;
+
+export const updateAdminBookingProfileBodyHomePickupAddressMax = 500;
+
+export const updateAdminBookingProfileBodyTotalAmountCentsMin = 0;
+
+export const updateAdminBookingProfileBodyReasonMax = 500;
+
+export const UpdateAdminBookingProfileBody = zod
+  .object({
+    customerName: zod
+      .string()
+      .min(1)
+      .max(updateAdminBookingProfileBodyCustomerNameMax)
+      .optional(),
+    email: zod.string().max(updateAdminBookingProfileBodyEmailMax).nullish(),
+    phone: zod.string().max(updateAdminBookingProfileBodyPhoneMax).nullish(),
+    customerNotificationsEnabled: zod.boolean().optional(),
+    servizioCasa: zod.boolean().optional(),
+    homePickupAddress: zod
+      .string()
+      .max(updateAdminBookingProfileBodyHomePickupAddressMax)
+      .nullish(),
+    totalAmountCents: zod
+      .number()
+      .min(updateAdminBookingProfileBodyTotalAmountCentsMin)
+      .optional()
+      .describe("Nuovo totale della prenotazione, mai inferiore all'incassato"),
+    reason: zod.string().max(updateAdminBookingProfileBodyReasonMax).optional(),
+  })
+  .describe(
+    "Tutti i campi sono facoltativi: quelli non inviati restano invariati.\n",
+  );
+
+export const UpdateAdminBookingProfileResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * È il percorso con cui l'ufficio decide al posto del cliente che non usa il portale. La carta resta esclusa: autorizzare un addebito richiede il consenso del titolare. Il saldo a bordo resta ammesso solo per le richieste di tipo balance su gite che lo abilitano, e sposta scadenza e tolleranza alla partenza. Una richiesta scaduta torna esigibile.
+ * @summary Corregge metodo, importo o scadenza di una richiesta ancora aperta
+ */
+export const UpdateAdminPaymentRequestParams = zod.object({
+  requestId: zod.coerce.string().uuid(),
+});
+
+export const updateAdminPaymentRequestBodyReasonMax = 500;
+
+export const UpdateAdminPaymentRequestBody = zod
+  .object({
+    method: zod.enum(["bank_transfer", "office", "on_bus"]).optional(),
+    amountCents: zod.number().min(1).optional(),
+    deadline: zod.coerce.date().optional(),
+    reason: zod
+      .string()
+      .max(updateAdminPaymentRequestBodyReasonMax)
+      .optional()
+      .describe("Obbligatorio quando cambia l'importo"),
+  })
+  .describe("Almeno uno tra metodo, importo e scadenza deve essere presente.");
+
+export const UpdateAdminPaymentRequestResponse = zod.object({
+  ok: zod.boolean(),
+  unchanged: zod.boolean(),
+  reopened: zod.boolean(),
+});
+
+/**
+ * Copre i casi che "segna pagato" non raggiunge: prenotazioni storiche senza richieste di pagamento e versamenti che non coincidono con l'importo richiesto. Se una richiesta aperta ha esattamente quell'importo viene saldata quella, altrimenti nasce una richiesta già incassata. Dopo il movimento le richieste ancora aperte vengono riallineate al residuo.
+ * @summary Registra un incasso arrivato in ufficio
+ */
+export const RecordAdminBookingPaymentParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const recordAdminBookingPaymentBodyTransactionReferenceMax = 500;
+
+export const recordAdminBookingPaymentBodyReasonMax = 500;
+
+export const RecordAdminBookingPaymentBody = zod.object({
+  amountCents: zod.number().min(1),
+  method: zod.enum(["bank_transfer", "office", "on_bus"]),
+  transactionReference: zod
+    .string()
+    .min(1)
+    .max(recordAdminBookingPaymentBodyTransactionReferenceMax),
+  paidAt: zod.coerce
+    .date()
+    .optional()
+    .describe("Quando è stato incassato davvero; se assente vale adesso"),
+  reason: zod.string().max(recordAdminBookingPaymentBodyReasonMax).optional(),
+});
+
+/**
+ * Vale solo per gli incassi registrati dall'amministrazione (bonifico, ufficio, a bordo). Un incasso su carta non si storna: quel denaro è uscito davvero dal conto del cliente e va restituito dal flusso rimborsi. Il motivo è obbligatorio e resta nel diario.
+ * @summary Storna un incasso registrato a mano per errore
+ */
+export const ReverseAdminPaymentRequestParams = zod.object({
+  requestId: zod.coerce.string().uuid(),
+});
+
+export const reverseAdminPaymentRequestBodyReasonMax = 500;
+
+export const ReverseAdminPaymentRequestBody = zod.object({
+  reason: zod.string().min(1).max(reverseAdminPaymentRequestBodyReasonMax),
+});
+
+export const ReverseAdminPaymentRequestResponse = zod.object({
+  ok: zod.boolean(),
+  amountPaidCents: zod.number(),
 });
 
 /**
@@ -2181,6 +2377,7 @@ export const UpdateExcursionVehicleResponse = zod.object({
   payCardEnabled: zod.boolean().optional(),
   payBankTransferEnabled: zod.boolean().optional(),
   payOfficeEnabled: zod.boolean().optional(),
+  payOnBusEnabled: zod.boolean().optional(),
   bankTransferHoursOverride: zod.number().nullish(),
   officeHoursOverride: zod.number().nullish(),
   fullPaymentOnlyDaysBefore: zod.number().nullish(),
@@ -2972,6 +3169,7 @@ export const GetPublicExcursionResponse = zod.object({
       card: zod.boolean(),
       bankTransfer: zod.boolean(),
       office: zod.boolean(),
+      onBus: zod.boolean().optional(),
     })
     .optional(),
   thresholdReached: zod.boolean().optional(),
@@ -3091,6 +3289,7 @@ export const GetAdminSettingsResponse = zod.object({
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
+  excursion_on_bus_payments_enabled: zod.string().nullish(),
   future_card_charge_enabled: zod.string().nullish(),
   future_card_charge_consent_version: zod.string().nullish(),
   card_checkout_hold_minutes: zod.string().nullish(),
@@ -3119,6 +3318,7 @@ export const UpdateAdminSettingsBody = zod.object({
   payment_notes: zod.string().optional(),
   deposit_percentage: zod.string().optional(),
   excursion_card_payments_enabled: zod.string().optional(),
+  excursion_on_bus_payments_enabled: zod.string().optional(),
   future_card_charge_enabled: zod.string().optional(),
   future_card_charge_consent_version: zod.string().optional(),
   card_checkout_hold_minutes: zod.string().optional(),
@@ -3144,6 +3344,7 @@ export const UpdateAdminSettingsResponse = zod.object({
   payment_notes: zod.string().nullish(),
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
+  excursion_on_bus_payments_enabled: zod.string().nullish(),
   future_card_charge_enabled: zod.string().nullish(),
   future_card_charge_consent_version: zod.string().nullish(),
   card_checkout_hold_minutes: zod.string().nullish(),

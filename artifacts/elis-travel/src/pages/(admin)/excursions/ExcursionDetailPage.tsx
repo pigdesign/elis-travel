@@ -45,6 +45,7 @@ import type {
   ExcursionAgePriceRow,
   ExcursionPickupPoint,
   ManualBookingParticipantInput,
+  PickupReportPayment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
@@ -403,7 +404,8 @@ function BookingRow({
       const outcome = await deleteBookingRequest(excursionId, booking.id);
       if (outcome.kind === "needs_confirmation") {
         // Il server non rifiuta: avvisa che ci sono movimenti e aspetta un sì.
-        if (!window.confirm(`${outcome.message}\n\nProcedere comunque?`)) return;
+        if (!window.confirm(`${outcome.message}\n\nProcedere comunque?`))
+          return;
         const forced = await deleteBookingRequest(
           excursionId,
           booking.id,
@@ -1504,30 +1506,77 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
         patient: "Paziente",
         companion: "Accompagnatore",
       };
-      const missingParticipantDetails =
-        (
-          report as typeof report & {
-            missingParticipantDetails: Array<{
-              bookingId: string;
-              bookingCode?: string | null;
-              customerName: string;
-              referente: string;
-              phone?: string | null;
-              seats: number;
-              servizioCasa: boolean;
-              homePickupAddress?: string | null;
-              participantsDetailed: false;
-              warning: string;
-            }>;
-          }
-        ).missingParticipantDetails ?? [];
+      const methodLabel: Record<string, string> = {
+        card: "carta",
+        bank_transfer: "bonifico",
+        office: "in ufficio",
+        on_bus: "sul bus",
+      };
+      const missingParticipantDetails = report.missingParticipantDetails ?? [];
+
+      // L'importo dovuto e della prenotazione, non della singola persona: lo si
+      // stampa una volta sola, altrimenti a bordo si rischia di incassarlo due
+      // volte da compagni di viaggio della stessa prenotazione.
+      const amountAlreadyPrinted = new Set<string>();
+      const pickupCell = (
+        pointLabel: string,
+        servizioCasa: boolean,
+        homePickupAddress: string | null | undefined,
+      ) =>
+        `${escapeHtml(pointLabel)}${
+          servizioCasa
+            ? `<br><strong>Casa:</strong> ${escapeHtml(homePickupAddress ?? "ATTENZIONE: indirizzo mancante")}`
+            : ""
+        }`;
+      // Il "NO" e l'informazione che serve davvero: chi scatta deve accorgersene
+      // a colpo d'occhio, e "non indicato" non va confuso con un consenso dato.
+      const mediaCell = (mediaConsent: boolean | null) =>
+        mediaConsent === true
+          ? `<span class="paid">SÌ</span>`
+          : mediaConsent === false
+            ? `<strong class="nomedia">NO</strong>`
+            : `<span class="hint">non indicato</span>`;
+      const paymentCell = (
+        payment: PickupReportPayment,
+        bookingId: string,
+        bookingSeats: number,
+      ) => {
+        if (payment.state === "paid") {
+          return `<span class="paid">PAGATO</span>`;
+        }
+        if (payment.state === "unknown") {
+          return `<span class="tocollect">DA VERIFICARE</span> <span class="box"></span>`;
+        }
+        const onBus = payment.state === "due_on_bus";
+        const label = onBus ? "DA INCASSARE A BORDO" : "DA SALDARE";
+        const amountCents = onBus ? payment.onBusCents : payment.dueCents;
+        if (amountAlreadyPrinted.has(bookingId)) {
+          return `<span class="tocollect">${label}</span><br><span class="hint">importo già indicato sopra, stessa prenotazione</span>`;
+        }
+        amountAlreadyPrinted.add(bookingId);
+        const seatsNote =
+          bookingSeats > 1
+            ? `<br><span class="hint">intera prenotazione (${bookingSeats} posti)</span>`
+            : "";
+        const methodNote =
+          !onBus && payment.method
+            ? `<br><span class="hint">${escapeHtml(methodLabel[payment.method] ?? payment.method)}</span>`
+            : "";
+        const residualNote =
+          onBus && payment.dueCents > payment.onBusCents
+            ? `<br><span class="hint">residuo totale ${escapeHtml(formatEur(payment.dueCents / 100))}</span>`
+            : "";
+        return `<strong class="tocollect">${label} ${escapeHtml(formatEur(amountCents / 100))}</strong> <span class="box"></span>${seatsNote}${methodNote}${residualNote}`;
+      };
+
       const groupsHtml = report.groups
-        .map(
-          (g) => `
-        <h2>${escapeHtml(g.pickupPointName)}${g.province ? ` (${escapeHtml(g.province)})` : ""}${g.pickupTime ? ` — ore ${escapeHtml(g.pickupTime)}` : ""}</h2>
+        .map((g) => {
+          const pointLabel = `${g.pickupPointName}${g.province ? ` (${g.province})` : ""}${g.pickupTime ? ` — ore ${g.pickupTime}` : ""}`;
+          return `
+        <h2>${escapeHtml(pointLabel)}</h2>
         <p class="meta">${g.totalPeople} person${g.totalPeople === 1 ? "a" : "e"}${g.patients + g.companions > 0 ? ` · Pazienti: ${g.patients} · Accompagnatori: ${g.companions}` : g.children > 0 ? ` · Adulti: ${g.adults} · Bambini: ${g.children}` : ""}</p>
         <table>
-          <thead><tr><th>#</th><th>Nominativo</th><th>Tipo</th><th>Prenotazione</th><th>Referente / Tel.</th><th>Check</th></tr></thead>
+          <thead><tr><th>#</th><th>Nominativo</th><th>Tipo</th><th>Prenotazione</th><th>Referente / Tel.</th><th>Punto di raccolta</th><th>Pagamento</th><th>Foto/video</th><th>Presente</th></tr></thead>
           <tbody>
           ${g.people
             .map(
@@ -1536,26 +1585,58 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
                 <td>${escapeHtml(p.name)}</td>
                 <td>${escapeHtml(typeLabel[p.participantType] ?? p.participantType)}${p.ageRangeLabel ? ` (${escapeHtml(p.ageRangeLabel)})` : ""}</td>
                 <td>${escapeHtml(p.bookingCode ?? "—")}</td>
-                <td>${escapeHtml(p.referente)}${p.phone ? ` · ${escapeHtml(p.phone)}` : ""}${p.servizioCasa ? `<br><strong>Casa:</strong> ${escapeHtml(p.homePickupAddress ?? "ATTENZIONE: indirizzo mancante")}` : ""}</td>
+                <td>${escapeHtml(p.referente)}${p.phone ? `<br><strong class="phone">${escapeHtml(p.phone)}</strong>` : `<br><span class="hint">telefono mancante</span>`}</td>
+                <td>${pickupCell(pointLabel, p.servizioCasa, p.homePickupAddress)}</td>
+                <td class="pay">${paymentCell(p.payment, p.bookingId, p.bookingSeats)}</td>
+                <td class="media">${mediaCell(p.mediaConsent)}</td>
                 <td class="check"><span class="box"></span></td>
               </tr>`,
             )
             .join("")}
           </tbody>
-        </table>`,
-        )
+        </table>`;
+        })
         .join("");
+      const onBusCollections = report.onBusCollections ?? [];
+      const onBusTotalCents = report.onBusTotalCents ?? 0;
+      const onBusHtml = onBusCollections.length
+        ? `<h2 class="collect-title">Saldi da incassare a bordo — totale ${escapeHtml(formatEur(onBusTotalCents / 100))}</h2>
+          <p class="meta">Incassa alla salita e segna l'importo ricevuto: la registrazione in gestionale va poi fatta dal dettaglio della prenotazione. Ogni riga è una prenotazione intera, non una singola persona.</p>
+          <table>
+            <thead><tr><th>Prenotazione</th><th>Referente / Tel.</th><th>Posti</th><th>Da incassare</th><th>Incassato</th></tr></thead>
+            <tbody>${onBusCollections
+              .map(
+                (item) => `<tr>
+                  <td>${escapeHtml(item.bookingCode ?? item.bookingId)}</td>
+                  <td>${escapeHtml(item.referente)}${item.phone ? ` · ${escapeHtml(item.phone)}` : ""}</td>
+                  <td class="center">${item.seats}</td>
+                  <td><strong>${escapeHtml(formatEur(item.amountCents / 100))}</strong></td>
+                  <td class="check"><span class="box"></span></td>
+                </tr>`,
+              )
+              .join("")}</tbody>
+          </table>`
+        : "";
       const missingHtml = missingParticipantDetails.length
         ? `<h2 class="warning-title">Prenotazioni da completare — non omettere dalla gestione operativa</h2>
           <p class="warning">Queste prenotazioni occupano posti ma hanno nominativi mancanti, incompleti o in numero diverso dai posti. Completare e verificare i dati prima della partenza.</p>
           <table>
-            <thead><tr><th>Prenotazione</th><th>Referente / Tel.</th><th>Posti</th><th>Anomalia</th></tr></thead>
+            <thead><tr><th>Prenotazione</th><th>Referente / Tel.</th><th>Posti</th><th>Punto di raccolta</th><th>Pagamento</th><th>Foto/video</th><th>Anomalia</th></tr></thead>
             <tbody>${missingParticipantDetails
               .map(
                 (item) => `<tr>
                   <td>${escapeHtml(item.bookingCode ?? item.bookingId)}</td>
-                  <td>${escapeHtml(item.referente)}${item.phone ? ` · ${escapeHtml(item.phone)}` : ""}${item.servizioCasa ? `<br><strong>Casa:</strong> ${escapeHtml(item.homePickupAddress ?? "ATTENZIONE: indirizzo mancante")}` : ""}</td>
+                  <td>${escapeHtml(item.referente)}${item.phone ? `<br><strong class="phone">${escapeHtml(item.phone)}</strong>` : `<br><span class="hint">telefono mancante</span>`}</td>
                   <td class="center">${item.seats}</td>
+                  <td>${pickupCell(
+                    item.pickupPointName
+                      ? `${item.pickupPointName}${item.pickupProvince ? ` (${item.pickupProvince})` : ""}${item.pickupTime ? ` — ore ${item.pickupTime}` : ""}`
+                      : "Punto di raccolta non indicato",
+                    item.servizioCasa,
+                    item.homePickupAddress,
+                  )}</td>
+                  <td class="pay">${paymentCell(item.payment, item.bookingId, item.seats)}</td>
+                  <td class="media">${mediaCell(item.mediaConsent)}</td>
                   <td>${escapeHtml(item.warning)}</td>
                 </tr>`,
               )
@@ -1572,18 +1653,30 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           h1 { font-size: 20px; margin: 0 0 2px; }
           h2 { font-size: 15px; margin: 22px 0 2px; color: #0b5b60; }
           .meta { color: #5b6b72; font-size: 12px; margin: 0 0 8px; }
+          .legend { color: #14242b; font-size: 11px; margin: 0 0 14px; }
           .warning-title { color: #9a3412; }
+          .collect-title { color: #92400e; }
+          .tocollect { color: #92400e; }
+          .paid { color: #14663f; font-weight: 700; }
+          .phone { white-space: nowrap; }
+          .hint { color: #5b6b72; font-size: 10px; }
           .warning { color: #9a3412; font-size: 12px; font-weight: 600; }
           table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border: 1px solid #cbd5db; padding: 5px 8px; text-align: left; }
+          th, td { border: 1px solid #cbd5db; padding: 5px 8px; text-align: left; vertical-align: top; }
           th { background: #f1f5f7; }
           .center { text-align: center; }
+          .pay { width: 150px; }
+          .nomedia { color: #9a3412; }
+          .media { width: 70px; text-align: center; }
           .check { width: 46px; text-align: center; }
-          .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #14242b; border-radius: 3px; }
+          .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #14242b; border-radius: 3px; vertical-align: middle; }
+          @media print { body { padding: 0; } tr { break-inside: avoid; } }
         </style></head><body>
         <h1>Report raccolta bus — ${escapeHtml(exc?.name ?? "")}</h1>
-        <p class="meta">${escapeHtml(formatDate(report.excursion.date))} · Nominativi dettagliati: ${report.totalPeople} · Prenotazioni da completare: ${missingParticipantDetails.length}</p>
+        <p class="meta">${escapeHtml(formatDate(report.excursion.date))} · Nominativi dettagliati: ${report.totalPeople} · Prenotazioni da completare: ${missingParticipantDetails.length}${onBusCollections.length ? ` · Da incassare a bordo: ${escapeHtml(formatEur(onBusTotalCents / 100))}` : ""}</p>
+        <p class="legend"><span class="paid">PAGATO</span> = niente da incassare · <span class="tocollect">DA INCASSARE A BORDO</span> = si paga alla salita · <span class="tocollect">DA SALDARE</span> = deve ancora pagare con il metodo indicato · gli importi sono riferiti all'intera prenotazione e vanno chiesti una volta sola al referente.<br><strong>Foto/video</strong>: <span class="paid">SÌ</span> = si possono pubblicare foto e video · <strong class="nomedia">NO</strong> = consenso negato, non riprendere queste persone · <span class="hint">non indicato</span> = consenso mai raccolto (prenotazione inserita dall'ufficio), chiedere sul posto.</p>
         ${groupsHtml || "<p>Nessun partecipante con punto di raccolta registrato.</p>"}
+        ${onBusHtml}
         ${missingHtml}
         </body></html>`);
       win.document.close();
@@ -1655,9 +1748,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
         `/api/admin/excursions/${excursionId}${params}`,
         { method: "DELETE", credentials: "include" },
       );
-      const body = response.ok
-        ? null
-        : await response.json().catch(() => null);
+      const body = response.ok ? null : await response.json().catch(() => null);
       return { ok: response.ok, body };
     };
 
@@ -1881,7 +1972,8 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
             continue;
           }
         }
-        if (outcome.kind === "error") failed.push(`${name}: ${outcome.message}`);
+        if (outcome.kind === "error")
+          failed.push(`${name}: ${outcome.message}`);
       }
       if (failed.length > 0) {
         alert(`Non eliminate:\n\n${failed.join("\n")}`);
@@ -2436,7 +2528,9 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
               <div className="flex items-center justify-between gap-3 border-b border-border/50 bg-amber-50 px-4 py-2.5">
                 <span className="text-xs font-medium text-amber-900">
                   {selectedBookingIds.size} prenotazion
-                  {selectedBookingIds.size === 1 ? "e selezionata" : "i selezionate"}
+                  {selectedBookingIds.size === 1
+                    ? "e selezionata"
+                    : "i selezionate"}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -2747,6 +2841,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           isRident={exc.category === "rident"}
           pickupPoints={excursionPickupPoints ?? []}
           ageRanges={excursionAgeRanges ?? []}
+          payOnBusEnabled={Boolean(exc.payOnBusEnabled)}
           onClose={() => setDetailsBookingId(null)}
         />
       )}

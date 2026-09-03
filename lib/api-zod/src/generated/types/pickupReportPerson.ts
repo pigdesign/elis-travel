@@ -5,15 +5,21 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PickupReportPayment } from "./pickupReportPayment";
 
 export interface PickupReportPerson {
   name: string;
   participantType: string;
   ageRangeLabel?: string | null;
+  bookingId: string;
   bookingCode?: string | null;
+  bookingSeats: number;
   referente: string;
   phone?: string | null;
   paymentStatus: string;
+  payment: PickupReportPayment;
+  mediaConsent: boolean | null;
+  onBusPaymentDue?: boolean;
   servizioCasa: boolean;
   homePickupAddress: string | null;
 }

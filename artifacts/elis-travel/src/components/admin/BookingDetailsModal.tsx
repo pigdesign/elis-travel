@@ -34,6 +34,7 @@ import type {
   ExcursionPickupPoint,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { BookingAdminControls } from "./BookingAdminControls";
 
 function formatEurCents(cents: number) {
   return (cents / 100).toLocaleString("it-IT", {
@@ -93,6 +94,7 @@ const METHOD_LABELS: Record<string, string> = {
   card: "Carta",
   bank_transfer: "Bonifico",
   office: "In ufficio",
+  on_bus: "Sul bus",
 };
 
 const CANCELLATION_SOURCE_LABELS: Record<string, string> = {
@@ -157,6 +159,7 @@ export function BookingDetailsModal({
   isRident,
   pickupPoints,
   ageRanges,
+  payOnBusEnabled,
   onClose,
 }: {
   bookingId: string;
@@ -165,6 +168,7 @@ export function BookingDetailsModal({
   isRident: boolean;
   pickupPoints: ExcursionPickupPoint[];
   ageRanges: ExcursionAgePriceRow[];
+  payOnBusEnabled: boolean;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -198,6 +202,10 @@ export function BookingDetailsModal({
   const [participantCommonPickupId, setParticipantCommonPickupId] =
     useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  // Le operazioni del pannello di gestione manuale vivono in un componente
+  // separato ma condividono lo stesso blocco: due scritture contemporanee
+  // sulla stessa prenotazione si sovrascriverebbero a vicenda.
+  const [isEditingManually, setIsEditingManually] = useState(false);
 
   useEffect(() => {
     setAdminCancellationReason("");
@@ -213,6 +221,7 @@ export function BookingDetailsModal({
     setParticipantDrafts([]);
     setParticipantCommonPickupId("");
     setActionError(null);
+    setIsEditingManually(false);
   }, [bookingId]);
 
   const invalidate = () => {
@@ -339,7 +348,8 @@ export function BookingDetailsModal({
     isResolvingCancellation ||
     isCompletingRefund ||
     isCompletingCleanup ||
-    isReplacingParticipants;
+    isReplacingParticipants ||
+    isEditingManually;
   const hasBalanceRequest = (data?.paymentRequests ?? []).some(
     (r) => r.type === "balance",
   );
@@ -767,6 +777,18 @@ export function BookingDetailsModal({
                     )}
                 </div>
               </div>
+
+              {data && (
+                <BookingAdminControls
+                  bookingId={bookingId}
+                  data={data}
+                  payOnBusEnabled={payOnBusEnabled}
+                  busy={busy}
+                  onBusy={setIsEditingManually}
+                  onError={onActionError}
+                  onDone={invalidate}
+                />
+              )}
 
               {booking.cancellationRequestStatus === "pending" && (
                 <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -1513,9 +1535,10 @@ export function BookingDetailsModal({
                 </div>
                 {data.paymentRequests.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    Nessuna richiesta registrata (prenotazione precedente al
-                    nuovo sistema): usa i pulsanti di stato nella tabella
-                    prenotazioni.
+                    Nessuna richiesta registrata: è una prenotazione precedente
+                    al nuovo sistema. Per metterla in pari usa
+                    <strong> Registra un incasso</strong> nel pannello di
+                    gestione manuale qui sopra.
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -1568,7 +1591,8 @@ export function BookingDetailsModal({
                           {(r.status === "pending" || r.status === "expired") &&
                             !booking.cancelledAt &&
                             (r.method === "bank_transfer" ||
-                              r.method === "office") && (
+                              r.method === "office" ||
+                              r.method === "on_bus") && (
                               <div className="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:min-w-72">
                                 <label
                                   htmlFor={`payment-reference-${r.id}`}
@@ -1576,7 +1600,9 @@ export function BookingDetailsModal({
                                 >
                                   {r.method === "bank_transfer"
                                     ? "CRO / TRN del bonifico"
-                                    : "Riferimento ricevuta / cassa"}
+                                    : r.method === "on_bus"
+                                      ? "Riferimento incasso a bordo"
+                                      : "Riferimento ricevuta / cassa"}
                                 </label>
                                 <div className="flex flex-col gap-2 sm:flex-row">
                                   <input

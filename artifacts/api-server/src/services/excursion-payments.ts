@@ -96,7 +96,7 @@ export function isSuccessfulCardPaymentWithinWindow(input: {
 
 // Applica il nuovo stato alla prenotazione e allinea i contatori della gita
 // (depositsCount/balancesCount contano le PERSONE, come nel flusso legacy).
-async function setBookingStatusWithCounters(
+export async function setBookingStatusWithCounters(
   tx: Tx,
   booking: typeof excursionBookingsTable.$inferSelect,
   newStatus: string,
@@ -206,7 +206,7 @@ export class ManualPaymentSeatsUnavailableError extends Error {
                   : code === "manual_reference_conflict"
                     ? "Il pagamento risulta già registrato con un riferimento differente."
                     : code === "manual_method_not_allowed"
-                      ? "Solo bonifici e pagamenti in ufficio possono essere confermati manualmente."
+                      ? "Solo bonifici, pagamenti in ufficio e incassi a bordo possono essere confermati manualmente."
                       : "La richiesta non è più pagabile.",
     );
     this.name = "ManualPaymentSeatsUnavailableError";
@@ -229,7 +229,12 @@ export function decideManualPaymentReplay(input: {
   storedReference: string | null;
   requestedReference: string;
 }): "apply" | "already_applied" | "reference_conflict" | "method_not_allowed" {
-  if (!input.method || !["bank_transfer", "office"].includes(input.method)) {
+  // L'incasso a bordo e per definizione fuori piattaforma: come bonifico e
+  // ufficio entra in contabilita solo per mano dell'amministrazione.
+  if (
+    !input.method ||
+    !["bank_transfer", "office", "on_bus"].includes(input.method)
+  ) {
     return "method_not_allowed";
   }
   if (input.status !== "paid") return "apply";

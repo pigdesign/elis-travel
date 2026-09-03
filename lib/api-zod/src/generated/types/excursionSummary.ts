@@ -66,6 +66,7 @@ export interface ExcursionSummary {
   payCardEnabled?: boolean;
   payBankTransferEnabled?: boolean;
   payOfficeEnabled?: boolean;
+  payOnBusEnabled?: boolean;
   bankTransferHoursOverride?: number | null;
   officeHoursOverride?: number | null;
   fullPaymentOnlyDaysBefore?: number | null;

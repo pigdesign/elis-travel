@@ -150,14 +150,6 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
     return { label: `${remaining} posti disponibili`, available: true };
   })();
 
-  const minThresholdLabel = (() => {
-    if (!excursion) return null;
-    const min = excursion.minThreshold ?? 0;
-    const adherents = excursion.adherentsCount ?? 0;
-    if (min <= 0 || adherents >= min) return null;
-    return `Servono almeno ${min} partecipanti per confermare la gita.`;
-  })();
-
   const scheduleDays = excursion?.schedule ?? [];
   const includedItems = excursion?.included?.split("\n").map((item) => item.trim()).filter(Boolean) ?? [];
   const excludedItems = excursion?.excluded?.split("\n").map((item) => item.trim()).filter(Boolean) ?? [];
@@ -231,12 +223,6 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
           </div>
         </div>
       </div>
-
-      {minThresholdLabel && (
-        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-          {minThresholdLabel}
-        </div>
-      )}
 
       <a
         href="#prenota"
@@ -323,7 +309,7 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
                 <div className="max-w-3xl pb-24 md:pb-28 lg:pb-36">
                   <Link
                     href="/gite"
-                    className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white"
+                    className="mb-6 flex w-fit items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white"
                     data-testid="link-back-to-excursions"
                   >
                     <ArrowLeft className="h-4 w-4" />

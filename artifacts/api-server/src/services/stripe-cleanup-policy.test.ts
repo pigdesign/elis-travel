@@ -37,6 +37,9 @@ test("il passaggio a un metodo offline pianifica tutti i PI prima del detach", (
   assert.deepEqual(planOfflineMethodCardCleanup("office", attempts), [
     { attemptId: "attempt-1", paymentIntentId: "pi_1" },
   ]);
+  assert.deepEqual(planOfflineMethodCardCleanup("on_bus", attempts), [
+    { attemptId: "attempt-1", paymentIntentId: "pi_1" },
+  ]);
   assert.deepEqual(planOfflineMethodCardCleanup("card", attempts), []);
 });
 

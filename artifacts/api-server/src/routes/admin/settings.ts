@@ -16,6 +16,9 @@ const SETTING_KEYS = [
   "payment_notes",
   "deposit_percentage",
   "excursion_card_payments_enabled",
+  // Interruttore generale del saldo a bordo: "false" lo toglie ovunque, il
+  // gate ordinario resta il flag della singola gita.
+  "excursion_on_bus_payments_enabled",
   // Addebito futuro carta: attivo solo con una versione consenso esplicita.
   "future_card_charge_enabled",
   "future_card_charge_consent_version",

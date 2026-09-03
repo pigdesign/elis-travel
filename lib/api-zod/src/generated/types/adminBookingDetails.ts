@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminBookingAction } from "./adminBookingAction";
 import type { AdminBookingConsent } from "./adminBookingConsent";
 import type { AdminBookingDetailsTermsReacceptance } from "./adminBookingDetailsTermsReacceptance";
 import type { AdminBookingEconomicSummary } from "./adminBookingEconomicSummary";
@@ -28,6 +29,9 @@ export interface AdminBookingDetails {
   cancellationCases: AdminCancellationCase[];
   refunds: AdminPaymentRefund[];
   cleanupJobs: AdminStripeCleanupJob[];
+  /** Diario delle correzioni manuali dell'amministrazione, dalla più recente. Il registro dei pagamenti dice quanto è stato incassato, questo dice chi ha deciso e perché.
+   */
+  adminActions: AdminBookingAction[];
   economicSummary: AdminBookingEconomicSummary;
   participantsDetailed: boolean;
 }

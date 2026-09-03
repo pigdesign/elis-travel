@@ -216,4 +216,24 @@ test("la conferma manuale è limitata a offline e il replay richiede la stessa r
     }),
     "reference_conflict",
   );
+  // L'incasso a bordo entra in contabilita per la stessa strada di bonifico e
+  // ufficio: solo per mano dell'amministrazione e con un riferimento proprio.
+  assert.equal(
+    decideManualPaymentReplay({
+      method: "on_bus",
+      status: "pending",
+      storedReference: null,
+      requestedReference: "cassa-bus-1",
+    }),
+    "apply",
+  );
+  assert.equal(
+    decideManualPaymentReplay({
+      method: "on_bus",
+      status: "paid",
+      storedReference: "cassa-bus-1",
+      requestedReference: "cassa-bus-1",
+    }),
+    "already_applied",
+  );
 });

@@ -8,7 +8,10 @@ import {
 import { and, eq, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { getAdminNotificationEmails, type EmailMessage } from "./email.service";
-import { getPaymentSettings } from "./excursion-pricing";
+import {
+  getPaymentSettings,
+  isOnBusPaymentAvailable,
+} from "./excursion-pricing";
 import { enqueueEmail } from "./email-outbox";
 import {
   buildBookingPortalUrl,
@@ -828,7 +831,9 @@ async function buildNewBookingAdminEmail(
         ? "In ufficio"
         : booking.paymentMethod === "bank_transfer"
           ? "Bonifico"
-          : "Nessun pagamento richiesto";
+          : booking.paymentMethod === "on_bus"
+            ? "Sul bus"
+            : "Nessun pagamento richiesto";
   const paymentLabel =
     (booking.totalAmountCents ?? 0) === 0
       ? "gratuita"
@@ -1190,27 +1195,38 @@ async function buildBalanceReminderEmail(
   const portalUrl = buildBookingPortalUrl(access.token);
   const deadline = request.deadline ? formatDateTimeIt(request.deadline) : null;
   const tolerance = graceLine(request.deadline, request.graceUntil);
-  const intro =
-    phase === "before_due"
+  // Chi salda a bordo non ha una scadenza da rincorrere: il promemoria serve a
+  // ricordargli l'importo esatto da portare, non a sollecitare un ritardo.
+  const payingOnBus = request.method === "on_bus";
+  const intro = payingOnBus
+    ? "Ti ricordiamo che salderai direttamente sul bus il giorno della partenza."
+    : phase === "before_due"
       ? "Ti ricordiamo che il saldo della tua prenotazione è in scadenza."
       : phase === "due"
         ? "Il saldo della tua prenotazione è arrivato a scadenza."
         : "Il periodo di tolleranza sta per terminare: completa il saldo o contatta subito l'agenzia.";
-  const subject = `Promemoria saldo — ${excursion.name}`;
+  const amountLine = payingOnBus
+    ? `Da portare in contanti: ${euro(residual)}`
+    : `Importo residuo: ${euro(residual)}`;
+  const subject = payingOnBus
+    ? `Saldo a bordo — ${excursion.name}`
+    : `Promemoria saldo — ${excursion.name}`;
   const text = [
     `Ciao ${booking.customerName},`,
     "",
     intro,
-    `Importo residuo: ${euro(residual)}`,
-    ...(deadline ? [`Scadenza: ${deadline}`] : []),
-    ...(tolerance ? [tolerance] : []),
-    `Paga o scegli un altro metodo: ${portalUrl}`,
+    amountLine,
+    ...(payingOnBus || !deadline ? [] : [`Scadenza: ${deadline}`]),
+    ...(payingOnBus || !tolerance ? [] : [tolerance]),
+    payingOnBus
+      ? `Se preferisci pagare prima della partenza, puoi cambiare metodo qui: ${portalUrl}`
+      : `Paga o scegli un altro metodo: ${portalUrl}`,
   ].join("\n");
   const html = wrap(
-    "Promemoria saldo",
+    payingOnBus ? "Saldo a bordo" : "Promemoria saldo",
     `<p>Ciao ${escapeHtml(booking.customerName)},<br/>${escapeHtml(intro)}</p>
-     <p>Importo residuo: <strong>${escapeHtml(euro(residual))}</strong>${deadline ? `<br/>Scadenza: <strong>${escapeHtml(deadline)}</strong>` : ""}${tolerance ? `<br/>${escapeHtml(tolerance)}` : ""}</p>
-     <p style="margin:24px 0"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 20px;border-radius:999px;background:#0b5b60;color:#fff;text-decoration:none;font-weight:700">Gestisci il saldo</a></p>`,
+     <p>${escapeHtml(payingOnBus ? "Da portare in contanti" : "Importo residuo")}: <strong>${escapeHtml(euro(residual))}</strong>${!payingOnBus && deadline ? `<br/>Scadenza: <strong>${escapeHtml(deadline)}</strong>` : ""}${!payingOnBus && tolerance ? `<br/>${escapeHtml(tolerance)}` : ""}</p>
+     <p style="margin:24px 0"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 20px;border-radius:999px;background:#0b5b60;color:#fff;text-decoration:none;font-weight:700">${escapeHtml(payingOnBus ? "Cambia metodo o paga prima" : "Gestisci il saldo")}</a></p>`,
   );
   return { to: booking.email!, subject, text, html, replyTo: agency().email };
 }
@@ -1355,6 +1371,12 @@ async function buildBalanceRequestEmail(
     excursion.payOfficeEnabled && settings.officeAddress
       ? `<p>Oppure paga in ufficio: ${escapeHtml(settings.officeAddress)}${settings.officeOpeningHours ? ` (${escapeHtml(settings.officeOpeningHours)})` : ""}.</p>`
       : "";
+  // Il saldo a bordo va annunciato con l'importo esatto: chi sceglie questa
+  // strada deve presentarsi alla partenza con la somma gia pronta.
+  const onBusAvailable = isOnBusPaymentAvailable(excursion, settings, "balance");
+  const onBusBlock = onBusAvailable
+    ? `<p>Oppure salda direttamente <strong>sul bus</strong> il giorno della partenza: porta ${escapeHtml(euro(residual))} in contanti e indicalo dal portale, così sappiamo che ti aspettiamo.</p>`
+    : "";
 
   const subject = `La gita è confermata — saldo richiesto: ${excursion.name}`;
   const text = [
@@ -1375,6 +1397,11 @@ async function buildBalanceRequestEmail(
     ...(excursion.payOfficeEnabled && settings.officeAddress
       ? [`Oppure in ufficio: ${settings.officeAddress}`]
       : []),
+    ...(onBusAvailable
+      ? [
+          `Oppure sul bus il giorno della partenza: porta ${euro(residual)} in contanti e segnalalo dal portale.`,
+        ]
+      : []),
   ].join("\n");
   const html = wrap(
     "Gita confermata — saldo richiesto",
@@ -1383,7 +1410,8 @@ async function buildBalanceRequestEmail(
      <p style="margin:24px 0"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 20px;border-radius:999px;background:#0b5b60;color:#fff;text-decoration:none;font-weight:700">Paga o gestisci il saldo</a></p>
      ${summary.html.join("")}
      ${bankBlock}
-     ${officeBlock}`,
+     ${officeBlock}
+     ${onBusBlock}`,
   );
   return { to: booking.email!, subject, text, html, replyTo: agency().email };
 }

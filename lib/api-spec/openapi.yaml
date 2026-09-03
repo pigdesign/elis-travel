@@ -1197,6 +1197,238 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/profile:
+    patch:
+      operationId: updateAdminBookingProfile
+      tags: [excursions]
+      summary: Corregge i dati del referente e il totale della prenotazione
+      description: >-
+        Anagrafica e totale sono modificabili anche a pagamento avvenuto: un
+        recapito sbagliato va corretto proprio quando la gita è vicina. Il
+        totale non può scendere sotto l'importo già incassato, e cambiandolo le
+        richieste ancora aperte vengono riallineate al nuovo residuo.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBookingProfileInput"
+      responses:
+        "200":
+          description: Prenotazione aggiornata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Dati del referente o totale non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Prenotazione annullata o totale sotto l'incassato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/payment-requests/{requestId}:
+    patch:
+      operationId: updateAdminPaymentRequest
+      tags: [excursions]
+      summary: Corregge metodo, importo o scadenza di una richiesta ancora aperta
+      description: >-
+        È il percorso con cui l'ufficio decide al posto del cliente che non usa
+        il portale. La carta resta esclusa: autorizzare un addebito richiede il
+        consenso del titolare. Il saldo a bordo resta ammesso solo per le
+        richieste di tipo balance su gite che lo abilitano, e sposta scadenza e
+        tolleranza alla partenza. Una richiesta scaduta torna esigibile.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPaymentRequestPatchInput"
+      responses:
+        "200":
+          description: Richiesta aggiornata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  unchanged:
+                    type: boolean
+                  reopened:
+                    type: boolean
+                required: [ok, unchanged, reopened]
+        "400":
+          description: Metodo, importo o scadenza non ammessi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Richiesta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Richiesta già chiusa, prenotazione annullata o gita conclusa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/bookings/{bookingId}/payments:
+    post:
+      operationId: recordAdminBookingPayment
+      tags: [excursions]
+      summary: Registra un incasso arrivato in ufficio
+      description: >-
+        Copre i casi che "segna pagato" non raggiunge: prenotazioni storiche
+        senza richieste di pagamento e versamenti che non coincidono con
+        l'importo richiesto. Se una richiesta aperta ha esattamente
+        quell'importo viene saldata quella, altrimenti nasce una richiesta già
+        incassata. Dopo il movimento le richieste ancora aperte vengono
+        riallineate al residuo.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBookingPaymentInput"
+      responses:
+        "201":
+          description: Incasso registrato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  paymentRequestId:
+                    type: string
+                    format: uuid
+                  amountPaidCents:
+                    type: integer
+                required: [ok, paymentRequestId, amountPaidCents]
+        "400":
+          description: Importo, metodo o riferimento non validi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prenotazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Prenotazione annullata, gita chiusa o totale mancante
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/payment-requests/{requestId}/reverse:
+    post:
+      operationId: reverseAdminPaymentRequest
+      tags: [excursions]
+      summary: Storna un incasso registrato a mano per errore
+      description: >-
+        Vale solo per gli incassi registrati dall'amministrazione (bonifico,
+        ufficio, a bordo). Un incasso su carta non si storna: quel denaro è
+        uscito davvero dal conto del cliente e va restituito dal flusso
+        rimborsi. Il motivo è obbligatorio e resta nel diario.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+              required: [reason]
+      responses:
+        "200":
+          description: Incasso stornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  amountPaidCents:
+                    type: integer
+                required: [ok, amountPaidCents]
+        "400":
+          description: Motivo mancante
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Richiesta non trovata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Richiesta non incassata o incasso su carta da rimborsare
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/bookings/{bookingId}/participants:
     put:
       operationId: replaceAdminBookingParticipants
@@ -2640,6 +2872,8 @@ components:
           type: boolean
         payOfficeEnabled:
           type: boolean
+        payOnBusEnabled:
+          type: boolean
         bankTransferHoursOverride:
           type: integer
           nullable: true
@@ -3427,6 +3661,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdminStripeCleanupJob"
+        adminActions:
+          type: array
+          description: >
+            Diario delle correzioni manuali dell'amministrazione, dalla più
+            recente. Il registro dei pagamenti dice quanto è stato incassato,
+            questo dice chi ha deciso e perché.
+          items:
+            $ref: "#/components/schemas/AdminBookingAction"
         economicSummary:
           $ref: "#/components/schemas/AdminBookingEconomicSummary"
         participantsDetailed:
@@ -3441,9 +3683,127 @@ components:
           cancellationCases,
           refunds,
           cleanupJobs,
+          adminActions,
           economicSummary,
           participantsDetailed,
         ]
+    AdminBookingProfileInput:
+      type: object
+      description: >
+        Tutti i campi sono facoltativi: quelli non inviati restano invariati.
+      properties:
+        customerName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        email:
+          type: string
+          nullable: true
+          maxLength: 200
+        phone:
+          type: string
+          nullable: true
+          maxLength: 40
+        customerNotificationsEnabled:
+          type: boolean
+        servizioCasa:
+          type: boolean
+        homePickupAddress:
+          type: string
+          nullable: true
+          maxLength: 500
+        totalAmountCents:
+          type: integer
+          minimum: 0
+          description: Nuovo totale della prenotazione, mai inferiore all'incassato
+        reason:
+          type: string
+          maxLength: 500
+    AdminPaymentRequestPatchInput:
+      type: object
+      description: Almeno uno tra metodo, importo e scadenza deve essere presente.
+      properties:
+        method:
+          type: string
+          enum: [bank_transfer, office, on_bus]
+        amountCents:
+          type: integer
+          minimum: 1
+        deadline:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          maxLength: 500
+          description: Obbligatorio quando cambia l'importo
+    AdminBookingPaymentInput:
+      type: object
+      properties:
+        amountCents:
+          type: integer
+          minimum: 1
+        method:
+          type: string
+          enum: [bank_transfer, office, on_bus]
+        transactionReference:
+          type: string
+          minLength: 1
+          maxLength: 500
+        paidAt:
+          type: string
+          format: date-time
+          description: Quando è stato incassato davvero; se assente vale adesso
+        reason:
+          type: string
+          maxLength: 500
+      required: [amountCents, method, transactionReference]
+    AdminBookingAction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        paymentRequestId:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+          description: update_booking | update_payment_request | record_payment | reverse_payment
+        reason:
+          type: string
+          nullable: true
+        details:
+          type: object
+          additionalProperties: true
+        adminName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, action, createdAt]
+    PickupReportPayment:
+      type: object
+      description: Stato economico della prenotazione a cui la persona appartiene
+      properties:
+        state:
+          type: string
+          enum: [paid, due_on_bus, due, unknown]
+        # Residuo dell'intera prenotazione, non della singola persona
+        dueCents:
+          type: integer
+        onBusCents:
+          type: integer
+        totalCents:
+          type: integer
+          nullable: true
+        paidCents:
+          type: integer
+        method:
+          type: string
+          nullable: true
+      required: [state, dueCents, onBusCents, totalCents, paidCents, method]
     PickupReportPerson:
       type: object
       properties:
@@ -3454,9 +3814,13 @@ components:
         ageRangeLabel:
           type: string
           nullable: true
+        bookingId:
+          type: string
         bookingCode:
           type: string
           nullable: true
+        bookingSeats:
+          type: integer
         referente:
           type: string
         phone:
@@ -3464,6 +3828,16 @@ components:
           nullable: true
         paymentStatus:
           type: string
+        payment:
+          $ref: "#/components/schemas/PickupReportPayment"
+        # Consenso foto/video della prenotazione: null quando non e mai stato
+        # chiesto (prenotazioni inserite dall'amministrazione)
+        mediaConsent:
+          type: boolean
+          nullable: true
+        # true quando il saldo di questa prenotazione si incassa alla partenza
+        onBusPaymentDue:
+          type: boolean
         servizioCasa:
           type: boolean
         homePickupAddress:
@@ -3473,8 +3847,12 @@ components:
         [
           name,
           participantType,
+          bookingId,
+          bookingSeats,
           referente,
           paymentStatus,
+          payment,
+          mediaConsent,
           servizioCasa,
           homePickupAddress,
         ]
@@ -3539,7 +3917,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PickupReportMissingParticipantDetails"
+        onBusCollections:
+          type: array
+          items:
+            $ref: "#/components/schemas/PickupReportOnBusCollection"
+        onBusTotalCents:
+          type: integer
       required: [excursion, groups, totalPeople, missingParticipantDetails]
+    PickupReportOnBusCollection:
+      type: object
+      properties:
+        bookingId:
+          type: string
+        bookingCode:
+          type: string
+          nullable: true
+        referente:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        seats:
+          type: integer
+        amountCents:
+          type: integer
+      required: [bookingId, referente, seats, amountCents]
     PickupReportMissingParticipantDetails:
       type: object
       properties:
@@ -3563,6 +3965,23 @@ components:
         homePickupAddress:
           type: string
           nullable: true
+        pickupPointId:
+          type: string
+          nullable: true
+        pickupPointName:
+          type: string
+          nullable: true
+        pickupProvince:
+          type: string
+          nullable: true
+        pickupTime:
+          type: string
+          nullable: true
+        payment:
+          $ref: "#/components/schemas/PickupReportPayment"
+        mediaConsent:
+          type: boolean
+          nullable: true
         participantsDetailed:
           type: boolean
           enum: [false]
@@ -3576,6 +3995,10 @@ components:
           seats,
           servizioCasa,
           homePickupAddress,
+          pickupPointName,
+          pickupTime,
+          payment,
+          mediaConsent,
           participantsDetailed,
           warning,
         ]
@@ -3986,6 +4409,8 @@ components:
         payBankTransferEnabled:
           type: boolean
         payOfficeEnabled:
+          type: boolean
+        payOnBusEnabled:
           type: boolean
         bankTransferHoursOverride:
           type: integer
@@ -4841,6 +5266,9 @@ components:
           type: boolean
         office:
           type: boolean
+        # Saldo incassato a bordo: vale soltanto per una richiesta di tipo balance
+        onBus:
+          type: boolean
       required: [card, bankTransfer, office]
     QuoteParticipantInput:
       type: object
@@ -5249,6 +5677,9 @@ components:
         excursion_card_payments_enabled:
           type: string
           nullable: true
+        excursion_on_bus_payments_enabled:
+          type: string
+          nullable: true
         future_card_charge_enabled:
           type: string
           nullable: true
@@ -5311,6 +5742,8 @@ components:
         deposit_percentage:
           type: string
         excursion_card_payments_enabled:
+          type: string
+        excursion_on_bus_payments_enabled:
           type: string
         future_card_charge_enabled:
           type: string

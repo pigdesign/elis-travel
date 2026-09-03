@@ -143,6 +143,7 @@ export const BOOKING_FLOW_EXPECTED_COLUMNS: ExpectedColumn[] = [
     ["pay_card_enabled", "bool", false],
     ["pay_bank_transfer_enabled", "bool", false],
     ["pay_office_enabled", "bool", false],
+    ["pay_on_bus_enabled", "bool", false],
     ["bank_transfer_hours_override", "int4", true],
     ["office_hours_override", "int4", true],
     ["full_payment_only_days_before", "int4", true],

@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PublicPaymentMethods {
-  card: boolean;
-  bankTransfer: boolean;
-  office: boolean;
-  onBus?: boolean;
-}
+export type UpdateAdminPaymentRequest200 = {
+  ok: boolean;
+  unchanged: boolean;
+  reopened: boolean;
+};
