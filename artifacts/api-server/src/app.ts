@@ -190,6 +190,13 @@ app.use("/ftp-image", ftpImageProxy);
 app.use("/api", globalLimiter, router);
 
 if (process.env.NODE_ENV === "production") {
+  const manualDist = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "elis-travel-docs",
+    "dist",
+  );
   const frontendDist = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     "..",
@@ -198,6 +205,13 @@ if (process.env.NODE_ENV === "production") {
     "dist",
     "public",
   );
+  // Il manuale Starlight viene compilato nello stesso monorepo e pubblicato
+  // sotto /manuale. Questa route deve precedere la SPA, altrimenti il fallback
+  // di ElisTravel restituirebbe index.html anche per le pagine della guida.
+  app.use("/manuale", express.static(manualDist));
+  app.use("/manuale", (_req, res) => {
+    res.status(404).sendFile(path.join(manualDist, "404.html"));
+  });
   app.use(express.static(frontendDist));
   app.use((req, res, next) => {
     if (req.path.startsWith("/api")) return next();

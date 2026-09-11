@@ -2,6 +2,7 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 
 export default defineConfig({
+  base: process.env.DOCS_BASE_PATH || "/manuale",
   integrations: [
     starlight({
       title: "ElisTravel · Manuale segreteria",
