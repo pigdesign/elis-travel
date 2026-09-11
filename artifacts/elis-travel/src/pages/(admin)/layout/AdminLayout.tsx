@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus, Settings, KeyRound, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, LogOut, Loader2, Mountain, UserRound, Bus, Settings, KeyRound, AlertTriangle, BookOpen, ExternalLink } from "lucide-react";
 import logoImg from "@assets/logo_sito_bianco_ELISTRAVEL_def_1776683532402.webp";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,6 +50,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { state, logout } = useAuth();
   const { data: leads = [] } = useListLeads();
   const newLeadsCount = leads.filter((l) => l.status === "new").length;
+  const manualUrl =
+    import.meta.env.VITE_MANUAL_URL ||
+    (import.meta.env.DEV ? "http://localhost:4321/" : "/manuale/");
 
   useEffect(() => {
     if (state.status === "unauthenticated") {
@@ -132,6 +135,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-3 border-t border-white/10 space-y-0.5">
+          <a
+            href={manualUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-white/75 hover:bg-white/10 hover:text-white transition-all font-medium text-sm"
+            data-testid="link-admin-manual"
+          >
+            <BookOpen className="w-4.5 h-4.5" />
+            <span className="flex-1 text-[13px]">Manuale</span>
+            <ExternalLink className="w-3.5 h-3.5 text-white/45" />
+          </a>
           {state.user && (
             <div className="px-3.5 py-2 text-white/40 text-xs truncate">
               {state.user.name}
@@ -149,14 +163,26 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col min-w-0">
         <SessionExpiredBanner />
-        <header className="h-16 bg-white border-b border-border flex items-center px-8 shadow-sm shrink-0 md:hidden justify-between">
+        <header className="h-16 bg-white border-b border-border flex items-center px-4 shadow-sm shrink-0 md:hidden justify-between">
           <div className="font-bold font-serif text-primary text-xl">Elis Admin</div>
-          <button
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-foreground text-sm"
-          >
-            Esci
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href={manualUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 text-sm font-medium"
+              data-testid="link-admin-manual-mobile"
+            >
+              <BookOpen className="w-4 h-4" />
+              Manuale
+            </a>
+            <button
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-foreground text-sm"
+            >
+              Esci
+            </button>
+          </div>
         </header>
         <main className="flex-1 p-6 md:p-8 overflow-auto">{children}</main>
       </div>
