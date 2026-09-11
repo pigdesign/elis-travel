@@ -25,6 +25,8 @@ Una gita può anche essere **Annullata**. Dopo la conferma o conclusione, alcune
 
 Puoi consultare prenotazioni e partecipanti, aggiungere una prenotazione, assegnare il mezzo, generare il report dei punti di raccolta, richiedere saldi, gestire scadenze e cambiare lo stato operativo della gita.
 
+Nel dettaglio prenotazione sono disponibili anche controlli amministrativi per correggere referente, recapiti, totale e dati di ritiro. Ogni modifica viene registrata nello storico. Il totale non può essere ridotto sotto la somma già incassata.
+
 :::caution
 La capienza e la soglia minima hanno significati diversi: la prima limita i posti vendibili, la seconda aiuta a decidere se confermare la partenza.
 :::

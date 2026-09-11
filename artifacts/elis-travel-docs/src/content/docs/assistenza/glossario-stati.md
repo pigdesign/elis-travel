@@ -42,6 +42,14 @@ description: Significato degli stati usati per richieste, gite e pagamenti.
 | **Rimborsato** | Somma prevista restituita integralmente |
 | **Rimborso parziale** | È stata restituita solo una parte |
 
+## Azioni amministrative
+
+| Azione | Significato |
+| --- | --- |
+| **Richiesta di pagamento corretta** | Metodo, importo o scadenza della richiesta sono stati aggiornati |
+| **Incasso registrato** | La segreteria ha inserito un pagamento manuale verificato |
+| **Incasso stornato** | Una registrazione manuale errata è stata neutralizzata, restando nello storico |
+
 :::note
 “Carta salvata” e “Saldato” non sono sinonimi. Per stabilire se una prenotazione è pagata, consulta sempre stato e storico completo.
 :::
