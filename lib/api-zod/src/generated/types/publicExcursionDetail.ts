@@ -41,6 +41,9 @@ export interface PublicExcursionDetail {
   companionPrice?: number | null;
   depositConfig?: PublicDepositConfig;
   paymentMethods?: PublicPaymentMethods;
+  /** Se il trasporto da casa può essere richiesto per questa gita. Combina l'interruttore globale `home_pickup_enabled` con la presenza di punti di raccolta attivi. Deciso dal server, che è anche quello che rifiuta la richiesta: il modulo non ricalcola la regola per conto suo.
+   */
+  homePickupAvailable?: boolean;
   thresholdReached?: boolean;
   spotsLeft?: number | null;
   bookingClosed?: boolean;

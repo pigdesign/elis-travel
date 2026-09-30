@@ -568,6 +568,12 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
             : settings.depositPercentage,
       },
       paymentMethods: methods,
+      // Il modulo non ricalcola la regola per conto suo: la disponibilita' la
+      // decide il server, che e' anche quello che poi rifiuta la richiesta.
+      // Una sola fonte, altrimenti si finisce per mostrare un campo che il
+      // salvataggio respinge.
+      homePickupAvailable:
+        settings.homePickupEnabled && activePoints.length > 0,
       thresholdReached,
       minThreshold: excursion.minThreshold,
       spotsLeft:

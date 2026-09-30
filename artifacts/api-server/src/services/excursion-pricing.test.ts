@@ -20,7 +20,7 @@ import {
   type PaymentSettings,
   type PricingContext,
   type PricingPickupPoint,
-} from "./excursion-pricing";
+  homePickupEnabledFromSetting,} from "./excursion-pricing";
 
 test("la carta resta disabilitata finché il kill switch non è esplicitamente true", () => {
   assert.equal(cardPaymentsEnabledFromSetting(undefined), false);
@@ -29,8 +29,20 @@ test("la carta resta disabilitata finché il kill switch non è esplicitamente t
   assert.equal(cardPaymentsEnabledFromSetting("true"), true);
 });
 
+// Il servizio non è operativo: deve restare spento a meno che qualcuno non
+// scriva "true", non il contrario. Un default permissivo lo farebbe comparire
+// nel modulo pubblico al primo ambiente senza quella riga in tabella.
+test("il trasporto da casa resta spento finché non è esplicitamente true", () => {
+  assert.equal(homePickupEnabledFromSetting(undefined), false);
+  assert.equal(homePickupEnabledFromSetting(""), false);
+  assert.equal(homePickupEnabledFromSetting("false"), false);
+  assert.equal(homePickupEnabledFromSetting("TRUE"), false);
+  assert.equal(homePickupEnabledFromSetting("true"), true);
+});
+
 const settings: PaymentSettings = {
   depositPercentage: 30,
+  homePickupEnabled: false,
   cardPaymentsEnabled: true,
   onBusPaymentsEnabled: true,
   futureCardChargeEnabled: false,

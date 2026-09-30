@@ -19,6 +19,10 @@ const SETTING_KEYS = [
   // Interruttore generale del saldo a bordo: "false" lo toglie ovunque, il
   // gate ordinario resta il flag della singola gita.
   "excursion_on_bus_payments_enabled",
+  // Trasporto da casa: spento finché il servizio non è operativo. Fail-closed,
+  // quindi solo "true" lo riaccende. Riguarda le richieste nuove: le
+  // prenotazioni che ce l'hanno già continuano a mostrarlo ovunque.
+  "home_pickup_enabled",
   // Addebito futuro carta: attivo solo con una versione consenso esplicita.
   "future_card_charge_enabled",
   "future_card_charge_consent_version",

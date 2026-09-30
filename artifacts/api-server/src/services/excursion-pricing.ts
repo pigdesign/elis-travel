@@ -224,12 +224,20 @@ export type PaymentSettings = {
   privacyVersion: string;
   mediaVersion: string;
   adultMinAge: number;
+  /**
+   * Trasporto da casa. Non e' un'impostazione di pagamento, ma vive qui come
+   * adultMinAge e le versioni dei consensi: questo oggetto raccoglie gli
+   * interruttori globali della prenotazione, e una seconda query per un solo
+   * booleano non si giustifica.
+   */
+  homePickupEnabled: boolean;
 };
 
 const PAYMENT_SETTING_KEYS = [
   "deposit_percentage",
   "excursion_card_payments_enabled",
   "excursion_on_bus_payments_enabled",
+  "home_pickup_enabled",
   "future_card_charge_enabled",
   "future_card_charge_consent_version",
   "card_checkout_hold_minutes",
@@ -281,6 +289,20 @@ export function onBusPaymentsEnabledFromSetting(
   return value !== "false";
 }
 
+/**
+ * Interruttore generale del trasporto da casa.
+ *
+ * Fail-closed come la carta e non permissivo come il saldo a bordo: il
+ * servizio non e' ancora operativo, quindi finche' qualcuno non scrive
+ * esplicitamente "true" non deve comparire da nessuna parte. Si riaccende
+ * dalla pagina Impostazioni, senza deploy.
+ */
+export function homePickupEnabledFromSetting(
+  value: string | undefined,
+): boolean {
+  return value === "true";
+}
+
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   const rows = await db
     .select({ key: settingsTable.key, value: settingsTable.value })
@@ -325,6 +347,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
     privacyVersion: map.privacy_policy_version || "1.0",
     mediaVersion: map.media_policy_version || "1.0",
     adultMinAge: intOr(map.adult_min_age, 18),
+    homePickupEnabled: homePickupEnabledFromSetting(map.home_pickup_enabled),
   };
 }
 

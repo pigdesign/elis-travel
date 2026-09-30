@@ -14,6 +14,7 @@ export interface SettingsResponse {
   deposit_percentage?: string | null;
   excursion_card_payments_enabled?: string | null;
   excursion_on_bus_payments_enabled?: string | null;
+  home_pickup_enabled?: string | null;
   future_card_charge_enabled?: string | null;
   future_card_charge_consent_version?: string | null;
   card_checkout_hold_minutes?: string | null;

@@ -1466,6 +1466,9 @@ export interface PublicExcursionDetail {
   companionPrice?: number | null;
   depositConfig?: PublicDepositConfig;
   paymentMethods?: PublicPaymentMethods;
+  /** Se il trasporto da casa può essere richiesto per questa gita. Combina l'interruttore globale `home_pickup_enabled` con la presenza di punti di raccolta attivi. Deciso dal server, che è anche quello che rifiuta la richiesta: il modulo non ricalcola la regola per conto suo.
+   */
+  homePickupAvailable?: boolean;
   thresholdReached?: boolean;
   spotsLeft?: number | null;
   bookingClosed?: boolean;
@@ -1652,6 +1655,7 @@ export interface SettingsResponse {
   deposit_percentage?: string | null;
   excursion_card_payments_enabled?: string | null;
   excursion_on_bus_payments_enabled?: string | null;
+  home_pickup_enabled?: string | null;
   future_card_charge_enabled?: string | null;
   future_card_charge_consent_version?: string | null;
   card_checkout_hold_minutes?: string | null;
@@ -1678,6 +1682,7 @@ export interface SettingsInput {
   deposit_percentage?: string;
   excursion_card_payments_enabled?: string;
   excursion_on_bus_payments_enabled?: string;
+  home_pickup_enabled?: string;
   future_card_charge_enabled?: string;
   future_card_charge_consent_version?: string;
   card_checkout_hold_minutes?: string;

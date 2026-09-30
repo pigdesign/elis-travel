@@ -575,6 +575,10 @@ export function ExcursionBookingForm({
   const homePickupAvailable = canRequestHomePickup({
     tripType: isRident ? "rident" : "standard",
     hasPickupPoints,
+    // Decide il server (impostazione `home_pickup_enabled`): e' lo stesso che
+    // poi rifiuta la richiesta, quindi non puo' esserci disaccordo fra cio'
+    // che il modulo mostra e cio' che il salvataggio accetta.
+    globallyEnabled: excursion.homePickupAvailable === true,
   });
   const ageRanges = excursion.ageRanges ?? [];
   const spotsLeft = excursion.spotsLeft ?? null;

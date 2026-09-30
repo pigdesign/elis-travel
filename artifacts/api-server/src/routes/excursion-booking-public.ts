@@ -320,6 +320,9 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       return;
     }
     const { excursion } = ctx;
+    // Letta qui e non piu' in basso perche' serve gia' al trasporto da casa,
+    // che e' il primo controllo governato da un interruttore globale.
+    const settings = await getPaymentSettings();
     let homePickup: ReturnType<typeof normalizeHomePickupRequest>;
     try {
       homePickup =
@@ -334,9 +337,14 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
                 homePickupAddress: body.homePickupAddress,
               },
               {
+                // `preflightBooking` resta ammesso anche a servizio spento: e'
+                // il ritentativo di una prenotazione gia' avviata, che aveva
+                // gia' chiesto il trasporto da casa. Spegnere un servizio
+                // blocca le richieste nuove, non rompe quelle in corso.
                 available:
                   Boolean(preflightBooking) ||
-                  ctx.pickupPoints.some((point) => point.active),
+                  (settings.homePickupEnabled &&
+                    ctx.pickupPoints.some((point) => point.active)),
               },
             );
     } catch (error) {
@@ -387,7 +395,6 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         ? "full"
         : requestedPaymentType;
 
-    const settings = await getPaymentSettings();
     // --- Preventivo server-side (valida partecipanti, fasce, punti, acconto) ---
     const quote: Quote = preflightBooking
       ? {

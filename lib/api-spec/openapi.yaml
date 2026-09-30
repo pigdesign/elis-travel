@@ -5301,6 +5301,14 @@ components:
           $ref: "#/components/schemas/PublicDepositConfig"
         paymentMethods:
           $ref: "#/components/schemas/PublicPaymentMethods"
+        homePickupAvailable:
+          type: boolean
+          description: >
+            Se il trasporto da casa può essere richiesto per questa gita.
+            Combina l'interruttore globale `home_pickup_enabled` con la
+            presenza di punti di raccolta attivi. Deciso dal server, che è
+            anche quello che rifiuta la richiesta: il modulo non ricalcola la
+            regola per conto suo.
         thresholdReached:
           type: boolean
         spotsLeft:
@@ -5767,6 +5775,9 @@ components:
         excursion_on_bus_payments_enabled:
           type: string
           nullable: true
+        home_pickup_enabled:
+          type: string
+          nullable: true
         future_card_charge_enabled:
           type: string
           nullable: true
@@ -5831,6 +5842,8 @@ components:
         excursion_card_payments_enabled:
           type: string
         excursion_on_bus_payments_enabled:
+          type: string
+        home_pickup_enabled:
           type: string
         future_card_charge_enabled:
           type: string

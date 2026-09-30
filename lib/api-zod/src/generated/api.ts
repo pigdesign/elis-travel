@@ -3242,6 +3242,12 @@ export const GetPublicExcursionResponse = zod.object({
       onBus: zod.boolean().optional(),
     })
     .optional(),
+  homePickupAvailable: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Se il trasporto da casa può essere richiesto per questa gita. Combina l'interruttore globale `home_pickup_enabled` con la presenza di punti di raccolta attivi. Deciso dal server, che è anche quello che rifiuta la richiesta: il modulo non ricalcola la regola per conto suo.\n",
+    ),
   thresholdReached: zod.boolean().optional(),
   spotsLeft: zod.number().nullish(),
   bookingClosed: zod.boolean().optional(),
@@ -3360,6 +3366,7 @@ export const GetAdminSettingsResponse = zod.object({
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
   excursion_on_bus_payments_enabled: zod.string().nullish(),
+  home_pickup_enabled: zod.string().nullish(),
   future_card_charge_enabled: zod.string().nullish(),
   future_card_charge_consent_version: zod.string().nullish(),
   card_checkout_hold_minutes: zod.string().nullish(),
@@ -3389,6 +3396,7 @@ export const UpdateAdminSettingsBody = zod.object({
   deposit_percentage: zod.string().optional(),
   excursion_card_payments_enabled: zod.string().optional(),
   excursion_on_bus_payments_enabled: zod.string().optional(),
+  home_pickup_enabled: zod.string().optional(),
   future_card_charge_enabled: zod.string().optional(),
   future_card_charge_consent_version: zod.string().optional(),
   card_checkout_hold_minutes: zod.string().optional(),
@@ -3415,6 +3423,7 @@ export const UpdateAdminSettingsResponse = zod.object({
   deposit_percentage: zod.string().nullish(),
   excursion_card_payments_enabled: zod.string().nullish(),
   excursion_on_bus_payments_enabled: zod.string().nullish(),
+  home_pickup_enabled: zod.string().nullish(),
   future_card_charge_enabled: zod.string().nullish(),
   future_card_charge_consent_version: zod.string().nullish(),
   card_checkout_hold_minutes: zod.string().nullish(),

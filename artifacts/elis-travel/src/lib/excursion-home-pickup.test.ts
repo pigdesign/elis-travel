@@ -8,7 +8,11 @@ import {
 test("il servizio casa è selezionabile sia per gite standard sia RIDENT con punti attivi", () => {
   for (const tripType of ["standard", "rident"] as const) {
     assert.equal(
-      canRequestHomePickup({ tripType, hasPickupPoints: true }),
+      canRequestHomePickup({
+        tripType,
+        hasPickupPoints: true,
+        globallyEnabled: true,
+      }),
       true,
       tripType,
     );
@@ -20,9 +24,27 @@ test("il servizio casa non è proposto senza punti di raccolta", () => {
     canRequestHomePickup({
       tripType: "rident",
       hasPickupPoints: false,
+      globallyEnabled: true,
     }),
     false,
   );
+});
+
+// L'interruttore delle Impostazioni vince su tutto: finché il servizio non è
+// operativo il blocco non deve comparire nemmeno dove sarebbe tecnicamente
+// possibile offrirlo.
+test("l'interruttore generale spento toglie il servizio ovunque", () => {
+  for (const tripType of ["standard", "rident"] as const) {
+    assert.equal(
+      canRequestHomePickup({
+        tripType,
+        hasPickupPoints: true,
+        globallyEnabled: false,
+      }),
+      false,
+      tripType,
+    );
+  }
 });
 
 test("il payload invia indirizzo normalizzato solo quando il servizio è richiesto", () => {

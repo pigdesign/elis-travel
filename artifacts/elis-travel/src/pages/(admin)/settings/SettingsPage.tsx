@@ -687,6 +687,9 @@ export function SettingsPage() {
   const [depositPercentage, setDepositPercentage] = useState("");
   const [cardPaymentsEnabled, setCardPaymentsEnabled] = useState(false);
   const [onBusPaymentsEnabled, setOnBusPaymentsEnabled] = useState(true);
+  // Spento per default: il servizio non è ancora operativo e deve restare
+  // invisibile finché qualcuno non lo riaccende qui.
+  const [homePickupEnabled, setHomePickupEnabled] = useState(false);
   const [futureCardChargeEnabled, setFutureCardChargeEnabled] = useState(false);
   const [cardCheckoutHoldMinutes, setCardCheckoutHoldMinutes] = useState("");
   const [paymentGraceMinutes, setPaymentGraceMinutes] = useState("");
@@ -721,6 +724,9 @@ export function SettingsPage() {
       // Il default e acceso: il gate reale resta il flag della singola gita.
       setOnBusPaymentsEnabled(
         settings.excursion_on_bus_payments_enabled !== "false",
+      );
+      setHomePickupEnabled(
+        settings.home_pickup_enabled === "true",
       );
       setFutureCardChargeEnabled(
         settings.future_card_charge_enabled === "true",
@@ -835,6 +841,7 @@ export function SettingsPage() {
           excursion_on_bus_payments_enabled: onBusPaymentsEnabled
             ? "true"
             : "false",
+          home_pickup_enabled: homePickupEnabled ? "true" : "false",
           future_card_charge_enabled: futureCardChargeEnabled
             ? "true"
             : "false",
@@ -994,6 +1001,30 @@ export function SettingsPage() {
                   abilitato. Resta comunque da attivare gita per gita, e non è
                   mai proposto per l'acconto o per il pagamento in unica
                   soluzione.
+                </span>
+              </span>
+            </label>
+          </div>
+          <div>
+            <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+              <input
+                type="checkbox"
+                checked={homePickupEnabled}
+                onChange={(e) => setHomePickupEnabled(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+                data-testid="checkbox-settings-home-pickup"
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Offri il trasporto da casa
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Spento finché il servizio non è operativo: la voce "Richiedo
+                  il servizio di trasporto da casa" non compare nel modulo di
+                  prenotazione e una richiesta inviata comunque viene
+                  rifiutata. Le prenotazioni che ce l'hanno già continuano a
+                  mostrarlo ovunque — report di raccolta, scheda e email —
+                  perché spegnere un servizio non riscrive lo storico.
                 </span>
               </span>
             </label>
