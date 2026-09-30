@@ -7,6 +7,7 @@
  */
 import type { AdminBookingAction } from "./adminBookingAction";
 import type { AdminBookingConsent } from "./adminBookingConsent";
+import type { AdminBookingCustomerArea } from "./adminBookingCustomerArea";
 import type { AdminBookingDetailsTermsReacceptance } from "./adminBookingDetailsTermsReacceptance";
 import type { AdminBookingEconomicSummary } from "./adminBookingEconomicSummary";
 import type { AdminBookingParticipant } from "./adminBookingParticipant";
@@ -21,6 +22,7 @@ export interface AdminBookingDetails {
   /** Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.
    */
   termsReacceptance?: AdminBookingDetailsTermsReacceptance;
+  customerArea: AdminBookingCustomerArea;
   booking: Booking;
   participants: AdminBookingParticipant[];
   consents: AdminBookingConsent[];

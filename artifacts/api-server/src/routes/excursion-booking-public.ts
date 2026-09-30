@@ -73,7 +73,10 @@ import {
   isDepartureOpenForBooking,
 } from "../services/excursion-time";
 import { isPaymentBlockedByCancellation } from "../services/booking-cancellation-guard";
-import { ensureAccountForBooking } from "../services/customer-account-provisioning";
+import {
+  ensureAccountForBooking,
+  linkBookingToSessionAccount,
+} from "../services/customer-account-provisioning";
 import { getCurrentTermsVersion } from "../services/iubenda-terms";
 import {
   HomePickupValidationError,
@@ -1028,6 +1031,20 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     // paga subito con carta e per chi ha totale zero, che ricevono la ricevuta
     // e non le istruzioni. Non blocca la risposta.
     ensureAccountForBooking(result.booking.id);
+
+    // Chi prenota mentre e gia dentro l'area clienti si vede la gita fra i
+    // propri viaggi subito, senza passare dall'invito via email. Atteso e non
+    // lanciato in sottofondo: piu sotto partono le email, e il richiamo "attiva
+    // la tua area personale" viene omesso proprio quando il collegamento
+    // risulta gia fatto.
+    const sessionAccountId = req.session?.customerAccount?.accountId;
+    if (sessionAccountId) {
+      await linkBookingToSessionAccount({
+        bookingId: result.booking.id,
+        accountId: sessionAccountId,
+        ip: req.ip ?? null,
+      });
+    }
 
     const resolvedBookingCode =
       result.booking.bookingCode ?? bookingCode ?? result.booking.id;

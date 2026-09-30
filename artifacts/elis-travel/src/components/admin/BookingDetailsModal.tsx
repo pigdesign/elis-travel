@@ -13,6 +13,7 @@ import {
   History,
   ReceiptText,
   Wrench,
+  UserCheck,
 } from "lucide-react";
 import {
   useCompleteAdminRefundManually,
@@ -23,6 +24,7 @@ import {
   useReplaceAdminBookingParticipants,
   useRequestBookingBalance,
   useResolveAdminBookingCancellation,
+  useSendAdminBookingCustomerAreaInvite,
   useUpdateBookingDeadline,
   getGetAdminBookingDetailsQueryKey,
   getGetExcursionQueryKey,
@@ -256,6 +258,10 @@ export function BookingDetailsModal({
   });
   const { mutate: requestBalance, isPending: isRequesting } =
     useRequestBookingBalance({
+      mutation: { onSuccess: invalidate, onError: onActionError },
+    });
+  const { mutate: sendCustomerAreaInvite, isPending: isSendingInvite } =
+    useSendAdminBookingCustomerAreaInvite({
       mutation: { onSuccess: invalidate, onError: onActionError },
     });
   const { mutate: updateDeadline, isPending: isExtending } =
@@ -626,6 +632,115 @@ export function BookingDetailsModal({
                     dove può confermare con un clic: l'addebito riparte da solo.
                   </p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Area clienti: dice in una riga se la gita e gia fra i viaggi del
+              cliente. Senza, l'ufficio lo scopriva solo quando il cliente
+              chiamava dicendo "non vedo la mia prenotazione". */}
+          {booking && data?.customerArea && (
+            <div
+              className="rounded-xl border border-border px-4 py-3 text-sm"
+              data-testid="section-customer-area"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <UserCheck className="mt-0.5 w-4 h-4 shrink-0 text-muted-foreground" />
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Area clienti
+                    </div>
+                    <div className="text-foreground">
+                      {data.customerArea.linked ? (
+                        <>
+                          <span className="font-semibold text-emerald-700">
+                            Collegata
+                          </span>
+                          {data.customerArea.linkedAt && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              dal {formatDateTime(data.customerArea.linkedAt)}
+                            </span>
+                          )}
+                          {data.customerArea.linkedVia === "session" && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              — prenotata dall'area personale
+                            </span>
+                          )}
+                          {data.customerArea.linkedVia === "admin" && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              — collegata a mano dall'ufficio
+                            </span>
+                          )}
+                        </>
+                      ) : !data.customerArea.email ? (
+                        <span className="text-amber-700">
+                          Nessun account: la prenotazione non ha un indirizzo
+                          email.
+                        </span>
+                      ) : data.customerArea.emailStatus === "bounced" ? (
+                        <span className="text-red-700">
+                          L'indirizzo respinge le email: correggilo prima di
+                          mandare il richiamo.
+                        </span>
+                      ) : data.customerArea.accountStatus === "blocked" ? (
+                        <span className="text-red-700">
+                          Account bloccato: sbloccalo dalla pagina Account
+                          clienti.
+                        </span>
+                      ) : data.customerArea.lastInviteAt ? (
+                        <>
+                          <span className="text-amber-700 font-semibold">
+                            Non collegata
+                          </span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — invito inviato il{" "}
+                            {formatDateTime(data.customerArea.lastInviteAt)},
+                            mai aperto
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-amber-700 font-semibold">
+                            Non collegata
+                          </span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — nessun richiamo ancora inviato
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Il pulsante manca dove non servirebbe a nulla: gia
+                    collegata, senza email, bloccato o indirizzo che rimbalza. */}
+                {!data.customerArea.linked &&
+                  data.customerArea.email &&
+                  data.customerArea.emailStatus !== "bounced" &&
+                  data.customerArea.accountStatus !== "blocked" && (
+                    <button
+                      type="button"
+                      disabled={isSendingInvite}
+                      onClick={() => sendCustomerAreaInvite({ bookingId })}
+                      className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
+                      data-testid="button-send-customer-area-invite"
+                    >
+                      {isSendingInvite ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <UserCheck className="w-3.5 h-3.5" />
+                      )}
+                      {data.customerArea.lastInviteAt
+                        ? "Rimanda invito"
+                        : "Invia invito"}
+                    </button>
+                  )}
               </div>
             </div>
           )}

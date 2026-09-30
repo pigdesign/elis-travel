@@ -1,14 +1,21 @@
+import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
 import {
   customerAccountBookingsTable,
+  customerAccountEventsTable,
   customerAccountsTable,
   excursionBookingsTable,
+  excursionsTable,
   normalizeAccountEmail,
 } from "@workspace/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { buildAccountAccessUrl } from "./customer-auth-emails";
+import {
+  buildAccountAccessUrl,
+  buildBookingInviteEmail,
+} from "./customer-auth-emails";
 import { escapeHtml } from "./email-layout";
+import { enqueueAndDeliverNow } from "./email-outbox";
 import { issueCustomerAuthToken } from "./customer-auth-token";
 import { recordAccountEvent } from "./customer-auth-throttle";
 import { splitCustomerName } from "./customer-name";
@@ -125,6 +132,97 @@ export function ensureAccountForBooking(bookingId: string): void {
 }
 
 /**
+ * Collega la prenotazione appena creata a chi era gia dentro l'area clienti.
+ *
+ * E l'unica strada automatica, e non contraddice la regola in cima al file: li
+ * si rifiuta di dedurre il proprietario da un'email digitata in un modulo,
+ * qui la prova di possesso esiste gia prima della prenotazione — la sessione e
+ * aperta perche quella persona ha dimostrato di controllare quella casella,
+ * con lo stesso clic che fa fede per l'invito.
+ *
+ * Due condizioni, entrambe necessarie:
+ *
+ *  - l'email della prenotazione deve coincidere con quella dell'account. Senza
+ *    questo confronto chi prenota per la madre mettendo l'indirizzo di lei si
+ *    vedrebbe comparire fra i propri viaggi una prenotazione che la conferma
+ *    manda a un'altra persona;
+ *  - l'account deve risultare ATTIVO adesso, riletto dal database. La sessione
+ *    dura novanta giorni e non puo essere l'unica fonte di verita: nel
+ *    frattempo l'account puo essere stato bloccato dal backoffice.
+ *
+ * Il confronto e con l'email che l'account ha ORA, non con quella salvata nella
+ * sessione al momento dell'accesso: se il backoffice l'ha corretta, fa fede la
+ * riga, non una copia vecchia di mesi.
+ *
+ * Va attesa prima di comporre le email: `prepareBookingInvite` salta l'invito
+ * quando la prenotazione risulta gia collegata, quindi collegare prima evita di
+ * spedire un richiamo che non serve piu.
+ *
+ * Non solleva mai: un intoppo qui non deve toccare la prenotazione, che e gia
+ * registrata e vale di piu. Al massimo il cliente si ritrova l'invito per email
+ * e la collega con un clic, cioe il comportamento di prima.
+ */
+export async function linkBookingToSessionAccount(input: {
+  bookingId: string;
+  accountId: string;
+  ip?: string | null;
+}): Promise<boolean> {
+  try {
+    const [booking] = await db
+      .select({ email: excursionBookingsTable.email })
+      .from(excursionBookingsTable)
+      .where(eq(excursionBookingsTable.id, input.bookingId))
+      .limit(1);
+    if (!booking?.email) return false;
+
+    const [account] = await db
+      .select({
+        email: customerAccountsTable.email,
+        status: customerAccountsTable.status,
+      })
+      .from(customerAccountsTable)
+      .where(eq(customerAccountsTable.id, input.accountId))
+      .limit(1);
+    if (!account || account.status !== "active") return false;
+
+    if (
+      normalizeAccountEmail(booking.email) !==
+      normalizeAccountEmail(account.email)
+    ) {
+      return false;
+    }
+
+    // `unique(account_id, booking_id)` rende l'operazione idempotente: se la
+    // prenotazione fosse gia collegata non serve distinguere il caso.
+    const inserted = await db
+      .insert(customerAccountBookingsTable)
+      .values({
+        accountId: input.accountId,
+        bookingId: input.bookingId,
+        linkedVia: "session",
+      })
+      .onConflictDoNothing()
+      .returning({ id: customerAccountBookingsTable.id });
+
+    if (inserted.length === 0) return false;
+
+    await recordAccountEvent({
+      eventType: "booking_linked",
+      accountId: input.accountId,
+      ip: input.ip ?? null,
+      detail: { bookingId: input.bookingId, via: "session" },
+    });
+    return true;
+  } catch (error) {
+    logger.warn(
+      { err: error, bookingId: input.bookingId },
+      "Collegamento automatico alla sessione fallito; resta l'invito via email",
+    );
+    return false;
+  }
+}
+
+/**
  * Vero se la prenotazione risulta gia fra i viaggi di quell'account.
  */
 async function alreadyLinked(input: {
@@ -238,4 +336,152 @@ export function inviteSections(invite: BookingInvite | null): {
        <a href="${escapeHtml(invite.url)}" style="display:inline-block;padding:10px 16px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px;">${escapeHtml(title)}</a>
      </div>`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Stato dell'area clienti visto dalla singola prenotazione.
+//
+// Serve al backoffice: chi e al telefono col cliente deve sapere se quella
+// gita e gia fra i suoi viaggi o se il richiamo e rimasto per aria, senza
+// aprire un'altra pagina e senza doverlo dedurre.
+// ---------------------------------------------------------------------------
+
+export type BookingCustomerAreaState = {
+  /** Null quando la prenotazione non ha email: senza, nessun account esiste. */
+  accountId: string | null;
+  email: string | null;
+  accountStatus: string | null;
+  /** 'bounced' significa che ogni invito e destinato a tornare indietro. */
+  emailStatus: string | null;
+  linked: boolean;
+  linkedVia: string | null;
+  linkedAt: string | null;
+  /** Ultimo invito emesso PER QUESTA prenotazione, non per l'account. */
+  lastInviteAt: string | null;
+};
+
+export async function getBookingCustomerAreaState(
+  bookingId: string,
+): Promise<BookingCustomerAreaState> {
+  const vuoto: BookingCustomerAreaState = {
+    accountId: null,
+    email: null,
+    accountStatus: null,
+    emailStatus: null,
+    linked: false,
+    linkedVia: null,
+    linkedAt: null,
+    lastInviteAt: null,
+  };
+
+  const [booking] = await db
+    .select({ email: excursionBookingsTable.email })
+    .from(excursionBookingsTable)
+    .where(eq(excursionBookingsTable.id, bookingId))
+    .limit(1);
+  if (!booking?.email) return vuoto;
+
+  const email = normalizeAccountEmail(booking.email);
+  const account = await findAccountByEmail(email);
+  if (!account) return { ...vuoto, email };
+
+  // Il collegamento si cerca per prenotazione e non per account: la stessa
+  // gita puo essere nei viaggi di piu account (marito e moglie), e qui
+  // interessa quello dell'indirizzo che compare sulla prenotazione.
+  const [link] = await db
+    .select({
+      linkedVia: customerAccountBookingsTable.linkedVia,
+      linkedAt: customerAccountBookingsTable.linkedAt,
+    })
+    .from(customerAccountBookingsTable)
+    .where(
+      and(
+        eq(customerAccountBookingsTable.accountId, account.id),
+        eq(customerAccountBookingsTable.bookingId, bookingId),
+        isNull(customerAccountBookingsTable.revokedAt),
+      ),
+    )
+    .limit(1);
+
+  const [invite] = await db
+    .select({ createdAt: customerAccountEventsTable.createdAt })
+    .from(customerAccountEventsTable)
+    .where(
+      and(
+        eq(customerAccountEventsTable.accountId, account.id),
+        eq(customerAccountEventsTable.eventType, "invite_sent"),
+        sql`${customerAccountEventsTable.detail}->>'bookingId' = ${bookingId}`,
+      ),
+    )
+    .orderBy(desc(customerAccountEventsTable.createdAt))
+    .limit(1);
+
+  return {
+    accountId: account.id,
+    email: account.email,
+    accountStatus: account.status,
+    emailStatus: account.emailStatus,
+    linked: link !== undefined,
+    linkedVia: link?.linkedVia ?? null,
+    linkedAt: link?.linkedAt?.toISOString() ?? null,
+    lastInviteAt: invite?.createdAt?.toISOString() ?? null,
+  };
+}
+
+export type SendBookingInviteOutcome =
+  | "sent"
+  | "no_email"
+  | "already_linked"
+  | "blocked"
+  | "bounced";
+
+/**
+ * Manda al cliente il richiamo per collegare QUESTA prenotazione.
+ *
+ * Non e lo stesso di un magic link: quello fa entrare nell'area ma non porta
+ * con se nessuna gita. Qui il token e di tipo 'account_invite' ed e legato
+ * alla prenotazione, quindi un clic la mette fra i suoi viaggi.
+ *
+ * Gli esiti diversi da 'sent' non sono errori ma risposte: al backoffice va
+ * detto perche non e partito nulla, altrimenti l'operatore riprova a vuoto.
+ */
+export async function sendBookingInviteEmail(
+  bookingId: string,
+): Promise<SendBookingInviteOutcome> {
+  const stato = await getBookingCustomerAreaState(bookingId);
+  if (!stato.email) return "no_email";
+  if (stato.linked) return "already_linked";
+  if (stato.accountStatus === "blocked") return "blocked";
+  if (stato.emailStatus === "bounced") return "bounced";
+
+  // prepareBookingInvite emette il token e registra l'evento 'invite_sent':
+  // usarlo qui tiene una sola strada per creare inviti, con le stesse guardie.
+  const invite = await prepareBookingInvite(bookingId);
+  if (!invite) return "already_linked";
+
+  const [riga] = await db
+    .select({ excursionName: excursionsTable.name })
+    .from(excursionBookingsTable)
+    .innerJoin(
+      excursionsTable,
+      eq(excursionsTable.id, excursionBookingsTable.excursionId),
+    )
+    .where(eq(excursionBookingsTable.id, bookingId))
+    .limit(1);
+
+  await enqueueAndDeliverNow({
+    eventType: "account.booking-invite",
+    // Chiave casuale per invio: l'operatore che rimanda il richiamo perche il
+    // cliente non l'ha ricevuto non deve vederselo scartare dalla
+    // deduplicazione dell'outbox.
+    dedupeKey: `booking:${bookingId}:invite:${randomUUID()}`,
+    message: buildBookingInviteEmail({
+      to: stato.email,
+      url: invite.url,
+      excursionName: riga?.excursionName ?? null,
+      existingActiveAccount: invite.existingActiveAccount,
+    }),
+  });
+
+  return "sent";
 }

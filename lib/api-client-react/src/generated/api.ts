@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminBookingCustomerAreaInviteResult,
   AdminBookingDetails,
   AdminBookingParticipantReplaceInput,
   AdminBookingParticipantReplaceResponse,
@@ -3372,6 +3373,98 @@ export function useGetAdminBookingDetails<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Il link che parte è di tipo invito, legato a QUESTA prenotazione: un clic la mette fra i viaggi del cliente. Non è un semplice accesso all'area, che farebbe entrare senza portarsi dietro la gita.
+
+ * @summary Manda al cliente il richiamo per collegare questa prenotazione
+ */
+export const getSendAdminBookingCustomerAreaInviteUrl = (bookingId: string) => {
+  return `/api/admin/bookings/${bookingId}/customer-area/invite`;
+};
+
+export const sendAdminBookingCustomerAreaInvite = async (
+  bookingId: string,
+  options?: RequestInit,
+): Promise<AdminBookingCustomerAreaInviteResult> => {
+  return customFetch<AdminBookingCustomerAreaInviteResult>(
+    getSendAdminBookingCustomerAreaInviteUrl(bookingId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getSendAdminBookingCustomerAreaInviteMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendAdminBookingCustomerAreaInvite>>,
+    TError,
+    { bookingId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendAdminBookingCustomerAreaInvite>>,
+  TError,
+  { bookingId: string },
+  TContext
+> => {
+  const mutationKey = ["sendAdminBookingCustomerAreaInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendAdminBookingCustomerAreaInvite>>,
+    { bookingId: string }
+  > = (props) => {
+    const { bookingId } = props ?? {};
+
+    return sendAdminBookingCustomerAreaInvite(bookingId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendAdminBookingCustomerAreaInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendAdminBookingCustomerAreaInvite>>
+>;
+
+export type SendAdminBookingCustomerAreaInviteMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Manda al cliente il richiamo per collegare questa prenotazione
+ */
+export const useSendAdminBookingCustomerAreaInvite = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendAdminBookingCustomerAreaInvite>>,
+    TError,
+    { bookingId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendAdminBookingCustomerAreaInvite>>,
+  TError,
+  { bookingId: string },
+  TContext
+> => {
+  return useMutation(
+    getSendAdminBookingCustomerAreaInviteMutationOptions(options),
+  );
+};
 
 /**
  * Anagrafica e totale sono modificabili anche a pagamento avvenuto: un recapito sbagliato va corretto proprio quando la gita è vicina. Il totale non può scendere sotto l'importo già incassato, e cambiandolo le richieste ancora aperte vengono riallineate al nuovo residuo.

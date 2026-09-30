@@ -48,6 +48,11 @@ import type {
   PickupReportPayment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  buildAccountingRows,
+  buildCancelledWithMoney,
+  summarizeAccounting,
+} from "@/lib/excursion-accounting-report";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 import { buildSlugUrl } from "@/lib/seo";
 import { formatDepartureInRome } from "@/lib/excursion-time";
@@ -1912,30 +1917,25 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     ),
   );
 
-  const reportRows = activeBookings
-    .map((b) => ({
-      name: b.customerName,
-      phone: b.phone ?? "",
-      // Prenotazione "a punti divisi": pickupPointId è null ma la gita ha punti →
-      // i punti sono per-partecipante, visibili nel dettaglio della prenotazione.
-      pickup: b.pickupPointId
-        ? (pickupPointById.get(b.pickupPointId) ?? "")
-        : excursionPickupPoints && excursionPickupPoints.length > 0
-          ? "Punti diversi"
-          : "",
-      adults: b.adults,
-      children: b.children,
-      servizioCasa: !!b.servizioCasa,
-      homePickupAddress: b.homePickupAddress?.trim() ?? "",
-      paymentLabel:
-        PAYMENT_STATUS_CONFIG[b.paymentStatus]?.label ?? b.paymentStatus,
-    }))
-    .sort((a, b) => {
-      const pa = a.pickup || "￿";
-      const pb = b.pickup || "￿";
-      if (pa !== pb) return pa.localeCompare(pb, "it");
-      return a.name.localeCompare(b.name, "it");
-    });
+  // --- Prospetto incassi ----------------------------------------------------
+  //
+  // I conti stanno in excursion-accounting-report, non qui: su questo foglio si
+  // leggono soldi, e un errore silenzioso non produce una tabella storta ma
+  // telefonate a chi ha gia pagato. Li si possono provare, qui no.
+  const statusLabelOf = (status: string) =>
+    PAYMENT_STATUS_CONFIG[status]?.label ?? status;
+  const accountingRows = buildAccountingRows(activeBookings, {
+    now: Date.now(),
+    statusLabel: statusLabelOf,
+  });
+  const accounting = summarizeAccounting(accountingRows);
+  const cancelledWithMoney = buildCancelledWithMoney(inactiveBookings, {
+    statusLabel: statusLabelOf,
+  });
+  const cancelledMoneyTotalCents = cancelledWithMoney.reduce(
+    (sum, r) => sum + r.paidCents,
+    0,
+  );
 
   const toggleBookingSelection = (bookingId: string) => {
     setSelectedBookingIds((prev) => {
@@ -2008,21 +2008,96 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   const toBookLabel = toBookParts.length > 0 ? toBookParts.join(" · ") : "—";
 
   const handlePrintReport = () => {
-    const rowsHtml = reportRows
+    const methodLabel: Record<string, string> = {
+      card: "Carta",
+      bank_transfer: "Bonifico",
+      office: "In ufficio",
+      on_bus: "Sul bus",
+    };
+    const eur = (cents: number) => escapeHtml(formatEur(cents / 100));
+    const seatsLabel = (adults: number, children: number) =>
+      children > 0 ? `${adults}A+${children}B` : `${adults}A`;
+
+    const rowsHtml = accountingRows
       .map(
         (r, i) => `
-        <tr>
+        <tr${(r.residualCents ?? 0) > 0 ? ' class="debito"' : ""}>
           <td class="center">${i + 1}</td>
+          <td class="code">${escapeHtml(r.bookingCode) || "—"}</td>
           <td>${escapeHtml(r.name)}</td>
           <td>${escapeHtml(r.phone) || "—"}</td>
-          <td>${escapeHtml(r.pickup) || "—"}</td>
-          <td class="center">${r.children > 0 ? `${r.adults}A+${r.children}B` : `${r.adults}A`}</td>
-          <td>${r.servizioCasa ? escapeHtml(r.homePickupAddress) || "ATTENZIONE: indirizzo mancante" : "—"}</td>
-          <td>${escapeHtml(r.paymentLabel)}</td>
-          <td class="check"><span class="box"></span></td>
+          <td class="center">${seatsLabel(r.adults, r.children)}</td>
+          <td class="num">${r.totalCents === null ? '<span class="warn">non calcolato</span>' : eur(r.totalCents)}</td>
+          <td class="num">${eur(r.paidCents)}</td>
+          <td class="num">${
+            r.residualCents === null
+              ? "—"
+              : r.residualCents > 0
+                ? `<strong class="dovuto">${eur(r.residualCents)}</strong>`
+                : '<span class="ok">saldato</span>'
+          }</td>
+          <td>${escapeHtml(methodLabel[r.method] ?? r.method) || "—"}</td>
+          <td>${
+            r.deadline
+              ? r.overdue
+                ? `<strong class="scaduta">${escapeHtml(formatDate(r.deadline))}</strong>`
+                : escapeHtml(formatDate(r.deadline))
+              : "—"
+          }</td>
+          <td>${escapeHtml(r.statusLabel)}</td>
         </tr>`,
       )
       .join("");
+
+    const residualByMethodHtml = Object.entries(accounting.residualByMethod)
+      .sort((a, b) => b[1] - a[1])
+      .map(
+        ([method, cents]) =>
+          `<span>${escapeHtml(methodLabel[method] ?? method)}: <b>${eur(cents)}</b></span>`,
+      )
+      .join("");
+
+    // Sezione in fondo e non in cima: prima cosa c'e da incassare, poi cosa
+    // c'e eventualmente da restituire.
+    const cancelledHtml =
+      cancelledWithMoney.length === 0
+        ? ""
+        : `
+  <h2>Annullate con denaro in sospeso</h2>
+  <p class="nota">Prenotazioni annullate su cui il cliente ha gia versato qualcosa. Verificare che il rimborso sia stato eseguito: non compaiono negli elenchi ordinari proprio perche annullate.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Codice</th>
+        <th>Referente</th>
+        <th>Telefono</th>
+        <th class="num">Incassato</th>
+        <th>Annullata il</th>
+        <th>Stato</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${cancelledWithMoney
+        .map(
+          (r) => `<tr>
+        <td class="code">${escapeHtml(r.bookingCode) || "—"}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.phone) || "—"}</td>
+        <td class="num"><strong>${eur(r.paidCents)}</strong></td>
+        <td>${r.cancelledAt ? escapeHtml(formatDate(r.cancelledAt)) : "—"}</td>
+        <td>${escapeHtml(r.statusLabel)}</td>
+      </tr>`,
+        )
+        .join("")}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3" class="right">Totale già incassato su prenotazioni annullate</td>
+        <td class="num"><strong>${eur(cancelledMoneyTotalCents)}</strong></td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>`;
 
     const printedAt = new Date().toLocaleString("it-IT", {
       day: "2-digit",
@@ -2036,7 +2111,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
 <html lang="it">
 <head>
 <meta charset="utf-8" />
-<title>Report gita - ${escapeHtml(exc.name)}</title>
+<title>Prospetto incassi - ${escapeHtml(exc.name)}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #14242b; margin: 0; padding: 24px; }
@@ -2049,39 +2124,74 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   th, td { border: 1px solid #cbd5db; padding: 6px 8px; text-align: left; vertical-align: top; }
   th { background: #0e3a4a; color: #fff; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
   td.center { text-align: center; }
-  td.check { width: 56px; text-align: center; }
-  .box { display: inline-block; width: 15px; height: 15px; border: 1.5px solid #5b6b72; border-radius: 3px; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td.right { text-align: right; }
+  td.code { font-family: ui-monospace, "SF Mono", Menlo, monospace; white-space: nowrap; }
   tbody tr:nth-child(even) { background: #f7fafb; }
+  tbody tr.debito { background: #fffaf0; }
+  tbody tr.debito:nth-child(even) { background: #fff6e8; }
+  .dovuto { color: #a1450b; }
+  .ok { color: #5b6b72; }
+  .warn { color: #a1450b; font-style: italic; }
+  .scaduta { color: #b3261e; }
+  h2 { font-size: 14px; margin: 26px 0 4px; }
+  .nota { color: #5b6b72; font-size: 11.5px; margin: 0 0 8px; max-width: 70ch; }
+  tfoot td { background: #f1f5f7; font-size: 12px; }
   footer { margin-top: 16px; font-size: 11px; color: #5b6b72; display: flex; justify-content: space-between; }
   @page { size: A4 landscape; margin: 12mm; }
-  @media print { body { padding: 0; } }
+  @media print { body { padding: 0; } tr { break-inside: avoid; } }
 </style>
 </head>
 <body>
-  <h1>${escapeHtml(exc.name)}</h1>
+  <h1>Prospetto incassi — ${escapeHtml(exc.name)}</h1>
   <div class="meta">${escapeHtml(exc.location)} · ${escapeHtml(formatExcursionDeparture(exc.departureAt, exc.date))} · ${escapeHtml(statusCfg.label)}</div>
   <div class="summary">
     <span><b>${activeBookings.length}</b> prenotazioni · <b>${totalPeople}</b> persone</span>
+    <span>Incassato <b>${eur(accounting.collectedCents)}</b></span>
+    <span>Residuo <b class="dovuto">${eur(accounting.residualCents)}</b></span>
     <span>Saldati <b>${paidCount}</b> · Acconto <b>${depositCount}</b> · In attesa <b>${pendingCount}</b></span>
     <span>Da prenotare: <b>${escapeHtml(toBookLabel)}</b></span>
   </div>
+  ${
+    residualByMethodHtml
+      ? `<div class="summary">Residuo per metodo: ${residualByMethodHtml}</div>`
+      : ""
+  }
+  ${
+    accounting.rowsWithoutTotal > 0
+      ? `<p class="nota"><strong class="warn">Attenzione:</strong> ${accounting.rowsWithoutTotal} prenotazion${accounting.rowsWithoutTotal === 1 ? "e" : "i"} senza importo calcolato. Non rientr${accounting.rowsWithoutTotal === 1 ? "a" : "ano"} nei totali qui sopra: apri il dettaglio e verifica.</p>`
+      : ""
+  }
   <table>
     <thead>
       <tr>
         <th class="center">#</th>
-        <th>Nome e cognome</th>
+        <th>Codice</th>
+        <th>Referente</th>
         <th>Telefono</th>
-        <th>Punto di raccolta</th>
         <th class="center">Posti</th>
-        <th>Ritiro casa</th>
-        <th>Pagamento</th>
-        <th class="center">Presenza</th>
+        <th class="num">Totale</th>
+        <th class="num">Incassato</th>
+        <th class="num">Residuo</th>
+        <th>Metodo</th>
+        <th>Scadenza</th>
+        <th>Stato</th>
       </tr>
     </thead>
     <tbody>${rowsHtml}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" class="right">Totali</td>
+        <td class="num"><strong>${eur(accounting.totalCents)}</strong></td>
+        <td class="num"><strong>${eur(accounting.collectedCents)}</strong></td>
+        <td class="num"><strong class="dovuto">${eur(accounting.residualCents)}</strong></td>
+        <td colspan="3"></td>
+      </tr>
+    </tfoot>
   </table>
+  ${cancelledHtml}
   <footer>
-    <span>Elis Travel — Report gita</span>
+    <span>Elis Travel — Prospetto incassi</span>
     <span>Stampato il ${printedAt}</span>
   </footer>
 </body>
@@ -2810,7 +2920,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
               className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               data-testid="button-print-report"
             >
-              <Printer className="w-4 h-4" /> Stampa report
+              <Printer className="w-4 h-4" /> Stampa prospetto incassi
             </button>
             {activeBookings.length === 0 && (
               <p className="mt-2 text-center text-xs text-muted-foreground">

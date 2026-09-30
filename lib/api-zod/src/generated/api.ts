@@ -1710,6 +1710,56 @@ export const GetAdminBookingDetailsResponse = zod.object({
     .describe(
       "Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.\n",
     ),
+  customerArea: zod
+    .object({
+      accountId: zod
+        .string()
+        .uuid()
+        .nullable()
+        .describe(
+          "Null se la prenotazione non ha email, quindi nessun account.",
+        ),
+      email: zod.string().nullable(),
+      accountStatus: zod
+        .union([
+          zod.literal("pending"),
+          zod.literal("active"),
+          zod.literal("blocked"),
+          zod.literal(null),
+        ])
+        .nullable()
+        .describe(
+          "pending = account creato ma il cliente non è mai entrato.\n",
+        ),
+      emailStatus: zod
+        .union([
+          zod.literal("unknown"),
+          zod.literal("deliverable"),
+          zod.literal("bounced"),
+          zod.literal(null),
+        ])
+        .nullable()
+        .describe("bounced = ogni invito tornerebbe indietro."),
+      linked: zod.boolean(),
+      linkedVia: zod
+        .union([
+          zod.literal("invite_token"),
+          zod.literal("portal_token"),
+          zod.literal("session"),
+          zod.literal("admin"),
+          zod.literal("backfill"),
+          zod.literal(null),
+        ])
+        .nullable(),
+      linkedAt: zod.coerce.date().nullable(),
+      lastInviteAt: zod.coerce
+        .date()
+        .nullable()
+        .describe("Ultimo invito emesso per QUESTA prenotazione."),
+    })
+    .describe(
+      "Stato dell'area clienti per questa prenotazione. Dice se la gita è già fra i viaggi del cliente, da quale strada ci è arrivata e quando gli è stato mandato l'ultimo richiamo, così l'ufficio non deve dedurlo.\n",
+    ),
   booking: zod.object({
     id: zod.string().uuid(),
     excursionId: zod.string().uuid(),
@@ -1940,6 +1990,26 @@ export const GetAdminBookingDetailsResponse = zod.object({
     netCollectedAmountCents: zod.number(),
   }),
   participantsDetailed: zod.boolean(),
+});
+
+/**
+ * Il link che parte è di tipo invito, legato a QUESTA prenotazione: un clic la mette fra i viaggi del cliente. Non è un semplice accesso all'area, che farebbe entrare senza portarsi dietro la gita.
+
+ * @summary Manda al cliente il richiamo per collegare questa prenotazione
+ */
+export const SendAdminBookingCustomerAreaInviteParams = zod.object({
+  bookingId: zod.coerce.string().uuid(),
+});
+
+export const SendAdminBookingCustomerAreaInviteResponse = zod.object({
+  ok: zod.boolean(),
+  outcome: zod.enum([
+    "sent",
+    "no_email",
+    "already_linked",
+    "blocked",
+    "bounced",
+  ]),
 });
 
 /**

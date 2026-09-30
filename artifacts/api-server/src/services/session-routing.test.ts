@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CUSTOMER_SESSION_PATHS,
+  CUSTOMER_SESSION_PATTERNS,
   isCustomerSessionPath,
 } from "./session-routing";
 
@@ -34,6 +35,32 @@ test("il prefisso non deve combaciare a meta segmento", () => {
   assert.equal(isCustomerSessionPath("/api/booking-portal-admin"), false);
 });
 
+test("la creazione di una prenotazione vede la sessione cliente", () => {
+  // Serve a collegare subito la gita a chi e gia dentro l'area clienti.
+  assert.equal(
+    isCustomerSessionPath("/api/excursions/7a0f6f1e-1111-2222-3333-444455556666/book"),
+    true,
+  );
+});
+
+// Regressione: il raggio d'azione e UNA rotta, non il prefisso /api/excursions.
+// La sessione cliente e `rolling` e scrive sullo store a ogni richiesta; /quote
+// viene chiamata a ogni ricalcolo di prezzo nel modulo di prenotazione.
+test("le altre rotte delle gite restano fuori", () => {
+  assert.equal(isCustomerSessionPath("/api/excursions/abc/quote"), false);
+  assert.equal(isCustomerSessionPath("/api/excursions/bookings/abc/cancel"), false);
+  // Deve combaciare fino in fondo, niente sotto-percorsi.
+  assert.equal(isCustomerSessionPath("/api/excursions/abc/book/extra"), false);
+  assert.equal(isCustomerSessionPath("/api/excursions/abc/booking"), false);
+});
+
+// Regressione: la creazione dal backoffice e /api/admin/excursions/:id/bookings.
+// Se finisse sulla sessione cliente, l'ufficio perderebbe requireAuth.
+test("la creazione dall'ufficio resta sulla sessione admin", () => {
+  assert.equal(isCustomerSessionPath("/api/admin/excursions/abc/bookings"), false);
+  assert.equal(isCustomerSessionPath("/api/admin/excursions/abc/book"), false);
+});
+
 test("le route pubbliche non rientrano nell'area clienti", () => {
   assert.equal(isCustomerSessionPath("/api/excursions"), false);
   assert.equal(isCustomerSessionPath("/api/leads"), false);
@@ -48,4 +75,10 @@ test("l'elenco dei path clienti resta quello atteso", () => {
     "/api/account",
     "/api/booking-portal",
   ]);
+  // Stesso contratto per le rotte singole: ogni aggiunta qui allarga la
+  // sessione a novanta giorni e va pesata, non fatta di passaggio.
+  assert.deepEqual(
+    CUSTOMER_SESSION_PATTERNS.map((pattern) => pattern.source),
+    [/^\/api\/excursions\/[^/]+\/book$/.source],
+  );
 });

@@ -513,6 +513,65 @@ export type AdminBookingDetailsTermsReacceptance = {
   currentVersion?: string | null;
 };
 
+/**
+ * pending = account creato ma il cliente non è mai entrato.
+
+ */
+export type AdminBookingCustomerAreaAccountStatus =
+  | (typeof AdminBookingCustomerAreaAccountStatus)[keyof typeof AdminBookingCustomerAreaAccountStatus]
+  | null;
+
+export const AdminBookingCustomerAreaAccountStatus = {
+  pending: "pending",
+  active: "active",
+  blocked: "blocked",
+} as const;
+
+/**
+ * bounced = ogni invito tornerebbe indietro.
+ */
+export type AdminBookingCustomerAreaEmailStatus =
+  | (typeof AdminBookingCustomerAreaEmailStatus)[keyof typeof AdminBookingCustomerAreaEmailStatus]
+  | null;
+
+export const AdminBookingCustomerAreaEmailStatus = {
+  unknown: "unknown",
+  deliverable: "deliverable",
+  bounced: "bounced",
+} as const;
+
+export type AdminBookingCustomerAreaLinkedVia =
+  | (typeof AdminBookingCustomerAreaLinkedVia)[keyof typeof AdminBookingCustomerAreaLinkedVia]
+  | null;
+
+export const AdminBookingCustomerAreaLinkedVia = {
+  invite_token: "invite_token",
+  portal_token: "portal_token",
+  session: "session",
+  admin: "admin",
+  backfill: "backfill",
+} as const;
+
+/**
+ * Stato dell'area clienti per questa prenotazione. Dice se la gita è già fra i viaggi del cliente, da quale strada ci è arrivata e quando gli è stato mandato l'ultimo richiamo, così l'ufficio non deve dedurlo.
+
+ */
+export interface AdminBookingCustomerArea {
+  /** Null se la prenotazione non ha email, quindi nessun account. */
+  accountId: string | null;
+  email: string | null;
+  /** pending = account creato ma il cliente non è mai entrato.
+   */
+  accountStatus: AdminBookingCustomerAreaAccountStatus;
+  /** bounced = ogni invito tornerebbe indietro. */
+  emailStatus: AdminBookingCustomerAreaEmailStatus;
+  linked: boolean;
+  linkedVia: AdminBookingCustomerAreaLinkedVia;
+  linkedAt: string | null;
+  /** Ultimo invito emesso per QUESTA prenotazione. */
+  lastInviteAt: string | null;
+}
+
 export type AdminBookingActionDetails = { [key: string]: unknown };
 
 export interface AdminBookingAction {
@@ -530,6 +589,7 @@ export interface AdminBookingDetails {
   /** Stato dell'autorizzazione all'addebito rispetto ai Termini in vigore. Se required è true l'acconto non parte finché il cliente non riaccetta dal portale.
    */
   termsReacceptance?: AdminBookingDetailsTermsReacceptance;
+  customerArea: AdminBookingCustomerArea;
   booking: Booking;
   participants: AdminBookingParticipant[];
   consents: AdminBookingConsent[];
@@ -543,6 +603,22 @@ export interface AdminBookingDetails {
   adminActions: AdminBookingAction[];
   economicSummary: AdminBookingEconomicSummary;
   participantsDetailed: boolean;
+}
+
+export type AdminBookingCustomerAreaInviteResultOutcome =
+  (typeof AdminBookingCustomerAreaInviteResultOutcome)[keyof typeof AdminBookingCustomerAreaInviteResultOutcome];
+
+export const AdminBookingCustomerAreaInviteResultOutcome = {
+  sent: "sent",
+  no_email: "no_email",
+  already_linked: "already_linked",
+  blocked: "blocked",
+  bounced: "bounced",
+} as const;
+
+export interface AdminBookingCustomerAreaInviteResult {
+  ok: boolean;
+  outcome: AdminBookingCustomerAreaInviteResultOutcome;
 }
 
 /**

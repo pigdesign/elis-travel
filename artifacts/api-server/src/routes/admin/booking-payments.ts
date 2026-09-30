@@ -43,6 +43,10 @@ import {
   StripeCleanupManualCompletionError,
 } from "../../services/stripe-cleanup";
 import { getCurrentTermsVersion } from "../../services/iubenda-terms";
+import {
+  getBookingCustomerAreaState,
+  sendBookingInviteEmail,
+} from "../../services/customer-account-provisioning";
 import { requiresTermsReacceptance } from "../../services/excursion-confirmation";
 import { reconcileBookingCancellation } from "../../services/booking-cancellations";
 import { isPaymentBlockedByCancellation } from "../../services/booking-cancellation-guard";
@@ -954,8 +958,14 @@ router.get("/bookings/:bookingId/details", async (req, res) => {
       ? await getCurrentTermsVersion()
       : null;
 
+    // Stato dell'area clienti: senza, chi e al telefono col cliente non ha
+    // modo di sapere se la gita e gia fra i suoi viaggi o se il richiamo e
+    // rimasto per aria, e se ne accorge solo quando il cliente si lamenta.
+    const customerArea = await getBookingCustomerAreaState(bookingId);
+
     res.json({
       booking,
+      customerArea,
       participants,
       consents,
       paymentRequests,
@@ -1280,6 +1290,45 @@ router.get("/excursions/:id/pickup-report", async (req, res) => {
     });
   } catch (err) {
     console.error("Pickup report failed:", err);
+    res.status(500).json({ error: "Errore interno del server." });
+  }
+});
+
+/**
+ * Manda al cliente il richiamo per collegare questa prenotazione all'area
+ * personale. Serve soprattutto alle prenotazioni inserite dall'ufficio: li
+ * l'email non e una prova di possesso, quindi il collegamento non puo essere
+ * automatico e qualcuno deve pur mandare l'invito.
+ *
+ * Gli esiti negativi tornano 409 con un messaggio parlante invece di un
+ * generico errore: all'operatore serve sapere PERCHE non e partito nulla,
+ * altrimenti ci riprova a vuoto.
+ */
+router.post("/bookings/:bookingId/customer-area/invite", async (req, res) => {
+  try {
+    const { bookingId } = req.params as { bookingId: string };
+    const esito = await sendBookingInviteEmail(bookingId);
+
+    if (esito === "sent") {
+      res.json({ ok: true, outcome: esito });
+      return;
+    }
+
+    const motivi: Record<string, string> = {
+      no_email: "La prenotazione non ha un indirizzo email a cui scrivere.",
+      already_linked:
+        "Questa prenotazione e gia collegata all'area personale del cliente.",
+      blocked: "L'account del cliente e bloccato: sbloccalo prima di scrivergli.",
+      bounced:
+        "L'indirizzo del cliente respinge le email: correggilo prima di riprovare.",
+    };
+    res.status(409).json({
+      ok: false,
+      outcome: esito,
+      error: motivi[esito] ?? "Invito non inviato.",
+    });
+  } catch (err) {
+    console.error("Booking customer-area invite failed:", err);
     res.status(500).json({ error: "Errore interno del server." });
   }
 });

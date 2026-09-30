@@ -184,6 +184,7 @@ export const customerAuthTokensTable = pgTable(
 export const BOOKING_LINK_ORIGINS = [
   "invite_token",
   "portal_token",
+  "session",
   "admin",
   "backfill",
 ] as const;
@@ -196,9 +197,15 @@ export type BookingLinkOrigin = (typeof BOOKING_LINK_ORIGINS)[number];
  * possono usare lo stesso indirizzo, un capogruppo prenota per venti, un figlio
  * per i genitori, e un semplice refuso metterebbe la prenotazione di uno nella
  * lista di un altro. Ogni riga qui e una decisione deliberata e revocabile, e
- * `linkedVia` ne conserva la provenienza: due valori corrispondono a una prova
- * di possesso ('invite_token', 'portal_token') e due a una scelta umana
- * ('admin', 'backfill' supervisionato). Nessun percorso euristico.
+ * `linkedVia` ne conserva la provenienza: tre valori corrispondono a una prova
+ * di possesso ('invite_token', 'portal_token', 'session') e due a una scelta
+ * umana ('admin', 'backfill' supervisionato). Nessun percorso euristico.
+ *
+ * 'session' e il caso di chi prenota mentre e gia dentro l'area clienti: la
+ * sessione prova il controllo di quell'indirizzo esattamente come lo prova il
+ * clic sull'invito, e viene accettata SOLO se l'email della prenotazione
+ * coincide con quella dell'account. Senza quel confronto sarebbe di nuovo un
+ * collegamento dedotto, cioe la cosa che qui si rifiuta.
  *
  * `excursion_bookings.customer_id` NON partecipa a questa decisione: resta un
  * collegamento CRM best-effort.
