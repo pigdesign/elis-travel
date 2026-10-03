@@ -7,11 +7,11 @@ hero:
   tagline: Procedure semplici e controllate per gestire clienti, richieste, gite, prenotazioni e pagamenti.
   actions:
     - text: Inizia dal pannello
-      link: /iniziare/orientarsi/
+      link: ./iniziare/orientarsi/
       icon: right-arrow
       variant: primary
     - text: Consulta le procedure rapide
-      link: /procedure/prenotazione-telefonica/
+      link: ./procedure/prenotazione-telefonica/
       icon: open-book
       variant: minimal
 ---
@@ -21,19 +21,19 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 <CardGrid>
   <Card title="Devi inserire una prenotazione?" icon="add-document">
     Segui la procedura guidata per una richiesta ricevuta al telefono o in ufficio.
-    [Apri la procedura →](/procedure/prenotazione-telefonica/)
+    [Apri la procedura →](./procedure/prenotazione-telefonica/)
   </Card>
   <Card title="È arrivato un bonifico?" icon="approve-check">
     Verifica importo e prenotazione prima di confermare manualmente il pagamento.
-    [Registra il pagamento →](/procedure/registrare-pagamento/)
+    [Registra il pagamento →](./procedure/registrare-pagamento/)
   </Card>
   <Card title="Il cliente vuole annullare?" icon="warning">
     Apri prima il caso di cancellazione e controlla la modalità di rimborso.
-    [Annullamento e rimborso →](/procedure/annullamento-rimborso/)
+    [Annullamento e rimborso →](./procedure/annullamento-rimborso/)
   </Card>
   <Card title="Non trovi una funzione?" icon="magnifier">
     Consulta la panoramica del pannello o usa la ricerca in alto.
-    [Orientarsi nel pannello →](/iniziare/orientarsi/)
+    [Orientarsi nel pannello →](./iniziare/orientarsi/)
   </Card>
 </CardGrid>
 
