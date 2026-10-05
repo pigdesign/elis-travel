@@ -1131,7 +1131,7 @@ export const CreatePublicExcursionBookingBody = zod.object({
     .boolean()
     .optional()
     .describe(
-      "Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation",
+      "Consenso esplicito a salvare la carta e addebitare l'importo scelto solo alla conferma; obbligatorio quando cardFlow è save_for_confirmation",
     ),
   consents: zod.object({
     terms: zod.boolean(),
@@ -1198,7 +1198,7 @@ export const ConfirmPublicExcursionBookingPaymentResponse = zod.object({
 });
 
 /**
- * @summary Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+ * @summary Conferma in sicurezza il SetupIntent per l'importo scelto alla conferma della gita
  */
 export const ConfirmPublicExcursionBookingCardSetupParams = zod.object({
   id: zod.coerce.string().uuid(),
@@ -1371,7 +1371,7 @@ export const GetExcursionPickupReportResponse = zod.object({
 });
 
 /**
- * @summary Conferma la gita e genera le richieste saldo (idempotente)
+ * @summary Conferma la gita e attiva addebiti e richieste di pagamento (idempotente)
  */
 export const ConfirmTripParams = zod.object({
   id: zod.coerce.string().uuid(),
@@ -1382,6 +1382,7 @@ export const ConfirmTripResponse = zod.object({
   status: zod.string(),
   balanceRequestsCreated: zod.number(),
   cardCharged: zod.number(),
+  paymentRequestsActivated: zod.number(),
   actionRequired: zod.number(),
   skipped: zod.number(),
 });
@@ -3210,7 +3211,12 @@ export const GetPublicExcursionResponse = zod.object({
     .enum(["pay_now", "save_for_confirmation", "unavailable_for_deposit"])
     .optional()
     .describe(
-      "Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto",
+      "Flusso carta per l'importo scelto; save_for_confirmation salva la carta senza addebito prima della conferma",
+    ),
+  paymentDeferredUntilConfirmation: zod
+    .boolean()
+    .describe(
+      "Se true, nessun metodo richiede o incassa pagamenti prima della conferma della gita",
     ),
   tripType: zod.enum(["standard", "rident"]).optional(),
   adultLabel: zod.string().optional(),

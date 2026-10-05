@@ -32,8 +32,10 @@ export interface PublicExcursionDetail {
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
   cardPaymentsEnabled?: boolean;
-  /** Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto */
+  /** Flusso carta per l'importo scelto; save_for_confirmation salva la carta senza addebito prima della conferma */
   cardFlow?: PublicExcursionDetailCardFlow;
+  /** Se true, nessun metodo richiede o incassa pagamenti prima della conferma della gita */
+  paymentDeferredUntilConfirmation: boolean;
   tripType?: PublicExcursionDetailTripType;
   adultLabel?: string;
   ageRanges?: PublicAgeRangePrice[];

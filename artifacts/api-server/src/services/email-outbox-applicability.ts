@@ -207,6 +207,33 @@ export function outboxSuppressionReason(
       : "payment_window_expired";
   }
 
+  if (eventType === "booking.awaiting-confirmation.customer") {
+    if (!isActiveBooking(booking)) return "booking_inactive";
+    if (!hasResidual(booking)) return "booking_settled";
+    if (input.excursionStatus !== "open") return "excursion_not_open";
+    if (
+      !["deposit_requested", "full_requested"].includes(booking.paymentStatus)
+    ) {
+      return "awaiting_confirmation_state_stale";
+    }
+    if (
+      !requestBelongsToBooking(input.paymentRequest, booking) ||
+      input.paymentRequest.type !== booking.paymentType ||
+      input.paymentRequest.status !== "scheduled"
+    ) {
+      return "awaiting_confirmation_request_stale";
+    }
+    if (
+      !["bank_transfer", "office"].includes(
+        input.paymentRequest.method ?? "",
+      ) ||
+      !methodIsCoherent(booking, input.paymentRequest)
+    ) {
+      return "awaiting_confirmation_method_mismatch";
+    }
+    return null;
+  }
+
   if (eventType === "booking.card-saved.customer") {
     if (!isActiveBooking(booking)) return "booking_inactive";
     if (!hasResidual(booking)) return "booking_settled";
@@ -218,7 +245,7 @@ export function outboxSuppressionReason(
     }
     if (
       !requestBelongsToBooking(input.paymentRequest, booking) ||
-      input.paymentRequest.type !== "deposit" ||
+      input.paymentRequest.type !== booking.paymentType ||
       input.paymentRequest.status !== "scheduled" ||
       input.paymentRequest.method !== "card"
     ) {

@@ -58,6 +58,7 @@ import {
   shouldRollbackBookingAfterStripeSetupFailure,
 } from "../services/stripe-cleanup-policy";
 import {
+  dispatchBookingAwaitingConfirmationEmailsV2,
   dispatchBookingInstructionsEmailsV2,
   dispatchCardSavedEmailV2,
   dispatchNewBookingAdminEmailV2,
@@ -86,8 +87,9 @@ import { classifyPublicSeatReservationUpdateMiss } from "../services/public-seat
 
 // ---------------------------------------------------------------------------
 // Prenotazione pubblica Gite v2: partecipanti individuali, consensi separati,
-// richiesta di pagamento con scadenza e tre metodi (carta con addebito
-// immediato o carta salvata via SetupIntent, bonifico, pagamento in ufficio).
+// richiesta di pagamento con scadenza e tre metodi. Finche la gita e aperta
+// nessun metodo incassa: la carta viene salvata via SetupIntent e le richieste
+// bonifico/ufficio restano programmate. Dopo la conferma il totale e immediato.
 // Ogni importo è ricalcolato dal server; il totale del browser viene ignorato.
 // ---------------------------------------------------------------------------
 
@@ -293,7 +295,11 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
           )
           .limit(1)
       : [null];
-    const [preflightParticipants, preflightFutureConsent] = preflightBooking
+    const [
+      preflightParticipants,
+      preflightFutureConsent,
+      preflightPaymentRequest,
+    ] = preflightBooking
       ? await Promise.all([
           db
             .select()
@@ -310,8 +316,14 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
               ),
             )
             .limit(1),
+          db
+            .select()
+            .from(paymentRequestsTable)
+            .where(eq(paymentRequestsTable.bookingId, preflightBooking.id))
+            .orderBy(asc(paymentRequestsTable.createdAt))
+            .limit(1),
         ])
-      : [[], []];
+      : [[], [], []];
 
     // --- Contesto gita ---
     const ctx = await loadPricingContext(id);
@@ -458,6 +470,11 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
 
     const noPaymentRequired = isNoPaymentRequired(quote);
     if (noPaymentRequired && !preflightBooking) paymentType = "full";
+    const deferredUntilConfirmation = preflightBooking
+      ? ["scheduled", "card_setup_pending"].includes(
+          preflightPaymentRequest[0]?.status ?? "",
+        ) || preflightFutureConsent[0]?.accepted === true
+      : excursion.status === "open" && !noPaymentRequired;
     if (!noPaymentRequired && !requestedPaymentMethod) {
       res.status(400).json({ error: "Metodo di pagamento non valido." });
       return;
@@ -496,8 +513,8 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     // sapere a quale testo si riferisce.
     const termsVersion = await getCurrentTermsVersion();
 
-    // Il salvataggio carta e ammesso esclusivamente per un acconto di una gita
-    // ancora aperta e soltanto quando flag e versione consenso sono configurati.
+    // Per una gita aperta qualunque scelta carta (acconto o totale) richiede il
+    // salvataggio senza addebito e il consenso all'incasso alla conferma.
     const savedCardAuthorizationRequired = preflightBooking
       ? false
       : requiresSavedCardAuthorization({
@@ -508,7 +525,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         });
     const saveCardForConfirmation = preflightBooking
       ? paymentMethod === "card" &&
-        paymentType === "deposit" &&
+        deferredUntilConfirmation &&
         Boolean(
           preflightBooking.stripeSetupIntentId ||
           preflightFutureConsent[0]?.accepted,
@@ -527,7 +544,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     ) {
       res.status(409).json({
         error:
-          "L'acconto con carta richiede l'autorizzazione al salvataggio per la conferma, ma questa funzione non è disponibile. Scegli bonifico o pagamento in ufficio.",
+          "Il pagamento con carta richiede l'autorizzazione al salvataggio per la conferma, ma questa funzione non è disponibile. Scegli bonifico o pagamento in ufficio.",
         code: "CARD_DEPOSIT_REQUIRES_SAVED_CARD_AUTHORIZATION",
       });
       return;
@@ -547,8 +564,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     }
     if (saveCardForConfirmation && body.futureChargeConsent !== true) {
       res.status(400).json({
-        error:
-          "Devi autorizzare il salvataggio della carta e l'addebito dell'acconto alla conferma della gita.",
+        error: `Devi autorizzare il salvataggio della carta e l'addebito ${paymentType === "deposit" ? "dell'acconto" : "dell'intera quota"} alla conferma della gita.`,
       });
       return;
     }
@@ -590,7 +606,8 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       hardLimitDate:
         paymentType === "deposit" ? excursion.depositDeadlineDate : null,
     });
-    const bookingPaymentDeadline = noPaymentRequired ? null : paymentDeadline;
+    const bookingPaymentDeadline =
+      noPaymentRequired || deferredUntilConfirmation ? null : paymentDeadline;
     const paymentGraceUntil =
       paymentMethod === "bank_transfer" || paymentMethod === "office"
         ? computeGraceUntil({
@@ -601,14 +618,16 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
         : null;
     const seatHoldExpiresAt = noPaymentRequired
       ? null
-      : paymentMethod === "card"
-        ? new Date(
-            Math.min(
-              now.getTime() + settings.cardCheckoutHoldMinutes * 60 * 1000,
-              paymentDeadline.getTime(),
-            ),
-          )
-        : (paymentGraceUntil ?? paymentDeadline);
+      : deferredUntilConfirmation && paymentMethod !== "card"
+        ? null
+        : paymentMethod === "card"
+          ? new Date(
+              Math.min(
+                now.getTime() + settings.cardCheckoutHoldMinutes * 60 * 1000,
+                paymentDeadline.getTime(),
+              ),
+            )
+          : (paymentGraceUntil ?? paymentDeadline);
 
     let bookingCode: string | null = null;
     const customerName = `${firstName} ${lastName}`;
@@ -949,10 +968,12 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
             ? "paid"
             : saveCardForConfirmation
               ? "card_setup_pending"
-              : "pending",
+              : deferredUntilConfirmation
+                ? "scheduled"
+                : "pending",
           method: paymentMethod,
           deadline: bookingPaymentDeadline,
-          graceUntil: paymentGraceUntil,
+          graceUntil: deferredUntilConfirmation ? null : paymentGraceUntil,
           paidAt: noPaymentRequired ? now : null,
           transactionReference: noPaymentRequired
             ? "no_payment_required"
@@ -1092,6 +1113,16 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     }
 
     if (paymentMethod === "bank_transfer") {
+      if (deferredUntilConfirmation) {
+        await dispatchBookingAwaitingConfirmationEmailsV2(result.booking.id);
+        res.status(bookingResponseStatus).json({
+          ...baseResponse,
+          paymentDeadline: null,
+          message:
+            "Prenotazione registrata. Nessun pagamento è richiesto ora: riceverai IBAN, causale e scadenza soltanto se la gita verrà confermata.",
+        });
+        return;
+      }
       dispatchBookingInstructionsEmailsV2(result.booking.id);
       res.status(bookingResponseStatus).json({
         ...baseResponse,
@@ -1110,6 +1141,16 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
     }
 
     if (paymentMethod === "office") {
+      if (deferredUntilConfirmation) {
+        await dispatchBookingAwaitingConfirmationEmailsV2(result.booking.id);
+        res.status(bookingResponseStatus).json({
+          ...baseResponse,
+          paymentDeadline: null,
+          message:
+            "Prenotazione registrata. Nessun pagamento è richiesto ora: riceverai le istruzioni per il pagamento in ufficio soltanto se la gita verrà confermata.",
+        });
+        return;
+      }
       dispatchBookingInstructionsEmailsV2(result.booking.id);
       res.status(bookingResponseStatus).json({
         ...baseResponse,
@@ -1123,7 +1164,8 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
       return;
     }
 
-    // --- Carta: SetupIntent senza addebito oppure PaymentIntent immediato ---
+    // --- Carta: SetupIntent senza addebito prima della conferma; PaymentIntent
+    // immediato soltanto per nuove prenotazioni su gita gia confermata. ---
     const stripeClient = stripe;
     if (!stripeClient) {
       // Non dovrebbe accadere (methods.card era true), ma per sicurezza:
@@ -1180,7 +1222,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
             metadata: {
               source: "elis-travel",
               flow: "save_for_confirmation",
-              type: "deposit",
+              type: paymentType,
               bookingId: result.booking.id,
               paymentRequestId: result.paymentRequest.id,
               bookingCode: resolvedBookingCode,
@@ -1308,8 +1350,7 @@ router.post("/excursions/:id/book", publicFormsLimiter, async (req, res) => {
           ...baseResponse,
           cardFlow: "save_for_confirmation",
           stripeSetupClientSecret: setupIntent.client_secret,
-          message:
-            "Salva la carta per riservare il posto: non viene effettuato alcun addebito ora. L'acconto sara addebitato soltanto se la gita verra confermata.",
+          message: `Salva la carta per riservare il posto: non viene effettuato alcun addebito ora. ${paymentType === "deposit" ? "L'acconto" : "L'intera quota"} sara addebitat${paymentType === "deposit" ? "o" : "a"} soltanto se la gita verra confermata.`,
         });
       } catch (stripeErr) {
         logger.error(

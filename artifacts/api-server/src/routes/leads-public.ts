@@ -15,7 +15,10 @@ import {
 import { eq, and, ne, desc, gt, isNotNull, sql, or, asc } from "drizzle-orm";
 import { dispatchCardSavedEmailV2 } from "../services/excursion-booking-emails-v2";
 import { verifyBookingCancellationToken } from "../services/booking-cancellation-token";
-import { publicFormsLimiter, posterPdfLimiter } from "../middlewares/rateLimiter";
+import {
+  publicFormsLimiter,
+  posterPdfLimiter,
+} from "../middlewares/rateLimiter";
 import { getExcursionPosterPdf } from "../services/poster-pdf";
 import { getCurrentTermsVersion } from "../services/iubenda-terms";
 import { stripe } from "../services/stripe";
@@ -512,12 +515,22 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
     // La versione dei T&C arriva da Iubenda: se non e determinabile il
     // salvataggio carta non sara comunque possibile, quindi non lo annunciamo.
     const termsVersion = await getCurrentTermsVersion();
+    const paymentDeferredUntilConfirmation = ctx.excursion.status === "open";
     const cardFlow =
-      ctx.excursion.status === "open" && depositAllowed && methods.card
+      paymentDeferredUntilConfirmation && methods.card
         ? settings.futureCardChargeEnabled && Boolean(termsVersion)
           ? "save_for_confirmation"
           : "unavailable_for_deposit"
         : "pay_now";
+    const publicPaymentMethods = {
+      ...methods,
+      // Su una gita aperta la carta e offerta soltanto se puo essere salvata
+      // senza addebito. Non esiste piu il ripiego "totale subito".
+      card:
+        methods.card &&
+        (!paymentDeferredUntilConfirmation ||
+          cardFlow === "save_for_confirmation"),
+    };
     const thresholdReached =
       (excursion.adherentsCount ?? 0) >=
       Math.max(excursion.minThreshold ?? 1, 1);
@@ -539,6 +552,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
       pickupPoints: pickupPointsPublic,
       cardPaymentsEnabled: methods.card,
       cardFlow,
+      paymentDeferredUntilConfirmation,
       // ---- Gite v2 ----
       tripType: isRident ? "rident" : "standard",
       adultLabel: `Adulti (${settings.adultMinAge}+ anni)`,
@@ -567,7 +581,7 @@ router.get("/catalog/products/excursions/:id", async (req, res) => {
             ? Number(ctx.excursion.depositValue)
             : settings.depositPercentage,
       },
-      paymentMethods: methods,
+      paymentMethods: publicPaymentMethods,
       // Il modulo non ricalcola la regola per conto suo: la disponibilita' la
       // decide il server, che e' anche quello che poi rifiuta la richiesta.
       // Una sola fonte, altrimenti si finisce per mostrare un campo che il
@@ -608,79 +622,88 @@ function posterFileName(name: string): string {
  * Scheda PDF della gita: stessa impaginazione dell'anteprima admin, stampata
  * lato server così il file è identico per chiunque lo scarichi.
  */
-router.get("/catalog/products/excursions/:id/pdf", posterPdfLimiter, async (req, res) => {
-  try {
-    const id = req.params.id as string;
+router.get(
+  "/catalog/products/excursions/:id/pdf",
+  posterPdfLimiter,
+  async (req, res) => {
+    try {
+      const id = req.params.id as string;
 
-    // Stessa regola di visibilità del dettaglio pubblico: niente PDF per le
-    // gite non pubblicate. In più solo le gite standard: la locandina non è
-    // prevista per le Rident, e l'indirizzo è indovinabile a mano, quindi il
-    // rifiuto sta qui e non solo nel tasto nascosto lato sito.
-    const [excursion] = await db
-      .select({
-        id: excursionsTable.id,
-        name: excursionsTable.name,
-        updatedAt: excursionsTable.updatedAt,
-      })
-      .from(excursionsTable)
-      .where(
-        and(
-          eq(excursionsTable.id, id),
-          eq(excursionsTable.category, "standard"),
-          or(
-            eq(excursionsTable.status, "open"),
-            eq(excursionsTable.status, "confirmed"),
+      // Stessa regola di visibilità del dettaglio pubblico: niente PDF per le
+      // gite non pubblicate. In più solo le gite standard: la locandina non è
+      // prevista per le Rident, e l'indirizzo è indovinabile a mano, quindi il
+      // rifiuto sta qui e non solo nel tasto nascosto lato sito.
+      const [excursion] = await db
+        .select({
+          id: excursionsTable.id,
+          name: excursionsTable.name,
+          updatedAt: excursionsTable.updatedAt,
+        })
+        .from(excursionsTable)
+        .where(
+          and(
+            eq(excursionsTable.id, id),
+            eq(excursionsTable.category, "standard"),
+            or(
+              eq(excursionsTable.status, "open"),
+              eq(excursionsTable.status, "confirmed"),
+            ),
           ),
-        ),
-      )
-      .limit(1);
+        )
+        .limit(1);
 
-    if (!excursion) {
-      res.status(404).json({ error: "Gita non trovata." });
-      return;
+      if (!excursion) {
+        res.status(404).json({ error: "Gita non trovata." });
+        return;
+      }
+
+      // I punti di raccolta compaiono in locandina ma non toccano
+      // excursions.updated_at: entrano nella revisione per non servire da cache
+      // un PDF con fermate vecchie.
+      const [pickupRevision] = await db
+        .select({
+          count: sql<number>`count(*)::int`,
+          lastCreatedAt: sql<
+            string | null
+          >`max(${excursionPickupPointsTable.createdAt})`,
+        })
+        .from(excursionPickupPointsTable)
+        .where(eq(excursionPickupPointsTable.excursionId, id));
+
+      const revision = [
+        excursion.updatedAt?.toISOString() ?? "",
+        pickupRevision?.count ?? 0,
+        pickupRevision?.lastCreatedAt ?? "",
+      ].join("|");
+
+      const pdf = await getExcursionPosterPdf(id, revision);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Length", String(pdf.byteLength));
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${posterFileName(excursion.name).replace(/"/g, "")}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(posterFileName(excursion.name))}`,
+      );
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.end(pdf);
+    } catch (err) {
+      // Il visitatore non deve trovare un vicolo cieco se Chromium manca o va in
+      // errore: lo mandiamo sulla stessa locandina, che si apre con la finestra
+      // di stampa del browser. L'errore resta nei log (e in
+      // /api/admin/poster-diagnostics) perché il ripiego non lo nasconda.
+      logger.error(
+        { err, id: req.params.id },
+        "Generazione PDF locandina fallita",
+      );
+      if (res.headersSent) {
+        res.end();
+        return;
+      }
+      res.redirect(302, `/locandina/gita/${req.params.id}?stampa=1`);
     }
-
-    // I punti di raccolta compaiono in locandina ma non toccano
-    // excursions.updated_at: entrano nella revisione per non servire da cache
-    // un PDF con fermate vecchie.
-    const [pickupRevision] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-        lastCreatedAt: sql<string | null>`max(${excursionPickupPointsTable.createdAt})`,
-      })
-      .from(excursionPickupPointsTable)
-      .where(eq(excursionPickupPointsTable.excursionId, id));
-
-    const revision = [
-      excursion.updatedAt?.toISOString() ?? "",
-      pickupRevision?.count ?? 0,
-      pickupRevision?.lastCreatedAt ?? "",
-    ].join("|");
-
-    const pdf = await getExcursionPosterPdf(id, revision);
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Length", String(pdf.byteLength));
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${posterFileName(excursion.name).replace(/"/g, "")}"; ` +
-        `filename*=UTF-8''${encodeURIComponent(posterFileName(excursion.name))}`,
-    );
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.end(pdf);
-  } catch (err) {
-    // Il visitatore non deve trovare un vicolo cieco se Chromium manca o va in
-    // errore: lo mandiamo sulla stessa locandina, che si apre con la finestra
-    // di stampa del browser. L'errore resta nei log (e in
-    // /api/admin/poster-diagnostics) perché il ripiego non lo nasconda.
-    logger.error({ err, id: req.params.id }, "Generazione PDF locandina fallita");
-    if (res.headersSent) {
-      res.end();
-      return;
-    }
-    res.redirect(302, `/locandina/gita/${req.params.id}?stampa=1`);
-  }
-});
+  },
+);
 
 // Preventivo server-side: il frontend lo usa per il riepilogo, la prenotazione
 // ricalcola comunque tutto (mai fidarsi dei totali del browser).

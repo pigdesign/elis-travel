@@ -704,9 +704,10 @@ export function quoteAmountsForBookingAttempt(input: {
 }
 
 /**
- * Per un acconto carta prima della conferma l'unico flusso ammesso e il
- * salvataggio off-session esplicitamente autorizzato; non va degradato a un
- * addebito immediato se il kill switch e spento o il consenso non e configurato.
+ * Prima della conferma della gita nessun importo puo essere incassato. Per la
+ * carta, sia l'acconto sia il totale richiedono quindi il salvataggio
+ * off-session esplicitamente autorizzato; il flusso non deve mai degradare a
+ * un addebito immediato se il kill switch e spento o il consenso manca.
  */
 export function requiresSavedCardAuthorization(input: {
   paymentMethod: string | null;
@@ -716,9 +717,9 @@ export function requiresSavedCardAuthorization(input: {
 }): boolean {
   return (
     input.paymentMethod === "card" &&
-    input.paymentType === "deposit" &&
     input.excursionStatus === "open" &&
-    input.depositAllowed
+    (input.paymentType === "full" ||
+      (input.paymentType === "deposit" && input.depositAllowed))
   );
 }
 

@@ -7,7 +7,7 @@
  */
 
 /**
- * Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto
+ * Flusso carta per l'importo scelto; save_for_confirmation salva la carta senza addebito prima della conferma
  */
 export type PublicExcursionDetailCardFlow =
   (typeof PublicExcursionDetailCardFlow)[keyof typeof PublicExcursionDetailCardFlow];

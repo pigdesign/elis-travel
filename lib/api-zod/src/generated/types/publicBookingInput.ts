@@ -31,7 +31,7 @@ export interface PublicBookingInput {
    * @minimum 0
    */
   quotedAmountDueCents: number;
-  /** Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation */
+  /** Consenso esplicito a salvare la carta e addebitare l'importo scelto solo alla conferma; obbligatorio quando cardFlow è save_for_confirmation */
   futureChargeConsent?: boolean;
   consents: PublicBookingConsents;
   servizioCasa?: boolean | null;

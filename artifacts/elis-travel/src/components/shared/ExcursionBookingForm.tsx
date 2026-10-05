@@ -459,9 +459,11 @@ function StripeSetupStep({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
         <strong>Nessun addebito ora.</strong> La carta verrà salvata in modo
-        sicuro. L'acconto di{" "}
-        <strong>{formatEuro(booking.amountDueCents)}</strong> sarà addebitato
-        soltanto se la gita verrà confermata.
+        sicuro.{" "}
+        {booking.paymentType === "deposit" ? "L'acconto" : "L'intera quota"} di{" "}
+        <strong>{formatEuro(booking.amountDueCents)}</strong> sarà addebitat
+        {booking.paymentType === "deposit" ? "o" : "a"} soltanto se la gita
+        verrà confermata.
       </div>
       <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
         <PaymentElement />
@@ -583,6 +585,8 @@ export function ExcursionBookingForm({
   const ageRanges = excursion.ageRanges ?? [];
   const spotsLeft = excursion.spotsLeft ?? null;
   const depositConfig = excursion.depositConfig;
+  const paymentDeferredUntilConfirmation =
+    excursion.paymentDeferredUntilConfirmation === true;
   const depositAvailable = depositConfig?.available === true;
   const methods = excursion.paymentMethods ?? {
     card: false,
@@ -591,10 +595,10 @@ export function ExcursionBookingForm({
   };
   const thresholdReached = excursion.thresholdReached === true;
   const adultLabel = excursion.adultLabel ?? "Adulti (18+ anni)";
-  const savedCardDepositAvailable =
+  const savedCardAvailable =
     methods.card && excursion.cardFlow === "save_for_confirmation";
   const depositMethodAvailable =
-    savedCardDepositAvailable || methods.bankTransfer || methods.office;
+    savedCardAvailable || methods.bankTransfer || methods.office;
   const effectiveDepositAvailable = depositAvailable && depositMethodAvailable;
 
   // Referente
@@ -633,7 +637,7 @@ export function ExcursionBookingForm({
     effectiveDepositAvailable ? "deposit" : "full",
   );
   const defaultMethod =
-    effectiveDepositAvailable && savedCardDepositAvailable
+    effectiveDepositAvailable && savedCardAvailable
       ? "card"
       : methods.bankTransfer
         ? "bank_transfer"
@@ -739,12 +743,11 @@ export function ExcursionBookingForm({
   const totalPeople = isRident ? patients + companions : adults + children;
   const maxPeople = spotsLeft !== null ? spotsLeft : undefined;
   const saveCardForConfirmation =
-    excursion.cardFlow === "save_for_confirmation" &&
-    paymentType === "deposit" &&
-    paymentMethod === "card";
+    excursion.cardFlow === "save_for_confirmation" && paymentMethod === "card";
   const cardAvailableForSelection =
     methods.card &&
-    (paymentType === "full" || excursion.cardFlow === "save_for_confirmation");
+    (!paymentDeferredUntilConfirmation ||
+      excursion.cardFlow === "save_for_confirmation");
 
   const chooseDepositPayment = () => {
     setPaymentType("deposit");
@@ -912,14 +915,14 @@ export function ExcursionBookingForm({
     if (!privacyAccepted)
       return "Devi accettare l'Informativa Privacy per prenotare.";
     if (saveCardForConfirmation && !futureChargeConsent) {
-      return "Devi autorizzare il salvataggio della carta e l'addebito dell'acconto alla conferma della gita.";
+      return `Devi autorizzare il salvataggio della carta e l'addebito ${paymentType === "deposit" ? "dell'acconto" : "dell'intera quota"} alla conferma della gita.`;
     }
     if (
       paymentType === "deposit" &&
       paymentMethod === "card" &&
       excursion.cardFlow !== "save_for_confirmation"
     ) {
-      return "Per l'acconto la carta non è disponibile: scegli l'importo completo oppure bonifico o pagamento in ufficio.";
+      return "Per questa gita la carta non è disponibile prima della conferma: scegli bonifico o pagamento in ufficio.";
     }
     return null;
   };
@@ -1133,9 +1136,13 @@ export function ExcursionBookingForm({
           ) : cardSavedForConfirmation ? (
             <>
               La prenotazione <strong>{booking.bookingCode}</strong> è
-              registrata e non è stato effettuato alcun addebito. L'acconto di{" "}
-              {formatEuro(booking.amountDueCents)} sarà addebitato soltanto se
-              la gita verrà confermata.
+              registrata e non è stato effettuato alcun addebito.{" "}
+              {booking.paymentType === "deposit"
+                ? "L'acconto"
+                : "L'intera quota"}{" "}
+              di {formatEuro(booking.amountDueCents)} sarà addebitat
+              {booking.paymentType === "deposit" ? "o" : "a"} soltanto se la
+              gita verrà confermata.
             </>
           ) : (
             <>
@@ -1148,8 +1155,10 @@ export function ExcursionBookingForm({
     );
   }
 
-  // --- Istruzioni bonifico / ufficio ---
+  // --- Attesa conferma oppure istruzioni bonifico / ufficio ---
   if (step === "instructions" && booking) {
+    const waitingForTripConfirmation =
+      booking.paymentDeadline === null && !booking.bank && !booking.office;
     return cardShell(
       <>
         <h2 className="mb-3 flex items-center gap-2 text-xl font-serif font-bold text-foreground">
@@ -1162,7 +1171,11 @@ export function ExcursionBookingForm({
 
         <div className="mb-5 space-y-2 rounded-2xl border border-slate-200 bg-[#f7faf9] p-5 text-sm">
           <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Importo da pagare</span>
+            <span className="text-muted-foreground">
+              {waitingForTripConfirmation
+                ? "Importo scelto alla conferma"
+                : "Importo da pagare"}
+            </span>
             <strong className="text-foreground">
               {formatEuro(booking.amountDueCents)}
             </strong>
@@ -1177,12 +1190,14 @@ export function ExcursionBookingForm({
               </span>
             </div>
           )}
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Scadenza pagamento</span>
-            <strong className="capitalize text-accent">
-              {formatDeadline(booking.paymentDeadline)}
-            </strong>
-          </div>
+          {!waitingForTripConfirmation && (
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Scadenza pagamento</span>
+              <strong className="capitalize text-accent">
+                {formatDeadline(booking.paymentDeadline)}
+              </strong>
+            </div>
+          )}
         </div>
 
         {booking.bank && (
@@ -1252,8 +1267,9 @@ export function ExcursionBookingForm({
         )}
 
         <p className="text-xs text-muted-foreground">
-          Riceverai una email con il riepilogo e queste istruzioni. Per
-          qualsiasi dubbio contattaci citando il codice {booking.bookingCode}.
+          {waitingForTripConfirmation
+            ? `Se la gita verrà confermata riceverai le istruzioni e la scadenza. Per qualsiasi dubbio cita il codice ${booking.bookingCode}.`
+            : `Riceverai una email con il riepilogo e queste istruzioni. Per qualsiasi dubbio cita il codice ${booking.bookingCode}.`}
         </p>
       </>,
     );
@@ -1417,7 +1433,7 @@ export function ExcursionBookingForm({
             <>
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">
-                  {saveCardForConfirmation
+                  {paymentDeferredUntilConfirmation
                     ? "Acconto alla conferma della gita"
                     : "Acconto da versare ora"}
                 </span>
@@ -1455,12 +1471,12 @@ export function ExcursionBookingForm({
           )}
         </div>
 
-        {saveCardForConfirmation && !isFreeQuote && (
+        {paymentDeferredUntilConfirmation && !isFreeQuote && (
           <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-relaxed text-emerald-900">
-            <strong>Nessun addebito viene effettuato ora.</strong> Nel passaggio
-            successivo salverai la carta; ElisTravel addebiterà l'acconto di{" "}
-            {formatEuro(quote.depositCents)} soltanto se la gita verrà
-            confermata.
+            <strong>Nessun pagamento viene richiesto ora.</strong>{" "}
+            {paymentMethod === "card"
+              ? `Nel passaggio successivo salverai la carta; ElisTravel addebiterà ${paymentType === "deposit" ? "l'acconto" : "l'intera quota"} di ${formatEuro(quote.amountDueCents)} soltanto se la gita verrà confermata.`
+              : `Le istruzioni e la scadenza per ${paymentMethod === "bank_transfer" ? "il bonifico" : "il pagamento in ufficio"} saranno inviate soltanto se la gita verrà confermata.`}
           </div>
         )}
 
@@ -1583,13 +1599,13 @@ export function ExcursionBookingForm({
         per la lista operativa della gita.
       </p>
 
-      {!thresholdReached && depositAvailable && (
+      {!thresholdReached && paymentDeferredUntilConfirmation && (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
           La gita sarà confermata al raggiungimento del numero minimo di
-          partecipanti.{" "}
-          {excursion.cardFlow === "save_for_confirmation"
-            ? "Se scegli carta e acconto, la carta viene salvata senza addebiti ora e l'acconto viene addebitato soltanto alla conferma."
-            : "Puoi versare un acconto per riservare il posto: il saldo verrà richiesto dopo la conferma."}
+          partecipanti. Prima della conferma non viene richiesto né incassato
+          alcun pagamento: con carta salvi il metodo di pagamento senza
+          addebiti; con bonifico o pagamento in ufficio riceverai istruzioni e
+          scadenza solo dopo la conferma.
         </div>
       )}
 
@@ -2225,7 +2241,9 @@ export function ExcursionBookingForm({
                   Importo completo
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Paga subito l'intera quota.
+                  {paymentDeferredUntilConfirmation
+                    ? "L'intera quota sarà richiesta solo alla conferma."
+                    : "Paga subito l'intera quota."}
                 </div>
               </div>
             </label>
@@ -2298,7 +2316,9 @@ export function ExcursionBookingForm({
                     <Landmark className="h-4 w-4 text-primary" /> Bonifico
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Riceverai IBAN e causale.
+                    {paymentDeferredUntilConfirmation
+                      ? "IBAN e causale arriveranno dopo la conferma."
+                      : "Riceverai IBAN e causale."}
                   </div>
                 </div>
               </label>
@@ -2326,20 +2346,21 @@ export function ExcursionBookingForm({
                     <Building2 className="h-4 w-4 text-primary" /> In ufficio
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Paga in sede entro la scadenza.
+                    {paymentDeferredUntilConfirmation
+                      ? "Paga in sede soltanto dopo la conferma."
+                      : "Paga in sede entro la scadenza."}
                   </div>
                 </div>
               </label>
             )}
           </div>
           {methods.card &&
-            paymentType === "deposit" &&
+            paymentDeferredUntilConfirmation &&
             excursion.cardFlow !== "save_for_confirmation" && (
               <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                Per l'acconto la carta è disponibile soltanto quando è attiva
-                l'autorizzazione al salvataggio e all'addebito alla conferma.
-                Scegli bonifico o ufficio, oppure seleziona l'importo completo
-                per pagare subito con carta.
+                Prima della conferma la carta è disponibile soltanto quando è
+                attiva l'autorizzazione al salvataggio e all'addebito futuro.
+                Scegli bonifico o pagamento in ufficio.
               </p>
             )}
         </div>
@@ -2357,9 +2378,10 @@ export function ExcursionBookingForm({
               />
               <span className="text-xs leading-relaxed text-emerald-950">
                 <strong>Nessun addebito ora.</strong> Autorizzo ElisTravel a
-                salvare in modo sicuro la carta e addebitare l'acconto soltanto
-                se la gita verrà confermata. Se la gita viene annullata, non
-                verrà effettuato alcun addebito. *
+                salvare in modo sicuro la carta e addebitare{" "}
+                {paymentType === "deposit" ? "l'acconto" : "l'intera quota"}{" "}
+                soltanto se la gita verrà confermata. Se la gita viene
+                annullata, non verrà effettuato alcun addebito. *
               </span>
             </label>
           )}

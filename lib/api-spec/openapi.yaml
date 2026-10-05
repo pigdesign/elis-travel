@@ -689,7 +689,7 @@ paths:
     post:
       operationId: confirmPublicExcursionBookingCardSetup
       tags: [public]
-      summary: Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+      summary: Conferma in sicurezza il SetupIntent per l'importo scelto alla conferma della gita
       parameters:
         - name: id
           in: path
@@ -867,7 +867,7 @@ paths:
     post:
       operationId: confirmTrip
       tags: [excursions]
-      summary: Conferma la gita e genera le richieste saldo (idempotente)
+      summary: Conferma la gita e attiva addebiti e richieste di pagamento (idempotente)
       security:
         - cookieAuth: []
       parameters:
@@ -3764,7 +3764,17 @@ components:
           format: date-time
           nullable: true
           description: Ultimo invito emesso per QUESTA prenotazione.
-      required: [accountId, email, accountStatus, emailStatus, linked, linkedVia, linkedAt, lastInviteAt]
+      required:
+        [
+          accountId,
+          email,
+          accountStatus,
+          emailStatus,
+          linked,
+          linkedVia,
+          linkedAt,
+          lastInviteAt,
+        ]
     AdminBookingCustomerAreaInviteResult:
       type: object
       properties:
@@ -4100,6 +4110,8 @@ components:
           type: integer
         cardCharged:
           type: integer
+        paymentRequestsActivated:
+          type: integer
         actionRequired:
           type: integer
         skipped:
@@ -4110,6 +4122,7 @@ components:
           status,
           balanceRequestsCreated,
           cardCharged,
+          paymentRequestsActivated,
           actionRequired,
           skipped,
         ]
@@ -4265,7 +4278,7 @@ components:
           description: Importo dovuto dell'ultimo preventivo server accettato dal cliente
         futureChargeConsent:
           type: boolean
-          description: Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation
+          description: Consenso esplicito a salvare la carta e addebitare l'importo scelto solo alla conferma; obbligatorio quando cardFlow è save_for_confirmation
         consents:
           $ref: "#/components/schemas/PublicBookingConsents"
         servizioCasa:
@@ -5281,7 +5294,10 @@ components:
         cardFlow:
           type: string
           enum: [pay_now, save_for_confirmation, unavailable_for_deposit]
-          description: Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto
+          description: Flusso carta per l'importo scelto; save_for_confirmation salva la carta senza addebito prima della conferma
+        paymentDeferredUntilConfirmation:
+          type: boolean
+          description: Se true, nessun metodo richiede o incassa pagamenti prima della conferma della gita
         tripType:
           type: string
           enum: [standard, rident]
@@ -5322,7 +5338,7 @@ components:
         officeOpeningHours:
           type: string
           nullable: true
-      required: [id, name]
+      required: [id, name, paymentDeferredUntilConfirmation]
     PublicAgeRangePrice:
       type: object
       properties:

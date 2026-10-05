@@ -725,9 +725,7 @@ export function SettingsPage() {
       setOnBusPaymentsEnabled(
         settings.excursion_on_bus_payments_enabled !== "false",
       );
-      setHomePickupEnabled(
-        settings.home_pickup_enabled === "true",
-      );
+      setHomePickupEnabled(settings.home_pickup_enabled === "true");
       setFutureCardChargeEnabled(
         settings.future_card_charge_enabled === "true",
       );
@@ -1021,10 +1019,10 @@ export function SettingsPage() {
                 <span className="mt-1 block text-xs text-muted-foreground">
                   Spento finché il servizio non è operativo: la voce "Richiedo
                   il servizio di trasporto da casa" non compare nel modulo di
-                  prenotazione e una richiesta inviata comunque viene
-                  rifiutata. Le prenotazioni che ce l'hanno già continuano a
-                  mostrarlo ovunque — report di raccolta, scheda e email —
-                  perché spegnere un servizio non riscrive lo storico.
+                  prenotazione e una richiesta inviata comunque viene rifiutata.
+                  Le prenotazioni che ce l'hanno già continuano a mostrarlo
+                  ovunque — report di raccolta, scheda e email — perché spegnere
+                  un servizio non riscrive lo storico.
                 </span>
               </span>
             </label>
@@ -1041,12 +1039,12 @@ export function SettingsPage() {
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
-                  Salva la carta e addebita l'acconto alla conferma
+                  Salva la carta e addebita alla conferma
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  Kill switch specifico per l'acconto futuro. OFF impedisce sia
-                  nuovi salvataggi sia addebiti automatici delle carte già
-                  salvate alla conferma: la richiesta passa a intervento
+                  Interruttore per gli addebiti futuri. OFF impedisce sia nuovi
+                  salvataggi sia addebiti automatici delle carte già salvate
+                  alla conferma: la richiesta passa a intervento
                   cliente/portale.
                 </span>
               </span>
@@ -1058,7 +1056,7 @@ export function SettingsPage() {
                 </span>{" "}
                 Viene letta dalla data di ultima modifica dei Termini e
                 Condizioni pubblicati su Iubenda, dove si trova la clausola
-                sull'addebito differito. Se quella data cambia, gli acconti già
+                sull'addebito differito. Se quella data cambia, gli importi già
                 autorizzati non vengono più addebitati in automatico: le
                 prenotazioni restano in attesa di una nuova accettazione.
               </p>
@@ -1112,11 +1110,12 @@ export function SettingsPage() {
               data-testid="input-settings-deposit-percentage"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Determina l'acconto. Per una gita aperta, la carta viene soltanto
-              salvata e l'acconto viene addebitato alla conferma. Se l'addebito
+              Determina l'acconto. Per una gita aperta non viene incassato
+              nulla: con carta viene salvato il metodo di pagamento e l'importo
+              scelto viene addebitato alla conferma; per bonifico o ufficio le
+              istruzioni vengono inviate solo alla conferma. Se l'addebito
               futuro è disattivato o manca la versione del consenso, la carta
-              non è disponibile per l'acconto: il cliente deve scegliere il
-              totale oppure bonifico/ufficio.
+              non è disponibile prima della conferma.
             </p>
           </div>
 

@@ -5,7 +5,7 @@ import {
   requiresTermsReacceptance,
   confirmationChargeIdempotencyKey,
   confirmationFinalState,
-  savedCardDepositChargePlan,
+  savedCardChargePlan,
   shouldRunConfirmationWorkflow,
 } from "./excursion-confirmation";
 
@@ -34,20 +34,30 @@ test("una richiesta esplicita confirmed riprende il workflow anche se lo stato e
   );
 });
 
-test("la conferma addebita solo l'acconto autorizzato, mai il residuo completo", () => {
+test("la conferma addebita l'importo autorizzato per acconto o quota completa", () => {
   assert.deepEqual(
-    savedCardDepositChargePlan({
-      authorizedDepositCents: 5_000,
+    savedCardChargePlan({
+      paymentType: "deposit",
+      authorizedAmountCents: 5_000,
       residualCents: 20_000,
     }),
     { requestType: "deposit", amountCents: 5_000 },
   );
   assert.deepEqual(
-    savedCardDepositChargePlan({
-      authorizedDepositCents: 25_000,
+    savedCardChargePlan({
+      paymentType: "deposit",
+      authorizedAmountCents: 25_000,
       residualCents: 20_000,
     }),
     { requestType: "deposit", amountCents: 20_000 },
+  );
+  assert.deepEqual(
+    savedCardChargePlan({
+      paymentType: "full",
+      authorizedAmountCents: 20_000,
+      residualCents: 20_000,
+    }),
+    { requestType: "full", amountCents: 20_000 },
   );
 });
 

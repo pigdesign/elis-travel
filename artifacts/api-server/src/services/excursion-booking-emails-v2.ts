@@ -31,11 +31,7 @@ import {
 
 // Impaginazione e dati agenzia vivono in email-layout.ts: li condividiamo con
 // le email dell'area clienti. L'alias `wrap` mantiene invariati i punti di uso.
-import {
-  agency,
-  escapeHtml,
-  wrapEmailHtml as wrap,
-} from "./email-layout";
+import { agency, escapeHtml, wrapEmailHtml as wrap } from "./email-layout";
 
 function euro(cents: number): string {
   return (cents / 100).toLocaleString("it-IT", {
@@ -296,6 +292,21 @@ export async function dispatchBookingInstructionsCustomerEmailV2(
   });
 }
 
+export async function dispatchBookingAwaitingConfirmationEmailsV2(
+  bookingId: string,
+): Promise<void> {
+  await Promise.all([
+    queueBuiltEmail({
+      bookingId,
+      eventType: "booking.awaiting-confirmation.customer",
+      dedupeKey: `booking:${bookingId}:awaiting-confirmation:v2`,
+      message: buildBookingAwaitingConfirmationEmail(bookingId),
+      label: "prenotazione in attesa di conferma",
+    }),
+    dispatchNewBookingAdminEmailV2(bookingId),
+  ]);
+}
+
 // Solo notifica admin (prenotazioni con carta: il cliente riceve la ricevuta al pagamento)
 export async function dispatchNewBookingAdminEmailV2(
   bookingId: string,
@@ -336,13 +347,15 @@ async function buildCardSavedEmail(
   const access = await ensureBookingAccessToken(bookingId);
   const portalUrl = buildBookingPortalUrl(access.token);
   const amount = booking.amountDueCents ?? 0;
+  const amountLabel =
+    booking.paymentType === "full" ? "l'intera quota" : "l'acconto";
   const cardInvite = inviteSections(await prepareBookingInvite(bookingId));
   const subject = `Carta salvata, nessun addebito — ${excursion.name}`;
   const text = [
     `Ciao ${booking.customerName},`,
     "",
     "la carta è stata salvata correttamente e non è stato effettuato alcun addebito.",
-    `Se la gita verrà confermata, ElisTravel addebiterà l'acconto di ${euro(amount)} secondo l'autorizzazione fornita. Se la gita non verrà confermata, non verrà addebitato nulla.`,
+    `Se la gita verrà confermata, ElisTravel addebiterà ${amountLabel} di ${euro(amount)} secondo l'autorizzazione fornita. Se la gita non verrà confermata, non verrà addebitato nulla.`,
     "",
     ...summary.text,
     "",
@@ -352,10 +365,70 @@ async function buildCardSavedEmail(
   const html = wrap(
     "Carta salvata, nessun addebito",
     `<p>Ciao ${escapeHtml(booking.customerName)},<br/>la carta è stata salvata correttamente e <strong>non è stato effettuato alcun addebito</strong>.</p>
-     <p>Se la gita verrà confermata, ElisTravel addebiterà l'acconto di <strong>${escapeHtml(euro(amount))}</strong> secondo l'autorizzazione fornita. Se la gita non verrà confermata, non verrà addebitato nulla.</p>
+     <p>Se la gita verrà confermata, ElisTravel addebiterà ${escapeHtml(amountLabel)} di <strong>${escapeHtml(euro(amount))}</strong> secondo l'autorizzazione fornita. Se la gita non verrà confermata, non verrà addebitato nulla.</p>
      ${summary.html.join("")}
      <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Consulta la prenotazione</a></p>
      ${cardInvite.html}`,
+  );
+  return {
+    to: booking.email!,
+    subject,
+    text,
+    html,
+    replyTo: agency().email,
+  };
+}
+
+async function buildBookingAwaitingConfirmationEmail(
+  bookingId: string,
+): Promise<EmailMessage | null> {
+  const ctx = await loadBooking(bookingId);
+  if (!ctx) return null;
+  const { booking, excursion } = ctx;
+  const request = await loadLatestPaymentRequest(
+    bookingId,
+    booking.paymentType ?? undefined,
+  );
+  if (
+    excursion.status !== "open" ||
+    isPaymentBlockedByCancellation(booking) ||
+    !request ||
+    request.status !== "scheduled" ||
+    !["bank_transfer", "office"].includes(request.method ?? "")
+  ) {
+    return null;
+  }
+  const summary = baseSummary(ctx);
+  const access = await ensureBookingAccessToken(bookingId);
+  const portalUrl = buildBookingPortalUrl(access.token);
+  const amountLabel =
+    booking.paymentType === "deposit"
+      ? "Acconto scelto"
+      : "Quota completa scelta";
+  const methodLabel =
+    booking.paymentMethod === "bank_transfer"
+      ? "bonifico"
+      : "pagamento in ufficio";
+  const subject = `Prenotazione in attesa di conferma — ${excursion.name}`;
+  const text = [
+    `Ciao ${booking.customerName},`,
+    "",
+    "abbiamo registrato la tua prenotazione. La gita non è ancora confermata e non devi effettuare alcun pagamento ora.",
+    `${amountLabel}: ${euro(booking.amountDueCents ?? 0)}`,
+    `Metodo scelto: ${methodLabel}`,
+    "Se la gita verrà confermata, riceverai le istruzioni e la scadenza per il pagamento. Se non verrà confermata, non ti verrà richiesto alcun pagamento.",
+    "",
+    ...summary.text,
+    "",
+    `Consulta la prenotazione: ${portalUrl}`,
+  ].join("\n");
+  const html = wrap(
+    "Prenotazione in attesa di conferma",
+    `<p>Ciao ${escapeHtml(booking.customerName)},<br/>abbiamo registrato la tua prenotazione. La gita non è ancora confermata e <strong>non devi effettuare alcun pagamento ora</strong>.</p>
+     <p>${escapeHtml(amountLabel)}: <strong>${escapeHtml(euro(booking.amountDueCents ?? 0))}</strong><br/>Metodo scelto: <strong>${escapeHtml(methodLabel)}</strong></p>
+     <p>Se la gita verrà confermata, riceverai le istruzioni e la scadenza per il pagamento. Se non verrà confermata, non ti verrà richiesto alcun pagamento.</p>
+     ${summary.html.join("")}
+     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Consulta la prenotazione</a></p>`,
   );
   return {
     to: booking.email!,
@@ -1061,7 +1134,7 @@ export async function dispatchBalanceRequestEmailV2(
  *
  * Non e una richiesta di pagamento: il cliente non deve pagare nulla e non
  * deve scegliere un metodo. Deve solo confermare che accetta anche il testo
- * nuovo, altrimenti l'acconto resta fermo. L'email dell'azione pagamento
+ * nuovo, altrimenti l'importo autorizzato resta fermo. L'email dell'azione pagamento
  * ordinaria direbbe la cosa sbagliata.
  */
 async function buildTermsReacceptanceEmail(
@@ -1373,7 +1446,11 @@ async function buildBalanceRequestEmail(
       : "";
   // Il saldo a bordo va annunciato con l'importo esatto: chi sceglie questa
   // strada deve presentarsi alla partenza con la somma gia pronta.
-  const onBusAvailable = isOnBusPaymentAvailable(excursion, settings, "balance");
+  const onBusAvailable = isOnBusPaymentAvailable(
+    excursion,
+    settings,
+    "balance",
+  );
   const onBusBlock = onBusAvailable
     ? `<p>Oppure salda direttamente <strong>sul bus</strong> il giorno della partenza: porta ${escapeHtml(euro(residual))} in contanti e indicalo dal portale, così sappiamo che ti aspettiamo.</p>`
     : "";

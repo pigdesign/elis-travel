@@ -20,7 +20,8 @@ import {
   type PaymentSettings,
   type PricingContext,
   type PricingPickupPoint,
-  homePickupEnabledFromSetting,} from "./excursion-pricing";
+  homePickupEnabledFromSetting,
+} from "./excursion-pricing";
 
 test("la carta resta disabilitata finché il kill switch non è esplicitamente true", () => {
   assert.equal(cardPaymentsEnabledFromSetting(undefined), false);
@@ -384,7 +385,7 @@ test("i nuovi codici prenotazione usano otto caratteri non ambigui", () => {
   assert.match(generateBookingCode(), /^ET-[A-HJ-NP-Z2-9]{8}$/);
 });
 
-test("un acconto carta su gita aperta richiede sempre autorizzazione salvata", () => {
+test("ogni pagamento carta su gita aperta richiede autorizzazione salvata", () => {
   assert.equal(
     requiresSavedCardAuthorization({
       paymentMethod: "card",
@@ -399,6 +400,15 @@ test("un acconto carta su gita aperta richiede sempre autorizzazione salvata", (
       paymentMethod: "card",
       paymentType: "full",
       excursionStatus: "open",
+      depositAllowed: true,
+    }),
+    true,
+  );
+  assert.equal(
+    requiresSavedCardAuthorization({
+      paymentMethod: "card",
+      paymentType: "full",
+      excursionStatus: "confirmed",
       depositAllowed: true,
     }),
     false,

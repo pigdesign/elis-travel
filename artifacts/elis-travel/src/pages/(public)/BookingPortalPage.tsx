@@ -532,7 +532,7 @@ export function BookingPortalPage({
   const [isReaccepting, setIsReaccepting] = useState(false);
 
   // I Termini sono cambiati dopo che il cliente aveva autorizzato l'addebito:
-  // qui li riaccetta, e l'acconto riparte da solo se la gita e confermata.
+  // qui li riaccetta, e l'importo autorizzato riparte se la gita e confermata.
   const reacceptTerms = async () => {
     setIsReaccepting(true);
     setError(null);
@@ -790,7 +790,7 @@ export function BookingPortalPage({
             )}
 
             {/* I Termini sono cambiati dopo l'autorizzazione: finche il cliente
-                non riaccetta, l'acconto resta fermo. */}
+                non riaccetta, l'importo autorizzato resta fermo. */}
             {data.termsReacceptance.required && !bookingCancelled && (
               <section
                 className="rounded-3xl border border-sky-200 bg-sky-50 p-6"
@@ -803,8 +803,11 @@ export function BookingPortalPage({
                       Serve una tua conferma sui Termini aggiornati
                     </h2>
                     <p className="text-sm leading-relaxed text-sky-900">
-                      Avevi autorizzato l'addebito dell'acconto alla conferma
-                      della gita leggendo i Termini e Condizioni
+                      Avevi autorizzato l'addebito{" "}
+                      {data.paymentRequest?.type === "full"
+                        ? "dell'intera quota"
+                        : "dell'acconto"}{" "}
+                      alla conferma della gita leggendo i Termini e Condizioni
                       {data.termsReacceptance.acceptedVersion
                         ? ` del ${data.termsReacceptance.acceptedVersion}`
                         : ""}

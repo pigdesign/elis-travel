@@ -1484,17 +1484,17 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
     if (
       !window.confirm(
         isRecovery
-          ? "Rielaborare il workflow di conferma? Il comando è idempotente: recupera addebiti acconto realmente interrotti e richieste saldo mancanti senza duplicare quelle già concluse. I pagamenti già affidati al cliente come ‘azione richiesta’ restano invece nel portale e non vengono addebitati di nuovo automaticamente."
+          ? "Rielaborare il workflow di conferma? Il comando è idempotente: recupera addebiti carta realmente interrotti e richieste di pagamento mancanti senza duplicare quelle già concluse. I pagamenti già affidati al cliente come ‘azione richiesta’ restano invece nel portale e non vengono addebitati di nuovo automaticamente."
           : belowThreshold
-            ? `ATTENZIONE: la soglia minima non è stata raggiunta (${exc.adherentsCount}/${exc.minThreshold}). Confermare comunque la gita? Verranno generate le richieste di saldo per chi ha già versato l'acconto.`
-            : "Confermare la gita? Verranno generate le richieste di saldo per chi ha già versato l'acconto (una sola volta).",
+            ? `ATTENZIONE: la soglia minima non è stata raggiunta (${exc.adherentsCount}/${exc.minThreshold}). Confermare comunque la gita? Verranno eseguiti gli addebiti carta autorizzati e attivate le richieste di pagamento per bonifico o ufficio.`
+            : "Confermare la gita? Verranno eseguiti gli addebiti carta autorizzati e attivate le richieste di pagamento per bonifico o ufficio (una sola volta).",
       )
     )
       return;
     try {
       const r = await confirmTrip({ id: excursionId });
       setConfirmResult(
-        `${isRecovery ? "Rielaborazione conclusa" : "Gita confermata"}: ${r.cardCharged} acconti carta addebitati, ${r.balanceRequestsCreated} richieste saldo create, ${r.actionRequired} pagamenti che richiedono azione cliente, ${r.skipped} prenotazioni senza azioni necessarie.`,
+        `${isRecovery ? "Rielaborazione conclusa" : "Gita confermata"}: ${r.cardCharged} addebiti carta eseguiti, ${r.paymentRequestsActivated} richieste bonifico/ufficio attivate, ${r.balanceRequestsCreated} richieste saldo create, ${r.actionRequired} pagamenti che richiedono azione cliente, ${r.skipped} prenotazioni senza azioni necessarie.`,
       );
     } catch {
       alert("Impossibile confermare la gita.");
@@ -2422,10 +2422,10 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           <div className="flex-1 text-sm text-sky-950">
             <strong>Recupero manuale della conferma.</strong> Se una precedente
             elaborazione si è interrotta, puoi rieseguirla: verranno recuperati
-            soltanto acconti carta e richieste saldo ancora mancanti, senza
-            duplicare le operazioni già concluse. I pagamenti con azione cliente
-            richiesta restano nel portale: la rielaborazione non tenta un
-            secondo addebito automatico.
+            soltanto addebiti carta e richieste di pagamento ancora mancanti,
+            senza duplicare le operazioni già concluse. I pagamenti con azione
+            cliente richiesta restano nel portale: la rielaborazione non tenta
+            un secondo addebito automatico.
           </div>
           <button
             type="button"

@@ -21,6 +21,7 @@ import { logger } from "../lib/logger";
 import { getCurrentTermsVersion } from "./iubenda-terms";
 import { ensureBalanceRequest } from "./booking-balance";
 import {
+  dispatchBookingInstructionsEmailsV2,
   dispatchExcursionConfirmedEmailV2,
   dispatchPaymentActionRequiredEmailV2,
   dispatchTermsReacceptanceEmailV2,
@@ -35,6 +36,7 @@ import {
   cardPaymentApplicationDisposition,
 } from "./excursion-payments";
 import {
+  computePaymentDeadline,
   getPaymentSettings,
   isStripeChargeAmountSupported,
 } from "./excursion-pricing";
@@ -46,6 +48,7 @@ export type ConfirmedBookingRecoveryOutcome =
   | "paid"
   | "paid_balance_created"
   | "balance_created"
+  | "payment_requested"
   | "action_required"
   | "skipped";
 
@@ -79,17 +82,18 @@ export function confirmationChargeIdempotencyKey(input: {
   return `confirm-${input.excursionId}-${input.bookingId}-${input.requestType}`;
 }
 
-export function savedCardDepositChargePlan(input: {
-  authorizedDepositCents: number | null;
+export function savedCardChargePlan(input: {
+  paymentType: string;
+  authorizedAmountCents: number | null;
   residualCents: number;
-}): { requestType: "deposit"; amountCents: number } {
+}): { requestType: "deposit" | "full"; amountCents: number } {
   const residual = Math.max(0, Math.trunc(input.residualCents));
   const authorized = Math.max(
     0,
-    Math.trunc(input.authorizedDepositCents ?? residual),
+    Math.trunc(input.authorizedAmountCents ?? residual),
   );
   return {
-    requestType: "deposit",
+    requestType: input.paymentType === "full" ? "full" : "deposit",
     amountCents: Math.min(authorized, residual),
   };
 }
@@ -126,7 +130,7 @@ export function confirmationAutoChargeBlockReason(input: {
   }
   // Il cliente ha autorizzato l'addebito leggendo una certa versione dei T&C.
   // Se il testo e cambiato da allora, quell'autorizzazione non copre piu il
-  // testo in vigore: l'acconto non parte in automatico e la prenotazione
+  // testo in vigore: l'importo autorizzato non parte in automatico e la prenotazione
   // finisce tra quelle da lavorare a mano, dove si chiede una nuova
   // accettazione. Non potendo sapere quale sia la versione corrente si applica
   // la stessa cautela: non si addebita cio che non si puo verificare.
@@ -268,13 +272,13 @@ async function minimizeSavedCardDataAfterCharge(input: {
   if (outcome === "unresolved") {
     logger.error(
       { bookingId: input.bookingId, stripeCustomerId: input.stripeCustomerId },
-      "Customer Stripe non eliminato dopo l'addebito dell'acconto",
+      "Customer Stripe non eliminato dopo l'addebito autorizzato",
     );
   }
 }
 
 /**
- * Anche un deposito completato dal portale dopo un off-session fallito deve
+ * Anche un addebito completato dal portale dopo un off-session fallito deve
  * eliminare il Customer salvato; non solo il percorso automatico sincrono.
  */
 export async function minimizeSavedCardDataForBooking(
@@ -334,11 +338,12 @@ async function chargeSavedCardAtConfirmation(
       0,
     );
     if (residual <= 0) return null;
-    // Il consenso off-session copre esclusivamente l'acconto autorizzato al
-    // momento della prenotazione. Anche oltre T-48 il residuo viene richiesto
-    // separatamente via portale, mai addebitato automaticamente.
-    const plan = savedCardDepositChargePlan({
-      authorizedDepositCents: booking.amountDueCents,
+    // Il consenso off-session copre l'importo scelto dal cliente al momento
+    // della prenotazione: acconto oppure totale. Un eventuale residuo dopo un
+    // acconto resta separato e non viene mai addebitato automaticamente.
+    const plan = savedCardChargePlan({
+      paymentType: booking.paymentType ?? "deposit",
+      authorizedAmountCents: booking.amountDueCents,
       residualCents: residual,
     });
     const requestType = plan.requestType;
@@ -359,7 +364,7 @@ async function chargeSavedCardAtConfirmation(
     const blockReason =
       !booking.stripeCustomerId || !booking.stripePaymentMethodId
         ? ("saved_card_missing" as const)
-        : booking.paymentType !== "deposit"
+        : booking.paymentType !== "deposit" && booking.paymentType !== "full"
           ? ("future_card_charge_disabled" as const)
           : confirmationAutoChargeBlockReason({
               stripeConfigured: Boolean(stripe),
@@ -627,6 +632,104 @@ async function chargeSavedCardAtConfirmation(
   }
 }
 
+async function activateScheduledOfflinePaymentAtConfirmation(
+  bookingId: string,
+  requestedNow: Date,
+): Promise<"payment_requested" | "skipped"> {
+  const settings = await getPaymentSettings();
+  const activated = await db.transaction(async (tx) => {
+    const [booking] = await tx
+      .select()
+      .from(excursionBookingsTable)
+      .where(eq(excursionBookingsTable.id, bookingId))
+      .for("update")
+      .limit(1);
+    if (
+      !booking ||
+      booking.cancelledAt ||
+      isPaymentBlockedByCancellation(booking) ||
+      !["bank_transfer", "office"].includes(booking.paymentMethod ?? "") ||
+      !["deposit", "full"].includes(booking.paymentType ?? "")
+    ) {
+      return null;
+    }
+    const [excursion] = await tx
+      .select()
+      .from(excursionsTable)
+      .where(eq(excursionsTable.id, booking.excursionId))
+      .for("update")
+      .limit(1);
+    if (
+      !excursion?.departureAt ||
+      excursion.status !== "confirmed" ||
+      !isDepartureOpenForBooking(excursion.departureAt, requestedNow)
+    ) {
+      return null;
+    }
+    const [request] = await tx
+      .select()
+      .from(paymentRequestsTable)
+      .where(
+        and(
+          eq(paymentRequestsTable.bookingId, booking.id),
+          eq(paymentRequestsTable.type, booking.paymentType!),
+          inArray(paymentRequestsTable.status, ["scheduled", "pending"]),
+        ),
+      )
+      .orderBy(desc(paymentRequestsTable.createdAt))
+      .for("update")
+      .limit(1);
+    if (!request || request.method !== booking.paymentMethod) return null;
+
+    if (request.status === "scheduled") {
+      let hours =
+        booking.paymentMethod === "bank_transfer"
+          ? (excursion.bankTransferHoursOverride ?? settings.bankHours)
+          : (excursion.officeHoursOverride ?? settings.officeHours);
+      const fullOnlyDays =
+        excursion.fullPaymentOnlyDaysBefore ?? settings.fullOnlyDaysBefore;
+      const daysLeft = Math.floor(
+        (excursion.departureAt.getTime() - requestedNow.getTime()) / 86_400_000,
+      );
+      if (fullOnlyDays > 0 && daysLeft < fullOnlyDays) {
+        hours = Math.min(hours, settings.nearDepartureHours);
+      }
+      const deadline = computePaymentDeadline({
+        from: requestedNow,
+        hours,
+        excursion,
+        hardLimitDate: null,
+      });
+      const graceUntil = computeGraceUntil({
+        deadline,
+        graceMinutes: settings.paymentGraceMinutes,
+        departureAt: excursion.departureAt,
+      });
+      await tx
+        .update(paymentRequestsTable)
+        .set({
+          status: "pending",
+          deadline,
+          graceUntil,
+          updatedAt: requestedNow,
+        })
+        .where(eq(paymentRequestsTable.id, request.id));
+      await tx
+        .update(excursionBookingsTable)
+        .set({
+          paymentDeadline: deadline,
+          seatHoldExpiresAt: graceUntil,
+          updatedAt: requestedNow,
+        })
+        .where(eq(excursionBookingsTable.id, booking.id));
+    }
+    return { requestId: request.id };
+  });
+  if (!activated) return "skipped";
+  await dispatchBookingInstructionsEmailsV2(bookingId);
+  return "payment_requested";
+}
+
 /**
  * Recovery granulare usato dopo race SetupIntent/conferma e dopo il rigetto
  * di un annullamento. Non apre la gita e non effettua nulla se non e gia
@@ -659,6 +762,18 @@ export async function recoverConfirmedBookingWorkflow(
   if (snapshot.booking.paymentStatus === "card_saved") {
     outcome = await chargeSavedCardAtConfirmation(bookingId, now);
   } else if (
+    ["bank_transfer", "office"].includes(
+      snapshot.booking.paymentMethod ?? "",
+    ) &&
+    ["deposit_requested", "full_requested"].includes(
+      snapshot.booking.paymentStatus,
+    )
+  ) {
+    outcome = await activateScheduledOfflinePaymentAtConfirmation(
+      bookingId,
+      now,
+    );
+  } else if (
     snapshot.booking.amountPaidCents > 0 &&
     snapshot.booking.paymentStatus !== "paid"
   ) {
@@ -679,6 +794,7 @@ export async function confirmExcursionWorkflow(excursionId: string): Promise<{
   cardCharged: number;
   actionRequired: number;
   balanceRequestsCreated: number;
+  paymentRequestsActivated: number;
   skipped: number;
 }> {
   const transition = await db.transaction(async (tx) => {
@@ -750,6 +866,7 @@ export async function confirmExcursionWorkflow(excursionId: string): Promise<{
   let cardCharged = 0;
   let actionRequired = 0;
   let balanceRequestsCreated = 0;
+  let paymentRequestsActivated = 0;
   let skipped = 0;
   for (const bookingId of transition.bookingIds) {
     const outcome = await recoverConfirmedBookingWorkflow(bookingId);
@@ -758,6 +875,8 @@ export async function confirmExcursionWorkflow(excursionId: string): Promise<{
       if (outcome === "paid_balance_created") balanceRequestsCreated += 1;
     } else if (outcome === "balance_created") {
       balanceRequestsCreated += 1;
+    } else if (outcome === "payment_requested") {
+      paymentRequestsActivated += 1;
     } else if (outcome === "action_required") {
       actionRequired += 1;
     } else {
@@ -802,6 +921,7 @@ export async function confirmExcursionWorkflow(excursionId: string): Promise<{
     cardCharged,
     actionRequired,
     balanceRequestsCreated,
+    paymentRequestsActivated,
     skipped,
   };
 }

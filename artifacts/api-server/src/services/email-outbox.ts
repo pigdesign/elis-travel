@@ -51,6 +51,7 @@ function isPaymentSensitiveEventType(eventType: string): boolean {
     eventType === "booking.terms-reacceptance.customer" ||
     eventType === "booking.payment-deadline-extended.customer" ||
     eventType === "booking.instructions.customer" ||
+    eventType === "booking.awaiting-confirmation.customer" ||
     eventType === "booking.card-saved.customer"
   );
 }
@@ -275,8 +276,9 @@ async function shouldSuppress(entry: LeasedEmail): Promise<boolean> {
       .limit(1);
   } else if (booking && isPaymentSensitiveEventType(entry.eventType)) {
     const expectedType =
-      entry.eventType === "booking.card-saved.customer"
-        ? "deposit"
+      entry.eventType === "booking.card-saved.customer" ||
+      entry.eventType === "booking.awaiting-confirmation.customer"
+        ? booking.paymentType
         : entry.eventType.startsWith("booking.balance-")
           ? "balance"
           : entry.eventType === "booking.instructions.customer"
@@ -312,7 +314,13 @@ async function shouldSuppress(entry: LeasedEmail): Promise<boolean> {
   }
 
   let excursionStatus: string | null = null;
-  if (booking && entry.eventType === "booking.excursion-confirmed.customer") {
+  if (
+    booking &&
+    [
+      "booking.excursion-confirmed.customer",
+      "booking.awaiting-confirmation.customer",
+    ].includes(entry.eventType)
+  ) {
     const [excursion] = await db
       .select({ status: excursionsTable.status })
       .from(excursionsTable)

@@ -29,7 +29,9 @@ export class CardSetupVerificationError extends Error {
   }
 }
 
-function stripeResourceId(value: string | { id: string } | null): string | null {
+function stripeResourceId(
+  value: string | { id: string } | null,
+): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
 }
@@ -44,6 +46,7 @@ export type SuccessfulCardSetupResult = {
     | "paid"
     | "paid_balance_created"
     | "balance_created"
+    | "payment_requested"
     | "action_required"
     | "skipped";
 };
@@ -78,7 +81,7 @@ export async function applySuccessfulCardSetup(
   if (
     metadata.source !== "elis-travel" ||
     metadata.flow !== "save_for_confirmation" ||
-    metadata.type !== "deposit" ||
+    !["deposit", "full"].includes(metadata.type ?? "") ||
     !bookingId ||
     !paymentRequestId ||
     !consentVersion
@@ -147,7 +150,8 @@ export async function applySuccessfulCardSetup(
       .limit(1);
     if (
       !paymentRequest ||
-      paymentRequest.type !== "deposit" ||
+      paymentRequest.type !== metadata.type ||
+      booking.paymentType !== metadata.type ||
       paymentRequest.method !== "card"
     ) {
       throw new CardSetupVerificationError(
@@ -196,7 +200,8 @@ export async function applySuccessfulCardSetup(
     if (
       isPaymentBlockedByCancellation(booking) ||
       booking.seatStatus !== "held" ||
-      (booking.seatHoldExpiresAt !== null && booking.seatHoldExpiresAt <= now) ||
+      (booking.seatHoldExpiresAt !== null &&
+        booking.seatHoldExpiresAt <= now) ||
       booking.paymentStatus !== "card_setup_pending" ||
       paymentRequest.status !== "card_setup_pending"
     ) {
@@ -247,20 +252,21 @@ export async function applySuccessfulCardSetup(
       .from(excursionsTable)
       .where(eq(excursionsTable.id, booking.excursionId))
       .limit(1);
-    const customerEmail = booking.email && excursion
-      ? {
-          bookingId: booking.id,
-          customerName: booking.customerName,
-          customerEmail: booking.email,
-          customerPhone: booking.phone,
-          seats: booking.seats,
-          adults: booking.adults,
-          children: booking.children,
-          servizioCasa: booking.servizioCasa,
-          amountDueCents: booking.amountDueCents ?? 0,
-          excursion,
-        }
-      : null;
+    const customerEmail =
+      booking.email && excursion
+        ? {
+            bookingId: booking.id,
+            customerName: booking.customerName,
+            customerEmail: booking.email,
+            customerPhone: booking.phone,
+            seats: booking.seats,
+            adults: booking.adults,
+            children: booking.children,
+            servizioCasa: booking.servizioCasa,
+            amountDueCents: booking.amountDueCents ?? 0,
+            excursion,
+          }
+        : null;
 
     return {
       bookingId: booking.id,

@@ -110,6 +110,32 @@ test("istruzioni offline restano valide nella tolleranza ma non oltre graceUntil
   );
 });
 
+test("la conferma di prenotazione senza pagamento resta valida solo mentre la gita è aperta", () => {
+  const input = {
+    eventType: "booking.awaiting-confirmation.customer",
+    dedupeKey: `booking:${BOOKING_ID}:awaiting-confirmation:v2`,
+    booking: booking({
+      paymentStatus: "full_requested",
+      paymentType: "full",
+      paymentMethod: "bank_transfer",
+    }),
+    paymentRequest: paymentRequest({
+      type: "full",
+      status: "scheduled",
+      method: "bank_transfer",
+      deadline: null,
+      graceUntil: null,
+    }),
+    excursionStatus: "open",
+    now: NOW,
+  } satisfies OutboxApplicabilityInput;
+  assert.equal(outboxSuppressionReason(input), null);
+  assert.equal(
+    outboxSuppressionReason({ ...input, excursionStatus: "confirmed" }),
+    "excursion_not_open",
+  );
+});
+
 test("carta salvata parte soltanto nello stato scheduled ancora attivo", () => {
   const input = {
     eventType: "booking.card-saved.customer",
@@ -128,6 +154,24 @@ test("carta salvata parte soltanto nello stato scheduled ancora attivo", () => {
     now: NOW,
   } satisfies OutboxApplicabilityInput;
   assert.equal(outboxSuppressionReason(input), null);
+  assert.equal(
+    outboxSuppressionReason({
+      ...input,
+      booking: booking({
+        paymentStatus: "card_saved",
+        paymentMethod: "card",
+        paymentType: "full",
+      }),
+      paymentRequest: paymentRequest({
+        type: "full",
+        method: "card",
+        status: "scheduled",
+        deadline: null,
+        graceUntil: null,
+      }),
+    }),
+    null,
+  );
   assert.equal(
     outboxSuppressionReason({
       ...input,

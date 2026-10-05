@@ -2190,7 +2190,7 @@ export const useConfirmPublicExcursionBookingPayment = <
 };
 
 /**
- * @summary Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+ * @summary Conferma in sicurezza il SetupIntent per l'importo scelto alla conferma della gita
  */
 export const getConfirmPublicExcursionBookingCardSetupUrl = (
   id: string,
@@ -2268,7 +2268,7 @@ export type ConfirmPublicExcursionBookingCardSetupMutationError =
   ErrorType<ErrorResponse>;
 
 /**
- * @summary Conferma in sicurezza il SetupIntent per l'acconto alla conferma della gita
+ * @summary Conferma in sicurezza il SetupIntent per l'importo scelto alla conferma della gita
  */
 export const useConfirmPublicExcursionBookingCardSetup = <
   TError = ErrorType<ErrorResponse>,
@@ -2666,7 +2666,7 @@ export function useGetExcursionPickupReport<
 }
 
 /**
- * @summary Conferma la gita e genera le richieste saldo (idempotente)
+ * @summary Conferma la gita e attiva addebiti e richieste di pagamento (idempotente)
  */
 export const getConfirmTripUrl = (id: string) => {
   return `/api/admin/excursions/${id}/confirm-trip`;
@@ -2727,7 +2727,7 @@ export type ConfirmTripMutationResult = NonNullable<
 export type ConfirmTripMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Conferma la gita e genera le richieste saldo (idempotente)
+ * @summary Conferma la gita e attiva addebiti e richieste di pagamento (idempotente)
  */
 export const useConfirmTrip = <
   TError = ErrorType<ErrorResponse>,

@@ -378,8 +378,9 @@ router.get("/booking-portal", async (req, res) => {
  *
  * Il cliente aveva autorizzato l'addebito leggendo una certa versione dei
  * Termini; se il testo e cambiato, l'autorizzazione non copre piu quello in
- * vigore e l'acconto resta fermo. Qui il cliente dice di si sul testo nuovo:
- * si aggiorna la versione registrata e si rimette in moto l'addebito, che e
+ * vigore e l'importo autorizzato resta fermo. Qui il cliente dice di si sul
+ * testo nuovo: si aggiorna la versione registrata e si rimette in moto
+ * l'addebito, che e
  * idempotente e non fa nulla se la gita non e confermata.
  */
 router.post(
@@ -395,9 +396,7 @@ router.post(
         return;
       }
       if (ctx.booking.cancelledAt) {
-        res
-          .status(409)
-          .json({ error: "La prenotazione è stata annullata." });
+        res.status(409).json({ error: "La prenotazione è stata annullata." });
         return;
       }
 

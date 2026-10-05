@@ -796,6 +796,7 @@ export interface ConfirmTripResponse {
   status: string;
   balanceRequestsCreated: number;
   cardCharged: number;
+  paymentRequestsActivated: number;
   actionRequired: number;
   skipped: number;
 }
@@ -944,7 +945,7 @@ export interface PublicBookingInput {
    * @minimum 0
    */
   quotedAmountDueCents: number;
-  /** Consenso esplicito a salvare la carta e addebitare l'acconto solo alla conferma; obbligatorio quando cardFlow e save_for_confirmation */
+  /** Consenso esplicito a salvare la carta e addebitare l'importo scelto solo alla conferma; obbligatorio quando cardFlow è save_for_confirmation */
   futureChargeConsent?: boolean;
   consents: PublicBookingConsents;
   servizioCasa?: boolean | null;
@@ -1378,7 +1379,7 @@ export interface PublicOfferDetail {
 }
 
 /**
- * Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto
+ * Flusso carta per l'importo scelto; save_for_confirmation salva la carta senza addebito prima della conferma
  */
 export type PublicExcursionDetailCardFlow =
   (typeof PublicExcursionDetailCardFlow)[keyof typeof PublicExcursionDetailCardFlow];
@@ -1457,8 +1458,10 @@ export interface PublicExcursionDetail {
   generalInfo?: string | null;
   pickupPoints?: PublicPickupPoint[] | null;
   cardPaymentsEnabled?: boolean;
-  /** Flusso carta predisposto per un eventuale acconto; unavailable_for_deposit disabilita la carta solo per l'acconto */
+  /** Flusso carta per l'importo scelto; save_for_confirmation salva la carta senza addebito prima della conferma */
   cardFlow?: PublicExcursionDetailCardFlow;
+  /** Se true, nessun metodo richiede o incassa pagamenti prima della conferma della gita */
+  paymentDeferredUntilConfirmation: boolean;
   tripType?: PublicExcursionDetailTripType;
   adultLabel?: string;
   ageRanges?: PublicAgeRangePrice[];
