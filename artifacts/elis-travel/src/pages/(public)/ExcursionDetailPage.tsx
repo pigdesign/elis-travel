@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { ScheduleTimeline } from "@/components/shared/ScheduleTimeline";
+import { MobileStickyCta, useStickyCtaVisibility } from "@/components/shared/MobileStickyCta";
 import {
   ExcursionBookingForm,
   isCheckoutStep,
@@ -88,6 +89,15 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Barra "Prenota" fissa in basso sotto i 1024px: compare quando la card del
+  // prezzo è passata, sparisce sul form e durante il pagamento.
+  const mobilePriceRef = useRef<HTMLDivElement>(null);
+  const stickyCtaVisible = useStickyCtaVisibility(
+    mobilePriceRef,
+    [bookingRef],
+    !!excursion && !inCheckout,
+  );
 
   const dateForSeo = (() => {
     if (!excursion?.date) return null;
@@ -249,6 +259,70 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
     </div>
   );
 
+  // "La quota include / non include" e "Informazioni utili": sul desktop stanno
+  // nella colonna a destra, sul telefono prima del programma (in colonna
+  // finivano dopo il form di prenotazione). Lì la foto si omette: è la stessa
+  // che apre il programma subito sotto.
+  const hasSideCards =
+    includedItems.length > 0 || excludedItems.length > 0 || !!excursion?.generalInfo;
+  const renderSideCards = (showImage: boolean) => (
+    <>
+      {includedItems.length > 0 && (
+        <div className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)]">
+          <h2 className="mb-4 text-xl font-serif font-bold text-foreground">
+            La quota include
+          </h2>
+          <ul className="space-y-3">
+            {includedItems.map((item, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-[#394b52]">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {excludedItems.length > 0 && (
+        <div className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)]">
+          <h2 className="mb-4 text-xl font-serif font-bold text-foreground">
+            La quota non include
+          </h2>
+          <ul className="space-y-3">
+            {excludedItems.map((item, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-[#394b52]">
+                <XIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#ff7a1a]" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {excursion?.generalInfo && (
+        <div className="overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#0b5b60_0%,#006f73_100%)] p-6 text-white shadow-[0_18px_50px_rgba(20,36,43,0.16)]">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-serif font-bold">
+            <Info className="h-5 w-5 text-[#dff7f9]" />
+            Informazioni utili
+          </h2>
+          <p className="text-sm leading-relaxed text-white/88 whitespace-pre-line">
+            {excursion?.generalInfo}
+          </p>
+
+          {showImage && mainVisual && (
+            <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10">
+              <img
+                src={mainVisual}
+                alt={`Panorama di ${excursion?.name ?? ""}`}
+                className="h-52 w-full object-cover"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-[#f7faf9]">
       <Header />
@@ -306,7 +380,9 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
 
             <div className="relative container mx-auto max-w-6xl px-4 md:px-8">
               <div className="relative grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)] lg:pb-24">
-                <div className="max-w-3xl pb-24 md:pb-28 lg:pb-36">
+                {/* Sotto lg il testo arriva fino al bordo destro, dove l'onda bianca
+                    sale fino a ~70% della sua altezza: serve più spazio sotto. */}
+                <div className="max-w-3xl pb-44 md:pb-52 lg:pb-36">
                   {/* Le gite Rident hanno il proprio elenco (Turismo Dentale):
                       il ritorno porta lì, non al catalogo delle gite standard. */}
                   <Link
@@ -375,7 +451,7 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
           <section className="relative z-20 pb-10 pt-2 md:pt-4 lg:pt-0">
             <div className="container mx-auto max-w-6xl px-4 md:px-8">
               {!inCheckout && (
-                <div className="mx-auto mb-6 max-w-xl lg:hidden">
+                <div ref={mobilePriceRef} className="mx-auto mb-6 max-w-xl lg:hidden">
                   {priceCard}
                 </div>
               )}
@@ -416,6 +492,10 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
             <div className="container mx-auto max-w-6xl px-4 md:px-8">
               <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)]">
                 <div className="space-y-8">
+                  {!inCheckout && hasSideCards && (
+                    <div className="space-y-6 lg:hidden">{renderSideCards(false)}</div>
+                  )}
+
                   {!inCheckout && (
                     <ScheduleTimeline
                       days={scheduleDays}
@@ -481,62 +561,10 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
 
                 <aside
                   className={`space-y-6 lg:sticky lg:top-24 lg:self-start ${
-                    inCheckout ? "hidden" : ""
+                    inCheckout ? "hidden" : "hidden lg:block"
                   }`}
                 >
-                  {includedItems.length > 0 && (
-                    <div className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)]">
-                      <h2 className="mb-4 text-xl font-serif font-bold text-foreground">
-                        La quota include
-                      </h2>
-                      <ul className="space-y-3">
-                        {includedItems.map((item, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-[#394b52]">
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {excludedItems.length > 0 && (
-                    <div className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_18px_50px_rgba(20,36,43,0.08)]">
-                      <h2 className="mb-4 text-xl font-serif font-bold text-foreground">
-                        La quota non include
-                      </h2>
-                      <ul className="space-y-3">
-                        {excludedItems.map((item, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-[#394b52]">
-                            <XIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#ff7a1a]" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {excursion.generalInfo && (
-                    <div className="overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#0b5b60_0%,#006f73_100%)] p-6 text-white shadow-[0_18px_50px_rgba(20,36,43,0.16)]">
-                      <h2 className="mb-4 flex items-center gap-2 text-xl font-serif font-bold">
-                        <Info className="h-5 w-5 text-[#dff7f9]" />
-                        Informazioni utili
-                      </h2>
-                      <p className="text-sm leading-relaxed text-white/88 whitespace-pre-line">
-                        {excursion.generalInfo}
-                      </p>
-
-                      {mainVisual && (
-                        <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10">
-                          <img
-                            src={mainVisual}
-                            alt={`Panorama di ${excursion.name}`}
-                            className="h-52 w-full object-cover"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {renderSideCards(true)}
                 </aside>
               </div>
             </div>
@@ -545,6 +573,24 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
       )}
 
       <Footer />
+
+      {excursion && !inCheckout && (
+        <>
+          {/* Sotto i 1024px la barra fissa coprirebbe la fine del footer. */}
+          <div aria-hidden="true" className="h-[76px] bg-foreground lg:hidden" />
+          <MobileStickyCta
+            visible={stickyCtaVisible}
+            price={priceLabel}
+            priceNote="a persona"
+            {...(!excursion.bookingClosed && seatsInfo?.available !== false
+              ? { label: "Prenota un posto", href: "#prenota", icon: <Ticket className="h-4 w-4" /> }
+              : {
+                  label: "Richiedi informazioni",
+                  href: `/contatti?excursionId=${encodeURIComponent(excursion.id)}`,
+                })}
+          />
+        </>
+      )}
     </div>
   );
 }

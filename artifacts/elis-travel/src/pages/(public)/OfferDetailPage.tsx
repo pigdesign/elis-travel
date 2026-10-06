@@ -3,7 +3,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/shared/Button";
 import { ScheduleTimeline } from "@/components/shared/ScheduleTimeline";
-import { useEffect, useState } from "react";
+import { MobileStickyCta, useStickyCtaVisibility } from "@/components/shared/MobileStickyCta";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useGetPublicOffer } from "@workspace/api-client-react";
 import { useSeo, extractIdFromSlug, buildSlugUrl, truncate } from "@/lib/seo";
@@ -139,6 +140,11 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
   const galleryImages = offer?.images ?? [];
   const documents = offer?.documents ?? [];
   const [, setLocation] = useLocation();
+
+  // Barra "Richiedi informazioni" fissa in basso sotto i 1024px: compare quando
+  // la card del prezzo è uscita dallo schermo.
+  const mobilePriceRef = useRef<HTMLDivElement>(null);
+  const stickyCtaVisible = useStickyCtaVisibility(mobilePriceRef, [], !!offer);
 
   const seoTitle = offer?.name
     ? `${offer.name}${offer.destination ? ` — ${offer.destination}` : ""}`
@@ -372,7 +378,9 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
 
             <div className="relative container mx-auto max-w-6xl px-4 md:px-8">
               <div className="relative grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)] lg:pb-24">
-                <div className="max-w-3xl pb-24 md:pb-28 lg:pb-36">
+                {/* Sotto lg il testo arriva fino al bordo destro, dove l'onda bianca
+                    sale fino a ~70% della sua altezza: serve più spazio sotto. */}
+                <div className="max-w-3xl pb-44 md:pb-52 lg:pb-36">
                   <Link
                     href="/offerte"
                     className="mb-6 flex w-fit items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white"
@@ -435,7 +443,7 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
           {/* Price card — mobile only */}
           <section className="relative z-20 pb-6 pt-2 md:pt-4 lg:hidden">
             <div className="container mx-auto max-w-6xl px-4 md:px-8">
-              <div className="mx-auto max-w-xl">
+              <div ref={mobilePriceRef} className="mx-auto max-w-xl">
                 {heroPriceCard}
               </div>
               {/* Trip details on mobile */}
@@ -558,6 +566,21 @@ export function OfferDetailPage({ offerIdOrSlug }: OfferDetailPageProps) {
       )}
 
       <Footer />
+
+      {offer && (
+        <>
+          {/* Sotto i 1024px la barra fissa coprirebbe la fine del footer. */}
+          <div aria-hidden="true" className="h-[76px] bg-foreground lg:hidden" />
+          <MobileStickyCta
+            visible={stickyCtaVisible}
+            price={priceLabel ? `da ${priceLabel}` : null}
+            priceNote="a persona"
+            label="Richiedi informazioni"
+            href={`/contatti?offerId=${encodeURIComponent(offer.id)}`}
+            icon={<Send className="h-4 w-4" />}
+          />
+        </>
+      )}
     </div>
   );
 }

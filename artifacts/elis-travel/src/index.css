@@ -192,3 +192,10 @@
     display: none;
   }
 }
+
+/* Con la barra fissa "Prenota" (MobileStickyCta) il pulsante delle preferenze
+   cookie di iubenda, che sta nello stesso angolo, sale sopra la barra. */
+body.has-sticky-cta .iubenda-tp-btn.iubenda-cs-preferences-link[data-tp-float] {
+  bottom: 88px !important;
+  transition: bottom 0.3s;
+}
