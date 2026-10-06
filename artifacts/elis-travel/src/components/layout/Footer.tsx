@@ -5,11 +5,11 @@ import logoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.webp";
 
 export function Footer() {
   return (
-    <footer className="bg-foreground text-white pt-20 pb-10">
+    <footer className="bg-foreground text-white pt-14 md:pt-20 pb-10">
       <div className="container mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 mb-12 md:gap-12 md:mb-16 lg:grid-cols-5">
           {/* Brand Col */}
-          <div className="space-y-6">
+          <div className="col-span-2 md:col-span-1 space-y-6">
             <Link href="/" className="flex items-center">
               <img src={logoImg} alt="Elis Travel" className="h-16 w-auto object-contain" />
             </Link>
@@ -27,7 +27,7 @@ export function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Link rapidi</h4>
+            <h4 className="text-base md:text-lg font-bold mb-4 md:mb-6 font-serif">Link rapidi</h4>
             <ul className="space-y-3">
               {[
                 { label: 'Chi siamo', href: '/contatti' },
@@ -48,7 +48,7 @@ export function Footer() {
 
           {/* Top Destinations */}
           <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Tipologie di viaggio</h4>
+            <h4 className="text-base md:text-lg font-bold mb-4 md:mb-6 font-serif">Tipologie di viaggio</h4>
             <ul className="space-y-3">
               {[
                 { label: 'Tutte le Offerte', href: '/offerte' },
@@ -67,8 +67,8 @@ export function Footer() {
           </div>
 
           {/* Note Legali */}
-          <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Note Legali</h4>
+          <div className="col-span-2 md:col-span-1">
+            <h4 className="text-base md:text-lg font-bold mb-4 md:mb-6 font-serif">Note Legali</h4>
             <ul className="space-y-3">
               {[
                 { label: 'Termini e Condizioni', href: '/termini-e-condizioni' },
@@ -86,8 +86,8 @@ export function Footer() {
           </div>
 
           {/* Contact */}
-          <div>
-            <h4 className="text-lg font-bold mb-6 font-serif">Contatti</h4>
+          <div className="col-span-2 md:col-span-1">
+            <h4 className="text-base md:text-lg font-bold mb-4 md:mb-6 font-serif">Contatti</h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-white/70 text-sm">
                 <MapPin className="w-5 h-5 text-accent shrink-0" />

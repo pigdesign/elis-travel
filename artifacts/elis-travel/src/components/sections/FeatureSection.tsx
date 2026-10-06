@@ -17,7 +17,7 @@ export function FeatureSection() {
             transition={{ duration: 0.8 }}
           >
             <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">I nostri valori</span>
-            <h2 className="brand-title brand-title-primary text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight">Gite organizzate in destinazioni bellissime ogni mese</h2>
+            <h2 className="brand-title brand-title-primary text-4xl md:text-5xl xl:text-6xl mb-6 leading-tight">Gite organizzate in destinazioni bellissime ogni mese</h2>
             <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
               Con oltre 20 anni di esperienza, curiamo le esperienze di viaggio più spettacolari. Crediamo che il viaggio debba essere senza stress, coinvolgente e trasformativo.
             </p>
@@ -33,17 +33,17 @@ export function FeatureSection() {
               ))}
             </ul>
 
-            <div className="grid grid-cols-3 gap-6 mb-10 pt-8 border-t border-border">
+            <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-10 pt-8 border-t border-border">
               <div>
-                <div className="text-4xl font-bold text-primary mb-1">20+</div>
+                <div className="text-3xl sm:text-4xl font-bold text-primary mb-1">20+</div>
                 <div className="text-sm text-muted-foreground font-medium">Anni di esperienza</div>
               </div>
               <div>
-                <div className="text-4xl font-bold text-primary mb-1">30k</div>
+                <div className="text-3xl sm:text-4xl font-bold text-primary mb-1">30k</div>
                 <div className="text-sm text-muted-foreground font-medium">Clienti soddisfatti</div>
               </div>
               <div>
-                <div className="text-4xl font-bold text-primary mb-1">130+</div>
+                <div className="text-3xl sm:text-4xl font-bold text-primary mb-1">130+</div>
                 <div className="text-sm text-muted-foreground font-medium">Destinazioni</div>
               </div>
             </div>
@@ -61,7 +61,7 @@ export function FeatureSection() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="relative h-[600px]"
+            className="relative h-[380px] sm:h-[500px] lg:h-[600px]"
           >
             {/* Decorative blobs */}
             <div className="absolute top-10 right-10 w-64 h-64 bg-accent/20 rounded-full blur-3xl" />

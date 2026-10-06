@@ -82,15 +82,38 @@ export function PopularTours() {
 
   const [visible, setVisible] = useState(3);
 
+  // Card per "pagina": 3 da 1024px in su (come sul desktop), 2 sui tablet, 1 sul telefono.
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
+    const lg = window.matchMedia("(min-width: 1024px)");
+    const sm = window.matchMedia("(min-width: 640px)");
     function update() {
-      setVisible(mq.matches ? 3 : 1);
+      setVisible(lg.matches ? 3 : sm.matches ? 2 : 1);
     }
     update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    lg.addEventListener("change", update);
+    sm.addEventListener("change", update);
+    return () => {
+      lg.removeEventListener("change", update);
+      sm.removeEventListener("change", update);
+    };
   }, []);
+
+  // Scorrimento col dito: basta un gesto orizzontale deciso, quelli verticali
+  // restano allo scroll della pagina.
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || !needsCarousel) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+  }
 
   const needsCarousel = featured.length > visible;
 
@@ -192,7 +215,7 @@ export function PopularTours() {
           <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">
             Tour in evidenza
           </span>
-          <h2 className="brand-title brand-title-primary text-[60px] mb-4">
+          <h2 className="brand-title brand-title-primary text-[40px] sm:text-[48px] lg:text-[60px] mb-4">
             Scopri le nostre migliori Offerte
           </h2>
           <p className="text-muted-foreground max-w-xl">
@@ -202,7 +225,7 @@ export function PopularTours() {
         </motion.div>
 
         {/* Frecce esterne al contenitore card — layout flex */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {needsCarousel && (
             <button
               onClick={() => go(-1)}
@@ -213,7 +236,11 @@ export function PopularTours() {
             </button>
           )}
 
-          <div className="overflow-hidden flex-1 min-w-0 -my-6 py-6">
+          <div
+            className="overflow-hidden flex-1 min-w-0 -my-6 py-6"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
             {/*
               Il transform iniziale viene calcolato una volta sola al mount.
               Dopodiché tutto è controllato via ref/DOM direttamente,

@@ -193,10 +193,10 @@ export function SearchBar() {
         className="bg-white rounded-[2.5rem] shadow-2xl p-4 md:p-6 max-w-5xl mx-auto space-y-2"
       >
         {/* ── Riga 1: Località · Partenza/Ritorno · Persone ── */}
-        <div className="flex flex-col md:flex-row md:items-stretch md:divide-x md:divide-border gap-3 md:gap-0">
+        <div className="flex flex-col lg:flex-row lg:items-stretch lg:divide-x lg:divide-border gap-3 lg:gap-0">
 
           {/* Località */}
-          <label className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors md:flex-1 cursor-text">
+          <label className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors lg:flex-1 cursor-text">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <MapPin className="w-4 h-4" />
             </div>
@@ -213,7 +213,7 @@ export function SearchBar() {
           </label>
 
           {/* Partenza / Ritorno */}
-          <div ref={dateRef} className="relative md:flex-1">
+          <div ref={dateRef} className="relative lg:flex-1">
             <button
               type="button"
               onClick={() => { setDateOpen((v) => !v); setPersonaOpen(false); }}
@@ -260,7 +260,7 @@ export function SearchBar() {
           </div>
 
           {/* Persone */}
-          <div ref={personaRef} className="relative md:flex-1">
+          <div ref={personaRef} className="relative lg:flex-1">
             <button
               type="button"
               onClick={() => { setPersonaOpen((v) => !v); setDateOpen(false); }}
@@ -309,13 +309,13 @@ export function SearchBar() {
         </div>
 
         {/* Separatore */}
-        <div className="hidden md:block h-px bg-border/60 mx-4" />
+        <div className="hidden lg:block h-px bg-border/60 mx-4" />
 
         {/* ── Riga 2: Nome · Email · Bottone ── */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
 
           {/* Nome */}
-          <label className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors md:flex-1 cursor-text bg-muted/20">
+          <label className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors lg:flex-1 cursor-text bg-muted/20">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <User className="w-4 h-4" />
             </div>
@@ -323,6 +323,7 @@ export function SearchBar() {
               <p className="text-xs text-muted-foreground font-medium">Nome e cognome (opzionale)</p>
               <input
                 type="text"
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Il tuo nome e cognome"
@@ -332,7 +333,7 @@ export function SearchBar() {
           </label>
 
           {/* Email */}
-          <label className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors md:flex-1 cursor-text bg-[#e6e6e680]">
+          <label className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors lg:flex-1 cursor-text bg-[#e6e6e680]">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <Mail className="w-4 h-4" />
             </div>
@@ -340,6 +341,7 @@ export function SearchBar() {
               <p className="text-xs text-muted-foreground font-medium">Email *</p>
               <input
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); if (error) setError(null); }}
                 placeholder="La tua email"
@@ -349,12 +351,12 @@ export function SearchBar() {
           </label>
 
           {/* Bottone Invio */}
-          <div className="px-4 md:px-0 shrink-0">
+          <div className="px-4 lg:px-0 shrink-0">
             <Button
               size="lg"
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full md:w-auto h-14 px-8 rounded-full hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/30 whitespace-nowrap border-t-[#fa811ee6] border-r-[#fa811ee6] border-b-[#fa811ee6] border-l-[#fa811ee6] bg-[#fa811ee6] text-[20px]"
+              className="w-full lg:w-auto h-14 px-8 rounded-full hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/30 whitespace-nowrap border-t-[#fa811ee6] border-r-[#fa811ee6] border-b-[#fa811ee6] border-l-[#fa811ee6] bg-[#fa811ee6] text-[20px]"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -367,7 +369,7 @@ export function SearchBar() {
         </div>
 
         {/* Checkbox Privacy */}
-        <div className="px-4 pb-2 md:px-0 mt-3 md:mt-4">
+        <div className="px-4 pb-2 lg:px-0 mt-3 lg:mt-4">
           <label className="flex items-start gap-2 cursor-pointer">
             <input 
               type="checkbox" 

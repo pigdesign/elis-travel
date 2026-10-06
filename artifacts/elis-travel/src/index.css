@@ -184,3 +184,11 @@
     font-size: 16px;
   }
 }
+
+/* Righe a scorrimento orizzontale (card su telefono): niente barra visibile. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

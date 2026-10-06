@@ -50,8 +50,8 @@ export function EasySteps() {
             viewport={{ once: true }}
             className="lg:self-center flex flex-col items-center text-center"
           >
-            <span className="text-accent font-bold tracking-wider uppercase text-[30px] mb-4 block">Come funziona</span>
-            <h2 className="brand-title brand-title-primary mb-8 text-[#ffffff] text-[60px]">
+            <span className="text-accent font-bold tracking-wider uppercase text-[20px] sm:text-[24px] lg:text-[30px] mb-4 block">Come funziona</span>
+            <h2 className="brand-title brand-title-primary mb-8 text-[#ffffff] text-[36px] sm:text-[48px] lg:text-[60px]">
               3 semplici passi per
               <br />
               prenotare il tuo prossimo viaggio
@@ -66,17 +66,17 @@ export function EasySteps() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.15, duration: 0.5 }}
-                className="flex items-center gap-4 rounded-[1.6rem] p-4 md:p-5 shadow-[0_16px_40px_rgba(9,168,195,0.12)] bg-[#fa811ec4]"
+                className="flex items-center gap-3 sm:gap-4 rounded-[1.6rem] p-4 md:p-5 shadow-[0_16px_40px_rgba(9,168,195,0.12)] bg-[#fa811ec4]"
               >
-                <div className="w-16 h-16 rounded-2xl text-white flex items-center justify-center font-black shrink-0 text-[35px] bg-[#0cb8e8]">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl text-white flex items-center justify-center font-black shrink-0 text-[26px] sm:text-[35px] bg-[#0cb8e8]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
-                <div className="flex-1">
-                  <h3 className="brand-title brand-title-primary mb-1 text-[#ffffff] text-[30px]">{step.title}</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="brand-title brand-title-primary mb-1 text-[#ffffff] text-[22px] sm:text-[30px]">{step.title}</h3>
                   <p className="text-xs md:text-sm max-w-[260px] text-[#ffffff] font-bold">{step.desc}</p>
                 </div>
-                <div className="w-16 h-16 rounded-full border-4 border-accent/80 flex items-center justify-center shrink-0 text-[#ffffff] border-t-[#fffdfccc] border-r-[#fffdfccc] border-b-[#fffdfccc] border-l-[#fffdfccc]">
-                  <step.icon className="w-7 h-7" />
+                <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-full border-[3px] sm:border-4 border-accent/80 flex items-center justify-center shrink-0 text-[#ffffff] border-t-[#fffdfccc] border-r-[#fffdfccc] border-b-[#fffdfccc] border-l-[#fffdfccc]">
+                  <step.icon className="w-5 h-5 sm:w-7 sm:h-7" />
                 </div>
               </motion.div>
             ))}

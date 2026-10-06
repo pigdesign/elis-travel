@@ -63,7 +63,7 @@ export function BestServices() {
         style={{
           top: 0,
           bottom: 0,
-          left: "calc(50% - 36rem)",
+          left: "max(0px, calc(50% - 36rem))",
           width: "32rem",
         }}
       >
@@ -89,13 +89,13 @@ export function BestServices() {
           <div className="hidden lg:block flex-shrink-0" style={{ width: "30rem" }} />
 
           {/* RIGHT: Content */}
-          <div className="flex-1 lg:pl-12 py-[70px] pr-[30px]">
+          <div className="flex-1 px-5 sm:px-8 lg:pl-12 lg:pr-[30px] py-[70px]">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="brand-title brand-title-accent mb-6 text-[#ffffff] text-center text-[83px] font-extrabold">
+              <h2 className="brand-title brand-title-accent mb-6 text-[#ffffff] text-center text-[44px] sm:text-[60px] lg:text-[64px] xl:text-[83px] font-extrabold">
                 Offriamo i migliori <span className="text-white">servizi</span>
               </h2>
               <p className="text-white/80 text-lg max-w-xl mb-8">
@@ -116,17 +116,16 @@ export function BestServices() {
                   style={{ paddingBottom: "14px", paddingLeft: "14px" }}
                 >
                   <div
-                    className="relative bg-white flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300 h-full"
+                    className={`relative bg-white flex flex-col items-center text-center hover:-translate-y-1.5 transition-transform duration-300 h-full min-h-[200px] sm:min-h-[260px] ${
+                      index === 0 || index === 1 ? "xl:w-[181px]" : ""
+                    } ${index === 1 || index === 2 ? "xl:h-[339px]" : ""}`}
                     style={{
                       borderTopLeftRadius: "46px",
                       borderTopRightRadius: "18px",
                       borderBottomRightRadius: "46px",
                       borderBottomLeftRadius: "18px",
                       boxShadow: "0 6px 28px rgba(0,0,0,0.09)",
-                      minHeight: "260px",
                       padding: index === 0 ? "38px 20px 38px" : "38px 22px 52px",
-                      ...(index === 0 || index === 1 ? { width: "181px" } : {}),
-                      ...(index === 1 || index === 2 ? { height: "339px" } : {}),
                     }}
                   >
                     <div className="mb-5 mt-2">

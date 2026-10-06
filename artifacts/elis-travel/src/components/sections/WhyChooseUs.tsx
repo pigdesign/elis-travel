@@ -16,12 +16,12 @@ const REASON_ICON_COLORS = ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#f5f5f5
 export function WhyChooseUs() {
   return (
     <section
-      className="py-24 relative overflow-hidden"
+      className="py-16 md:py-24 relative overflow-hidden"
       style={{ background: "linear-gradient(135deg, #fa811e 0%, #ff9a3d 100%)" }}
     >
       <div className="container relative z-10 mx-auto px-4 md:px-8">
         <div
-          className="rounded-[3rem] p-8 md:p-16 backdrop-blur-sm"
+          className="rounded-[3rem] px-0 py-2 sm:p-8 md:p-16 backdrop-blur-sm"
           style={{
             boxSizing: "content-box",
             borderWidth: 0,
@@ -62,7 +62,7 @@ export function WhyChooseUs() {
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="rounded-3xl p-10 text-center shadow-xl max-w-md mx-auto lg:ml-auto"
+              className="rounded-3xl p-6 sm:p-10 text-center shadow-xl max-w-md mx-auto lg:ml-auto"
               style={{
                 backgroundColor: "transparent",
                 borderWidth: 4,
