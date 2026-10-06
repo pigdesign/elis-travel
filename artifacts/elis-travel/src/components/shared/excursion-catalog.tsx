@@ -358,6 +358,8 @@ function getDateParts(value?: string | null): { day: string; month: string; year
 /**
  * Riga orizzontale per l'elenco delle gite Rident.
  * Layout a lista: blocco data prominente a sinistra, info al centro, CTA a destra.
+ * Su mobile la riga diventa una griglia: data e titolo restano affiancati,
+ * posti/prezzo e CTA scendono sotto a tutta larghezza.
  * Niente immagine né destinazione — sono tutte gite Rident nello stesso luogo.
  */
 export function RidentRow({ ex }: { ex: PublicExcursionCard }) {
@@ -379,21 +381,25 @@ export function RidentRow({ ex }: { ex: PublicExcursionCard }) {
   );
 
   return (
-    <article className="bg-white border border-border rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 sm:p-5 transition-shadow hover:shadow-md">
-      {/* Blocco data — verdone coerente con l'hero */}
+    <article className="bg-white border border-border rounded-2xl shadow-sm grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 sm:flex sm:items-center sm:gap-6 p-4 sm:p-5 transition-shadow hover:shadow-md">
+      {/* Blocco data — verdone coerente con l'hero. Su mobile diventa un
+          quadrato pieno nel colore dei pulsanti, con il testo in bianco, per
+          spiccare accanto al titolo che lì va a capo su più righe. */}
       {dateParts && (
-        <div className="flex sm:flex-col items-center justify-center gap-2 sm:gap-0 shrink-0 sm:w-24 rounded-xl bg-[#0b4f54]/[0.06] border border-[#0b4f54]/15 px-4 py-3 text-[#0b4f54]">
-          <span className="text-3xl sm:text-4xl font-serif font-bold leading-none">{dateParts.day}</span>
-          <span className="text-sm font-semibold uppercase tracking-wide sm:mt-1">{dateParts.month}</span>
-          <span className="text-xs text-muted-foreground">{dateParts.year}</span>
+        <div className="flex flex-col items-center justify-center shrink-0 self-center rounded-xl bg-[#0b4f54]/[0.06] border border-[#0b4f54]/15 text-[#0b4f54] sm:w-24 sm:px-4 sm:py-3 max-sm:size-[88px] max-sm:rounded-2xl max-sm:bg-[#0a6a70] max-sm:border-[#0a6a70] max-sm:text-white max-sm:shadow-md max-sm:shadow-[#0b4f54]/25">
+          <span className="text-[40px] sm:text-4xl font-serif font-bold leading-none">{dateParts.day}</span>
+          <span className="text-sm font-semibold uppercase tracking-wide mt-1">{dateParts.month}</span>
+          <span className="text-[11px] sm:text-xs text-white/75 sm:text-muted-foreground">{dateParts.year}</span>
         </div>
       )}
 
-      {/* Info centrale */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1.5">
-          <Link href={detailUrl} className="min-w-0">
-            <h2 className="text-lg font-serif font-bold text-foreground leading-snug truncate hover:text-[#0b4f54] transition-colors">
+      {/* Info centrale. Su mobile il contenitore si "scioglie" (contents) e i
+          suoi due blocchi diventano celle della griglia: il titolo affianca la
+          data, posti/prezzo vanno a capo su tutta la larghezza. */}
+      <div className="contents sm:block sm:flex-1 sm:min-w-0">
+        <div className={`flex flex-col items-start gap-2 min-w-0 self-center sm:flex-row sm:items-center sm:flex-wrap sm:mb-1.5 ${dateParts ? "" : "col-span-2"}`}>
+          <Link href={detailUrl} className="min-w-0 max-w-full">
+            <h2 className="text-base sm:text-lg font-serif font-bold text-foreground leading-snug line-clamp-3 sm:line-clamp-2 hover:text-[#0b4f54] transition-colors">
               {ex.name}
             </h2>
           </Link>
@@ -405,9 +411,9 @@ export function RidentRow({ ex }: { ex: PublicExcursionCard }) {
           )}
         </div>
 
-        <div className="flex items-center gap-x-5 gap-y-1 flex-wrap text-sm">
+        <div className="col-span-2 flex items-center justify-between sm:justify-start gap-x-3 sm:gap-x-5 gap-y-1 flex-wrap text-[13px] sm:text-sm border-t border-border pt-3 sm:border-0 sm:pt-0">
           {capacity > 0 && remaining !== null && (
-            <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="flex items-center gap-1.5 text-muted-foreground whitespace-nowrap">
               <Users className="w-4 h-4 text-accent shrink-0" />
               {remaining <= 0
                 ? "Posti esauriti"
@@ -417,8 +423,9 @@ export function RidentRow({ ex }: { ex: PublicExcursionCard }) {
             </span>
           )}
           {price && (
-            <span className="flex items-center gap-1.5 text-foreground">
-              <Euro className="w-4 h-4 text-accent shrink-0" />
+            <span className="flex items-center gap-1.5 text-foreground whitespace-nowrap">
+              {/* Su mobile l'icona è ridondante col simbolo € e farebbe andare a capo la riga */}
+              <Euro className="hidden sm:block w-4 h-4 text-accent shrink-0" />
               <span className="font-bold">da {price} €</span>
               <span className="text-xs text-muted-foreground">a persona</span>
             </span>
@@ -426,19 +433,19 @@ export function RidentRow({ ex }: { ex: PublicExcursionCard }) {
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="flex items-center gap-2 shrink-0 sm:justify-end">
+      {/* CTA — a tutta larghezza su mobile, compatta a destra da sm in su */}
+      <div className="col-span-2 flex items-center gap-2 shrink-0 sm:justify-end">
         {bookable ? (
-          <Link href={detailUrl}>
-            <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a6a70] hover:bg-[#084f54] text-white font-bold text-sm transition-colors shadow-sm shadow-[#0b4f54]/20 whitespace-nowrap">
+          <Link href={detailUrl} className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a6a70] hover:bg-[#084f54] text-white font-bold text-sm transition-colors shadow-sm shadow-[#0b4f54]/20 whitespace-nowrap">
               <Users className="w-4 h-4" />
               Prenota un posto
               <ArrowRight className="w-4 h-4" />
             </button>
           </Link>
         ) : (
-          <Link href={`/contatti?excursionId=${encodeURIComponent(ex.id)}`}>
-            <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a6a70] hover:bg-[#084f54] text-white font-bold text-sm transition-colors shadow-sm shadow-[#0b4f54]/20 whitespace-nowrap">
+          <Link href={`/contatti?excursionId=${encodeURIComponent(ex.id)}`} className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0a6a70] hover:bg-[#084f54] text-white font-bold text-sm transition-colors shadow-sm shadow-[#0b4f54]/20 whitespace-nowrap">
               <Tag className="w-4 h-4" />
               Richiedi informazioni
               <ArrowRight className="w-4 h-4" />

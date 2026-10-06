@@ -307,8 +307,10 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
             <div className="relative container mx-auto max-w-6xl px-4 md:px-8">
               <div className="relative grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)] lg:pb-24">
                 <div className="max-w-3xl pb-24 md:pb-28 lg:pb-36">
+                  {/* Le gite Rident hanno il proprio elenco (Turismo Dentale):
+                      il ritorno porta lì, non al catalogo delle gite standard. */}
                   <Link
-                    href="/gite"
+                    href={excursion.category === "rident" ? "/rident" : "/gite"}
                     className="mb-6 flex w-fit items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white"
                     data-testid="link-back-to-excursions"
                   >
