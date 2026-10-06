@@ -128,14 +128,14 @@ test("la pulizia toglie le bozze scadute e lascia intatte quelle valide", () => 
       JSON.stringify({ savedAt: Date.now(), value: { ok: true } }),
     );
     // Chiave di un'altra funzionalita': non deve essere toccata.
-    values.set("elis_cookie_consent", "accepted");
+    values.set("altra_funzione", "valore");
 
     pruneExpiredDrafts();
 
     assert.equal(values.has(draftStorageKey("scaduta-1")), false);
     assert.equal(values.has(draftStorageKey("scaduta-2")), false);
     assert.equal(values.has(draftStorageKey("viva")), true);
-    assert.equal(values.get("elis_cookie_consent"), "accepted");
+    assert.equal(values.get("altra_funzione"), "valore");
   });
 });
 

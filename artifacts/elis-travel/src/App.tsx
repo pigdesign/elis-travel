@@ -36,7 +36,6 @@ import { AccountSecurityPage } from "@/pages/(public)/AccountSecurityPage";
 import { RequireCustomer } from "@/components/customer/RequireCustomer";
 import { AdminLayout } from "@/pages/(admin)/layout/AdminLayout";
 import { LoginPage } from "@/pages/(admin)/login/LoginPage";
-import { CookieBanner } from "@/components/layout/CookieBanner";
 import { DashboardPage } from "@/pages/(admin)/dashboard/DashboardPage";
 import { ExcursionsPage } from "@/pages/(admin)/excursions/ExcursionsPage";
 import { ExcursionDetailPage } from "@/pages/(admin)/excursions/ExcursionDetailPage";
@@ -255,8 +254,9 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
+          {/* Il consenso ai cookie lo gestisce solo iubenda (script in
+              index.html): un secondo banner qui si sovrapponeva al suo. */}
           <Toaster />
-          <CookieBanner />
           </TooltipProvider>
         </CustomerAuthProvider>
       </AuthProvider>

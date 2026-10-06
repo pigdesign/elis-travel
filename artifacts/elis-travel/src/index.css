@@ -173,3 +173,14 @@
     color: hsl(var(--primary));
   }
 }
+
+/* Sui dispositivi touch un campo con testo sotto i 16px fa zoomare Safari al
+   tocco. La regola sta fuori dai layer così vince sulle utility (text-sm & co.);
+   con mouse o trackpad non si applica, quindi il desktop resta com'è. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
