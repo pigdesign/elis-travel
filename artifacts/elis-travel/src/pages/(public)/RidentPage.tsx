@@ -52,7 +52,7 @@ export function RidentPage() {
       <Header />
 
       <section
-        className="relative pt-60 pb-32 text-white overflow-hidden"
+        className="relative pt-36 pb-24 md:pt-60 md:pb-32 text-white overflow-hidden"
         style={{
           backgroundImage: 'url("/images/rident-hero.webp")',
           backgroundSize: "cover",
@@ -104,7 +104,7 @@ export function RidentPage() {
         </div>
       )}
 
-      <section className="py-20">
+      <section className="py-12 md:py-20">
         <div className="container mx-auto px-4 md:px-8">
           {isLoading ? (
             <div className="flex justify-center py-20 text-muted-foreground">

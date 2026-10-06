@@ -42,7 +42,8 @@ function DestinationCombobox({
   }, [open]);
 
   useEffect(() => {
-    if (open && inputRef.current) {
+    // Solo con mouse/trackpad: sul telefono la tastiera coprirebbe l'elenco.
+    if (open && inputRef.current && window.matchMedia("(pointer: fine)").matches) {
       inputRef.current.focus();
     }
   }, [open]);
@@ -65,11 +66,11 @@ function DestinationCombobox({
   }
 
   return (
-    <div ref={containerRef} className="relative md:w-64 shrink-0">
+    <div ref={containerRef} className="relative lg:w-64 shrink-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-6 py-5 text-left hover:bg-muted/30 transition-colors group"
+        className="w-full flex items-center gap-3 px-5 py-3.5 lg:px-6 lg:py-5 text-left hover:bg-muted/30 transition-colors group"
       >
         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${open ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
           <MapPin className="w-5 h-5 text-primary" />
@@ -93,7 +94,7 @@ function DestinationCombobox({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
+        <div className="absolute left-3 right-3 top-full mt-2 lg:left-0 lg:right-auto lg:w-72 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
           <div className="p-3 border-b border-border">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border border-border focus-within:border-primary focus-within:bg-white transition-colors">
               <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -375,7 +376,7 @@ export function OffersPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <section
-        className="relative pt-60 pb-32 text-white overflow-hidden"
+        className="relative pt-36 pb-24 md:pt-60 md:pb-32 text-white overflow-hidden"
         style={{
           backgroundImage: 'url("/images/offerte-hero.webp")',
           backgroundSize: "cover",
@@ -395,7 +396,7 @@ export function OffersPage() {
       {/* Barra filtri */}
       <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-8 mb-14">
         <div className="bg-white rounded-2xl shadow-2xl max-w-5xl mx-auto overflow-visible">
-          <div className="flex flex-col md:flex-row md:divide-x divide-border">
+          <div className="flex flex-col divide-y lg:divide-y-0 lg:flex-row lg:divide-x divide-border">
 
             {/* Destinazione — custom combobox */}
             <DestinationCombobox
@@ -405,7 +406,7 @@ export function OffersPage() {
             />
 
             {/* Tipologia */}
-            <div className="flex items-center gap-3 px-6 py-5 flex-1">
+            <div className="flex items-center gap-3 px-5 py-3.5 lg:px-6 lg:py-5 flex-1">
               <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
                 <Ticket className="w-5 h-5 text-accent" />
               </div>
@@ -430,7 +431,7 @@ export function OffersPage() {
             </div>
 
             {/* In Evidenza + Last Minute */}
-            <div className="flex items-center gap-2 px-6 py-5 shrink-0">
+            <div className="flex items-center gap-2 px-5 py-3 lg:px-6 lg:py-5 shrink-0">
               <button
                 onClick={() => setFilter("featured", !featured)}
                 className={`inline-flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -455,17 +456,18 @@ export function OffersPage() {
               </button>
             </div>
 
-            {/* Pulsante cerca / reset */}
-            <div className="flex items-center px-4 py-3 md:py-0 bg-muted/20 md:bg-transparent">
+            {/* Pulsante cerca / reset. "Cerca" è solo grafico (i filtri si applicano
+                da soli): sotto 1024px compare solo "Azzera", quando serve. */}
+            <div className={`${hasFilters ? "flex" : "hidden lg:flex"} items-center px-4 py-3 lg:py-0 bg-muted/20 lg:bg-transparent`}>
               {hasFilters ? (
                 <button
                   onClick={clearFilters}
-                  className="w-full md:w-auto px-5 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-semibold hover:bg-muted/80 transition-colors"
+                  className="w-full lg:w-auto px-5 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-semibold hover:bg-muted/80 transition-colors"
                 >
                   Azzera
                 </button>
               ) : (
-                <div className="w-full md:w-auto px-5 py-3 rounded-xl bg-accent text-white text-sm font-bold flex items-center gap-2 cursor-default select-none">
+                <div className="w-full lg:w-auto px-5 py-3 rounded-xl bg-accent text-white text-sm font-bold flex items-center gap-2 cursor-default select-none">
                   <ArrowRight className="w-4 h-4" />
                   Cerca
                 </div>
@@ -489,7 +491,7 @@ export function OffersPage() {
         </div>
       )}
 
-      <section className="py-20">
+      <section className="py-12 md:py-20">
         <div className="container mx-auto px-4 md:px-8">
           {isLoading ? (
             <div className="flex justify-center py-20 text-muted-foreground">

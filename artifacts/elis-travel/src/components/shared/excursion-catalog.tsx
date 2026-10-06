@@ -94,15 +94,17 @@ export function ProgrammaModal({ excursionId, onClose }: { excursionId: string; 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
       onClick={onClose}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      {/* Panel */}
+      {/* Panel: sul telefono sale dal basso e usa quasi tutta l'altezza visibile
+          (dvh, così la barra di Safari non lo taglia); da sm in su è la
+          finestra centrata di sempre. */}
       <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -116,7 +118,7 @@ export function ProgrammaModal({ excursionId, onClose }: { excursionId: string; 
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl hover:bg-muted/50 text-muted-foreground shrink-0 -mt-0.5"
+            className="p-2.5 sm:p-1.5 rounded-xl hover:bg-muted/50 text-muted-foreground shrink-0 -mt-1.5 -mr-1.5 sm:-mt-0.5 sm:mr-0"
             aria-label="Chiudi"
           >
             <X className="w-5 h-5" />
@@ -188,14 +190,14 @@ export function ProgrammaModal({ excursionId, onClose }: { excursionId: string; 
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 md:flex-none md:min-w-[160px] px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-muted-foreground transition-colors"
+            className="shrink-0 md:flex-none md:min-w-[160px] px-5 md:px-4 py-2.5 rounded-xl border-2 border-border text-sm font-semibold text-foreground hover:border-muted-foreground transition-colors"
           >
             Chiudi
           </button>
           <Link href={detailUrl} className="flex-1 md:flex-none md:min-w-[200px]" onClick={onClose}>
             <button
               type="button"
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm transition-colors"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm whitespace-nowrap transition-colors"
             >
               <Users className="w-4 h-4" />
               Prenota un posto
@@ -493,11 +495,11 @@ export function MonthCombobox({
   }
 
   return (
-    <div ref={containerRef} className="relative md:w-56 shrink-0">
+    <div ref={containerRef} className="relative lg:w-56 shrink-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-6 py-5 text-left hover:bg-muted/30 transition-colors group"
+        className="w-full flex items-center gap-3 px-5 py-3.5 lg:px-6 lg:py-5 text-left hover:bg-muted/30 transition-colors group"
       >
         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${open ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
           <CalendarDays className="w-5 h-5 text-primary" />
@@ -521,7 +523,7 @@ export function MonthCombobox({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
+        <div className="absolute left-3 right-3 top-full mt-2 min-w-64 lg:left-0 lg:right-auto lg:w-64 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden">
           <div className="max-h-56 overflow-y-auto py-1.5">
             <button
               type="button"
