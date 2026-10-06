@@ -1,37 +1,56 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Star } from "lucide-react";
+import { Quote, Star } from "lucide-react";
 
 interface TestimonialCardProps {
-  avatar: string;
+  /** Come lo mostra la fonte: di solito nome e iniziale del cognome. */
   name: string;
-  role: string;
+  /** Il viaggio a cui si riferisce, per esempio "Gita a Fiume · settembre 2026". */
+  trip: string;
   text: string;
   rating: number;
+  /** Da dove viene la recensione, per esempio "Google". */
+  source?: string;
 }
 
-export function TestimonialCard({ avatar, name, role, text, rating }: TestimonialCardProps) {
+export function TestimonialCard({
+  name,
+  trip,
+  text,
+  rating,
+  source,
+}: TestimonialCardProps) {
   return (
-    <Card className="rounded-[2rem] border-none shadow-lg bg-white relative mt-8">
-      <div className="absolute -top-8 left-8">
-        <img
-          src={avatar}
-          alt={name}
-          className="w-16 h-16 rounded-full border-4 border-white object-cover shadow-sm"
-        />
-      </div>
-      <CardContent className="pt-12 pb-8 px-8">
-        <div className="flex gap-1 mb-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              className={`w-5 h-5 ${i < rating ? "fill-accent text-accent" : "fill-muted text-muted"}`}
-            />
-          ))}
+    <Card className="h-full rounded-[2rem] border-none shadow-lg bg-white">
+      <CardContent className="flex h-full flex-col px-8 pb-8 pt-8">
+        <div className="mb-5 flex items-center justify-between">
+          <Quote
+            className="h-9 w-9 text-accent/30"
+            aria-hidden="true"
+            strokeWidth={1.5}
+          />
+          <div
+            className="flex gap-1"
+            role="img"
+            aria-label={`${rating} stelle su 5`}
+          >
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                aria-hidden="true"
+                className={`h-5 w-5 ${i < rating ? "fill-accent text-accent" : "fill-muted text-muted"}`}
+              />
+            ))}
+          </div>
         </div>
-        <p className="text-muted-foreground italic mb-6 leading-relaxed">"{text}"</p>
-        <div>
-          <div className="font-bold text-foreground text-lg">{name}</div>
-          <div className="text-sm text-primary font-medium">{role}</div>
+        <p className="mb-8 leading-relaxed text-muted-foreground">{text}</p>
+        <div className="mt-auto border-t border-border/60 pt-5">
+          <div className="text-lg font-bold text-foreground">{name}</div>
+          <div className="text-sm font-medium text-primary">{trip}</div>
+          {source && (
+            <div className="mt-1 text-xs text-muted-foreground">
+              Recensione {source}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

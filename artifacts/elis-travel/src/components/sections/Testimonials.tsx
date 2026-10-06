@@ -1,28 +1,31 @@
 import { motion } from "framer-motion";
 import { TestimonialCard } from "@/components/shared/TestimonialCard";
 
+// SEGNAPOSTO: questi tre testi sono di esempio e NON vanno pubblicati come
+// recensioni di clienti. Prima del lancio vanno sostituiti con recensioni vere
+// (Google, email o messaggi dei clienti, con il loro consenso), riportate come
+// le ha scritte il cliente: nome e iniziale del cognome, gita e periodo, fonte.
+// Recensioni inventate presentate come vere sono vietate dal Codice del Consumo
+// (art. 23, introdotto dal D.Lgs. 26/2023).
 const TESTIMONIALS = [
   {
     id: 1,
-    name: "Sarah Johnson",
-    role: "Viaggiatrice",
-    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
+    name: "Giulia B.",
+    trip: "Viaggiatrice",
     rating: 5,
     text: "Elis Travel ha organizzato tutto il nostro viaggio in Italia ed è stato impeccabile. Dal tour privato del Colosseo alle gemme nascoste delle Cinque Terre, ogni dettaglio era perfetto."
   },
   {
     id: 2,
-    name: "Marco Rossi",
-    role: "Fotografo",
-    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+    name: "Marco R.",
+    trip: "Fotografo",
     rating: 5,
     text: "L'attenzione ai dettagli è impareggiabile. Ci hanno trovato hotel boutique con viste incredibili. Consiglio i loro servizi a chiunque cerchi un viaggio unico."
   },
   {
     id: 3,
-    name: "Emma Davis",
-    role: "In luna di miele",
-    avatar: "https://i.pravatar.cc/150?u=a04258114e29026702d",
+    name: "Elena M.",
+    trip: "In luna di miele",
     rating: 5,
     text: "La nostra luna di miele alle Maldive è stata letteralmente un sogno che si è avverato. Elis Travel ha pensato a tutto, così abbiamo potuto rilassarci e goderci il tempo insieme."
   }
@@ -50,6 +53,7 @@ export function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.5 }}
+              className="h-full"
             >
               <TestimonialCard {...review} />
             </motion.div>
