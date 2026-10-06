@@ -409,6 +409,10 @@ async function buildBookingAwaitingConfirmationEmail(
     booking.paymentMethod === "bank_transfer"
       ? "bonifico"
       : "pagamento in ufficio";
+  // Per bonifico e ufficio su una gita non ancora confermata e l'unica email
+  // che parte alla prenotazione: senza il richiamo il cliente non avrebbe
+  // modo di ritrovare il viaggio nell'area personale fino alla conferma.
+  const invite = inviteSections(await prepareBookingInvite(bookingId));
   const subject = `Prenotazione in attesa di conferma — ${excursion.name}`;
   const text = [
     `Ciao ${booking.customerName},`,
@@ -421,6 +425,7 @@ async function buildBookingAwaitingConfirmationEmail(
     ...summary.text,
     "",
     `Consulta la prenotazione: ${portalUrl}`,
+    ...invite.text,
   ].join("\n");
   const html = wrap(
     "Prenotazione in attesa di conferma",
@@ -428,7 +433,8 @@ async function buildBookingAwaitingConfirmationEmail(
      <p>${escapeHtml(amountLabel)}: <strong>${escapeHtml(euro(booking.amountDueCents ?? 0))}</strong><br/>Metodo scelto: <strong>${escapeHtml(methodLabel)}</strong></p>
      <p>Se la gita verrà confermata, riceverai le istruzioni e la scadenza per il pagamento. Se non verrà confermata, non ti verrà richiesto alcun pagamento.</p>
      ${summary.html.join("")}
-     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Consulta la prenotazione</a></p>`,
+     <p style="margin-top:24px;"><a href="${escapeHtml(portalUrl)}" style="display:inline-block;padding:12px 18px;background:#0b5b60;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Consulta la prenotazione</a></p>
+     ${invite.html}`,
   );
   return {
     to: booking.email!,
@@ -782,6 +788,11 @@ async function buildInstructionsCustomerEmail(
     bookingId,
     booking.paymentType ?? undefined,
   );
+  // Incasso rinviato alla conferma della gita: il cliente ha gia l'email "in
+  // attesa di conferma" e le istruzioni partiranno alla conferma. Uscire qui,
+  // prima di emettere l'invito, evita un token e un evento "invito inviato"
+  // per un messaggio che la consegna annullerebbe comunque.
+  if (request?.status === "scheduled") return null;
   const access = await ensureBookingAccessToken(bookingId);
   const portalUrl = buildBookingPortalUrl(access.token);
   const amountLabel =

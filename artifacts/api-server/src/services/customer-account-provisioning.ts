@@ -19,6 +19,8 @@ import { enqueueAndDeliverNow } from "./email-outbox";
 import { issueCustomerAuthToken } from "./customer-auth-token";
 import { recordAccountEvent } from "./customer-auth-throttle";
 import { splitCustomerName } from "./customer-name";
+import { verifyBookingAccessToken } from "./booking-access-token";
+import { decidePortalLink, sameBookingEmail } from "./booking-link-policy";
 
 // ---------------------------------------------------------------------------
 // Creazione dell'account "ombra" a partire da una prenotazione.
@@ -185,12 +187,7 @@ export async function linkBookingToSessionAccount(input: {
       .limit(1);
     if (!account || account.status !== "active") return false;
 
-    if (
-      normalizeAccountEmail(booking.email) !==
-      normalizeAccountEmail(account.email)
-    ) {
-      return false;
-    }
+    if (!sameBookingEmail(booking.email, account.email)) return false;
 
     // `unique(account_id, booking_id)` rende l'operazione idempotente: se la
     // prenotazione fosse gia collegata non serve distinguere il caso.
@@ -219,6 +216,132 @@ export async function linkBookingToSessionAccount(input: {
       "Collegamento automatico alla sessione fallito; resta l'invito via email",
     );
     return false;
+  }
+}
+
+export type PortalLinkOutcome =
+  | "linked"
+  | "already_linked"
+  | "needs_confirmation"
+  | "revoked"
+  | "account_inactive"
+  | "invalid_token";
+
+/**
+ * Collega all'account la prenotazione di cui si ha in mano il link del portale.
+ *
+ * Con `requireSameEmail` collega solo se l'email della prenotazione e quella
+ * dell'account: e la strada automatica, usata quando il cliente apre il portale
+ * gia dentro l'area clienti o vi entra partendo dal portale. Senza, e il clic
+ * esplicito sul pulsante, che vale anche per una prenotazione a nome di un
+ * altro indirizzo. Le regole stanno in `decidePortalLink`.
+ *
+ * Il token e obbligatorio anche quando la sessione c'e: senza, chiunque sia
+ * dentro potrebbe prendersi una prenotazione altrui indovinandone l'id.
+ */
+export async function linkBookingFromPortalToken(input: {
+  accountId: string;
+  bookingToken: string;
+  requireSameEmail: boolean;
+  ip?: string | null;
+}): Promise<PortalLinkOutcome> {
+  const verified = input.bookingToken
+    ? await verifyBookingAccessToken(input.bookingToken)
+    : null;
+  if (!verified) return "invalid_token";
+
+  const [[account], [booking], [existing]] = await Promise.all([
+    db
+      .select({
+        email: customerAccountsTable.email,
+        status: customerAccountsTable.status,
+      })
+      .from(customerAccountsTable)
+      .where(eq(customerAccountsTable.id, input.accountId))
+      .limit(1),
+    db
+      .select({ email: excursionBookingsTable.email })
+      .from(excursionBookingsTable)
+      .where(eq(excursionBookingsTable.id, verified.bookingId))
+      .limit(1),
+    db
+      .select({ revokedAt: customerAccountBookingsTable.revokedAt })
+      .from(customerAccountBookingsTable)
+      .where(
+        and(
+          eq(customerAccountBookingsTable.accountId, input.accountId),
+          eq(customerAccountBookingsTable.bookingId, verified.bookingId),
+        ),
+      )
+      .limit(1),
+  ]);
+
+  const decision = decidePortalLink({
+    accountStatus: account?.status ?? null,
+    accountEmail: account?.email ?? null,
+    bookingEmail: booking?.email ?? null,
+    existingLink: existing ? { revoked: existing.revokedAt !== null } : null,
+    requireSameEmail: input.requireSameEmail,
+  });
+  if (decision !== "link") return decision;
+
+  const inserted = await db
+    .insert(customerAccountBookingsTable)
+    .values({
+      accountId: input.accountId,
+      bookingId: verified.bookingId,
+      linkedVia: "portal_token",
+    })
+    .onConflictDoNothing()
+    .returning({ id: customerAccountBookingsTable.id });
+  // Due schede aperte sulla stessa prenotazione: ha gia collegato l'altra.
+  if (inserted.length === 0) return "already_linked";
+
+  await recordAccountEvent({
+    eventType: "booking_linked",
+    accountId: input.accountId,
+    ip: input.ip ?? null,
+    detail: {
+      bookingId: verified.bookingId,
+      via: "portal_token",
+      automatic: input.requireSameEmail,
+    },
+  });
+  return "linked";
+}
+
+/**
+ * La prenotazione da legare a un link di accesso chiesto partendo dal portale.
+ *
+ * Il link viaggia verso `email`: chi lo apre dimostra di controllare quella
+ * casella, ed e la stessa garanzia dell'invito. Per questo lo si lega alla
+ * prenotazione solo se e intestata a quel medesimo indirizzo — chi chiede il
+ * link per un'altra casella entra lo stesso, ma senza portarsi dietro niente.
+ *
+ * Non solleva: nel peggiore dei casi il link e un accesso semplice.
+ */
+export async function bookingIdForAccessLink(input: {
+  bookingToken: string;
+  email: string;
+}): Promise<string | null> {
+  if (!input.bookingToken) return null;
+  try {
+    const verified = await verifyBookingAccessToken(input.bookingToken);
+    if (!verified) return null;
+    const [booking] = await db
+      .select({ email: excursionBookingsTable.email })
+      .from(excursionBookingsTable)
+      .where(eq(excursionBookingsTable.id, verified.bookingId))
+      .limit(1);
+    return sameBookingEmail(booking?.email, input.email)
+      ? verified.bookingId
+      : null;
+  } catch (error) {
+    logger.warn(
+      { err: error },
+      "Prenotazione non legata al link di accesso; resta un accesso semplice",
+    );
+    return null;
   }
 }
 

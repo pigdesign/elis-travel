@@ -5,6 +5,7 @@ import {
   readAccountTokenFromLocation,
   stripTokenFromUrl,
 } from "@/lib/account-access-token";
+import { takeBookingForLogin } from "@/lib/booking-after-login";
 import { Header } from "@/components/layout/Header";
 import logoImg from "@assets/logo2.webp";
 
@@ -38,6 +39,12 @@ export function AccountLoginPage() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<Mode>("link");
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
+  // Arrivati dal portale di una prenotazione: va mandata insieme all'accesso,
+  // cosi il cliente la ritrova fra i suoi viaggi appena entrato. Letta una
+  // volta sola, come il token qui sotto.
+  const [bookingToken] = useState(() =>
+    typeof window === "undefined" ? "" : takeBookingForLogin(),
+  );
 
   // Il token viene letto una sola volta al montaggio e subito rimosso dalla
   // barra degli indirizzi, prima ancora di sapere se e valido: non deve finire
@@ -86,11 +93,11 @@ export function AccountLoginPage() {
     setPhase({ kind: "sending" });
     try {
       if (mode === "password") {
-        await loginWithPassword(email, password);
+        await loginWithPassword(email, password, bookingToken);
         navigate("/area-clienti");
         return;
       }
-      const { message } = await requestMagicLink(email);
+      const { message } = await requestMagicLink(email, bookingToken);
       setPhase({ kind: "sent", message });
     } catch (err) {
       setPhase({
@@ -191,9 +198,11 @@ export function AccountLoginPage() {
                     autoFocus
                     className="w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                   />
-                  {mode === "link" && (
+                  {(mode === "link" || bookingToken) && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Usa lo stesso indirizzo con cui hai prenotato.
+                      {bookingToken
+                        ? "Usa lo stesso indirizzo con cui hai prenotato: entrando, troverai la prenotazione già fra i tuoi viaggi."
+                        : "Usa lo stesso indirizzo con cui hai prenotato."}
                     </p>
                   )}
                 </div>

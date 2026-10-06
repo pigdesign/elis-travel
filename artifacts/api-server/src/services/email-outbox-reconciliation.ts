@@ -183,6 +183,22 @@ export async function reconcileMissingBookingEmails(opts?: {
         ]),
         ...activeBookingConditions(),
         missingOutboxEntry(bookingKey("instructions:v2")),
+        // Incasso rinviato alla conferma della gita: le istruzioni partono
+        // alla conferma, non adesso. Senza questa esclusione queste righe
+        // tornerebbero a ogni giro (il messaggio non viene composto, quindi
+        // la chiave resta mancante) e, ordinate per data, terrebbero fuori
+        // dal batch le prenotazioni che le istruzioni le aspettano davvero.
+        notExists(
+          db
+            .select({ id: paymentRequestsTable.id })
+            .from(paymentRequestsTable)
+            .where(
+              and(
+                eq(paymentRequestsTable.bookingId, excursionBookingsTable.id),
+                eq(paymentRequestsTable.status, "scheduled"),
+              ),
+            ),
+        ),
       ),
     )
     .orderBy(asc(excursionBookingsTable.createdAt))

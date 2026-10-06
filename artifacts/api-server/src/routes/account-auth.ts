@@ -35,6 +35,10 @@ import {
   listAccountBookings,
 } from "../services/account-bookings";
 import { splitCustomerName } from "../services/customer-name";
+import {
+  bookingIdForAccessLink,
+  linkBookingFromPortalToken,
+} from "../services/customer-account-provisioning";
 
 const router = Router();
 
@@ -69,6 +73,17 @@ function readEmail(body: unknown): string | null {
   const normalized = normalizeAccountEmail(raw);
   if (normalized.length > 320 || !EMAIL_PATTERN.test(normalized)) return null;
   return normalized;
+}
+
+/**
+ * Link del portale da cui il cliente e arrivato all'accesso, se c'e. Serve a
+ * ritrovarsi la prenotazione fra i viaggi appena entrati, senza tornare
+ * nell'email a premere "Collega".
+ */
+function readBookingToken(body: unknown): string {
+  if (!body || typeof body !== "object") return "";
+  const raw = (body as Record<string, unknown>).bookingToken;
+  return typeof raw === "string" ? raw.trim().slice(0, 512) : "";
 }
 
 function accountSummary(account: {
@@ -180,9 +195,17 @@ router.post("/account/magic-link", async (req, res) => {
       account.emailStatus !== "bounced";
 
     if (deliverable) {
+      // Chi chiede il link partendo dal portale entra con la prenotazione gia
+      // fra i suoi viaggi, anche se apre l'email su un altro dispositivo: il
+      // legame viaggia nel token, non nel browser.
+      const bookingId = await bookingIdForAccessLink({
+        bookingToken: readBookingToken(req.body),
+        email,
+      });
       const { token } = await issueCustomerAuthToken({
         accountId: account.id,
         purpose: "magic_link",
+        bookingId,
         requestedIp: ip,
       });
       await enqueueAndDeliverNow({
@@ -280,14 +303,18 @@ router.post("/account/magic-link/consume", async (req, res) => {
     .returning();
 
   // Un invito nasce da una prenotazione e autorizza QUELLA prenotazione: e la
-  // prova di possesso circoscritta a un oggetto preciso.
+  // prova di possesso circoscritta a un oggetto preciso. Lo stesso vale per un
+  // link di accesso chiesto dal portale di una prenotazione intestata a
+  // quell'indirizzo (vedi bookingIdForAccessLink).
   if (consumed.bookingId) {
+    const linkedVia =
+      consumed.purpose === "account_invite" ? "invite_token" : "portal_token";
     await db
       .insert(customerAccountBookingsTable)
       .values({
         accountId: account.id,
         bookingId: consumed.bookingId,
-        linkedVia: "invite_token",
+        linkedVia,
       })
       .onConflictDoNothing();
 
@@ -313,7 +340,7 @@ router.post("/account/magic-link/consume", async (req, res) => {
       eventType: "booking_linked",
       accountId: account.id,
       ip,
-      detail: { bookingId: consumed.bookingId, via: "invite_token" },
+      detail: { bookingId: consumed.bookingId, via: linkedVia },
     });
   }
 
@@ -405,6 +432,24 @@ router.post("/account/login", async (req, res) => {
 
   await openCustomerSession(req, account, "password");
   await recordAccountEvent({ eventType: "login", accountId: account.id, ip });
+
+  // Arrivato dal portale: stessa regola dell'apertura del portale a sessione
+  // aperta, cioe collegamento solo se la prenotazione e intestata a lui.
+  // L'accesso e gia riuscito e un intoppo qui non deve annullarlo.
+  const portalToken = readBookingToken(req.body);
+  if (portalToken) {
+    await linkBookingFromPortalToken({
+      accountId: account.id,
+      bookingToken: portalToken,
+      requireSameEmail: true,
+      ip,
+    }).catch((error: unknown) => {
+      logger.warn(
+        { err: error },
+        "Collegamento dopo l'accesso con password fallito",
+      );
+    });
+  }
 
   res.json({ account: accountSummary(updated ?? account) });
 });

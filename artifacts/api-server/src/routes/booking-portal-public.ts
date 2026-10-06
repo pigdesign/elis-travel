@@ -7,8 +7,6 @@ import {
   bookingParticipantsTable,
   excursionBookingsTable,
   excursionsTable,
-  customerAccountBookingsTable,
-  customerAccountsTable,
   paymentAttemptsTable,
   paymentRequestsTable,
 } from "@workspace/db/schema";
@@ -31,8 +29,7 @@ import {
   recoverConfirmedBookingWorkflow,
   requiresTermsReacceptance,
 } from "../services/excursion-confirmation";
-import { verifyBookingAccessToken } from "../services/booking-access-token";
-import { recordAccountEvent } from "../services/customer-auth-throttle";
+import { linkBookingFromPortalToken } from "../services/customer-account-provisioning";
 import {
   availablePaymentMethods,
   getPaymentSettings,
@@ -149,6 +146,10 @@ async function portalPaymentStillAllowed(input: {
  * questo che permette di risolvere con un clic i casi che un collegamento
  * automatico sbaglierebbe — il capogruppo che prenota per venti persone, il
  * figlio che prenota per i genitori, l'indirizzo condiviso in famiglia.
+ *
+ * Con `automatic: true` e la chiamata che il portale fa da solo all'apertura:
+ * collega senza chiedere niente se la prenotazione e intestata all'email
+ * dell'account, altrimenti risponde `needsConfirmation` e il pulsante resta.
  */
 router.post("/booking-portal/claim", async (req, res) => {
   const accountId = req.session?.customerAccount?.accountId ?? null;
@@ -156,49 +157,44 @@ router.post("/booking-portal/claim", async (req, res) => {
     res.status(401).json({ error: "Accedi alla tua area personale." });
     return;
   }
+  const automatic =
+    (req.body as { automatic?: unknown } | undefined)?.automatic === true;
 
-  // Il claim richiede il TOKEN, non basta la sessione: senza, chiunque
-  // autenticato potrebbe rivendicare una prenotazione altrui indovinandone
-  // l'identificativo.
-  const verified = await verifyBookingAccessToken(bookingToken(req));
-  if (!verified) {
-    res.status(403).json({
-      error: "Link della prenotazione non valido o scaduto.",
-    });
-    return;
-  }
-
-  const [account] = await db
-    .select({ status: customerAccountsTable.status })
-    .from(customerAccountsTable)
-    .where(eq(customerAccountsTable.id, accountId))
-    .limit(1);
-  if (!account || account.status !== "active") {
-    res.status(403).json({ error: "Account non attivo." });
-    return;
-  }
-
-  const inserted = await db
-    .insert(customerAccountBookingsTable)
-    .values({
+  try {
+    const outcome = await linkBookingFromPortalToken({
       accountId,
-      bookingId: verified.bookingId,
-      linkedVia: "portal_token",
-    })
-    .onConflictDoNothing()
-    .returning({ id: customerAccountBookingsTable.id });
-
-  if (inserted.length > 0) {
-    await recordAccountEvent({
-      eventType: "booking_linked",
-      accountId,
+      bookingToken: bookingToken(req),
+      requireSameEmail: automatic,
       ip: req.ip ?? null,
-      detail: { bookingId: verified.bookingId, via: "portal_token" },
     });
+    switch (outcome) {
+      case "linked":
+      case "already_linked":
+        // Gia collegata: esito identico, l'operazione e idempotente.
+        res.json({ ok: true, alreadyLinked: outcome === "already_linked" });
+        return;
+      case "needs_confirmation":
+        res.json({ ok: false, needsConfirmation: true });
+        return;
+      case "invalid_token":
+        res.status(403).json({
+          error: "Link della prenotazione non valido o scaduto.",
+        });
+        return;
+      case "account_inactive":
+        res.status(403).json({ error: "Account non attivo." });
+        return;
+      case "revoked":
+        res.status(409).json({
+          error:
+            "Questa prenotazione e stata scollegata dal tuo account dall'agenzia. Contattaci se pensi sia un errore.",
+        });
+        return;
+    }
+  } catch (error) {
+    logger.error({ err: error }, "Collegamento della prenotazione fallito");
+    res.status(500).json({ error: "Collegamento non riuscito. Riprova." });
   }
-
-  // Gia collegata: esito identico, l'operazione e idempotente.
-  res.json({ ok: true, alreadyLinked: inserted.length === 0 });
 });
 
 router.use((_req, res, next) => {

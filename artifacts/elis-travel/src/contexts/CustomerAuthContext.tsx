@@ -31,14 +31,21 @@ type CustomerAuthState =
 
 type CustomerAuthContextValue = {
   state: CustomerAuthState;
-  /** Chiede il link di accesso. Non rivela mai se l'indirizzo esiste. */
-  requestMagicLink: (email: string) => Promise<{ message: string }>;
+  /**
+   * Chiede il link di accesso. Non rivela mai se l'indirizzo esiste.
+   * `bookingToken` e il link del portale da cui si e partiti, se c'e.
+   */
+  requestMagicLink: (
+    email: string,
+    bookingToken?: string,
+  ) => Promise<{ message: string }>;
   /** Consuma il token ricevuto via email e apre la sessione. */
   consumeToken: (token: string) => Promise<CustomerAccount>;
   /** Accesso con la password, per chi ha scelto di impostarne una. */
   loginWithPassword: (
     email: string,
     password: string,
+    bookingToken?: string,
   ) => Promise<CustomerAccount>;
   /** Imposta o cambia la password dell'account. */
   setPassword: (input: {
@@ -87,21 +94,27 @@ export function CustomerAuthProvider({
     void refresh();
   }, [refresh]);
 
-  const requestMagicLink = useCallback(async (email: string) => {
-    const res = await fetch("/api/account/magic-link", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email }),
-    });
-    if (!res.ok) {
-      throw new Error(
-        await readError(res, "Non siamo riusciti a inviare il link. Riprova."),
-      );
-    }
-    const data = (await res.json()) as { message: string };
-    return { message: data.message };
-  }, []);
+  const requestMagicLink = useCallback(
+    async (email: string, bookingToken?: string) => {
+      const res = await fetch("/api/account/magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, bookingToken }),
+      });
+      if (!res.ok) {
+        throw new Error(
+          await readError(
+            res,
+            "Non siamo riusciti a inviare il link. Riprova.",
+          ),
+        );
+      }
+      const data = (await res.json()) as { message: string };
+      return { message: data.message };
+    },
+    [],
+  );
 
   const consumeToken = useCallback(async (token: string) => {
     const res = await fetch("/api/account/magic-link/consume", {
@@ -119,12 +132,12 @@ export function CustomerAuthProvider({
   }, []);
 
   const loginWithPassword = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, bookingToken?: string) => {
       const res = await fetch("/api/account/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, bookingToken }),
       });
       if (!res.ok) {
         throw new Error(await readError(res, "Email o password non corretti."));
