@@ -1622,6 +1622,7 @@ export function ExcursionBookingForm({
             <input
               id="bk-first-name"
               type="text"
+              autoComplete="given-name"
               required
               maxLength={PARTICIPANT_NAME_MAX_LENGTH}
               value={firstName}
@@ -1643,6 +1644,7 @@ export function ExcursionBookingForm({
             <input
               id="bk-last-name"
               type="text"
+              autoComplete="family-name"
               required
               maxLength={PARTICIPANT_NAME_MAX_LENGTH}
               value={lastName}
@@ -1664,6 +1666,7 @@ export function ExcursionBookingForm({
             <input
               id="bk-email"
               type="email"
+              autoComplete="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -1681,6 +1684,7 @@ export function ExcursionBookingForm({
             <input
               id="bk-phone"
               type="tel"
+              autoComplete="tel"
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}

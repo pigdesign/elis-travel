@@ -267,6 +267,7 @@ export function ContactsPage() {
                         </label>
                         <input
                           type="text"
+                          autoComplete="name"
                           {...register("customerName")}
                           disabled={isPending}
                           aria-invalid={!!errors.customerName}
@@ -283,6 +284,7 @@ export function ContactsPage() {
                         </label>
                         <input
                           type="email"
+                          autoComplete="email"
                           {...register("email")}
                           disabled={isPending}
                           aria-invalid={!!errors.email}
@@ -301,6 +303,7 @@ export function ContactsPage() {
                       </label>
                       <input
                         type="tel"
+                        autoComplete="tel"
                         {...register("phone")}
                         disabled={isPending}
                         className="w-full px-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"

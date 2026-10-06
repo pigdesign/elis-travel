@@ -135,7 +135,7 @@ export function AccountTripsPage() {
               role="tab"
               aria-selected={scope === tab.key}
               onClick={() => setScope(tab.key)}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors sm:py-2 ${
                 scope === tab.key
                   ? "bg-primary text-primary-foreground"
                   : "border border-border text-foreground hover:bg-muted/50"
