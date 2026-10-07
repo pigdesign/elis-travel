@@ -516,11 +516,44 @@ router.get("/excursions/:id", async (req, res) => {
         getExcursionRevenue(id),
       ]);
 
+    // Composizione dei posti per il prospetto incassi: chi c'è in ogni
+    // prenotazione (tipo, fascia d'età) e quanto paga, dallo snapshot fissato
+    // al momento della prenotazione. Una sola query per tutte le prenotazioni.
+    const bookingIds = bookings.map((b) => b.id);
+    const participantRows =
+      bookingIds.length === 0
+        ? []
+        : await db
+            .select({
+              bookingId: bookingParticipantsTable.bookingId,
+              participantType: bookingParticipantsTable.participantType,
+              ageRangeLabel: bookingParticipantsTable.ageRangeLabel,
+              finalPriceCents: bookingParticipantsTable.finalPriceCents,
+            })
+            .from(bookingParticipantsTable)
+            .where(inArray(bookingParticipantsTable.bookingId, bookingIds))
+            .orderBy(
+              asc(bookingParticipantsTable.bookingId),
+              asc(bookingParticipantsTable.sortOrder),
+            );
+    const seatParticipantsByBooking = new Map<
+      string,
+      { participantType: string; ageRangeLabel: string | null; finalPriceCents: number }[]
+    >();
+    for (const { bookingId, ...participant } of participantRows) {
+      const list = seatParticipantsByBooking.get(bookingId) ?? [];
+      list.push(participant);
+      seatParticipantsByBooking.set(bookingId, list);
+    }
+
     res.json({
       ...excursion,
       ...calcFinancials(excursion, revenue),
       pendingRequestsCount,
-      bookings,
+      bookings: bookings.map((b) => ({
+        ...b,
+        seatParticipants: seatParticipantsByBooking.get(b.id) ?? [],
+      })),
       pickupPoints,
     });
   } catch (err) {

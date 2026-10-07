@@ -52,6 +52,7 @@ import {
   buildAccountingRows,
   buildCancelledWithMoney,
   summarizeAccounting,
+  type AccountingRow,
 } from "@/lib/excursion-accounting-report";
 import { CoverImageUploader } from "@/components/shared/CoverImageUploader";
 import { buildSlugUrl } from "@/lib/seo";
@@ -269,7 +270,13 @@ function escapeHtml(value: string) {
 }
 
 function formatDate(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00");
+  // "2026-10-14" è una data senza ora e si legge a mezzanotte locale; un
+  // timestamp completo si legge com'è. Aggiungere l'ora anche a quello
+  // produceva "Invalid Date" (prospetto incassi: scadenze e annullamenti).
+  const d = new Date(
+    /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr + "T00:00:00" : dateStr,
+  );
+  if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("it-IT", {
     day: "2-digit",
     month: "short",
@@ -2015,8 +2022,22 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
       on_bus: "Sul bus",
     };
     const eur = (cents: number) => escapeHtml(formatEur(cents / 100));
-    const seatsLabel = (adults: number, children: number) =>
-      children > 0 ? `${adults}A+${children}B` : `${adults}A`;
+    // Scadenza e annullamento sono istanti precisi: data e ora, all'ora di Roma.
+    const momento = (iso: string) => escapeHtml(formatDepartureInRome(iso) ?? "—");
+    // Una riga per tipo di posto: quanti, chi (fascia d'età) e quanto paga ciascuno.
+    const seatsHtml = (lines: AccountingRow["seatLines"]) =>
+      lines.length === 0
+        ? "—"
+        : lines
+            .map(
+              (l) =>
+                `<div class="posto"><span>${l.count} ${escapeHtml(l.label)}</span>${
+                  l.unitPriceCents === null
+                    ? ""
+                    : ` <span class="quota">× ${eur(l.unitPriceCents)}</span>`
+                }</div>`,
+            )
+            .join("");
 
     const rowsHtml = accountingRows
       .map(
@@ -2026,7 +2047,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           <td class="code">${escapeHtml(r.bookingCode) || "—"}</td>
           <td>${escapeHtml(r.name)}</td>
           <td>${escapeHtml(r.phone) || "—"}</td>
-          <td class="center">${seatsLabel(r.adults, r.children)}</td>
+          <td class="posti">${seatsHtml(r.seatLines)}</td>
           <td class="num">${r.totalCents === null ? '<span class="warn">non calcolato</span>' : eur(r.totalCents)}</td>
           <td class="num">${eur(r.paidCents)}</td>
           <td class="num">${
@@ -2040,8 +2061,8 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
           <td>${
             r.deadline
               ? r.overdue
-                ? `<strong class="scaduta">${escapeHtml(formatDate(r.deadline))}</strong>`
-                : escapeHtml(formatDate(r.deadline))
+                ? `<strong class="scaduta">${momento(r.deadline)}</strong>`
+                : momento(r.deadline)
               : "—"
           }</td>
           <td>${escapeHtml(r.statusLabel)}</td>
@@ -2084,7 +2105,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
         <td>${escapeHtml(r.name)}</td>
         <td>${escapeHtml(r.phone) || "—"}</td>
         <td class="num"><strong>${eur(r.paidCents)}</strong></td>
-        <td>${r.cancelledAt ? escapeHtml(formatDate(r.cancelledAt)) : "—"}</td>
+        <td>${r.cancelledAt ? momento(r.cancelledAt) : "—"}</td>
         <td>${escapeHtml(r.statusLabel)}</td>
       </tr>`,
         )
@@ -2127,6 +2148,9 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
   td.num, th.num { text-align: right; white-space: nowrap; }
   td.right { text-align: right; }
   td.code { font-family: ui-monospace, "SF Mono", Menlo, monospace; white-space: nowrap; }
+  td.posti { white-space: nowrap; }
+  td.posti .posto + .posto { margin-top: 2px; }
+  td.posti .quota { color: #5b6b72; }
   tbody tr:nth-child(even) { background: #f7fafb; }
   tbody tr.debito { background: #fffaf0; }
   tbody tr.debito:nth-child(even) { background: #fff6e8; }
@@ -2169,7 +2193,7 @@ export function ExcursionDetailPage({ excursionId }: ExcursionDetailPageProps) {
         <th>Codice</th>
         <th>Referente</th>
         <th>Telefono</th>
-        <th class="center">Posti</th>
+        <th>Posti</th>
         <th class="num">Totale</th>
         <th class="num">Incassato</th>
         <th class="num">Residuo</th>

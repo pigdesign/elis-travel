@@ -3061,6 +3061,15 @@ components:
         updatedAt:
           type: string
           format: date-time
+        seatParticipants:
+          type: array
+          description: >
+            Solo nel dettaglio gita dell'amministrazione. Un elemento per
+            partecipante registrato, nell'ordine della prenotazione: tipo,
+            fascia d'età e prezzo pagato (snapshot). Vuoto per le prenotazioni
+            senza partecipanti dettagliati.
+          items:
+            $ref: "#/components/schemas/BookingSeatParticipant"
       required:
         - id
         - excursionId
@@ -3073,6 +3082,20 @@ components:
         - customerNotificationsEnabled
         - createdAt
         - updatedAt
+    BookingSeatParticipant:
+      type: object
+      properties:
+        participantType:
+          type: string
+          description: adult | child | patient | companion
+        ageRangeLabel:
+          type: string
+          nullable: true
+        finalPriceCents:
+          type: integer
+      required:
+        - participantType
+        - finalPriceCents
     AdminBookingParticipant:
       type: object
       properties:

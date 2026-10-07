@@ -135,6 +135,13 @@ export interface ExcursionSummary {
   updatedAt: string;
 }
 
+export interface BookingSeatParticipant {
+  /** adult | child | patient | companion */
+  participantType: string;
+  ageRangeLabel?: string | null;
+  finalPriceCents: number;
+}
+
 export interface Booking {
   id: string;
   excursionId: string;
@@ -173,6 +180,9 @@ export interface Booking {
   cancellationRequestStatus?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Solo nel dettaglio gita dell'amministrazione. Un elemento per partecipante registrato, nell'ordine della prenotazione: tipo, fascia d'età e prezzo pagato (snapshot). Vuoto per le prenotazioni senza partecipanti dettagliati.
+   */
+  seatParticipants?: BookingSeatParticipant[];
 }
 
 export type ExcursionDetail = ExcursionSummary & {

@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildAccountingRows,
   buildCancelledWithMoney,
+  buildSeatLines,
   summarizeAccounting,
   type AccountingBookingInput,
 } from "./excursion-accounting-report";
@@ -159,4 +160,90 @@ test("le annullate senza denaro versato non compaiono", () => {
     righe.map((r) => r.name),
     ["Saldata Intera", "Con Acconto"],
   );
+});
+
+// --- Composizione dei posti ------------------------------------------------
+
+const adulto = (cents: number) => ({ participantType: "adult", finalPriceCents: cents });
+const bambino = (eta: string, cents: number) => ({
+  participantType: "child",
+  ageRangeLabel: eta,
+  finalPriceCents: cents,
+});
+
+test("posti: adulti e bambini con fascia e prezzo, raggruppati", () => {
+  const righe = buildSeatLines({
+    seats: 3,
+    adults: 1,
+    children: 2,
+    seatParticipants: [bambino("4-11 anni", 200), adulto(400), bambino("4-11 anni", 200)],
+  });
+  assert.deepEqual(righe, [
+    { count: 1, label: "adulto", unitPriceCents: 400 },
+    { count: 2, label: "bambini 4-11 anni", unitPriceCents: 200 },
+  ]);
+});
+
+test("posti: fasce diverse su righe diverse, i piu piccoli prima", () => {
+  const righe = buildSeatLines({
+    seats: 4,
+    adults: 2,
+    children: 2,
+    seatParticipants: [adulto(400), adulto(400), bambino("12-17 anni", 300), bambino("0-3 anni", 0)],
+  });
+  assert.deepEqual(
+    righe.map((r) => `${r.count} ${r.label} ${r.unitPriceCents}`),
+    ["2 adulti 400", "1 bambino 0-3 anni 0", "1 bambino 12-17 anni 300"],
+  );
+});
+
+// Stesso tipo e fascia ma prezzo diverso (supplementi di raccolta diversi):
+// unire le righe mostrerebbe un prezzo falso per uno dei due.
+test("posti: stesso tipo con prezzi diversi resta su due righe", () => {
+  const righe = buildSeatLines({
+    seats: 2,
+    adults: 2,
+    children: 0,
+    seatParticipants: [adulto(4500), adulto(4000)],
+  });
+  assert.deepEqual(
+    righe.map((r) => [r.count, r.unitPriceCents]),
+    [[1, 4500], [1, 4000]],
+  );
+});
+
+test("posti: senza partecipanti registrati restano i contatori, senza prezzo", () => {
+  assert.deepEqual(buildSeatLines({ seats: 3, adults: 1, children: 2, seatParticipants: [] }), [
+    { count: 1, label: "adulto", unitPriceCents: null },
+    { count: 2, label: "bambini", unitPriceCents: null },
+  ]);
+});
+
+test("posti: i posti senza dettaglio compaiono invece di sparire", () => {
+  const righe = buildSeatLines({ seats: 3, adults: 3, children: 0, seatParticipants: [adulto(400)] });
+  assert.deepEqual(righe.at(-1), { count: 2, label: "posti senza dettaglio", unitPriceCents: null });
+});
+
+test("posti: gite Rident con pazienti e accompagnatori", () => {
+  const righe = buildSeatLines({
+    seats: 2,
+    adults: 2,
+    children: 0,
+    seatParticipants: [
+      { participantType: "companion", finalPriceCents: 10000 },
+      { participantType: "patient", finalPriceCents: 18000 },
+    ],
+  });
+  assert.deepEqual(
+    righe.map((r) => r.label),
+    ["paziente", "accompagnatore"],
+  );
+});
+
+test("il prospetto porta la composizione dei posti su ogni riga", () => {
+  const [riga] = buildAccountingRows(
+    [prenotazione({ seats: 1, adults: 1, children: 0, seatParticipants: [adulto(800)] })],
+    { now: ORA, statusLabel: etichetta },
+  );
+  assert.deepEqual(riga!.seatLines, [{ count: 1, label: "adulto", unitPriceCents: 800 }]);
 });

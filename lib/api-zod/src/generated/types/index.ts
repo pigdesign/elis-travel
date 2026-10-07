@@ -56,6 +56,7 @@ export * from "./bookingInputPaymentMethod";
 export * from "./bookingInputPaymentStatus";
 export * from "./bookingParticipantInput";
 export * from "./bookingParticipantInputType";
+export * from "./bookingSeatParticipant";
 export * from "./cardConfirmedInput";
 export * from "./cardConfirmedResponse";
 export * from "./confirmPublicExcursionBookingPayment200";

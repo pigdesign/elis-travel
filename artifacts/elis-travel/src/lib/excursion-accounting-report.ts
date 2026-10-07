@@ -11,11 +11,32 @@
 // solo li: se comparisse su due fogli, le presenze segnate su quello sbagliato
 // andrebbero perse, perche nessuno le riporta.
 
+/** Un partecipante registrato: tipo, fascia d'età e prezzo pagato (snapshot). */
+export type SeatParticipantInput = {
+  participantType: string;
+  ageRangeLabel?: string | null;
+  finalPriceCents: number;
+};
+
+/**
+ * Una riga della colonna "Posti": quanti posti di un certo tipo e quanto paga
+ * ciascuno. Il prezzo e null quando la prenotazione non ha i partecipanti
+ * registrati (prenotazioni vecchie o inserite a mano senza dettaglio).
+ */
+export type SeatLine = {
+  count: number;
+  /** Gia al singolare o al plurale giusto: "adulto", "bambini 4-11 anni". */
+  label: string;
+  unitPriceCents: number | null;
+};
+
 export type AccountingBookingInput = {
   customerName: string;
   phone?: string | null;
+  seats?: number;
   adults: number;
   children: number;
+  seatParticipants?: readonly SeatParticipantInput[] | null;
   bookingCode?: string | null;
   totalAmountCents?: number | null;
   amountPaidCents?: number | null;
@@ -31,6 +52,7 @@ export type AccountingRow = {
   phone: string;
   adults: number;
   children: number;
+  seatLines: SeatLine[];
   /** Null quando l'importo non e mai stato calcolato: e un buco, non uno zero. */
   totalCents: number | null;
   paidCents: number;
@@ -59,6 +81,100 @@ export type CancelledWithMoneyRow = {
   statusLabel: string;
 };
 
+const SEAT_NOUNS: Record<string, [singolare: string, plurale: string]> = {
+  adult: ["adulto", "adulti"],
+  child: ["bambino", "bambini"],
+  patient: ["paziente", "pazienti"],
+  companion: ["accompagnatore", "accompagnatori"],
+};
+
+// Adulti (o pazienti) prima, poi accompagnatori, poi bambini.
+const SEAT_ORDER: Record<string, number> = {
+  adult: 0,
+  patient: 0,
+  companion: 1,
+  child: 2,
+};
+
+function seatNoun(type: string, count: number): string {
+  const nouns = SEAT_NOUNS[type];
+  if (!nouns) return type;
+  return count === 1 ? nouns[0] : nouns[1];
+}
+
+/** Primo numero della fascia ("4-11 anni" → 4), per mettere i piu piccoli prima. */
+function ageStart(label: string | null): number {
+  const match = label?.match(/\d+/);
+  return match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Composizione dei posti di una prenotazione: "1 adulto × 40 €",
+ * "2 bambini 4-11 anni × 20 €".
+ *
+ * Raggruppa i partecipanti con stesso tipo, fascia e prezzo: due bambini della
+ * stessa fascia che pagano diversamente (per esempio con supplementi di
+ * raccolta diversi) restano su due righe, altrimenti il prezzo mostrato
+ * sarebbe falso per uno dei due. Se mancano partecipanti registrati, i posti
+ * restanti compaiono senza prezzo invece di sparire.
+ */
+export function buildSeatLines(booking: {
+  seats?: number;
+  adults: number;
+  children: number;
+  seatParticipants?: readonly SeatParticipantInput[] | null;
+}): SeatLine[] {
+  const participants = booking.seatParticipants ?? [];
+
+  // Nessun dettaglio: solo i contatori della prenotazione.
+  if (participants.length === 0) {
+    const lines: SeatLine[] = [];
+    if (booking.adults > 0) {
+      lines.push({ count: booking.adults, label: seatNoun("adult", booking.adults), unitPriceCents: null });
+    }
+    if (booking.children > 0) {
+      lines.push({ count: booking.children, label: seatNoun("child", booking.children), unitPriceCents: null });
+    }
+    return lines;
+  }
+
+  const groups = new Map<
+    string,
+    { type: string; age: string | null; price: number; count: number }
+  >();
+  for (const p of participants) {
+    const age = p.ageRangeLabel?.trim() || null;
+    const key = `${p.participantType}|${age ?? ""}|${p.finalPriceCents}`;
+    const group = groups.get(key);
+    if (group) group.count += 1;
+    else groups.set(key, { type: p.participantType, age, price: p.finalPriceCents, count: 1 });
+  }
+
+  const lines: SeatLine[] = [...groups.values()]
+    .sort(
+      (a, b) =>
+        (SEAT_ORDER[a.type] ?? 9) - (SEAT_ORDER[b.type] ?? 9) ||
+        ageStart(a.age) - ageStart(b.age) ||
+        b.price - a.price,
+    )
+    .map((g) => ({
+      count: g.count,
+      label: g.age ? `${seatNoun(g.type, g.count)} ${g.age}` : seatNoun(g.type, g.count),
+      unitPriceCents: g.price,
+    }));
+
+  const expected = booking.seats ?? booking.adults + booking.children;
+  const missing = expected - participants.length;
+  if (missing > 0) {
+    lines.push({
+      count: missing,
+      label: missing === 1 ? "posto senza dettaglio" : "posti senza dettaglio",
+      unitPriceCents: null,
+    });
+  }
+  return lines;
+}
+
 function residualOf(
   totalCents: number | null,
   paidCents: number,
@@ -85,6 +201,7 @@ export function buildAccountingRows(
         phone: b.phone ?? "",
         adults: b.adults,
         children: b.children,
+        seatLines: buildSeatLines(b),
         totalCents,
         paidCents,
         residualCents,

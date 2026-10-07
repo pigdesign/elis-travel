@@ -665,6 +665,20 @@ export const GetExcursionResponse = zod
           cancellationRequestStatus: zod.string().nullish(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date(),
+          seatParticipants: zod
+            .array(
+              zod.object({
+                participantType: zod
+                  .string()
+                  .describe("adult | child | patient | companion"),
+                ageRangeLabel: zod.string().nullish(),
+                finalPriceCents: zod.number(),
+              }),
+            )
+            .optional()
+            .describe(
+              "Solo nel dettaglio gita dell'amministrazione. Un elemento per partecipante registrato, nell'ordine della prenotazione: tipo, fascia d'età e prezzo pagato (snapshot). Vuoto per le prenotazioni senza partecipanti dettagliati.\n",
+            ),
         }),
       ),
     }),
@@ -1056,6 +1070,20 @@ export const AddExcursionBookingResponse = zod.object({
   cancellationRequestStatus: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  seatParticipants: zod
+    .array(
+      zod.object({
+        participantType: zod
+          .string()
+          .describe("adult | child | patient | companion"),
+        ageRangeLabel: zod.string().nullish(),
+        finalPriceCents: zod.number(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Solo nel dettaglio gita dell'amministrazione. Un elemento per partecipante registrato, nell'ordine della prenotazione: tipo, fascia d'età e prezzo pagato (snapshot). Vuoto per le prenotazioni senza partecipanti dettagliati.\n",
+    ),
 });
 
 /**
@@ -1802,6 +1830,20 @@ export const GetAdminBookingDetailsResponse = zod.object({
     cancellationRequestStatus: zod.string().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
+    seatParticipants: zod
+      .array(
+        zod.object({
+          participantType: zod
+            .string()
+            .describe("adult | child | patient | companion"),
+          ageRangeLabel: zod.string().nullish(),
+          finalPriceCents: zod.number(),
+        }),
+      )
+      .optional()
+      .describe(
+        "Solo nel dettaglio gita dell'amministrazione. Un elemento per partecipante registrato, nell'ordine della prenotazione: tipo, fascia d'età e prezzo pagato (snapshot). Vuoto per le prenotazioni senza partecipanti dettagliati.\n",
+      ),
   }),
   participants: zod.array(
     zod.object({

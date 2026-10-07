@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingSeatParticipant } from "./bookingSeatParticipant";
 
 export interface Booking {
   id: string;
@@ -44,4 +45,7 @@ export interface Booking {
   cancellationRequestStatus?: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Solo nel dettaglio gita dell'amministrazione. Un elemento per partecipante registrato, nell'ordine della prenotazione: tipo, fascia d'età e prezzo pagato (snapshot). Vuoto per le prenotazioni senza partecipanti dettagliati.
+   */
+  seatParticipants?: BookingSeatParticipant[];
 }
