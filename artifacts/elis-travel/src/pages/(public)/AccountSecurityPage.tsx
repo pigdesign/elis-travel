@@ -95,7 +95,7 @@ export function AccountSecurityPage() {
     "w-full px-4 py-3 rounded-xl border border-border bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
+    <div className="min-h-screen bg-background bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <Header solid />
       <div className="mx-auto max-w-2xl px-4 pb-16 pt-28">
         <div className="mb-6 flex items-center justify-between gap-4">

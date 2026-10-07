@@ -15,7 +15,8 @@ import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 const DESKTOP_NAV_QUERY = "(min-width: 1280px)";
 
 /**
- * `solid` forza da subito l'aspetto "scrollato": sfondo bianco e testo scuro.
+ * `solid` forza da subito l'aspetto "scrollato": sfondo bianco e testo scuro
+ * (sotto i 1280px: sfondo arancione e logo bianco, vedi `solidLook`).
  *
  * Serve alle pagine senza foto scura in cima — portale prenotazione, area
  * clienti — dove il menu bianco su fondo chiaro semplicemente non si vede.
@@ -48,6 +49,17 @@ export function Header({ solid = false }: { solid?: boolean } = {}) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [solid]);
 
+  // Barre del telefono nell'arancione del sito. Safari da iOS 26 ignora
+  // theme-color e colora la barra di stato (e quella in basso) con lo sfondo
+  // del body: sotto i 1280px, sulle pagine pubbliche, il body diventa
+  // arancione (regola `body.site-chrome` in index.css). Ogni pagina ha già il
+  // suo fondo pieno, quindi l'arancione si vede solo nelle barre e quando la
+  // pagina "rimbalza" oltre i bordi.
+  useEffect(() => {
+    document.body.classList.add("site-chrome");
+    return () => document.body.classList.remove("site-chrome");
+  }, []);
+
   // Menu aperto: la pagina sotto non scorre, Esc lo chiude, e se la finestra
   // si allarga fino al menu completo il pannello si chiude da solo.
   useEffect(() => {
@@ -70,8 +82,10 @@ export function Header({ solid = false }: { solid?: boolean } = {}) {
     };
   }, [mobileMenuOpen]);
 
-  // Col menu aperto l'header diventa bianco come il pannello che gli scende
-  // sotto, così logo e voci restano leggibili anche sopra la foto dell'hero.
+  // Header "pieno": a pagina scrollata, o col menu aperto perché logo e voci
+  // restino leggibili anche sopra la foto dell'hero. Sotto i 1280px è
+  // arancione (accent) con il logo bianco, come la barra del browser
+  // (theme-color in index.html); da 1280px resta bianco col logo a colori.
   const solidLook = isScrolled || mobileMenuOpen;
   const closeMenu = () => setMobileMenuOpen(false);
 
@@ -90,19 +104,29 @@ export function Header({ solid = false }: { solid?: boolean } = {}) {
       <header
         className={cn(
           "fixed top-0 w-full z-50 transition-all duration-300",
-          solidLook ? "bg-white/75 backdrop-blur-md shadow-sm py-4" : "bg-transparent py-6",
-          mobileMenuOpen && "bg-white"
+          solidLook
+            ? "bg-white/75 backdrop-blur-md shadow-sm py-4 max-xl:bg-accent"
+            : "bg-transparent py-6",
+          mobileMenuOpen && "bg-accent"
         )}
       >
         <div className="container mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex shrink-0 items-center gap-3 group" onClick={closeMenu}>
               <img
-                src={solidLook ? stickyLogoImg : logoImg}
+                src={logoImg}
                 alt="Elis Travel"
                 className={cn(
-                  "w-auto object-contain group-hover:scale-105 transition-transform",
-                  solidLook ? "h-[52px]" : "h-[52px]"
+                  "h-[52px] w-auto object-contain group-hover:scale-105 transition-transform",
+                  solidLook && "xl:hidden"
+                )}
+              />
+              <img
+                src={stickyLogoImg}
+                alt="Elis Travel"
+                className={cn(
+                  "hidden h-[52px] w-auto object-contain group-hover:scale-105 transition-transform",
+                  solidLook && "xl:block"
                 )}
               />
             </Link>
@@ -159,7 +183,15 @@ export function Header({ solid = false }: { solid?: boolean } = {}) {
                 il resto sta nel menu. */}
             <div className="flex items-center gap-2 xl:hidden">
               <Link href="/gite" className="hidden sm:block" onClick={closeMenu}>
-                <Button className="bg-accent text-accent-foreground hover:bg-accent/90 border-none">
+                <Button
+                  className={cn(
+                    "border-none",
+                    // sull'header arancione il pulsante diventa bianco
+                    solidLook
+                      ? "bg-white text-accent hover:bg-white/90"
+                      : "bg-accent text-accent-foreground hover:bg-accent/90"
+                  )}
+                >
                   Prenota ora
                 </Button>
               </Link>
@@ -172,9 +204,9 @@ export function Header({ solid = false }: { solid?: boolean } = {}) {
                 aria-controls="menu-mobile"
               >
                 {mobileMenuOpen ? (
-                  <X className="w-6 h-6 text-foreground" />
+                  <X className="w-6 h-6 text-white" />
                 ) : (
-                  <Menu className={cn("w-6 h-6", solidLook ? "text-foreground" : "text-white")} />
+                  <Menu className="w-6 h-6 text-white" />
                 )}
               </button>
             </div>

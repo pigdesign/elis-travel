@@ -113,7 +113,7 @@ export function AccountLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/5">
+    <div className="min-h-screen bg-background bg-gradient-to-br from-primary/10 via-background to-accent/5">
       <Header solid />
       <div className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-4 pb-16 pt-28">
        <div className="w-full">

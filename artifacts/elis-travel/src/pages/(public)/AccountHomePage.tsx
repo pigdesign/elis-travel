@@ -20,7 +20,7 @@ export function AccountHomePage() {
   const nome = account.firstName?.trim() || null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
+    <div className="min-h-screen bg-background bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <Header solid />
       <div className="mx-auto max-w-3xl px-4 pb-16 pt-28">
         <header className="flex items-start justify-between gap-4 mb-10">

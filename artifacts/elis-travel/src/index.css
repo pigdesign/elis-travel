@@ -191,3 +191,10 @@ body.has-sticky-cta .iubenda-tp-btn.iubenda-cs-preferences-link[data-tp-float] {
   bottom: 88px !important;
   transition: bottom 0.3s;
 }
+
+/* Barre del browser sul telefono e sul tablet (vedi Header.tsx). */
+@media (max-width: 1279px) {
+  body.site-chrome {
+    background-color: hsl(var(--accent));
+  }
+}

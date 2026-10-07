@@ -114,7 +114,7 @@ export function AccountTripsPage() {
   }, [scope]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
+    <div className="min-h-screen bg-background bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <Header solid />
       <div className="mx-auto max-w-3xl px-4 pb-16 pt-28">
         <div className="mb-6 flex items-center justify-between gap-4">

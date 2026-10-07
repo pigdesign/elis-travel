@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <script type="text/javascript" src="https://embeds.iubenda.com/widgets/db085d63-6abf-4392-ab85-bbb49a7dbf3a.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Barra del browser sul telefono e sul tablet nell'arancione del sito
+         (accent, #fa811e): vale per Chrome su Android e per Safari fino a
+         iOS 18. Safari da iOS 26 prende invece lo sfondo del body (vedi
+         `body.site-chrome` in index.css). -->
+    <meta name="theme-color" content="#fa811e" media="(max-width: 1279px)" />
     <title>Elis Travel — Agenzia viaggi, offerte e gite organizzate</title>
     <meta name="description" content="Elis Travel: agenzia viaggi con offerte, pacchetti vacanza e gite organizzate. Richiedi informazioni e prenota la tua prossima esperienza." />
     <meta name="robots" content="index, follow" />
@@ -56,6 +61,10 @@
       position: relative;
       width: 480px;
       max-width: 88vw;
+    }
+    /* Sul telefono a 88vw il logo riempiva lo schermo: metà larghezza. */
+    @media (max-width: 767px) {
+      #elistravel-loader .logo-wrap { max-width: 44vw; }
     }
     #elistravel-loader .logo-svg {
       display: block;
