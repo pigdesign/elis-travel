@@ -368,7 +368,7 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
               <svg
                 viewBox="0 0 1440 270"
                 preserveAspectRatio="none"
-                className="h-[220px] w-full md:h-[270px] lg:h-[330px]"
+                className="h-[80px] w-full sm:h-[120px] md:h-[170px] lg:h-[330px]"
                 aria-hidden="true"
               >
                 <path
@@ -380,9 +380,9 @@ export function ExcursionDetailPage({ excursionIdOrSlug }: ExcursionDetailPagePr
 
             <div className="relative container mx-auto max-w-6xl px-4 md:px-8">
               <div className="relative grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.85fr)] lg:pb-24">
-                {/* Sotto lg il testo arriva fino al bordo destro, dove l'onda bianca
-                    sale fino a ~70% della sua altezza: serve più spazio sotto. */}
-                <div className="max-w-3xl pb-44 md:pb-52 lg:pb-36">
+                {/* Sotto lg l'onda è più bassa (la stessa curva su 390px diventava
+                    ripidissima): il testo si ferma poco sopra il suo punto più alto. */}
+                <div className="max-w-3xl pb-24 sm:pb-32 md:pb-44 lg:pb-36">
                   {/* Le gite Rident hanno il proprio elenco (Turismo Dentale):
                       il ritorno porta lì, non al catalogo delle gite standard. */}
                   <Link
