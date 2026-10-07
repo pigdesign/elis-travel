@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { Sailboat, Calendar, UserCheck, ChevronRight } from "lucide-react";
+import { Sailboat, Calendar, UserCheck } from "lucide-react";
 import travelerImg from "@assets/elis_travel_offerte.png_1776682556019.webp";
 
-// Colori delle tre fasi (grafica di Davide): badge sfumato, icona e freccia
-// nello stesso tono.
+// Colori delle tre fasi (grafica di Davide): badge sfumato e icona nello
+// stesso tono.
 const SERVICES = [
   {
     icon: Sailboat,
@@ -167,8 +167,8 @@ export function BestServices() {
             </motion.div>
             
             {/* Le tre fasi: righe compatte, una sotto l'altra, con il badge
-                "Fase" che sporge in alto a sinistra (grafica di Davide). La
-                freccia è solo grafica: le righe non portano a un'altra pagina. */}
+                "Fase" che sporge in alto a sinistra (grafica di Davide). Niente
+                freccia: le righe non portano a un'altra pagina. */}
             <div className="space-y-4 lg:mt-10 lg:space-y-5">
               {SERVICES.map((service, index) => (
                 <motion.div
@@ -179,7 +179,7 @@ export function BestServices() {
                   transition={{ delay: index * 0.1, duration: 0.5 }}
                   className="relative pl-3 pt-2 sm:pl-4 sm:pt-2.5"
                 >
-                  <div className="flex min-h-[96px] items-center gap-3 rounded-[26px] bg-white py-4 pl-[64px] pr-3 shadow-[0_6px_28px_rgba(0,0,0,0.09)] transition-transform duration-300 hover:-translate-y-1 sm:min-h-[104px] sm:gap-4 sm:pl-[80px] sm:pr-5">
+                  <div className="flex min-h-[96px] items-center gap-3 rounded-[26px] bg-white py-4 pl-[64px] pr-5 shadow-[0_6px_28px_rgba(0,0,0,0.09)] transition-transform duration-300 hover:-translate-y-1 sm:min-h-[104px] sm:gap-4 sm:pl-[80px] sm:pr-6">
                     <service.icon
                       className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
                       strokeWidth={1.5}
@@ -193,12 +193,6 @@ export function BestServices() {
                         {service.desc}
                       </p>
                     </div>
-                    <span
-                      aria-hidden="true"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100"
-                    >
-                      <ChevronRight className="h-4 w-4" strokeWidth={2.5} style={{ color: service.color }} />
-                    </span>
                   </div>
                   <div
                     className="absolute left-0 top-0 flex h-[64px] w-[64px] flex-col items-center justify-center rounded-2xl text-white shadow-[0_8px_20px_rgba(0,0,0,0.18)] sm:h-[76px] sm:w-[76px] sm:rounded-[20px]"
