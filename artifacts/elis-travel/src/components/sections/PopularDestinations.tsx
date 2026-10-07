@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { DestinationCard } from "@/components/shared/DestinationCard";
+import { MobileLoopCarousel } from "@/components/shared/MobileLoopCarousel";
 
 const DESTINATIONS = [
   {
@@ -34,13 +35,13 @@ const DESTINATIONS = [
 
 export function PopularDestinations() {
   return (
-    <section className="py-20 bg-background" id="destinations">
+    <section className="py-12 md:py-20 bg-background" id="destinations">
       <div className="container mx-auto px-4 md:px-8 text-[#0489ae] border-t-[#0489ae] border-r-[#0489ae] border-b-[#0489ae] border-l-[#0489ae] text-[63px]">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center max-w-2xl mx-auto mb-16"
+          className="text-center max-w-2xl mx-auto mb-8 md:mb-16"
         >
           <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Mete top</span>
           <h2 className="brand-title text-[34px] sm:text-[44px] md:text-5xl mb-6 text-[#0489ae] border-t-[#0489ae] border-r-[#0489ae] border-b-[#0489ae] border-l-[#0489ae]">Esplora le destinazioni più amate</h2>
@@ -49,7 +50,16 @@ export function PopularDestinations() {
           </p>
         </motion.div>
 
-        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 scrollbar-none md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 lg:grid-cols-4">
+        {/* Telefono: carosello infinito con la prima scheda al centro. */}
+        <MobileLoopCarousel
+          className="md:hidden"
+          label="Destinazioni"
+          slides={DESTINATIONS.map((dest) => (
+            <DestinationCard key={dest.id} {...dest} />
+          ))}
+        />
+
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {DESTINATIONS.map((dest, index) => (
             <motion.div
               key={dest.id}
@@ -57,7 +67,6 @@ export function PopularDestinations() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.5 }}
-              className="w-[78%] shrink-0 snap-start sm:w-[45%] md:w-auto"
             >
               <DestinationCard {...dest} />
             </motion.div>

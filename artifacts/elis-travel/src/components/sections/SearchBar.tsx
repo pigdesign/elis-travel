@@ -159,7 +159,7 @@ export function SearchBar() {
 
   if (success) {
     return (
-      <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-24 md:-mt-32 mb-20">
+      <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-24 md:-mt-32 mb-8 md:mb-20">
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -184,7 +184,7 @@ export function SearchBar() {
   const peopleLabel = formatPeople(adults, children);
 
   return (
-    <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-24 md:-mt-32 mb-20">
+    <div className="relative z-30 container mx-auto px-4 md:px-8 -mt-24 md:-mt-32 mb-8 md:mb-20">
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}

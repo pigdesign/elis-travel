@@ -25,7 +25,7 @@ const STEPS = [
 export function EasySteps() {
   return (
     <section
-      className="py-24 overflow-hidden relative"
+      className="py-12 md:py-24 overflow-hidden relative"
       style={{
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
@@ -43,7 +43,7 @@ export function EasySteps() {
         }}
       />
       <div className="relative z-10 container mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -51,7 +51,7 @@ export function EasySteps() {
             className="lg:self-center flex flex-col items-center text-center"
           >
             <span className="text-accent font-bold tracking-wider uppercase text-[20px] sm:text-[24px] lg:text-[30px] mb-4 block">Come funziona</span>
-            <h2 className="brand-title brand-title-primary mb-8 text-[#ffffff] text-[36px] sm:text-[48px] lg:text-[60px]">
+            <h2 className="brand-title brand-title-primary mb-0 lg:mb-8 text-[#ffffff] text-[36px] sm:text-[48px] lg:text-[60px]">
               3 semplici passi per
               <br />
               prenotare il tuo prossimo viaggio

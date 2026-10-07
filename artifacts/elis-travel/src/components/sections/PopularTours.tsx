@@ -204,13 +204,13 @@ export function PopularTours() {
   const startTranslate = -(indexRef.current * 100) / N;
 
   return (
-    <section className="py-24 bg-muted/30" id="tours">
+    <section className="py-12 md:py-24 bg-muted/30" id="tours">
       <div className="container mx-auto px-4 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="flex flex-col items-center text-center mb-16"
+          className="flex flex-col items-center text-center mb-8 md:mb-16"
         >
           <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">
             Tour in evidenza
@@ -283,7 +283,7 @@ export function PopularTours() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
-          className="text-center mt-14"
+          className="text-center mt-8 md:mt-14"
         >
           <Link href="/offerte?featured=true">
             <span className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-white font-bold text-base shadow-lg shadow-accent/25 hover:bg-accent/90 hover:shadow-xl transition-all">

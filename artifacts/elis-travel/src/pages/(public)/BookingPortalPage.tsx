@@ -1187,7 +1187,7 @@ export function BookingPortalPage({
                     <Button
                       type="button"
                       variant="outline"
-                      className="mt-5 rounded-full border-red-200 text-red-700 hover:bg-red-50"
+                      className="mt-5 w-full rounded-full border-red-200 text-red-700 hover:bg-red-50 sm:w-auto"
                       onClick={() => {
                         setShowCancellationForm(true);
                         setError(null);

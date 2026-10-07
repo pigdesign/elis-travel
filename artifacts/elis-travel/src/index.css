@@ -185,14 +185,6 @@
   }
 }
 
-/* Righe a scorrimento orizzontale (card su telefono): niente barra visibile. */
-@utility scrollbar-none {
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
 /* Con la barra fissa "Prenota" (MobileStickyCta) il pulsante delle preferenze
    cookie di iubenda, che sta nello stesso angolo, sale sopra la barra. */
 body.has-sticky-cta .iubenda-tp-btn.iubenda-cs-preferences-link[data-tp-float] {

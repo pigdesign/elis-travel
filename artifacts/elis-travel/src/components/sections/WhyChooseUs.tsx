@@ -16,7 +16,7 @@ const REASON_ICON_COLORS = ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#f5f5f5
 export function WhyChooseUs() {
   return (
     <section
-      className="py-16 md:py-24 relative overflow-hidden"
+      className="py-12 md:py-24 relative overflow-hidden"
       style={{ background: "linear-gradient(135deg, #fa811e 0%, #ff9a3d 100%)" }}
     >
       <div className="container relative z-10 mx-auto px-4 md:px-8">
@@ -29,7 +29,7 @@ export function WhyChooseUs() {
             borderColor: "var(--tw-ring-offset-color)",
           }}
         >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -43,7 +43,7 @@ export function WhyChooseUs() {
                 Andiamo oltre i pacchetti standard. Creiamo esperienze che rispecchiano i tuoi sogni, con un team che cura ogni dettaglio del viaggio.
               </p>
 
-              <ul className="space-y-4 mb-10">
+              <ul className="space-y-4 mb-0 lg:mb-10">
                 {REASONS.map((reason, i) => (
                   <li key={i} className="flex items-center gap-3">
                     <CheckCircle2

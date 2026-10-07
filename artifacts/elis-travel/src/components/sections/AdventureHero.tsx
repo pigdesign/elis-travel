@@ -4,7 +4,7 @@ import { Button } from "@/components/shared/Button";
 
 export function AdventureHero() {
   return (
-    <section className="relative overflow-hidden py-24 md:py-32">
+    <section className="relative overflow-hidden py-12 md:py-32">
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 z-10 bg-black/35" />
         <img

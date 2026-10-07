@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { TestimonialCard } from "@/components/shared/TestimonialCard";
+import { MobileLoopCarousel } from "@/components/shared/MobileLoopCarousel";
 
 // SEGNAPOSTO: questi tre testi sono di esempio e NON vanno pubblicati come
 // recensioni di clienti. Prima del lancio vanno sostituiti con recensioni vere
@@ -33,19 +34,29 @@ const TESTIMONIALS = [
 
 export function Testimonials() {
   return (
-    <section className="py-20 md:py-32 bg-muted/20 relative overflow-hidden">
+    <section className="py-12 md:py-32 bg-muted/20 relative overflow-hidden">
       <div className="container relative z-10 mx-auto px-4 md:px-8">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center max-w-2xl mx-auto mb-12 md:mb-20"
+          className="text-center max-w-2xl mx-auto mb-8 md:mb-20"
         >
           <span className="text-primary font-bold tracking-wider uppercase text-sm mb-4 block">Recensioni top</span>
           <h2 className="brand-title brand-title-primary text-4xl md:text-5xl" style={{ color: "#fa811e" }}>Cosa dicono i nostri clienti</h2>
         </motion.div>
 
-        <div className="-mx-4 mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 scrollbar-none md:mx-0 md:grid md:snap-none md:grid-cols-3 md:gap-8 md:overflow-visible md:px-0 md:pb-0">
+        {/* Telefono: carosello infinito con la prima recensione al centro. */}
+        <MobileLoopCarousel
+          className="md:hidden"
+          label="Recensioni"
+          slideClassName="basis-[84%] sm:basis-[60%]"
+          slides={TESTIMONIALS.map((review) => (
+            <TestimonialCard key={review.id} {...review} />
+          ))}
+        />
+
+        <div className="hidden md:grid md:grid-cols-3 gap-8 mt-12">
           {TESTIMONIALS.map((review, index) => (
             <motion.div
               key={review.id}
@@ -53,7 +64,7 @@ export function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.5 }}
-              className="h-full w-[85%] shrink-0 snap-center sm:w-[60%] md:w-auto"
+              className="h-full"
             >
               <TestimonialCard {...review} />
             </motion.div>

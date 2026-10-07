@@ -5,7 +5,7 @@ import logoImg from "@assets/INSEGNA_ELISTRAVEL_def_orange_1776683850682.webp";
 
 export function Footer() {
   return (
-    <footer className="bg-foreground text-white pt-14 md:pt-20 pb-10">
+    <footer className="bg-foreground text-white pt-10 md:pt-20 pb-10">
       <div className="container mx-auto px-4 md:px-8">
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 mb-12 md:gap-12 md:mb-16 lg:grid-cols-5">
           {/* Brand Col */}
