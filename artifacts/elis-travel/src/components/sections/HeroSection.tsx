@@ -23,7 +23,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-left"
           >
-            <span className="inline-block py-1 px-3 rounded-full backdrop-blur-md border border-white/30 tracking-widest uppercase mb-6 lg:mb-4 text-[#ffffff] bg-[#fa8d34] border-t-[#ffffff00] border-r-[#ffffff00] border-b-[#ffffff00] border-l-[#ffffff00] border-t-[3px] border-r-[3px] border-b-[3px] border-l-[3px] font-bold text-[16px]">Esplora con noi</span>
+            <span className="inline-block py-0.5 px-2.5 md:py-1 md:px-3 rounded-full backdrop-blur-md border-2 md:border-[3px] border-white/30 tracking-widest uppercase mb-4 md:mb-6 lg:mb-4 text-[#ffffff] bg-[#fa8d34] border-t-[#ffffff00] border-r-[#ffffff00] border-b-[#ffffff00] border-l-[#ffffff00] font-bold text-[11px] md:text-[16px]">Esplora con noi</span>
           </motion.div>
 
           <motion.h1
@@ -32,15 +32,16 @@ export function HeroSection() {
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
             /* Da lg in su la misura segue anche l'altezza della finestra: su un
                13" (1280x800) il titolo da 130px mangiava mezzo schermo. Il cap a
-               130px lascia invariato l'aspetto sui monitor grandi. */
-            className="text-white drop-shadow-2xl font-black text-left mb-[30px] lg:mb-5 text-6xl md:text-8xl lg:text-[min(9vw,13.5vh,130px)] leading-tight md:leading-[1.1] lg:leading-[0.95]"
-          >Parti. Scopri. Ricorda.</motion.h1>
+               130px lascia invariato l'aspetto sui monitor grandi.
+               Sul telefono: sempre tre righe, strette (gli a capo spariscono da md). */
+            className="text-white drop-shadow-2xl font-black text-left mb-4 md:mb-[30px] lg:mb-5 text-6xl md:text-8xl lg:text-[min(9vw,13.5vh,130px)] leading-[0.95] md:leading-[1.1] lg:leading-[0.95]"
+          >Parti.<br className="md:hidden" /> Scopri.<br className="md:hidden" /> Ricorda.</motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-            className="text-lg md:text-xl mb-10 lg:mb-8 max-w-2xl mx-0 leading-relaxed text-left font-bold bg-[transparent] text-[#ffffff]"
+            className="text-[17px] md:text-xl mb-6 md:mb-10 lg:mb-8 max-w-2xl mx-0 leading-snug md:leading-relaxed text-left font-bold bg-[transparent] text-[#ffffff]"
           >
             Esperienze di viaggio organizzate con cura, per trasformare ogni partenza in un ricordo da portare con te.
           </motion.p>
@@ -49,15 +50,15 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
-            className="flex flex-col sm:flex-row items-start sm:items-center justify-start gap-4 border-0 border-solid border-black bg-transparent relative"
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-start gap-3 sm:gap-4 border-0 border-solid border-black bg-transparent relative"
           >
             <Link href="/offerte" className="w-full sm:w-auto">
-              <Button size="lg" className="h-14 px-8 w-full sm:w-auto bg-primary hover:bg-primary/90 text-white text-[17px] font-bold">
+              <Button size="lg" className="h-12 sm:h-14 px-8 w-full sm:w-auto bg-primary hover:bg-primary/90 text-white text-[17px] font-bold">
                 Scopri le offerte
               </Button>
             </Link>
             <Link href="/gite" className="w-full sm:w-auto">
-              <Button size="lg" variant="outline" className="h-14 px-8 text-base w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm">
+              <Button size="lg" variant="outline" className="h-12 sm:h-14 px-8 text-base w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm">
                 Scopri le Gite
               </Button>
             </Link>
