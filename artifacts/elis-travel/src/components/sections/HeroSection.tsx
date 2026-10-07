@@ -8,7 +8,11 @@ export function HeroSection() {
     <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden pb-32">
       {/* Background */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-black/22 z-10" />
+        <div className="absolute inset-0 bg-black/22 z-10 hidden md:block" />
+        {/* PROVA (telefono): velo più scuro a sinistra, dove sta il testo, e
+            più leggero a destra per non spegnere i colori della foto. Per
+            tornare indietro: togliere questo div e `hidden md:block` sopra. */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-black/60 via-black/30 to-black/5 md:hidden" />
         <img
           src={heroBg}
           alt="Elis Travel Hero"
@@ -35,7 +39,7 @@ export function HeroSection() {
                130px lascia invariato l'aspetto sui monitor grandi.
                Sul telefono: sempre tre righe, strette (gli a capo spariscono da md). */
             className="text-white drop-shadow-2xl font-black text-left mb-4 md:mb-[30px] lg:mb-5 text-6xl md:text-8xl lg:text-[min(9vw,13.5vh,130px)] leading-[0.95] md:leading-[1.1] lg:leading-[0.95]"
-          >Parti.<br className="md:hidden" /> Scopri.<br className="md:hidden" /> Ricorda.</motion.h1>
+          >Parti.<br className="md:hidden" /> <span className="max-xl:text-accent">Scopri.</span><br className="md:hidden" /> Ricorda.</motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
