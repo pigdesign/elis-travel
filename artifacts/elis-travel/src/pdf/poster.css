@@ -183,21 +183,28 @@
   font-size: 11.5pt;
 }
 
+/* Riga data ingrandita di un terzo (era 15pt, icona 7mm) su richiesta del
+   cliente. Normalmente resta su una riga; se è troppo lunga (date a cavallo
+   di due mesi) va a capo solo prima di "AL" — vedi DateLabel. */
 .poster-daterow {
   display: flex;
   align-items: center;
-  gap: 3mm;
+  gap: 3.5mm;
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 600;
-  font-size: 15pt;
+  font-size: 20pt;
+  line-height: 1.1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.poster-daterow .chunk {
   white-space: nowrap;
 }
 
 .poster-daterow svg {
-  width: 7mm;
-  height: 7mm;
+  width: 9.3mm;
+  height: 9.3mm;
   color: #fff;
   stroke-width: 1.8;
   flex-shrink: 0;
@@ -241,17 +248,22 @@
   text-align: center;
 }
 
+/* La spaziatura delle lettere lascia un vuoto anche dopo l'ultima: il
+   padding uguale a sinistra lo compensa, così QUOTA è centrata davvero */
 .poster-pricetag .tag-quota {
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 600;
   font-size: 14pt;
   letter-spacing: 0.3em;
+  padding-left: 0.3em;
 }
 
+/* Senza più "A PERSONA" il prezzo prende lo spazio liberato (era 40pt);
+   i prezzi lunghi li riduce useFitPrice */
 .poster-pricetag .tag-price {
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 800;
-  font-size: 40pt;
+  font-size: 54pt;
   line-height: 1.02;
   white-space: nowrap;
 }
@@ -261,13 +273,6 @@
   line-height: 1.1;
   padding: 1.5mm 0;
   white-space: normal;
-}
-
-.poster-pricetag .tag-person {
-  font-family: "Barlow Condensed", "Barlow", sans-serif;
-  font-weight: 600;
-  font-size: 12pt;
-  letter-spacing: 0.2em;
 }
 
 /* ---------- Timeline giorni ---------- */
@@ -574,6 +579,34 @@
   letter-spacing: 0.08em;
 }
 
+/* Icona WhatsApp piccola, bianca, subito prima del cellulare */
+.poster-footer .f-mobile {
+  white-space: nowrap;
+}
+
+.poster-footer .f-wa {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.3em;
+  vertical-align: -0.2em;
+}
+
+/* Facebook e Instagram sul lato destro della fascia, centrati in altezza */
+.poster-footer .f-social {
+  position: absolute;
+  top: 50%;
+  right: 12mm;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 3mm;
+}
+
+.poster-footer .f-social svg {
+  width: 6.5mm;
+  height: 6.5mm;
+}
+
 /* ---------- Copertina VERTICALE ---------- */
 
 /* Il fondo pagina deve combaciare con la maschera sfondo-v.png. Resta locale
@@ -792,7 +825,7 @@
 
 .ph .poster-daterow {
   margin-top: 5mm;
-  font-size: 13pt;
+  font-size: 17pt;
 }
 
 /* Liste quota in basso, su due colonne come nel mockup orizzontale */
@@ -830,11 +863,15 @@
 }
 
 .ph .poster-pricetag .tag-price {
-  font-size: 38pt;
+  font-size: 50pt;
 }
 
 .ph .poster-footer {
   height: 28mm;
+}
+
+.ph .poster-footer .f-social {
+  right: 10mm;
 }
 
 /* ---------- Pagine interne ---------- */

@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef } from "react";
+import { Fragment, useLayoutEffect, useRef } from "react";
 import { CalendarDays } from "lucide-react";
+import { FaFacebook, FaInstagram, FaWhatsapp } from "react-icons/fa";
 import logoImg from "@assets/logo_locandina_elis.png";
 import type { PosterModel } from "./model";
 import { POSTER_AGENCY, POSTER_BACKGROUNDS } from "./theme";
@@ -119,36 +120,74 @@ interface PosterCoverProps {
   maxDays: number;
 }
 
-/** Evidenzia le cifre in arancio, come nel mockup ("DAL 17 AL 19 APRILE"). */
+/**
+ * Evidenzia le cifre in arancio, come nel mockup ("DAL 17 AL 19 APRILE").
+ * Se la riga non ci sta va a capo solo prima di "AL", mai a metà di una
+ * data: i due pezzi sono indivisibili (classe `chunk`).
+ */
 function DateLabel({ text }: { text: string }) {
-  const parts = text.split(/(\d+)/);
+  const chunks = text.split(/ (?=AL )/i);
   return (
     <>
-      {parts.map((part, i) =>
-        /^\d+$/.test(part) ? (
-          <span key={i} className="num">
-            {part}
+      {chunks.map((chunk, c) => (
+        <Fragment key={c}>
+          {c > 0 && " "}
+          <span className={chunks.length > 1 ? "chunk" : undefined}>
+            {chunk.split(/(\d+)/).map((part, i) =>
+              /^\d+$/.test(part) ? (
+                <span key={i} className="num">
+                  {part}
+                </span>
+              ) : (
+                <span key={i}>{part}</span>
+              ),
+            )}
           </span>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
+        </Fragment>
+      ))}
     </>
   );
 }
 
+/**
+ * Riduce il prezzo finché non sta nella larghezza del corpo dell'etichetta:
+ * "650€" esce col corpo pieno del CSS, "DA 1.250€" scende quanto serve.
+ */
+function useFitPrice(ref: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const box = el?.parentElement;
+    if (!el || !box) return;
+
+    const fit = () => {
+      el.style.fontSize = "";
+      const max = parseFloat(getComputedStyle(el).fontSize);
+      let size = max;
+      while (el.offsetWidth > box.clientWidth + 1 && size > max * 0.5) {
+        size -= 1;
+        el.style.fontSize = `${size}px`;
+      }
+    };
+
+    fit();
+    document.fonts?.ready.then(fit).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
 /** Etichetta prezzo: forma SVG del grafico + testi sovrapposti ruotati. */
 function PriceTag({ model }: { model: PosterModel }) {
+  const priceRef = useRef<HTMLDivElement>(null);
+  useFitPrice(priceRef, [model.priceLabel]);
   return (
     <div className="poster-pricetag">
       <img src={model.theme.assets.tag} alt="" />
       <div className="tag-text">
         <div className="tag-quota">QUOTA</div>
         {model.priceLabel ? (
-          <>
-            <div className="tag-price">{model.priceLabel}</div>
-            <div className="tag-person">A PERSONA</div>
-          </>
+          <div ref={priceRef} className="tag-price">
+            {model.priceLabel}
+          </div>
         ) : (
           <div className="tag-price tag-price--request">
             SU
@@ -483,7 +522,17 @@ function Footer() {
       </div>
       <div className="f-line2">{POSTER_AGENCY.address}</div>
       <div className="f-line3">
-        {POSTER_AGENCY.phones} - {POSTER_AGENCY.email}
+        {POSTER_AGENCY.phone} -{" "}
+        <span className="f-mobile">
+          <FaWhatsapp className="f-wa" aria-label="WhatsApp" />
+          {POSTER_AGENCY.mobile}
+        </span>{" "}
+        - {POSTER_AGENCY.email}
+      </div>
+      {/* Fuori dal flusso: le righe di testo restano centrate sulla pagina */}
+      <div className="f-social">
+        <FaFacebook aria-label="Facebook" />
+        <FaInstagram aria-label="Instagram" />
       </div>
     </div>
   );

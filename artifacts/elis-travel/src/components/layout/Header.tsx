@@ -262,11 +262,11 @@ export function Header({ solid = false }: { solid?: boolean } = {}) {
                 </Button>
               </Link>
               <a
-                href="tel:+390182646447"
+                href="tel:+390182636067"
                 className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border text-base font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
               >
                 <Phone className="w-4 h-4" />
-                Chiamaci: 0182 64 64 47
+                Chiamaci: 0182 636067
               </a>
             </div>
           </nav>

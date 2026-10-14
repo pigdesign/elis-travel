@@ -196,7 +196,7 @@ export function ContactsPage() {
                     <div>
                       <div className="font-semibold text-white">Telefono</div>
                       <div className="text-white/75 text-sm flex flex-col gap-1 mt-1">
-                        <a href="tel:+390182646447" className="hover:text-white transition-colors">0182 64 64 47</a>
+                        <a href="tel:+390182636067" className="hover:text-white transition-colors">0182 636067</a>
                         <a href="tel:+393911717007" className="hover:text-white transition-colors">391 17 17 007</a>
                       </div>
                     </div>
