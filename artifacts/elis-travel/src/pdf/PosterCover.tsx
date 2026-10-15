@@ -121,7 +121,9 @@ interface PosterCoverProps {
 }
 
 /**
- * Evidenzia le cifre in arancio, come nel mockup ("DAL 17 AL 19 APRILE").
+ * Evidenzia in arancio i numeri dei giorni, come nel mockup ("DAL 17 AL 19
+ * APRILE"); l'anno resta bianco come il resto della riga (richiesta cliente:
+ * in arancio sulla foto si leggeva male).
  * Se la riga non ci sta va a capo solo prima di "AL", mai a metà di una
  * data: i due pezzi sono indivisibili (classe `chunk`).
  */
@@ -134,7 +136,7 @@ function DateLabel({ text }: { text: string }) {
           {c > 0 && " "}
           <span className={chunks.length > 1 ? "chunk" : undefined}>
             {chunk.split(/(\d+)/).map((part, i) =>
-              /^\d+$/.test(part) ? (
+              /^\d{1,2}$/.test(part) ? (
                 <span key={i} className="num">
                   {part}
                 </span>
