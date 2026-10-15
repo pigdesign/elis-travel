@@ -266,7 +266,7 @@ export function Header({ solid = false }: { solid?: boolean } = {}) {
                 className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border text-base font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
               >
                 <Phone className="w-4 h-4" />
-                Chiamaci: 0182 636067
+                Chiamaci: 0182 63 60 67
               </a>
             </div>
           </nav>

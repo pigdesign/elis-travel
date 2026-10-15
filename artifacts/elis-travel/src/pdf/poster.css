@@ -183,16 +183,16 @@
   font-size: 11.5pt;
 }
 
-/* Riga data ingrandita di un terzo (era 15pt, icona 7mm) su richiesta del
-   cliente. Normalmente resta su una riga; se è troppo lunga (date a cavallo
-   di due mesi) va a capo solo prima di "AL" — vedi DateLabel. */
+/* Riga data ingrandita su richiesta del cliente: era 15pt con icona 7mm,
+   poi +33% e ancora +8%. Normalmente resta su una riga; se è troppo lunga
+   (date a cavallo di due mesi) va a capo solo prima di "AL" — vedi DateLabel. */
 .poster-daterow {
   display: flex;
   align-items: center;
   gap: 3.5mm;
   font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-weight: 600;
-  font-size: 20pt;
+  font-size: 21.6pt;
   line-height: 1.1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -203,8 +203,8 @@
 }
 
 .poster-daterow svg {
-  width: 9.3mm;
-  height: 9.3mm;
+  width: 10mm;
+  height: 10mm;
   color: #fff;
   stroke-width: 1.8;
   flex-shrink: 0;
@@ -579,6 +579,12 @@
   letter-spacing: 0.08em;
 }
 
+/* I numeri di telefono più grandi del resto della riga (richiesta cliente);
+   l'icona WhatsApp è in em, quindi cresce con loro */
+.poster-footer .f-phone {
+  font-size: 12pt;
+}
+
 /* Icona WhatsApp piccola, bianca, subito prima del cellulare */
 .poster-footer .f-mobile {
   white-space: nowrap;
@@ -825,7 +831,7 @@
 
 .ph .poster-daterow {
   margin-top: 5mm;
-  font-size: 17pt;
+  font-size: 18.4pt;
 }
 
 /* Liste quota in basso, su due colonne come nel mockup orizzontale */

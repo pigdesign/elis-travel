@@ -14,6 +14,20 @@ interface ScheduleEditorProps {
   testIdPrefix?: string;
   /** false quando il titolo lo mette gia' la scheda che contiene l'editor. */
   showHeader?: boolean;
+  /** Solo gite: su ogni giorno la spunta "Inserisci data", che decide se
+   *  nel PDF compare la data di quel giorno. */
+  showDateToggle?: boolean;
+  /** Data di partenza (YYYY-MM-DD): accanto alla spunta mostra quale data
+   *  finirà nel PDF per ciascun giorno. */
+  startDate?: string | null;
+}
+
+/** "dom 20 dic": la data che il PDF calcola per il giorno in posizione `index`. */
+function dayDateHint(startDate: string | null | undefined, index: number): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(startDate ?? "");
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + index);
+  return d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
 }
 
 /**
@@ -27,7 +41,10 @@ export function ScheduleEditor({
   description = "Struttura la giornata per step. Ogni giorno può avere più attività.",
   testIdPrefix = "schedule",
   showHeader = true,
+  showDateToggle = false,
+  startDate,
 }: ScheduleEditorProps) {
+  const dateHints = value.map((_, i) => dayDateHint(startDate, i));
   return (
     <section className="space-y-3">
       {showHeader && (
@@ -58,6 +75,28 @@ export function ScheduleEditor({
               placeholder="Titolo giornata (opzionale)"
               className="flex-1 px-2 py-1 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
+            {showDateToggle && (
+              <label
+                className="flex items-center gap-1.5 shrink-0 text-xs text-foreground cursor-pointer select-none"
+                title="Mostra nel PDF la data di questo giorno"
+              >
+                <input
+                  type="checkbox"
+                  checked={day.showDate === true}
+                  onChange={(e) => {
+                    const s = [...value];
+                    s[di] = { ...s[di], showDate: e.target.checked };
+                    onChange(s);
+                  }}
+                  className="h-4 w-4 accent-primary"
+                  data-testid={`${testIdPrefix}-day-${di}-show-date`}
+                />
+                Inserisci data
+                {dateHints[di] && (
+                  <span className="text-muted-foreground">({dateHints[di]})</span>
+                )}
+              </label>
+            )}
             <button
               type="button"
               onClick={() => onChange(value.filter((_, i) => i !== di))}

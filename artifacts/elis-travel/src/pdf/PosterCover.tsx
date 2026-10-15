@@ -413,7 +413,7 @@ function Timeline({ model, maxDays }: { model: PosterModel; maxDays: number }) {
             <span className="giorno">GIORNO</span>
           </div>
           <div className="poster-day-text">
-            <div className="accent">{day.accentLine}</div>
+            {day.accentLine && <div className="accent">{day.accentLine}</div>}
             {day.mainLine && <div className="main">{day.mainLine}</div>}
           </div>
         </div>
@@ -456,7 +456,7 @@ function Timeline({ model, maxDays }: { model: PosterModel; maxDays: number }) {
             <span className="giorno">GIORNO</span>
           </div>
           <div className="poster-day-text">
-            <div className="accent">{day.accentLine}</div>
+            {day.accentLine && <div className="accent">{day.accentLine}</div>}
             {day.mainLine && <div className="main">{day.mainLine}</div>}
           </div>
         </div>
@@ -522,8 +522,8 @@ function Footer() {
       </div>
       <div className="f-line2">{POSTER_AGENCY.address}</div>
       <div className="f-line3">
-        {POSTER_AGENCY.phone} -{" "}
-        <span className="f-mobile">
+        <span className="f-phone">{POSTER_AGENCY.phone}</span> -{" "}
+        <span className="f-phone f-mobile">
           <FaWhatsapp className="f-wa" aria-label="WhatsApp" />
           {POSTER_AGENCY.mobile}
         </span>{" "}

@@ -96,9 +96,9 @@ export const POSTER_AGENCY = {
   addressPretty: "Via Cavour 59C — Andora (SV)",
   /** Fisso e cellulare separati: in copertina il cellulare ha accanto
    *  l'icona WhatsApp. `phones` è la riga unica per le pagine interne. */
-  phone: "0182 636067",
+  phone: "0182 63 60 67",
   mobile: "391 17 17 007",
-  phones: "0182 636067 - 391 17 17 007",
+  phones: "0182 63 60 67 - 391 17 17 007",
   email: "INFO@ELIS-TRAVEL.IT",
   website: "www.elis-travel.it",
 } as const;

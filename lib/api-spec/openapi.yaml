@@ -5986,6 +5986,9 @@ components:
         imageUrl:
           type: string
           nullable: true
+        showDate:
+          type: boolean
+          description: Spunta "Inserisci data" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.
         activities:
           type: array
           items:

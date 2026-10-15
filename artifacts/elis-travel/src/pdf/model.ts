@@ -11,8 +11,9 @@ import { POSTER_THEMES, type PosterKind, type PosterTheme } from "./theme";
 /** Riga della timeline giorni mostrata in copertina e nelle pagine interne. */
 export interface PosterDay {
   dayNumber: number;
-  /** Riga arancio: data calcolata (gite) o titolo giornata (offerte). */
-  accentLine: string;
+  /** Riga arancio: data calcolata (gite, solo con la spunta "Inserisci
+   *  data") o titolo giornata (offerte). null = riga assente. */
+  accentLine: string | null;
   /** Riga bianca: titolo giornata o sintesi attività. */
   mainLine: string;
   imageUrl: string | null;
@@ -126,13 +127,28 @@ function normalizeDays(
 ): PosterDay[] {
   const days = schedule ?? [];
   return days.map((day, i) => {
-    const dayDate = startDate ? addDays(startDate, i) : null;
     const title = day.title?.trim() || "";
     const summary = summarizeActivities(day);
+    const fallback = `GIORNO ${i + 1}`;
+    let accentLine: string | null;
+    let mainLine: string;
+    if (!startDate) {
+      // Offerte: nessuna partenza puntuale, il titolo fa da riga in evidenza
+      accentLine = title || fallback;
+      mainLine = summary;
+    } else if (day.showDate) {
+      accentLine = formatWeekdayDate(addDays(startDate, i));
+      mainLine = title || summary;
+    } else {
+      // Gite senza la spunta "Inserisci data": la data del giorno non si
+      // ripete (quella della gita è già in cima), resta solo il titolo
+      accentLine = null;
+      mainLine = title || summary || fallback;
+    }
     return {
       dayNumber: day.dayNumber ?? i + 1,
-      accentLine: dayDate ? formatWeekdayDate(dayDate) : title || `GIORNO ${i + 1}`,
-      mainLine: dayDate ? title || summary : summary,
+      accentLine,
+      mainLine,
       imageUrl: day.imageUrl ?? null,
       activities: day.activities.map((a) => ({
         time: a.time?.trim() || null,

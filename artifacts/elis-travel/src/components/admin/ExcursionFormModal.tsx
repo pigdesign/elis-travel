@@ -2417,6 +2417,8 @@ export function ExcursionFormModal({
                   value={form.schedule}
                   onChange={(days) => setField("schedule", days)}
                   showHeader={false}
+                  showDateToggle
+                  startDate={form.date}
                 />
               </FormSection>
 

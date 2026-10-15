@@ -187,7 +187,7 @@ export function PosterInnerPages({ model, orientation }: PosterInnerPagesProps) 
                         </div>
                         <div className="poster-inner-day-content">
                           <div className="poster-inner-day-head">
-                            <span className="accent">{day.accentLine}</span>
+                            {day.accentLine && <span className="accent">{day.accentLine}</span>}
                             {day.mainLine && <span className="main">{day.mainLine}</span>}
                           </div>
                           {day.activities.map((act, i) => (
@@ -202,7 +202,7 @@ export function PosterInnerPages({ model, orientation }: PosterInnerPagesProps) 
                           {day.imageUrl && (
                             <img
                               src={day.imageUrl}
-                              alt={day.accentLine}
+                              alt={day.accentLine ?? day.mainLine}
                               className="poster-inner-day-photo"
                             />
                           )}

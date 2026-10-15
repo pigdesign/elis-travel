@@ -362,6 +362,12 @@ export const ListExcursionsResponseItem = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -472,6 +478,12 @@ export const CreateExcursionBody = zod
           dayNumber: zod.number(),
           title: zod.string().nullish(),
           imageUrl: zod.string().nullish(),
+          showDate: zod
+            .boolean()
+            .optional()
+            .describe(
+              'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+            ),
           activities: zod.array(
             zod.object({
               time: zod.string().nullish(),
@@ -579,6 +591,12 @@ export const GetExcursionResponse = zod
           dayNumber: zod.number(),
           title: zod.string().nullish(),
           imageUrl: zod.string().nullish(),
+          showDate: zod
+            .boolean()
+            .optional()
+            .describe(
+              'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+            ),
           activities: zod.array(
             zod.object({
               time: zod.string().nullish(),
@@ -755,6 +773,12 @@ export const UpdateExcursionBody = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -851,6 +875,12 @@ export const UpdateExcursionResponse = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -1485,6 +1515,12 @@ export const CompleteExcursionTripResponse = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -1596,6 +1632,12 @@ export const CancelExcursionTripResponse = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -2459,6 +2501,12 @@ export const UpdateExcursionVehicleResponse = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -2790,6 +2838,12 @@ export const CreateOfferBody = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -2853,6 +2907,12 @@ export const GetOfferResponse = zod
             dayNumber: zod.number(),
             title: zod.string().nullish(),
             imageUrl: zod.string().nullish(),
+            showDate: zod
+              .boolean()
+              .optional()
+              .describe(
+                'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+              ),
             activities: zod.array(
               zod.object({
                 time: zod.string().nullish(),
@@ -2908,6 +2968,12 @@ export const UpdateOfferBody = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -3182,6 +3248,12 @@ export const GetPublicOfferResponse = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),
@@ -3220,6 +3292,12 @@ export const GetPublicExcursionResponse = zod.object({
         dayNumber: zod.number(),
         title: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
+        showDate: zod
+          .boolean()
+          .optional()
+          .describe(
+            'Spunta \"Inserisci data\" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data.',
+          ),
         activities: zod.array(
           zod.object({
             time: zod.string().nullish(),

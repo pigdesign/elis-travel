@@ -67,6 +67,8 @@ export interface ScheduleDay {
   dayNumber: number;
   title?: string | null;
   imageUrl?: string | null;
+  /** Spunta "Inserisci data" — nel PDF mostra la data del giorno, calcolata dalla partenza. Assente = niente data. */
+  showDate?: boolean;
   activities: ScheduleActivity[];
 }
 
